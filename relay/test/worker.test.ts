@@ -56,7 +56,7 @@ describe('worker.ts', () => {
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const response = await fetchWorker(new Request('https://push.rarog.ai/v1/health'), await env());
     expect(await response.json()).toEqual({
-      v: 1, ok: true, version: '1.0.0+abc1234', environments: ['development', 'production'], alertPolicy: 'v2',
+      v: 1, ok: true, version: '1.0.1+abc1234', environments: ['development', 'production'], alertPolicy: 'v2',
     });
   });
 

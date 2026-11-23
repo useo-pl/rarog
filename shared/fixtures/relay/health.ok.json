@@ -10,7 +10,7 @@
     "body": {
       "v": 1,
       "ok": true,
-      "version": "1.0.0+fixture",
+      "version": "1.0.1+fixture",
       "environments": [
         "development",
         "production"

@@ -40,8 +40,11 @@ const sha256 = (data: Buffer | string) => createHash('sha256').update(data).dige
 const integrity = (data: Buffer) => `sha512-${createHash('sha512').update(data).digest('base64')}`;
 
 function audit(args: string[]) {
+  // Synchronous: a limit here is the only one that can fire, since a blocked worker never reaches the vitest timeout.
   const result = spawnSync(process.execPath, [AUDIT, ...args], {
     encoding: 'utf8',
+    timeout: TIMEOUT_MS,
+    killSignal: 'SIGKILL',
     env: { ...process.env, npm_config_registry: 'http://127.0.0.1:9/', npm_config_offline: 'false' },
   });
   return { code: result.status, stdout: result.stdout, stderr: result.stderr };
@@ -161,6 +164,8 @@ describe('audyt tarballa z `npm pack`', () => {
     const packed = spawnSync('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', out], {
       cwd: src,
       encoding: 'utf8',
+      timeout: TIMEOUT_MS,
+      killSignal: 'SIGKILL',
       env: { ...env, npm_config_userconfig: path.join(base, 'empty-npmrc'), npm_config_cache: path.join(base, 'cache') },
     });
     expect(packed.status, packed.stderr).toBe(0);

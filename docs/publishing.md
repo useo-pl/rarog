@@ -170,8 +170,10 @@ SHAs; the package manager cache is off.
 
 1. **build** (`contents: read`) checks the inputs against `package.json` and, outside a dry run, that the run stands
    on tag `v<version>` and `repository.url` names the run's repository (npm rejects provenance from another one).
-   It runs the typecheck and the tests, builds the tarball with `node scripts/package.mjs` and audits it with
-   `scripts/package-audit.mjs` (below).
+   It runs the typecheck, builds the tarball with `node scripts/package.mjs` and audits it with
+   `scripts/package-audit.mjs` (below). It does not run the server tests: the release gate runs them on the same
+   export tree, and before the version is approved the tarball's sha256 is compared with the tested one. `check.yml`
+   runs them on the tag.
 2. **sbom** (no permissions, Ubuntu and macOS) installs the tarball without scripts and stores a CycloneDX SBOM per
    platform, because the package of iroh (the QUIC library behind the server's iroh listener) ships its native module
    as one package per platform. It fails when the SBOM lacks the package or lists the
@@ -186,7 +188,7 @@ compares the tarball with the packer's build manifest: sha256, the `npm pack --d
 read without unpacking (only regular files under `package/`, no links, no data after the first zero block). The
 tarball's `package.json` must match the manifest's name and version, and no path or dependency may name the Claude
 SDK. `--files-only` compares content only, for a registry package against a local build. Exit 0 is a match, 1
-differences on stderr, 64 a bad call. Test: `server/test/package-audit.test.ts`.
+differences on stderr (also an npm call that does not finish within 5 minutes), 64 a bad call. Test: `server/test/package-audit.test.ts`.
 
 ## macOS-only tests
 

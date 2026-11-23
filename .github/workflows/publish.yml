@@ -47,11 +47,11 @@ defaults:
 
 jobs:
   build:
-    name: Tarball, tests and audit
+    name: Tarball and audit
     runs-on: ubuntu-latest
-    # The whole server suite takes about 100 minutes on a two-core runner (`check.yml` splits it into parts); here it
-    # runs in one job, before the tarball, so the limit leaves room for it.
-    timeout-minutes: 150
+    # No server tests here: the release gate runs them on the same export tree, and the sha256 of this tarball is
+    # compared with the tested candidate before the version is approved. `check.yml` runs them on the tag.
+    timeout-minutes: 30
     permissions:
       contents: read
     outputs:
@@ -115,8 +115,6 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: typecheck
         run: pnpm run typecheck
-      - name: tests
-        run: pnpm test
       - name: tarball
         id: pack
         env:

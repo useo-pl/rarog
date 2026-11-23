@@ -223,6 +223,9 @@ function packagePath(entryPath) {
   return { rel };
 }
 
+/** Limit of one npm call in the audit. */
+const NPM_TIMEOUT_MS = 5 * 60_000;
+
 /** Środowisko npm: bez `npm_*` wołającego, z pustymi plikami konfiguracji i własnym cache. */
 function npmEnv(work) {
   const user = path.join(work, 'empty-npmrc');
@@ -246,9 +249,14 @@ function npmListing(tarballPath, work) {
   const cwd = path.join(work, 'cwd');
   fs.mkdirSync(cwd);
   const args = ['pack', '--dry-run', '--json', '--ignore-scripts', tarballPath];
-  const result = spawnSync('npm', args, { cwd, env: npmEnv(work), encoding: 'utf8', maxBuffer: MAX_OUTPUT });
+  // A synchronous call blocks its caller; without a limit an npm that never exits holds the audit step (and a test
+  // worker running it) until the CI job is killed. The listing of one tarball takes seconds.
+  const result = spawnSync('npm', args, {
+    cwd, env: npmEnv(work), encoding: 'utf8', maxBuffer: MAX_OUTPUT, timeout: NPM_TIMEOUT_MS, killSignal: 'SIGKILL',
+  });
   if (result.error !== undefined) {
     const code = /** @type {NodeJS.ErrnoException} */ (result.error).code;
+    if (code === 'ETIMEDOUT') throw new Refusal(`npm ${args.join(' ')} did not finish within ${String(NPM_TIMEOUT_MS / 60_000)} minutes`);
     throw new Refusal(code === 'ENOENT' ? 'no npm in PATH' : `npm: ${result.error.message}`);
   }
   if (result.status !== 0) {

@@ -617,7 +617,7 @@ describe('konfiguracja i /v1/health', () => {
   it('pełna konfiguracja: ok, wersja z DEPLOY_SHA, środowiska, polityka', async () => {
     const h = await setup();
     expect(await call(h, get('/v1/health'))).toEqual({ status: 200, body: {
-      v: 1, ok: true, version: '1.0.0+test', environments: ['development', 'production'], alertPolicy: 'v2',
+      v: 1, ok: true, version: '1.0.1+test', environments: ['development', 'production'], alertPolicy: 'v2',
     } });
   });
 
