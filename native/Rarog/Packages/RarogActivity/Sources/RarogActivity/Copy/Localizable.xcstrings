@@ -1,0 +1,1206 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "liveActivity.finishedWord" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Licznik tablicy: słowo pod dużą liczbą, sama liczba stoi osobno („2” + „czekają”). Bez liczby w tekście; wariant według parametru 1 (liczba). Ciasno: wyspa. Skończone (rodzaj żeński: sesja).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@word@"
+          },
+          "substitutions" : {
+            "word" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "done"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "done"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@word@"
+          },
+          "substitutions" : {
+            "word" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "few" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "skończyły"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "skończyło"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "skończyła"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "skończyło"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "liveActivity.levelWord.critical" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Wariant: przypadek critical.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "critical"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "krytyczne"
+          }
+        }
+      }
+    },
+    "liveActivity.levelWord.warning" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Wariant: przypadek warning.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "high"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wysokie"
+          }
+        }
+      }
+    },
+    "liveActivity.limit.fiveHour" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Miejsce: wyspa Dynamic Island obok kamery i kafel, najwyżej 3 znaki.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5h"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5h"
+          }
+        }
+      }
+    },
+    "liveActivity.limit.label" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Parametry: 1. short (tekst).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ limit"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "limit %@"
+          }
+        }
+      }
+    },
+    "liveActivity.limit.weekly" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Miejsce: wyspa Dynamic Island obok kamery i kafel, najwyżej 3 znaki.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7d"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7d"
+          }
+        }
+      }
+    },
+    "liveActivity.list.comma" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › SEPARATOR członów zdania czytnika, ze spacją.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", "
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", "
+          }
+        }
+      }
+    },
+    "liveActivity.list.dot" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › SEPARATOR członów linii kafla („CPU 35% · RAM 70%”), ze spacjami.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " · "
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " · "
+          }
+        }
+      }
+    },
+    "liveActivity.list.sentence" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › SEPARATOR między całymi zdaniami czytnika (każde z kropką z liveActivity.sentence).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " "
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " "
+          }
+        }
+      }
+    },
+    "liveActivity.mac.cpu" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Miejsce: linia Maca na ekranie blokady, krótka etykieta metryki.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU"
+          }
+        }
+      }
+    },
+    "liveActivity.mac.disk" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Miejsce: linia Maca na ekranie blokady, krótka etykieta metryki.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "disk"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dysk"
+          }
+        }
+      }
+    },
+    "liveActivity.mac.ram" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Miejsce: linia Maca na ekranie blokady, krótka etykieta metryki.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RAM"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RAM"
+          }
+        }
+      }
+    },
+    "liveActivity.macLine" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Linia Maca na ekranie blokady: „Mac  CPU 35% · RAM 70% · dysk 60%” (dwie spacje po „Mac”). Parametry: 1. metryki złączone liveActivity.list.dot.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac  %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac  %@"
+          }
+        }
+      }
+    },
+    "liveActivity.macLine.metric" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Metryka w linii Maca: „CPU 35%”. Parametry: 1. nazwa (liveActivity.mac.*), 2. procent (liveActivity.percent).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "liveActivity.macLine.vps" : {
+      "comment" : "Wariant VPS klucza `liveActivity.macLine`: to samo miejsce i parametry, serwer poza macOS (`ServerMachine.vps`, system z `GET /api/version`). Kafel Live Activity (ekran blokady, wyspa) › Linia Maca na ekranie blokady: „Mac  CPU 35% · RAM 70% · dysk 60%” (dwie spacje po „Mac”). Parametry: 1. metryki złączone liveActivity.list.dot.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPS  %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPS  %@"
+          }
+        }
+      }
+    },
+    "liveActivity.moreWorkflows" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island). Parametry: 1. $0 (liczba). Miejsce: kafel, pod przebiegami; krótko.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld workflow"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld workflows"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld workflow"
+          }
+        }
+      }
+    },
+    "liveActivity.percent" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Procent limitu albo metryki Maca: „42%”. Ciasno: wyspa. Parametry: 1. procent.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
+          }
+        }
+      }
+    },
+    "liveActivity.quietNote" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island). Treść ``quietNote``.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Activity ends after 30 min of quiet"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kafel zniknie po 30 min ciszy"
+          }
+        }
+      }
+    },
+    "liveActivity.row.agents" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Parametry: 1. workflow.done (liczba); 2. workflow.agents (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agents %lld/%lld"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agenci %lld/%lld"
+          }
+        }
+      }
+    },
+    "liveActivity.row.agentsSpoken" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Parametry: 1. workflow.done (liczba); 2. workflow.agents (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld agents finished"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "agenci %lld z %lld"
+          }
+        }
+      }
+    },
+    "liveActivity.row.phase" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Parametry: 1. phase.index (liczba); 2. phase.count (liczba). Miejsce: linia przebiegu na kaflu; tytuł fazy (najwyżej 24 znaki, dłuższy wypada) dokleja kod.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "phase %lld/%lld"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "faza %lld/%lld"
+          }
+        }
+      }
+    },
+    "liveActivity.row.phase.titled" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Przebieg workflow: postęp z tytułem fazy (do 24 znaków): „faza 2/4 · Weryfikacja”. Parametry: 1. numer fazy, 2. liczba faz, 3. tytuł fazy.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "phase %1$lld/%2$lld · %3$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "faza %1$lld/%2$lld · %3$@"
+          }
+        }
+      }
+    },
+    "liveActivity.row.phaseSpoken" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Parametry: 1. phase.index (liczba); 2. phase.count (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "phase %lld of %lld"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "faza %lld z %lld"
+          }
+        }
+      }
+    },
+    "liveActivity.row.phaseSpoken.titled" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Postęp przebiegu z tytułem fazy: „faza 2 z 4, Weryfikacja”. Parametry: 1. numer fazy, 2. liczba faz, 3. tytuł fazy.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "phase %1$lld of %2$lld, %3$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "faza %1$lld z %2$lld, %3$@"
+          }
+        }
+      }
+    },
+    "liveActivity.row.phaseStateSpoken.done" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Stan fazy planu na pasku przebiegu: wszyscy agenci fazy, którzy ruszyli, skończyli, „faza 1 skończona”. Człon listy po przecinku (liveActivity.list.comma), małą literą, bez kropki. Parametry: 1. numer fazy (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "phase %lld finished"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "faza %lld skończona"
+          }
+        }
+      }
+    },
+    "liveActivity.row.phaseStateSpoken.pending" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Stan fazy planu na pasku przebiegu: żaden agent fazy nie ruszył, „faza 3 jeszcze nie ruszyła”. Człon listy po przecinku (liveActivity.list.comma), małą literą, bez kropki. Parametry: 1. numer fazy (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "phase %lld not started yet"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "faza %lld jeszcze nie ruszyła"
+          }
+        }
+      }
+    },
+    "liveActivity.row.phaseStateSpoken.running" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Stan fazy planu na pasku przebiegu: ktoś w fazie jeszcze pracuje, „faza 2 w toku”. Człon listy po przecinku (liveActivity.list.comma), małą literą, bez kropki. Parametry: 1. numer fazy (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "phase %lld in progress"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "faza %lld w toku"
+          }
+        }
+      }
+    },
+    "liveActivity.row.spoken" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Przebieg workflow: „rarog, audyt-ux: faza 2 z 4, Weryfikacja”. Parametry: 1. projekt, 2. nazwa przebiegu, 3. postęp (liveActivity.row.phaseSpoken*, .agentsSpoken).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@: %3$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@: %3$@"
+          }
+        }
+      }
+    },
+    "liveActivity.row.spoken.states" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Przebieg workflow ze stanem każdej fazy: „rarog, audyt-docs: faza 2 z 3, Weryfikacja; faza 1 skończona, faza 2 w toku, faza 3 jeszcze nie ruszyła”. Średnik oddziela postęp od listy stanów, bo oba człony mają własne przecinki. Bez kropki (dodaje liveActivity.sentence). Parametry: 1. projekt, 2. nazwa przebiegu, 3. postęp (liveActivity.row.phaseSpoken*), 4. stany faz złączone liveActivity.list.comma (liveActivity.row.phaseStateSpoken.*).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@: %3$@; %4$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@: %3$@; %4$@"
+          }
+        }
+      }
+    },
+    "liveActivity.row.title" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Tytuł przebiegu workflow na ekranie blokady: „rarog · audyt-ux”. Parametry: 1. projekt, 2. nazwa przebiegu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "liveActivity.sentence" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Fraza jako całe zdanie: znak końca zdania. Parametry: 1. fraza.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@."
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.finished" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Ile sesji skończyło (człon po przecinku; rodzaj żeński: sesja). Liczba mnoga według parametru 1 (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld done"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld done"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld skończyły"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld skończyło"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld skończyła"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld skończyło"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.limit.fiveHour" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Okno 5-godzinne z procentem. Parametry: 1. procent.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5-hour window %lld%%"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 godzin %lld%%"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.limit.weekly" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Okno tygodniowe z procentem. Parametry: 1. procent.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "week %lld%%"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tydzień %lld%%"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.limits" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Limity planu: „Limit planu: 5 godzin 42%, tydzień 81%”. Parametry: 1. okna po przecinku.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan usage: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limit planu: %@"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.mac" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Mac: „Mac: CPU 35%, RAM 70% (wysokie)”. Parametry: 1. metryki po przecinku.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac: %@"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.mac.vps" : {
+      "comment" : "Wariant VPS klucza `liveActivity.spoken.mac`: to samo miejsce i parametry, serwer poza macOS (`ServerMachine.vps`, system z `GET /api/version`). Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Mac: „Mac: CPU 35%, RAM 70% (wysokie)”. Parametry: 1. metryki po przecinku.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPS: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VPS: %@"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.metric" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Metryka Maca. Parametry: 1. nazwa, 2. procent (liveActivity.percent).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.metric.level" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Metryka Maca z poziomem progu: „RAM 70% (wysokie)”. Parametry: 1. nazwa, 2. procent, 3. poziom (liveActivity.levelWord.*).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@ (%3$@)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@ (%3$@)"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.moreWorkflows" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy. Parametry: 1. more (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "One more workflow"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more workflows"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeszcze %lld workflow"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.nothingWaiting" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog: nothing is waiting for a decision"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog: nic nie czeka na decyzję"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.quiet" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island) › Copy.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog: nothing is waiting or working"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog: nic nie czeka i nic nie pracuje"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.quietNote" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Zdanie ciszy na początku zdania czytnika (to samo, co oko widzi w liveActivity.quietNote).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Live Activity ends after 30 minutes of quiet"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kafel zniknie po 30 min ciszy"
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.waiting" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Ile sesji czeka na decyzję (więcej niż zero). Liczba mnoga według parametru 1 (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rarog: %lld session is waiting for a decision"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rarog: %lld sessions are waiting for a decision"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rarog: %lld sesje czekają na decyzję"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rarog: %lld sesji czeka na decyzję"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rarog: %lld sesja czeka na decyzję"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rarog: %lld sesji czeka na decyzję"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "liveActivity.spoken.working" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Ile sesji pracuje (człon po przecinku). Liczba mnoga według parametru 1 (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld working"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld working"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pracują"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pracuje"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pracuje"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pracuje"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "liveActivity.spokenLabel.stale" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Zdanie dla VoiceOvera (kafel czyta się jednym ciągiem). Całe zdanie kafla i ostrzeżenie o nieświeżych danych. Parametry: 1. zdanie kafla, 2. godzina ostatniego stanu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ Data is out of date, as of %2$@."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ Dane nieaktualne, stan z %2$@."
+          }
+        }
+      }
+    },
+    "liveActivity.staleNote" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Dane starsze niż 15 min: „nieaktualne · stan z 10:42”. Ciasno: jedna linia. Parametry: 1. godzina ostatniego stanu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "out of date · as of %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nieaktualne · stan z %@"
+          }
+        }
+      }
+    },
+    "liveActivity.usageLead" : {
+      "comment" : "Kafel Live Activity (ekran blokady i Dynamic Island). Początek linii limitów na ekranie blokady („usage 5h 42% 7d 81%”). Miejsce: początek linii limitów na ekranie blokady, jedno krótkie słowo.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "usage"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "usage"
+          }
+        }
+      }
+    },
+    "liveActivity.waitingWord" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Licznik tablicy: słowo pod dużą liczbą, sama liczba stoi osobno („2” + „czekają”). Bez liczby w tekście; wariant według parametru 1 (liczba). Ciasno: wyspa. Czekające na decyzję.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@word@"
+          },
+          "substitutions" : {
+            "word" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "waiting"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "waiting"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@word@"
+          },
+          "substitutions" : {
+            "word" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "few" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "czekają"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "czeka"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "czeka"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "czeka"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "liveActivity.workingWord" : {
+      "comment" : "Kafel Live Activity (ekran blokady, wyspa) › Licznik tablicy: słowo pod dużą liczbą, sama liczba stoi osobno („2” + „czekają”). Bez liczby w tekście; wariant według parametru 1 (liczba). Ciasno: wyspa. Pracujące.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@word@"
+          },
+          "substitutions" : {
+            "word" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "working"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "working"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@word@"
+          },
+          "substitutions" : {
+            "word" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "few" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "pracują"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "pracuje"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "pracuje"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "pracuje"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

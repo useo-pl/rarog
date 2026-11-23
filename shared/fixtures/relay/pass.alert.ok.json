@@ -1,0 +1,41 @@
+{
+  "description": "Przepustka urządzenia: próbny cichy push pod tematem apki dostał 200, przepustka na 90 dni. Token wielkimi literami — przekaźnik liczy wszystko na małych.",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "C0FFEE00C0FFEE00C0FFEE00C0FFEE00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "type": "alert",
+      "topic": "ai.rarog.app"
+    }
+  },
+  "apns": {
+    "status": 200,
+    "body": ""
+  },
+  "apnsRequest": {
+    "url": "https://api.sandbox.push.apple.com/3/device/c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+    "headers": {
+      "apns-push-type": "background",
+      "apns-priority": "5",
+      "apns-topic": "ai.rarog.app",
+      "apns-expiration": "0",
+      "content-type": "application/json"
+    },
+    "body": "{\"aps\":{\"content-available\":1}}"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "v": 1,
+      "pass": "v1.k1.development.alert.c2a0b37a262809b4.1801389600.Tt0O1VzUDynDL0Rq6BpH-GB8GIVqEWL_5JgFOUGTkDk",
+      "expiresAt": "2027-01-31T10:00:00.000Z"
+    }
+  }
+}

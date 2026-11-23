@@ -1,0 +1,33 @@
+{
+  "description": "Ładunek poza polityką (tu: loc-args — argument to dowolny jawny tekst). rule nazywa regułę.",
+  "request": {
+    "method": "POST",
+    "path": "/v1/push",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "pass": "v1.k1.development.alert.c2a0b37a262809b4.1800525600.ganNxIFp2SYBpvH2PDB72jFbieaMaxsAXHdxunpxUNk",
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "headers": {
+        "apns-push-type": "alert",
+        "apns-topic": "ai.rarog.app",
+        "apns-priority": "10",
+        "apns-collapse-id": "cr1xyyYpSec1JgrezziXOaeaqcM43hwA",
+        "apns-expiration": "1793614200"
+      },
+      "payload": "{\"aps\":{\"alert\":{\"title-loc-key\":\"push.placeholder.title\",\"loc-key\":\"push.placeholder.body\",\"loc-args\":[\"dowolny tekst\"]},\"mutable-content\":1}}"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "v": 1,
+      "error": "payload-rejected",
+      "rule": "alert"
+    }
+  }
+}

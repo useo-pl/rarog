@@ -1,0 +1,33 @@
+❯ claude --session-id 00000000-0000-4000-9000-000000000001 --model sonnet --effort medium --permission-mode default --setting-s
+ources project,local --settings ../ust.json
+ ▐▛███▛█   Claude Code v2.1.322
+▝▜██████▀  Sonnet 5.5 with medium effort · Claude Plan
+ ▝▝   ▝▝   /Users/u/projekt
+
+
+❯ Nie używaj żadnych narzędzi poza Write. Jednym wywołaniem Write utwórz plik ../inny/nowy-poza.txt (podaj go jako ścieżkę
+  bezwzględną) z jedną linią: 'poza'. Nie pisz nic poza tym wywołaniem.
+
+⏺ Write(/Users/u/inny/nowy-poza.txt)
+  ⎿  User rejected write to /Users/u/inny/nowy-poza.txt
+      1 poza
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Nie używaj żadnych narzędzi poza Read. Jednym wywołaniem Read przeczytaj plik ../inny/plik.txt (podaj ścieżkę bezwzględną).
+  Nie pisz nic poza tym wywołaniem.
+
+  Reading 1 file… (ctrl+o to expand)
+  ⎿  /Users/u/inny/plik.txt
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Read file
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Read(/Users/u/inny/plik.txt)
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, allow reading from /Users/u/inny during this session
+   3. No
+
+ Esc to cancel · Tab to amend

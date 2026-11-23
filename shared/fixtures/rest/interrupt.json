@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "session": {
+    "id": "w0:d5",
+    "cwd": "/Users/demo/Projects/willow",
+    "title": "willow",
+    "state": "waiting-input",
+    "stateSince": "2026-10-04T10:00:00.000Z",
+    "createdAt": "2026-10-04T10:00:00.000Z",
+    "lastActivityAt": "2026-10-04T10:00:00.000Z",
+    "paneId": "w0:d5",
+    "launchedByRarog": true,
+    "label": "session 1",
+    "labelRef": {
+      "code": "session.fallback-label",
+      "args": [
+        "1"
+      ]
+    },
+    "model": "claude-fable-5-1"
+  },
+  "delivered": "yes"
+}

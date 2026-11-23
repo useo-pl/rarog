@@ -1,0 +1,21 @@
+{
+  "type": "session-changed",
+  "session": {
+    "id": "herdr-w1-p3",
+    "cwd": "/Users/demo/Projects/cedar",
+    "title": "cedar",
+    "state": "waiting-permission",
+    "stateSince": "2026-10-03T08:00:48.000Z",
+    "createdAt": "2026-10-03T08:00:48.000Z",
+    "lastActivityAt": "2026-10-03T08:00:48.000Z",
+    "paneId": "w1:p3",
+    "launchedByRarog": true,
+    "stale": false,
+    "herdrMode": "manual",
+    "herdrDialogReason": "no-jsonl",
+    "herdrDialogScreen": "Select login method:\n❯ 1. Claude account with subscription\n  2. Anthropic Console account",
+    "cliDialog": "dialog",
+    "outOfScope": false,
+    "label": "nowy projekt"
+  }
+}

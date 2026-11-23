@@ -1,0 +1,7 @@
+{
+  "error": "demo-review-full",
+  "message": "Too many devices are paired with the demo. Try again later.",
+  "messageRef": {
+    "code": "demo.review-device-limit"
+  }
+}

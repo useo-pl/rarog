@@ -1,0 +1,10 @@
+❯ pomiar B: ok
+
+❯ pomiar C: ok
+  ctrl+enter to send now
+
+✽ Crunching… (15s)
+
+──────────────────────────
+❯ Press up to edit queued…
+──────────────────────────

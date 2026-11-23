@@ -1,0 +1,30 @@
+❯ To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy w
+  trakcie pracy przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Proszę o jedno
+  wywołanie narzędzia Bash z command: echo pomiar-start; sleep 120; echo pomiar-koniec — zwykłe, na pierwszym planie,
+  bez run_in_background. Nie używaj żadnych narzędzi poza tym jednym wywołaniem. Po jego wyniku zakończ turę słowem:
+  gotowe. Krótką wiadomość, która przyjdzie w trakcie, potraktuj jako część pomiaru i odpowiedz na nią jednym słowem:
+  ok.
+
+  Running measurement delay command · 11s
+  ⎿  $ echo pomiar-start; sleep 120; echo pomiar-koniec (10s · 2 lines)
+     (ctrl+b to run in background)
+
+❯ pomiar W: wklejka
+  z telefonu, linia 2
+  linia 3 z 12
+  linia 4 z 12
+  linia 5 z 12
+  linia 6 z 12
+  linia 7 z 12
+  linia 8 z 12
+  linia 9 z 12
+  linia 10 z 12
+  linia 11 z 12
+  odpowiedz slowem: ok
+  ⎿  Queued · ctrl+enter to send now
+
+✽ Gusting… (15s · ↓ 99 tokens)
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Press up to edit queued messages
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,52 @@
+▝▜██████▀  Sonnet 5 with low effort · Claude Plan
+  ▝▝ ▝▝    ~/projekt
+
+⚠ 1 MCP server needs authentication · run /mcp
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie jednokrotnego wyboru: 'Jaki
+  smak lodow?' z opcjami: Wanilia, Czekolada, Truskawka. Nie pisz nic poza tym wywołaniem.
+
+⏺ User declined to answer questions
+  ⎿  · Jaki smak lodow? (Wanilia / Czekolada / Truskawka)
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. W JEDNYM wywołaniu zadaj trzy pytania jednokrotnego
+  wyboru: 'Jaki smak lodow?' (Wanilia, Czekolada, Truskawka), 'Jaki kubek?' (Maly, Duzy), 'Co na wierzch?' (Orzechy, Wiorki).
+  Zadne z pytan nie ma multiSelect. Nie pisz nic poza tym wywołaniem.
+
+⏺ User declined to answer questions
+  ⎿  · Jaki smak lodow? (Wanilia / Czekolada / Truskawka)
+     · Jaki kubek? (Maly / Duzy)
+     · Co na wierzch? (Orzechy / Wiorki)
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie WIELOKROTNEGO wyboru
+  (multiSelect: true): 'Ktore dodatki wlaczyc?' z opcjami: Posypka, Polewa, Orzechy. Nie pisz nic poza tym wywołaniem.
+
+⏺ User declined to answer questions
+  ⎿  · Ktore dodatki wlaczyc? (Posypka / Polewa / Orzechy)
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. W JEDNYM wywołaniu zadaj dwa pytania: 'Jaki smak lodow?'
+  (Wanilia, Czekolada, Truskawka) jednokrotne oraz 'Ktore dodatki wlaczyc?' (Posypka, Polewa, Orzechy) z multiSelect: true. Nie
+  pisz nic poza tym wywołaniem.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Smak  ☐ Dodatki  ✔ Submit  →
+
+Ktore dodatki wlaczyc?
+
+❯ 1. [ ] Posypka
+  Posypka
+  2. [ ] Polewa
+  Polewa
+  3. [ ] Orzechy
+  Orzechy
+  4. [ ] Type something
+     Submit
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

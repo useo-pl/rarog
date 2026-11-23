@@ -1,0 +1,46 @@
+  ⎿  Added 3 lines, removed 1 line
+      35
+      36  - Baseline first, then edit: one change per commit, each with its own test run.
+      37 -- After review: edit with Read and Edit/Write.
+      37 +- After review, BEFORE the first change: `bash scripts/baseline.sh` (outside the sandbox).
+      38 +  Without a good baseline change nothing.
+      39  - At the end: one line of report with counts before and after.
+
+⏺ Run shellcheck and the baseline tests, check the docs
+  ⎿  $ R=/Users/u/Projects/core; bash -n $R/scripts/baseline.sh && shellcheck $R/scripts/baseline.sh $R/tests/baseline-test.sh
+     && echo "shellcheck ok"; bash $R/tests/baseline-test.sh…
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command · from the general-purpose agent
+ Build an e2e fixture clone with a dry-run release:run
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ set -e
+ │ W=/Users/u/Projects/demo
+ │ E=$(mktemp -d "$TMPDIR/demo-e2e.XXXXXX")
+ │ echo "E=$E"
+ │ git clone --quiet --bare --no-local "$W" "$E/origin.git" 2>&1 | tail -2
+ │ git clone --quiet "$E/origin.git" "$E/repo"
+ │ git -C "$E/repo" checkout --quiet main 2>/dev/null || git -C "$E/repo" checkout --quiet -b main
+ │ origin/feature/publish-dry-run
+ │ git -C "$E/repo" log --oneline -1
+ │ for f in app/scripts/release.sh app/scripts/release.test.ts app/package.json app/vitest.config.mts README.md
+ │ docs/runbook.md; do cp "$W/$f" "$E/repo/$f"; done
+ │ # e2e only: release:run does a dry run and prints a fake version id instead of publishing
+ │ sed -i '' 's#"release:run": ".*"#"release:run": "pnpm run check \&\& pnpm run build \&\& wrangler deploy --dry-run --outdir
+ │ dist-dry \&\& echo Current Version ID: 00000000-0000-4000-8000-0000000e2e00"#' "$E/repo/app/package.json"
+ │ grep -n 'release' "$E/repo/app/package.json"
+ │ git -C "$E/repo" -c user.name=e2e -c user.email=e2e@example.com commit --quiet -am "e2e"
+ │ git -C "$E/repo" add -A && git -C "$E/repo" -c user.name=e2e -c user.email=e2e@example.com commit --quiet -m "e2e new files"
+ │ || true
+ │ git -C "$E/repo" push --quiet origin HEAD:main
+ │ git -C "$E/repo" status --short | head; git -C "$E/repo" rev-parse --short HEAD origin/main
+ │ echo "$E" > /private/tmp/claude-uid/-Users-u-Projects-demo/00000000-0000-4000-9000-000000000001/scratchpad/e2e-dir.txt
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Ask rule Bash(*wrangler deploy *) overrides auto mode for this command.
+ /permissions to let auto mode decide
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend · ctrl+x ctrl+k twice to stop background agents

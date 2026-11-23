@@ -1,0 +1,27 @@
+{
+  // JavaScript emit for the npm package: `node scripts/package.mjs` (`pnpm run package`) calls
+  // `tsc -p tsconfig.package.json`. It does not check types (`noCheck`): `pnpm run typecheck`
+  // (`tsc -b`) does that on a full install, and an emit with `isolatedModules` does not depend on
+  // types, so the exit code reports only syntax and configuration errors.
+  // `rewriteRelativeImportExtensions` rewrites `./x.ts` imports to `./x.js`. Output:
+  // `build/server/src/` and `build/shared/src/`; the packer moves the second to
+  // `build/node_modules/@rarog/shared/src/`. Tests are not emitted.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    "outDir": "./build",
+    "types": ["node"],
+    "noCheck": true,
+    "rewriteRelativeImportExtensions": true,
+    "allowImportingTsExtensions": false,
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "emitDeclarationOnly": false,
+    "noEmit": false
+  },
+  "include": ["server/src/**/*.ts", "shared/src/**/*.ts"]
+}

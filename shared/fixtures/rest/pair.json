@@ -1,0 +1,21 @@
+{
+  "deviceId": "03030303030303030303030303030303",
+  "secret": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+  "pushKey": "BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU",
+  "kid": "f849d673",
+  "server": {
+    "id": "01010101010101010101010101010101",
+    "name": "mac-demo",
+    "version": "1.0.0",
+    "capabilities": [
+      "device-auth",
+      "pair",
+      "pair-from-device",
+      "push-relay",
+      "push-e2e-v2",
+      "companion",
+      "companion-sessions"
+    ],
+    "iroh": null
+  }
+}

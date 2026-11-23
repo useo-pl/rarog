@@ -1,0 +1,2646 @@
+{
+  "dialog-askuserquestion-2126.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:58837689f853",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Nie, przerwij"
+      },
+      {
+        "digit": "2",
+        "label": "Tak, kontynuuj"
+      },
+      {
+        "digit": "3",
+        "label": "Może później"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "dialog-askuserquestion-linia-nazwy-2.1.281.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5e6645f7069a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "dialog-askuserquestion-live.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:ee88905c73f5",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wariant A"
+      },
+      {
+        "digit": "2",
+        "label": "Wariant B"
+      },
+      {
+        "digit": "3",
+        "label": "Type something."
+      },
+      {
+        "digit": "4",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "dialog-askuserquestion-multi-live-review.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:b1b1af17df67",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Submit answers"
+      },
+      {
+        "digit": "2",
+        "label": "Cancel"
+      }
+    ]
+  },
+  "dialog-askuserquestion-multiq-pytanie-w-ramce.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:3d8cfdf18799",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Tak (Recommended)"
+      },
+      {
+        "digit": "2",
+        "label": "Nie / później"
+      },
+      {
+        "digit": "3",
+        "label": "Type something."
+      },
+      {
+        "digit": "4",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "dialog-askuserquestion-multiq-review.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:8368c01e5dc0",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Submit answers"
+      },
+      {
+        "digit": "2",
+        "label": "Cancel"
+      }
+    ]
+  },
+  "dialog-askuserquestion-multiq-tab1-jednokrotne.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:416df54103ab",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "52 px — wartość `wide` (rekomendacja)"
+      },
+      {
+        "digit": "2",
+        "label": "40 px — wartość `default`"
+      },
+      {
+        "digit": "3",
+        "label": "Nowa wartość pośrednia"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "dialog-askuserquestion-multiq-tab3-ostatnie.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:7e93b1de4495",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Niebieski (Rekomendacja)"
+      },
+      {
+        "digit": "2",
+        "label": "Zielony"
+      },
+      {
+        "digit": "3",
+        "label": "Type something."
+      },
+      {
+        "digit": "4",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "dialog-askuserquestion-preview.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:24fc8f70ccec",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Płaski zasobowy"
+      },
+      {
+        "digit": "2",
+        "label": "Zagnieżdżony po projekcie"
+      },
+      {
+        "digit": "3",
+        "label": "Wersjonowany RPC"
+      }
+    ]
+  },
+  "dialog-askuserquestion-scrollback.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:357714d7da85",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "A. Plik lokalny, SQLite (Rekomendacja)"
+      },
+      {
+        "digit": "2",
+        "label": "B. Serwer z bazą danych (REST+SQL)"
+      },
+      {
+        "digit": "3",
+        "label": "B z bazą w chmurze"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "dialog-askuserquestion.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:6611809bf60e",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Zapis atomowy (tmp + rename)"
+      },
+      {
+        "digit": "2",
+        "label": "Zapis w miejscu"
+      }
+    ]
+  },
+  "dialog-bash-ask-rule-2.1.295.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:f764e6bed534",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "fdefeee74479e491"
+  },
+  "dialog-bash-cytat-2.1.321.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:f9a660c9c036",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "660c7df028bb5cc2"
+  },
+  "dialog-bash-kolejka-licznik-2.1.319.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:4512572ef98f",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, allow reading from /private/tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T/s3c2-agentlist.97lHCO/kb3/zewn from this project",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+        "terminalOnly": true
+      },
+      {
+        "digit": "4",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "e9f9f30d782454ea"
+  },
+  "dialog-bash-licznik-block-2.1.316.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:fc880452dcb5",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "04455c7193fe1216"
+  },
+  "dialog-bash-opis-telefon-2.1.302.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:1f4b99828751",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "d46762af5fba983b"
+  },
+  "dialog-bash-stechly-read-2.1.295.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:b44eb713b18f",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "141731ab93244120"
+  },
+  "dialog-bash-stechly-read-szeroki-2.1.295.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:774d4c843305",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "92b4666a0488258d"
+  },
+  "dialog-bash-subagent-naglowek-2.1.302.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:e40c2eac73ba",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "9e027729aad9f3e8"
+  },
+  "dialog-effort-change.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:a8e535ecdc36",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, switch to high"
+      },
+      {
+        "digit": "2",
+        "label": "No, go back"
+      }
+    ]
+  },
+  "dialog-exitplanmode.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:cd976d638e38",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and use auto mode",
+        "terminalOnly": true
+      },
+      {
+        "digit": "2",
+        "label": "Yes, manually approve edits"
+      },
+      {
+        "digit": "3",
+        "label": "Tell Claude what to change"
+      }
+    ],
+    "bodyPrint": "7e8b6178498d1ebc"
+  },
+  "dialog-model-switch.txt": {
+    "event": "screen-dialog",
+    "reqId": "screen:1:f:4d124a25f66d",
+    "toolName": "dialog:model",
+    "knownDialog": "model",
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, switch to Opus 5"
+      },
+      {
+        "digit": "2",
+        "label": "No, go back"
+      }
+    ]
+  },
+  "dialog-permission-ask-rule-auto.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5140514769d9",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and allow /private/tmp/claude access and pnpm build and \"echo \\\"build exit=$?\\\"\" commands",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission-cd-advisory-2.1.265.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:18a71c4ec293",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission-mcp-supabase.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:a9606348e34f",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission-mcp.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:d7677f1cab35",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission-odczyt-z-projektu-waski.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:2dca7cd954c3",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, allow reading from /private/tmp/folders/xx/xxxxxxxxx xxxxxxxxxxxxxxxxxxxxx/T/pomiar-ab.XXXXXX from this",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "Nooject"
+      }
+    ],
+    "bodyPrint": "cdf6d208f423be19"
+  },
+  "dialog-permission-odczyt-z-projektu.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5a851d4e1e03",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, allow reading from /Users/u/.local/share/dane from this project",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "444bbdcb6a68e194"
+  },
+  "dialog-permission-opis.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:be20c9e14b3a",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission-read-2.1.278.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:1fe48f44d173",
+    "toolName": "Read",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, allow reading from /etc and /private/etc during this session",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission-subagent.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c4bd6f9f416f",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don’t ask again for: cd *",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission-unsandboxed.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:4123bc70f926",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and always allow access to /tmp from this project",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-permission.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:758b4f6db573",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for pnpm commands in /Users/u/Projects/demo",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "dialog-resume-summary-2.1.258.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:2253faf44abc",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Resume from summary (recommended)"
+      },
+      {
+        "digit": "2",
+        "label": "Resume full session as-is"
+      },
+      {
+        "digit": "3",
+        "label": "Don't ask me again",
+        "terminalOnly": true
+      }
+    ]
+  },
+  "dialog-trust.txt": {
+    "event": "screen-dialog",
+    "reqId": "screen:1:f:488a2bdf1a4d",
+    "toolName": "dialog:trust",
+    "knownDialog": "trust",
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, I trust this folder"
+      },
+      {
+        "digit": "2",
+        "label": "No, exit"
+      }
+    ]
+  },
+  "measured/exitplanmode-2.1.258.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:3b3eb104ea82",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and use auto mode",
+        "terminalOnly": true
+      },
+      {
+        "digit": "2",
+        "label": "Yes, manually approve edits"
+      },
+      {
+        "digit": "3",
+        "label": "Tell Claude what to change"
+      }
+    ],
+    "bodyPrint": "366aade3b84ee394"
+  },
+  "measured/exitplanmode-2.1.278.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:73c66d6df50d",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and use auto mode",
+        "terminalOnly": true
+      },
+      {
+        "digit": "2",
+        "label": "Yes, manually approve edits"
+      },
+      {
+        "digit": "3",
+        "label": "Tell Claude what to change"
+      }
+    ],
+    "bodyPrint": "366aade3b84ee394"
+  },
+  "measured/exitplanmode-2.1.293.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:3b3eb104ea82",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and use auto mode",
+        "terminalOnly": true
+      },
+      {
+        "digit": "2",
+        "label": "Yes, manually approve edits"
+      },
+      {
+        "digit": "3",
+        "label": "Tell Claude what to change"
+      }
+    ],
+    "bodyPrint": "366aade3b84ee394"
+  },
+  "measured/exitplanmode-2.1.328.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:73c66d6df50d",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and use auto mode",
+        "terminalOnly": true
+      },
+      {
+        "digit": "2",
+        "label": "Yes, manually approve edits"
+      },
+      {
+        "digit": "3",
+        "label": "Tell Claude what to change"
+      }
+    ],
+    "bodyPrint": "366aade3b84ee394"
+  },
+  "measured/exitplanmode-bez-planu-2.1.293.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:0bb465836115",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and switch to default (ask each time) for this session"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/exitplanmode-bez-planu-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:0bb465836115",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and switch to default (ask each time) for this session"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/exitplanmode-bez-planu-2.1.328.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:0bb465836115",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and switch to default (ask each time) for this session"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/exitplanmode-bez-planu.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:0bb465836115",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and switch to default (ask each time) for this session"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/exitplanmode.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:73c66d6df50d",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and use auto mode",
+        "terminalOnly": true
+      },
+      {
+        "digit": "2",
+        "label": "Yes, manually approve edits"
+      },
+      {
+        "digit": "3",
+        "label": "Tell Claude what to change"
+      }
+    ],
+    "bodyPrint": "366aade3b84ee394"
+  },
+  "measured/pytanie-jednokrotne-2.1.258.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5727a2211a76",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/pytanie-jednokrotne-2.1.278.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5727a2211a76",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/pytanie-jednokrotne-2.1.285.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:d6eb692fbd8a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/pytanie-jednokrotne-2.1.293.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:b5fe8a5a2274",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/pytanie-jednokrotne-2.1.328.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:b5fe8a5a2274",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/pytanie-jednokrotne.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:b5fe8a5a2274",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/pytanie-preview-2.1.293.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:2dceb63ace46",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Dwie kolumny obok siebie z podgladem (Rekomendowane)"
+      },
+      {
+        "digit": "2",
+        "label": "Jedna kolumna"
+      },
+      {
+        "digit": "3",
+        "label": "Bez listy"
+      }
+    ]
+  },
+  "measured/pytanie-preview-2.1.328.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:c56e1f6fdec2",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Dwie kolumny obok siebie z podglądem (Rekomendowane)"
+      },
+      {
+        "digit": "2",
+        "label": "Jedna kolumna"
+      },
+      {
+        "digit": "3",
+        "label": "Bez listy"
+      }
+    ]
+  },
+  "measured/pytanie-preview.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:c56e1f6fdec2",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Dwie kolumny obok siebie z podglądem (Rekomendowane)"
+      },
+      {
+        "digit": "2",
+        "label": "Jedna kolumna"
+      },
+      {
+        "digit": "3",
+        "label": "Bez listy"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-jednokrotne-2.1.258.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5e6645f7069a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-jednokrotne-2.1.278.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5e6645f7069a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-jednokrotne-2.1.285.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5e6645f7069a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-jednokrotne-2.1.293.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:45ff307f0a26",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-jednokrotne-2.1.328.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:45ff307f0a26",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-jednokrotne.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:45ff307f0a26",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-multiselect-2.1.258.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5e6645f7069a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-multiselect-2.1.278.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5e6645f7069a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-multiselect-2.1.285.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:5e6645f7069a",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-multiselect-2.1.293.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:45ff307f0a26",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-multiselect-2.1.328.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:45ff307f0a26",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/wielopytaniowy-multiselect.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:45ff307f0a26",
+    "toolName": "dialog:question",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Wanilia"
+      },
+      {
+        "digit": "2",
+        "label": "Czekolada"
+      },
+      {
+        "digit": "3",
+        "label": "Truskawka"
+      },
+      {
+        "digit": "4",
+        "label": "Type something."
+      },
+      {
+        "digit": "5",
+        "label": "Chat about this"
+      }
+    ]
+  },
+  "measured/zgoda-bash-2.1.258.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:eeb0f2795bc9",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and always allow access to /tmp from this project",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+        "terminalOnly": true
+      },
+      {
+        "digit": "4",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-bash-2.1.278.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:eeb0f2795bc9",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and always allow access to /tmp from this project",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+        "terminalOnly": true
+      },
+      {
+        "digit": "4",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-bash-2.1.285.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:4b961e9f8a19",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and always allow access to /tmp from this project",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+        "terminalOnly": true
+      },
+      {
+        "digit": "4",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-bash-2.1.293.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:0d31ea692520",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and always allow access to /Users/u/Library/Caches from this project",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+        "terminalOnly": true
+      },
+      {
+        "digit": "4",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "e9423b7ead64cd02"
+  },
+  "measured/zgoda-bash-2.1.328.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:f8da3eed5477",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "e78e7eb9f0728655"
+  },
+  "measured/zgoda-bash-dluga-linia-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:0ab5c144eea4",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "e798dc34a7fc2f06"
+  },
+  "measured/zgoda-bash-komenda-z-kreska-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:62a6f8dcf42b",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "a7b4c070b5fa3a16"
+  },
+  "measured/zgoda-bash-opis-z-kreska-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:1e9efb774d5c",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "a756559b4ae54fe3"
+  },
+  "measured/zgoda-bash.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:f8da3eed5477",
+    "toolName": "Bash",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "e78e7eb9f0728655"
+  },
+  "measured/zgoda-drugi-edit-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:61eda5f407f5",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "f343a943581132be"
+  },
+  "measured/zgoda-edit-2.1.258.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5728eb7e9a5e",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54f37bca8852d81f"
+  },
+  "measured/zgoda-edit-2.1.278.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5728eb7e9a5e",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54f37bca8852d81f"
+  },
+  "measured/zgoda-edit-2.1.285.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5728eb7e9a5e",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54f37bca8852d81f"
+  },
+  "measured/zgoda-edit-2.1.293.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5728eb7e9a5e",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54f37bca8852d81f"
+  },
+  "measured/zgoda-edit-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5728eb7e9a5e",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54f37bca8852d81f"
+  },
+  "measured/zgoda-edit-2.1.328.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5728eb7e9a5e",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54f37bca8852d81f"
+  },
+  "measured/zgoda-edit.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5728eb7e9a5e",
+    "toolName": "Edit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54f37bca8852d81f"
+  },
+  "measured/zgoda-mcp-2.1.293.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:d7677f1cab35",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-mcp-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:68d9cf1cb7fc",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for Claude Docs — Guide commands in /Users/u/projekt",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-mcp-2.1.328.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:938a769ed52a",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for catalog — Get Project Tree Layout commands in /Users/u/projekt",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-mcp-argumenty-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:66e6ebc38697",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for Claude Docs — Guide commands in /Users/u/projekt",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "f743276534977973"
+  },
+  "measured/zgoda-mcp.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:938a769ed52a",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for catalog — Get Project Tree Layout commands in /Users/u/projekt",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-notebookedit-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:2b535686ae80",
+    "toolName": "NotebookEdit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "46c2b869fc6950a4"
+  },
+  "measured/zgoda-notebookedit-delete-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:78e8907fd05f",
+    "toolName": "NotebookEdit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "57de9617d4722639"
+  },
+  "measured/zgoda-notebookedit-insert-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:2b535686ae80",
+    "toolName": "NotebookEdit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "46c2b869fc6950a4"
+  },
+  "measured/zgoda-notebookedit-replace-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:0edb0a1e02bc",
+    "toolName": "NotebookEdit",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "18abc6c54b422c4d"
+  },
+  "measured/zgoda-read-dluga-sciezka-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:9c6a1bc095a9",
+    "toolName": "Read",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "239e35b8908ce2b6"
+  },
+  "measured/zgoda-read-kolejka-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5b60a4b6304a",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, allow reading from /Users/u/inny during this session",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "1b00faca29be0c9d"
+  },
+  "measured/zgoda-read-offset-limit-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:caac9526e9f6",
+    "toolName": "Read",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, allow reading from /Users/u/inny during this session",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "74f68a6ae0b16f94"
+  },
+  "measured/zgoda-read-poza-projektem-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:6d89936f15ea",
+    "toolName": "Read",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, allow reading from /Users/u/inny during this session",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "9b1c2ee8ed8a6a96"
+  },
+  "measured/zgoda-siec-2.1.293.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:95cd92190fb1",
+    "toolName": "SandboxNetwork",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.org",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ],
+    "bodyPrint": "8d9ffb8399136852"
+  },
+  "measured/zgoda-siec-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:95cd92190fb1",
+    "toolName": "SandboxNetwork",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.org",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ],
+    "bodyPrint": "8d9ffb8399136852"
+  },
+  "measured/zgoda-siec-2.1.328.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:95cd92190fb1",
+    "toolName": "SandboxNetwork",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.org",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ],
+    "bodyPrint": "8d9ffb8399136852"
+  },
+  "measured/zgoda-siec.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:95cd92190fb1",
+    "toolName": "SandboxNetwork",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.org",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ],
+    "bodyPrint": "8d9ffb8399136852"
+  },
+  "measured/zgoda-skill-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:f2378f6dfc57",
+    "toolName": "Skill",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for pomiar in /Users/u/projekt",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-skill-waski-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:98592d043cb4",
+    "toolName": "Skill",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for pomiar in /private/tmp/claud e-uid/z3-pomiar.RDO Zq9/projekt",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": null
+  },
+  "measured/zgoda-webfetch-2.1.311.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:eaef9b940b29",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.com",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ]
+  },
+  "measured/zgoda-webfetch-2.1.322.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:f6d7dd783d74",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.com",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ]
+  },
+  "measured/zgoda-webfetch-prompt-wieloliniowy-2.1.322.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:f6d7dd783d74",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.com",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ]
+  },
+  "measured/zgoda-webfetch-waski-2.1.322.txt": {
+    "event": "question-request",
+    "reqId": "screen:q:f6d7dd783d74",
+    "toolName": "dialog:confirm",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for example.com",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No, and tell Claude what to do differently (esc)"
+      }
+    ]
+  },
+  "measured/zgoda-websearch-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:07f31d1466a6",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "ea434872c93c22cf"
+  },
+  "measured/zgoda-websearch-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:6d8b3c10cee3",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and don't ask again for Web Search commands in /Users/u/projekt",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "19d841e3e092a8a9"
+  },
+  "measured/zgoda-websearch-waski-2.1.311.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:387dd9d1cd10",
+    "toolName": "dialog",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "54ef496627fd1cb5"
+  },
+  "measured/zgoda-write-2.1.258.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  },
+  "measured/zgoda-write-2.1.278.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  },
+  "measured/zgoda-write-2.1.285.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  },
+  "measured/zgoda-write-2.1.293.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  },
+  "measured/zgoda-write-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  },
+  "measured/zgoda-write-2.1.328.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  },
+  "measured/zgoda-write-dluga-linia-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:5ede06c00d84",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "460ecdef7381acb8"
+  },
+  "measured/zgoda-write-falszywy-naglowek-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:68be3b9347d3",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "6b41452019e5f197"
+  },
+  "measured/zgoda-write-nadpisanie-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:fbb9b8ce1ba3",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "17412fff6f1e1196"
+  },
+  "measured/zgoda-write-poza-projektem-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:4c59ed4c2403",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session; Yes, and always allow access to /Users/u/inny for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "c8257e0a9fc22b1a"
+  },
+  "measured/zgoda-write-waski-2.1.322.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  },
+  "measured/zgoda-write.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:c37ba61082ac",
+    "toolName": "Write",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes"
+      },
+      {
+        "digit": "2",
+        "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+        "terminalOnly": true
+      },
+      {
+        "digit": "3",
+        "label": "No"
+      }
+    ],
+    "bodyPrint": "70cb1b4f01977fff"
+  }
+}

@@ -1,0 +1,22 @@
+# no trailing slash: a node_modules symlink (worktrees link to the main checkout) must be ignored too
+node_modules
+dist/
+# working directory of the npm package packer (`pnpm run package`); the packer creates and removes it
+/build/
+*.tsbuildinfo
+.pnpm-store/
+.DS_Store
+# agents' working notes (plan, progress, summary): local, never in the repository
+.development/
+# Local files that must not reach the public repository (`docs/publishing.md`, ".gitignore"): photos uploaded
+# from the app in dev mode, agent session worktrees, local Claude Code settings and notes, environment variables,
+# private keys (PEM, the App Store Connect API key). `*.example` templates stay in the repository.
+.rarog-uploads/
+**/.claude/worktrees/
+.claude/settings.local.json
+CLAUDE.local.md
+.env
+.env.*
+*.pem
+*.p8
+!*.example

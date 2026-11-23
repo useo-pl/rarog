@@ -1,0 +1,153 @@
+{
+  "type": "transcript-snapshot",
+  "sessionId": "herdr-w1-p2",
+  "messages": [
+    {
+      "seq": 5,
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Przejrzyj kontrakt SSE i dopisz złote ramki do testów."
+        }
+      ],
+      "at": "2026-10-03T07:30:00.000Z",
+      "attachments": [
+        {
+          "kind": "image",
+          "name": "",
+          "bytes": 0,
+          "mime": "image/png",
+          "file": "1790000000-0123456789abcdef.png"
+        }
+      ]
+    },
+    {
+      "seq": 6,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Zaczynam od testów dekodera, potem producenci ramek."
+        },
+        {
+          "type": "tool-call",
+          "toolName": "Bash",
+          "summary": "pnpm test shared/test/decode.test.ts",
+          "detail": "pnpm test shared/test/decode.test.ts",
+          "inputKind": "shell"
+        },
+        {
+          "type": "tool-call",
+          "toolName": "Edit",
+          "summary": "/Users/demo/Projects/birch/src/decode.ts",
+          "detail": "-   return null;\n+   return { event, degradations };",
+          "detailKind": "diff",
+          "inputKind": "json"
+        },
+        {
+          "type": "tool-call",
+          "toolName": "Agent",
+          "summary": "Agent",
+          "detail": "{\n  \"description\": \"Przegląd fixtures\",\n  \"subagent_type\": \"Explore\",\n  \"prompt\": \"Sprawdź, czy każdy typ ramki ma wariant max.\"\n}",
+          "delegation": "agents",
+          "inputKind": "json"
+        },
+        {
+          "type": "tool-call",
+          "toolName": "Workflow",
+          "summary": "Workflow",
+          "detail": "{\n  \"name\": \"kontrakt-semantyczny\",\n  \"description\": \"Trzy fazy: przegląd, implementacja, weryfikacja\"\n}",
+          "delegation": "workflow",
+          "inputKind": "json"
+        },
+        {
+          "type": "tool-call",
+          "toolName": "Task",
+          "summary": "Task",
+          "detail": "{\n  \"description\": \"Starszy podagent\",\n  \"prompt\": \"Policz pola schematu.\"\n}",
+          "delegation": "agents",
+          "inputKind": "json"
+        },
+        {
+          "type": "tool-call",
+          "toolName": "ExitPlanMode",
+          "summary": "ExitPlanMode",
+          "detail": "ExitPlanMode",
+          "inputKind": "json"
+        }
+      ],
+      "at": "2026-10-03T07:30:20.000Z"
+    },
+    {
+      "seq": 9,
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Porównaj zrzut z raportem i popraw manifest."
+        }
+      ],
+      "at": "2026-10-03T08:00:46.000Z",
+      "attachments": [
+        {
+          "kind": "image",
+          "name": "",
+          "bytes": 67,
+          "mime": "image/png",
+          "file": "1790000000-0123456789abcdef.png"
+        },
+        {
+          "kind": "file",
+          "name": "raport-kontraktu.pdf",
+          "bytes": 9,
+          "mime": "application/pdf"
+        }
+      ],
+      "clientMessageId": "7e1c4a92-5b3d-4f08-a6e2-9c0d1b8f4a57"
+    },
+    {
+      "seq": 13,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Zrzut zgadza się z raportem — dokładam podgląd:"
+        },
+        {
+          "type": "image",
+          "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+          "alt": "Podgląd karty nieobsługiwanej sesji"
+        }
+      ],
+      "at": "2026-10-03T08:00:47.000Z"
+    },
+    {
+      "seq": 15,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": 9
+        }
+      ],
+      "at": "2026-10-03T08:00:47.000Z"
+    }
+  ],
+  "pendingPermissions": [
+    {
+      "permId": "toolu_21",
+      "sessionId": "herdr-w1-p2",
+      "toolName": "Bash",
+      "displayText": "pnpm test shared/test/sse-fixtures.test.ts",
+      "risk": "normal",
+      "cwd": "/Users/demo/Projects/birch",
+      "createdAt": "2026-10-03T08:00:48.000Z",
+      "subject": "tool",
+      "inputKind": "shell",
+      "alwaysLabel": "Yes, and don't ask again for pnpm test commands in /Users/demo/Projects/birch",
+      "canAllow": true
+    }
+  ],
+  "pendingQuestions": []
+}

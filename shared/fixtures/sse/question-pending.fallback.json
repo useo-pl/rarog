@@ -1,0 +1,30 @@
+{
+  "type": "question-pending",
+  "request": {
+    "qId": "screen:q:d990cd479f52",
+    "sessionId": "herdr-w7-p14",
+    "questions": [
+      {
+        "question": "The agent asked a question in the terminal.",
+        "questionRef": {
+          "code": "dialogs.fallback-question.question"
+        },
+        "header": "Wybór",
+        "multiSelect": false,
+        "options": [
+          {
+            "label": "A",
+            "role": "answer"
+          },
+          {
+            "label": "B",
+            "role": "answer"
+          }
+        ]
+      }
+    ],
+    "createdAt": "2026-10-03T08:01:01.000Z",
+    "channel": "keys",
+    "customAnswer": false
+  }
+}

@@ -1,0 +1,17 @@
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☒ Pierwsze  ☐ Drugie  ☐ Trzecie  ☐ Czwarte  ✔ Submit  →
+
+│ Długie pytanie, które CLI rysuje w ramce cytatu, bo nie mieści się w jednej linii panelu: czy wprowadzamy tryb roboczy (decyzja X)?
+│ Zespół używa systemu tylko do przygotowania projektu, a resztę robi poza nim. Flaga na obiekcie, ustawia ją administrator, z wpisem
+│ w dzienniku i jawnym komunikatem.
+
+❯ 1. Tak (Recommended)
+     Opis pierwszej opcji, który też potrafi zająć dwie linie panelu, bo autor pytania pisze pełnymi zdaniami i nie oszczędza
+     miejsca.
+  2. Nie / później
+     Krótszy opis drugiej opcji.
+  3. Type something.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

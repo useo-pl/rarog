@@ -1,0 +1,7 @@
+{
+  "error": "apns-device-unknown",
+  "message": "This device isn't registered. Register the device token first, then the activity.",
+  "messageRef": {
+    "code": "rest.apns-device-unknown"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "agentType": "general-purpose",
+  "isBuiltIn": true,
+  "launchedWithDefaults": true,
+  "description": "Zapis pliku m8z-1",
+  "toolUseId": "toolu_000000000000000000000016",
+  "parentAgentId": "a36aa2a9baa7c2a60",
+  "spawnDepth": 2,
+  "requestShape": "background",
+  "requestNonInteractive": true,
+  "pickedEffortModel": "claude-haiku-5-5",
+  "finished": true
+}

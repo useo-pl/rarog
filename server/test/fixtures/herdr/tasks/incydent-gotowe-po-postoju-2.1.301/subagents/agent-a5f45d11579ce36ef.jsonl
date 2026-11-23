@@ -1,0 +1,81 @@
+{"type":"assistant","timestamp":"2026-10-16T13:14:56.111Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:17:20.706Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:17:54.912Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:20:42.017Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:21:19.352Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:21:21.832Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:22:17.820Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:23:36.788Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:24:04.843Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:24:35.039Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:25:16.364Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:25:31.431Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:26:57.617Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:27:00.341Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:27:42.148Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:27:56.227Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:28:40.164Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:28:42.155Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_022","name":"Bash","input":{"run_in_background":true,"command":"<komenda poza fixture>","description":"opis 19 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T13:28:42.487Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_022"}]},"toolUseResult":{"backgroundTaskId":"by33yej7a"}}
+{"type":"attachment","timestamp":"2026-10-16T13:28:48.739Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>by33yej7a</task-id>\n<tool-use-id>toolu_022</tool-use-id>\n<output-file>/Users/u/projekt/tasks/by33yej7a.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 19 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T13:30:58.632Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:31:19.878Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:32:55.793Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:33:44.936Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:33:54.447Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:34:24.493Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:34:51.492Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:35:58.609Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:37:53.018Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:38:42.317Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:39:45.216Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:40:29.975Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:40:32.431Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:40:58.304Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:41:40.257Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:42:45.904Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:42:46.069Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:43:20.985Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:43:27.590Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:43:50.722Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:43:52.953Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:44:46.316Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:45:53.901Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:45:54.030Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:46:48.313Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:47:39.532Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:48:03.366Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:48:23.985Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:49:42.217Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:50:17.881Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:50:55.478Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:51:15.787Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:52:04.706Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:52:42.732Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:52:48.215Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:53:37.188Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:54:01.645Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_024","name":"Bash","input":{"run_in_background":true,"command":"<komenda poza fixture>","description":"opis 21 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T13:54:01.974Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_024"}]},"toolUseResult":{"backgroundTaskId":"b2hygygqc"}}
+{"type":"assistant","timestamp":"2026-10-16T13:54:28.570Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T13:54:57.321Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_023","name":"Monitor","input":{"timeout_ms":1800000,"command":"<komenda poza fixture>","description":"opis 20 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T13:54:57.660Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_023"}]},"toolUseResult":{"taskId":"bslqckckk","timeoutMs":1800000,"persistent":false}}
+{"type":"attachment","timestamp":"2026-10-16T13:54:57.758Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bslqckckk</task-id>\n<tool-use-id>toolu_023</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bslqckckk.output</output-file>\n<status>completed</status>\n<summary>Monitor \"opis 20 (treść poza fixture)\" stream ended</summary>\n<event>zdarzenie meldunku 21 (treść poza fixture)</event>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T13:55:11.354Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_025","name":"Monitor","input":{"timeout_ms":1800000,"command":"<komenda poza fixture>","description":"opis 22 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T13:55:11.872Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_025"}]},"toolUseResult":{"taskId":"bs0c9sytk","timeoutMs":1800000,"persistent":false}}
+{"type":"assistant","timestamp":"2026-10-16T13:55:36.110Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"user","timestamp":"2026-10-16T14:00:26.193Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","isMeta":true,"origin":{"kind":"task-notification"},"message":{"role":"user","content":"[SYSTEM NOTIFICATION - NOT USER INPUT]\n\n<task-notification>\n<task-id>b2hygygqc</task-id>\n<tool-use-id>toolu_024</tool-use-id>\n<output-file>/Users/u/projekt/tasks/b2hygygqc.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 21 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>"}}
+{"type":"assistant","timestamp":"2026-10-16T14:00:44.242Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"attachment","timestamp":"2026-10-16T14:00:27.959Z","isSidechain":true,"agentId":"a5f45d11579ce36ef","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bs0c9sytk</task-id>\n<tool-use-id>toolu_025</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bs0c9sytk.output</output-file>\n<status>completed</status>\n<summary>Monitor \"opis 22 (treść poza fixture)\" stream ended</summary>\n<event>zdarzenie meldunku 24 (treść poza fixture)</event>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T14:01:25.813Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:01:46.439Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:02:09.952Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:04:43.097Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:05:10.078Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:05:18.862Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:05:39.077Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:05:52.575Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:06:33.017Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:08:03.649Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:08:32.700Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:09:03.208Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}
+{"type":"assistant","timestamp":"2026-10-16T14:09:03.628Z","isSidechain":true,"agentId":"a5f45d11579ce36ef"}

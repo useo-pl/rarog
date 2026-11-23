@@ -1,0 +1,22 @@
+claude --session-id 00000000-0000-4000-9000-000000000002
+ /private/tmp/claude/spike-roots/fresh-trust      3.1.6 Mac  17:31
+❯ claude --session-id 00000000-0000-4000-9000-000000000002
+
+──────────────────────────────────────────────────────────────────────
+ Accessing workspace:
+
+ /private/tmp/claude/spike-roots/fresh-trust
+
+ Quick safety check: Is this a project you created or one you trust?
+ (Like your own code, a well-known open source project, or work from
+ your team). If not, take a moment to review what's in this folder
+ first.
+
+ Claude Code'll be able to read, edit, and execute files here.
+
+ Security guide
+
+ ❯ 1. Yes, I trust this folder
+   2. No, exit
+
+ Enter to confirm · Esc to cancel

@@ -1,0 +1,16 @@
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co Claude Code robi z meldunkiem zadania w tle, który czeka w kolejce. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Nie używaj żadnych narzędzi poza Bash. Krok 1: jedno wywołanie Bash z run_in_background: true i command: echo pomiar-tlo; sleep 8; echo pomiar-tlo-koniec. Krok 2: zaraz po nim, nie czekając na zadanie w tle, jedno zwykłe wywołanie Bash na pierwszym planie, bez run_in_background, z command: echo pomiar-start; sleep 60; echo pomiar-koniec. Po wyniku kroku 2 zakończ turę słowem: gotowe. Krótką wiadomość albo meldunek, które przyjdą w trakcie, potraktuj jako część pomiaru i odpowiedz na nie jednym słowem: ok."}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:01.000Z","content":[{"type":"tool_use","name":"Bash","id":"toolu_01"}]}
+{"type":"user","timestamp":"2026-01-01T00:00:02.000Z","uuid":"00000000-0000-4000-8000-000000000004","promptId":"00000000-0000-4000-8000-000000000003","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01"}]},"toolUseResult":{"interrupted":false}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:03.000Z","content":[{"type":"tool_use","name":"Bash","id":"toolu_02"}]}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-01-01T00:00:04.000Z","content":"<task-notification>…"}
+{"_pomiar":"prompt-B-wklejony"}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-01-01T00:00:05.000Z","content":"pomiar B: ok"}
+{"_pomiar":"up"}
+{"type":"queue-operation","operation":"popAll","timestamp":"2026-01-01T00:00:06.000Z","content":"pomiar B: ok"}
+{"_pomiar":"ctrl-u-do-pustego-pola"}
+{"type":"user","timestamp":"2026-01-01T00:00:07.000Z","uuid":"00000000-0000-4000-8000-000000000005","promptId":"00000000-0000-4000-8000-000000000003","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_02"}]},"toolUseResult":{"interrupted":false}}
+{"type":"queue-operation","operation":"remove","timestamp":"2026-01-01T00:00:08.000Z","content":"<task-notification>…","reason":"absorbed_mid_turn","commandUuid":"00000000-0000-4000-8000-000000000006","deliveryId":"00000000-0000-4000-8000-000000000007"}
+{"type":"attachment","timestamp":"2026-01-01T00:00:04.000Z","uuid":"00000000-0000-4000-8000-000000000008","attachment":{"type":"queued_command","prompt":"<task-notification>…","commandMode":"task-notification","source_uuid":"00000000-0000-4000-8000-000000000006","delivery_id":"00000000-0000-4000-8000-000000000007","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:09.000Z","content":[{"type":"text"}]}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:10.000Z"}
+{"_pomiar":"obserwacje","ramkaPola":"26","meldunekCzekalWKolejce":"tak","odczytPolaPoUp":"kod 0","poleMaMeldunek":"nie","poleMaPromptB":"tak","meldunekWPopAll":"nie","promptBWPopAll":"tak","meldunekCzekaPoUp":"tak","opsKolejkiPoUp":"popAll","ctrlUDoPustegoPola":"1","ctrlUDoOdczytuPola":"0","promptBDoModelu":"nie","meldunekDoModelu":"attachment","turaPrzerwana":"nie","opsKolejkiDoKonca":"popAll remove:absorbed_mid_turn"}

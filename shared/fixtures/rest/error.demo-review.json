@@ -1,0 +1,7 @@
+{
+  "error": "demo-review",
+  "message": "This isn't available in the demo.",
+  "messageRef": {
+    "code": "demo.review-refused"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "alerts" : true,
+  "environment" : "development",
+  "label" : "iPad·Rarog",
+  "locKeys" : true,
+  "pushFormats" : [
+    3
+  ],
+  "token" : "a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4",
+  "topic" : "ai.rarog.app"
+}

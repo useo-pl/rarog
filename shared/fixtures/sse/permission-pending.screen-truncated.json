@@ -1,0 +1,19 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "toolu_66",
+    "sessionId": "herdr-w7-p14",
+    "toolName": "Bash",
+    "displayText": "pnpm test shared/test/decode.test.ts --reporter=verbose --reporter=verbose --rep\n… (71 characters cut off)",
+    "truncation": {
+      "cut": 71,
+      "footer": 26
+    },
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/xi",
+    "createdAt": "2026-10-03T08:01:01.000Z",
+    "subject": "tool",
+    "canAllow": false,
+    "unavailable": "truncated"
+  }
+}

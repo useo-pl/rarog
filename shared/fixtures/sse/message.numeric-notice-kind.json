@@ -1,0 +1,21 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w5-p10",
+  "message": {
+    "seq": 7,
+    "role": "user",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "<task-notification>\n<task-id>bash_3f1a</task-id>\n<status>failed</status>\n<summary>Background command \"pnpm test shared/test\" failed with exit code 1</summary>\n</task-notification>\nRead the output file to retrieve the result."
+      }
+    ],
+    "at": "2026-10-03T08:00:52.000Z",
+    "notice": {
+      "kind": 4,
+      "outcome": "failed",
+      "name": "pnpm test shared/test",
+      "exitCode": 1
+    }
+  }
+}

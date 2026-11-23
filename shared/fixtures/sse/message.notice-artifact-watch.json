@@ -1,0 +1,19 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w1-p1",
+  "message": {
+    "seq": 23,
+    "role": "user",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "<task-notification>\n<task-type>artifact-watch-lifecycle</task-type>\n<summary>Stopped watching Artifact: \"Szkic manifestu\" (artifact not found)</summary>\n<event>Watch on https://claude.ai/artifact/Szk1cMan1festu7Kp4QxRw ended — no such artifact for this account (it was deleted, or it has not been shared with the user). This session no longer keeps track of new versions of it.</event>\n</task-notification>"
+      }
+    ],
+    "at": "2026-10-03T08:00:54.000Z",
+    "notice": {
+      "kind": "artifact-watch",
+      "name": "Szkic manifestu"
+    }
+  }
+}

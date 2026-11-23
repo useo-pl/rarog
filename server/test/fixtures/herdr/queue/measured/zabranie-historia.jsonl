@@ -1,0 +1,8 @@
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy w trakcie pracy przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Proszę o jedno wywołanie narzędzia Bash z command: echo pomiar-start; sleep 40; echo pomiar-koniec — zwykłe, na pierwszym planie, bez run_in_background. Nie używaj żadnych narzędzi poza tym jednym wywołaniem. Po jego wyniku zakończ turę słowem: gotowe. Krótką wiadomość, która przyjdzie w trakcie, potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok."}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:01.000Z","content":[{"type":"tool_use","name":"Bash","id":"toolu_01"}]}
+{"_pomiar":"up"}
+{"_pomiar":"down"}
+{"type":"user","timestamp":"2026-01-01T00:00:02.000Z","uuid":"00000000-0000-4000-8000-000000000004","promptId":"00000000-0000-4000-8000-000000000003","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01"}]},"toolUseResult":{"interrupted":false}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:03.000Z","content":[{"type":"text"}]}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:04.000Z"}
+{"_pomiar":"obserwacje","ramkaPola":"26","historiaPoUp":"History 100/100","odczytPolaPoUp":"kod 3","historiaPoDown":"brak","polePoDown":"kod 0: ","turaPrzerwana":"nie","opsKolejkiDoKonca":"-"}

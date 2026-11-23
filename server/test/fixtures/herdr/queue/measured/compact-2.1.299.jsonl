@@ -1,0 +1,16 @@
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"To pomiar techniczny do repo pilot (skrypt scripts/measure-queue.sh), nie prawdziwe zadanie. Nie używaj żadnych narzędzi. Odpowiedz dwoma zdaniami: czym jest kolejka promptów w interaktywnym CLI?"}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:01.000Z","content":[{"type":"text"}]}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:02.000Z"}
+{"_pomiar":"compact-wyslany"}
+{"type":"user","timestamp":"2026-01-01T00:00:03.000Z","uuid":"00000000-0000-4000-8000-000000000004","promptId":"00000000-0000-4000-8000-000000000005","message":{"role":"user","content":"/compact"}}
+{"_pomiar":"prompt-B-wyslany"}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-01-01T00:00:05.000Z"}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2026-01-01T00:00:08.000Z"}
+{"type":"system","subtype":"compact_boundary","timestamp":"2026-01-01T00:00:07.000Z"}
+{"type":"user","timestamp":"2026-01-01T00:00:06.000Z","uuid":"00000000-0000-4000-8000-000000000006","promptId":"00000000-0000-4000-8000-000000000007","isCompactSummary":true,"message":{"role":"user","content":"<tekst poza fixture>"}}
+{"type":"user","timestamp":"2026-01-01T00:00:04.000Z","uuid":"00000000-0000-4000-8000-000000000008","promptId":"00000000-0000-4000-8000-000000000007","isMeta":true,"message":{"role":"user","content":"<local-command-caveat>…"}}
+{"type":"user","timestamp":"2026-01-01T00:00:04.000Z","uuid":"00000000-0000-4000-8000-000000000009","promptId":"00000000-0000-4000-8000-000000000007","message":{"role":"user","content":"<command-name>/compact</command-name>…"}}
+{"type":"user","timestamp":"2026-01-01T00:00:10.000Z","uuid":"00000000-0000-4000-8000-000000000010","promptId":"00000000-0000-4000-8000-000000000007","message":{"role":"user","content":"<local-command-stdout>…"}}
+{"type":"user","timestamp":"2026-01-01T00:00:09.000Z","uuid":"00000000-0000-4000-8000-000000000011","promptId":"00000000-0000-4000-8000-000000000007","origin":{"kind":"human"},"message":{"role":"user","content":"pomiar B: ok"}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:11.000Z","content":[{"type":"text"}]}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:12.000Z"}

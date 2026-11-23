@@ -1,0 +1,64 @@
+{
+  "type": "transcript-snapshot",
+  "sessionId": "herdr-w1-p1",
+  "messages": [
+    {
+      "seq": 5,
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Uruchom workflow kontraktu semantycznego."
+        }
+      ],
+      "at": "2026-10-03T07:20:00.000Z"
+    },
+    {
+      "seq": 6,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Startuję przebieg w trzech fazach."
+        },
+        {
+          "type": "tool-call",
+          "toolName": "Workflow",
+          "summary": "Workflow",
+          "detail": "{\n  \"name\": \"kontrakt-semantyczny\",\n  \"description\": \"Przegląd, implementacja, weryfikacja\"\n}",
+          "delegation": "workflow",
+          "inputKind": "json"
+        }
+      ],
+      "at": "2026-10-03T07:20:30.000Z"
+    }
+  ],
+  "pendingPermissions": [],
+  "pendingQuestions": [],
+  "activity": {
+    "kind": "compacting",
+    "toolName": "Workflow",
+    "agents": 3,
+    "elapsedSeconds": 53,
+    "delegation": "workflow",
+    "workflow": "kontrakt-semantyczny",
+    "agentsDone": 2,
+    "phases": [
+      {
+        "title": "Przegląd",
+        "agents": 2,
+        "done": 2
+      },
+      {
+        "title": "Implementacja",
+        "agents": 1,
+        "done": 0
+      },
+      {
+        "title": "Weryfikacja",
+        "agents": 0,
+        "done": 0
+      }
+    ]
+  }
+}

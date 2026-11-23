@@ -1,0 +1,16 @@
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☒ Odstęp  ☒ Dodatki  ☒ Kolor  ✔ Submit  →
+
+Review your answers
+
+ ● Na którą wartość ujednolicić odstęp pod nagłówkiem sekcji?
+   → 52 px — wartość `wide` (rekomendacja)
+ ● Które dodatki włączyć?
+   → Posypka
+ ● Jaki kolor przycisku?
+   → Niebieski (Rekomendacja)
+
+Ready to submit your answers?
+
+❯ 1. Submit answers
+  2. Cancel

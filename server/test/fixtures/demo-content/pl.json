@@ -1,0 +1,3947 @@
+{
+  "server": {
+    "stream": [
+      {
+        "type": "sessions-snapshot",
+        "sessions": [
+          {
+            "id": "demo-rarog",
+            "cwd": "/Users/demo/Projects/rarog",
+            "title": "rarog",
+            "state": "running",
+            "stateSince": "2026-11-07T08:59:20.000Z",
+            "createdAt": "2026-11-07T08:57:00.000Z",
+            "lastActivityAt": "2026-11-07T08:59:58.000Z",
+            "paneId": "w0:demo-rarog",
+            "launchedByRarog": true,
+            "label": "resync transkryptu",
+            "branch": "main",
+            "dirtyCount": 3,
+            "ahead": 0,
+            "behind": 1,
+            "model": "claude-opus-4-6",
+            "effort": "xhigh",
+            "ultracode": true
+          },
+          {
+            "id": "demo-rarog-stop",
+            "cwd": "/Users/demo/Projects/rarog",
+            "title": "rarog",
+            "state": "running",
+            "stateSince": "2026-11-07T08:59:40.000Z",
+            "createdAt": "2026-11-07T08:56:00.000Z",
+            "lastActivityAt": "2026-11-07T08:59:40.000Z",
+            "paneId": "w0:demo-rarog-stop",
+            "launchedByRarog": true,
+            "label": "przegląd pokrycia",
+            "branch": "main",
+            "dirtyCount": 3,
+            "ahead": 0,
+            "behind": 1,
+            "model": "claude-opus-4-6",
+            "effort": "high"
+          },
+          {
+            "id": "demo-fleet-ops",
+            "cwd": "/Users/demo/Projects/fleet-ops",
+            "title": "fleet-ops",
+            "state": "waiting-permission",
+            "stateSince": "2026-11-07T08:59:00.000Z",
+            "createdAt": "2026-11-07T08:52:00.000Z",
+            "lastActivityAt": "2026-11-07T08:59:00.000Z",
+            "paneId": "w0:demo-fleet-ops",
+            "launchedByRarog": true,
+            "label": "czyszczenie builda",
+            "branch": "main",
+            "dirtyCount": 1,
+            "model": "claude-sonnet-5",
+            "effort": "medium",
+            "waitingFor": {
+              "kind": "permission",
+              "tool": "Bash",
+              "text": "rm -rf ./dist && git push --force origin main",
+              "subject": "tool"
+            }
+          },
+          {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-permission",
+            "stateSince": "2026-11-07T08:56:00.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T08:56:00.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "model": "claude-fable-5-1",
+            "effort": "high",
+            "waitingFor": {
+              "kind": "permission",
+              "tool": "Bash",
+              "text": "npm test -- --run src/notes.test.ts",
+              "subject": "tool"
+            }
+          },
+          {
+            "id": "demo-map-view",
+            "cwd": "/Users/demo/Projects/map-view",
+            "title": "map-view",
+            "state": "limit-reached",
+            "stateSince": "2026-11-07T08:51:00.000Z",
+            "createdAt": "2026-11-07T07:25:00.000Z",
+            "lastActivityAt": "2026-11-07T08:51:00.000Z",
+            "paneId": "w0:demo-map-view",
+            "launchedByRarog": true,
+            "label": "nowy layout panelu",
+            "stateDetail": "resetAt=2026-11-07T11:00:00.000Z",
+            "stateDetailRef": {
+              "code": "state.limit-reached",
+              "args": [
+                "2026-11-07T11:00:00.000Z"
+              ]
+            },
+            "branch": "feat/panel",
+            "dirtyCount": 4,
+            "model": "claude-fable-5-1",
+            "effort": "max"
+          },
+          {
+            "id": "demo-pipe-link",
+            "cwd": "/Users/demo/Projects/pipe-link",
+            "title": "pipe-link",
+            "state": "resumable",
+            "stateSince": "2026-11-07T08:42:00.000Z",
+            "createdAt": "2026-11-07T07:50:00.000Z",
+            "lastActivityAt": "2026-11-07T08:42:00.000Z",
+            "paneId": "w0:demo-pipe-link",
+            "launchedByRarog": true,
+            "label": "mostek zdarzeń",
+            "stateDetail": "interrupted — backend restarted",
+            "stateDetailRef": {
+              "code": "demo.seed-backend-restarted"
+            },
+            "branch": "feat/bridge",
+            "dirtyCount": 2,
+            "model": "claude-sonnet-5",
+            "effort": "low"
+          },
+          {
+            "id": "demo-data-loader",
+            "cwd": "/Users/demo/Projects/data-loader",
+            "title": "data-loader",
+            "state": "done",
+            "stateSince": "2026-11-07T08:34:00.000Z",
+            "createdAt": "2026-11-07T08:05:00.000Z",
+            "lastActivityAt": "2026-11-07T08:34:00.000Z",
+            "paneId": "w0:demo-data-loader",
+            "launchedByRarog": true,
+            "label": "import CSV",
+            "branch": "main",
+            "dirtyCount": 0,
+            "lastSummary": "Zaimportowano 214 rekordów, testy zielone.",
+            "model": "claude-haiku-4-5"
+          },
+          {
+            "id": "demo-willow-parser",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "done",
+            "stateSince": "2026-11-07T08:27:00.000Z",
+            "createdAt": "2026-11-07T07:56:00.000Z",
+            "lastActivityAt": "2026-11-07T08:27:00.000Z",
+            "paneId": "w0:demo-willow-parser",
+            "launchedByRarog": true,
+            "label": "parser dat",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "lastSummary": "Parser dat wydzielony, 9 testów zielonych.",
+            "model": "claude-fable-5-1"
+          }
+        ],
+        "herdrStatus": {
+          "available": true,
+          "agentCount": 4,
+          "readOnly": false,
+          "canLaunch": true
+        },
+        "notesCwds": [
+          "/Users/demo/Projects/data-loader"
+        ]
+      }
+    ],
+    "transcripts": {
+      "demo-willow": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-willow",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Popraw zapis notatek — po restarcie gubi ostatnią zmianę. Dopisz test."
+                }
+              ],
+              "at": "2026-11-07T08:48:00.000Z"
+            },
+            {
+              "seq": 2,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## Diagnoza\n\nZapis leci do pliku po rozgłoszeniu zmiany, więc restart w tym oknie gubi ostatnią notatkę.\n\n- zapis jest asynchroniczny,\n- UI dostaje potwierdzenie od razu,\n- brak testu na kolejność."
+                }
+              ],
+              "at": "2026-11-07T08:49:00.000Z"
+            },
+            {
+              "seq": 3,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Zmieniam kolejność i domykam zapis przed powiadomieniem:\n\n```ts\nexport async function saveNote(note: Note): Promise<void> {\n  await store.write(note);\n  emitter.emit(\"note-saved\", note.id);\n}\n```\n\nTeraz uruchomię testy jednostkowe modułu notatek."
+                }
+              ],
+              "at": "2026-11-07T08:54:00.000Z"
+            },
+            {
+              "seq": 4,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "tool-call",
+                  "toolName": "Edit",
+                  "summary": "src/notes.ts",
+                  "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  emitter.emit(\"note-saved\", note.id);\n-  await store.write(note);\n+  await store.write(note);\n+  emitter.emit(\"note-saved\", note.id);",
+                  "inputKind": "json"
+                }
+              ],
+              "at": "2026-11-07T08:55:00.000Z"
+            }
+          ],
+          "pendingPermissions": [
+            {
+              "permId": "demo-perm-willow",
+              "sessionId": "demo-willow",
+              "toolName": "Bash",
+              "displayText": "npm test -- --run src/notes.test.ts",
+              "risk": "normal",
+              "cwd": "/Users/demo/Projects/willow",
+              "createdAt": "2026-11-07T08:56:00.000Z",
+              "subject": "tool",
+              "inputKind": "shell"
+            }
+          ],
+          "pendingQuestions": []
+        }
+      ],
+      "demo-willow-parser": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-willow-parser",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Wydziel parser dat do osobnego modułu i dopisz testy formatów."
+                }
+              ],
+              "at": "2026-11-07T07:56:00.000Z"
+            },
+            {
+              "seq": 2,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## Gotowe\n\nParser siedzi w `src/dates.ts`, a testy pokrywają trzy formaty wejścia:\n\n- ISO 8601,\n- `DD.MM.RRRR`,\n- znacznik uniksowy w sekundach."
+                }
+              ],
+              "at": "2026-11-07T08:27:00.000Z"
+            },
+            {
+              "seq": 3,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "### Formaty w liczbach\n\n| Format | Przykład | Testy |\n|:--|:--|--:|\n| ISO 8601 | `2026-10-05T09:00:00Z` | 4 |\n| `DD.MM.RRRR` | 05.10.2026 | 3 |\n| uniksowy | 1790000000 | 2 |\n\n> **Uwaga:** strefa czasowa idzie z ustawień urządzenia, więc test _uniksowego_ formatu przypina `UTC`.\n\n---\n\n1. Parser zwraca `null` zamiast rzucać wyjątkiem.\n2. Stary helper ~~formatDate~~ zniknął:\n   - wywołania przeszły na `parseDate`,\n   - typy w `src/types.ts` bez zmian.\n\nSpecyfikacja formatu: https://www.rfc-editor.org/rfc/rfc3339."
+                }
+              ],
+              "at": "2026-11-07T08:27:00.000Z"
+            }
+          ],
+          "pendingPermissions": [],
+          "pendingQuestions": []
+        }
+      ],
+      "demo-rarog": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-rarog",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Opisz, jak działa resync transkryptu po powrocie z tła na iPhonie."
+                }
+              ],
+              "at": "2026-11-07T08:57:00.000Z"
+            }
+          ],
+          "pendingPermissions": [],
+          "pendingQuestions": []
+        }
+      ],
+      "demo-fleet-ops": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-fleet-ops",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Wyczyść build i wypchnij poprawioną historię na main."
+                }
+              ],
+              "at": "2026-11-07T08:52:00.000Z"
+            },
+            {
+              "seq": 2,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## Uwaga\n\nTo jest operacja niszcząca: kasuje katalog `dist` i nadpisuje historię na zdalnym repo.\nPoproszę o wyraźne potwierdzenie, zanim cokolwiek wykonam."
+                }
+              ],
+              "at": "2026-11-07T08:58:00.000Z"
+            }
+          ],
+          "pendingPermissions": [
+            {
+              "permId": "demo-perm-fleet-ops",
+              "sessionId": "demo-fleet-ops",
+              "toolName": "Bash",
+              "displayText": "rm -rf ./dist && git push --force origin main",
+              "risk": "red",
+              "cwd": "/Users/demo/Projects/fleet-ops",
+              "createdAt": "2026-11-07T08:59:00.000Z",
+              "subject": "tool",
+              "inputKind": "shell"
+            }
+          ],
+          "pendingQuestions": []
+        }
+      ],
+      "demo-data-loader": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-data-loader",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Zaimportuj dane z CSV i sprawdź, czy nic nie zgubiliśmy."
+                }
+              ],
+              "at": "2026-11-07T08:05:00.000Z"
+            },
+            {
+              "seq": 2,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## Plan\n\n1. Policzę wiersze w pliku i sprawdzę nagłówek.\n2. Odpalę testy importu na kopii bazy.\n3. Zapiszę raport rozbieżności obok modułu importu.\n\nFormat pliku z eksportu:\n\n```csv\nid;nazwa;miasto;nip;utworzono\n1042;Kowalski i Syn;Poznań;7781234567;2024-03-11\n1043;Nowak Serwis;Gdańsk;5832345678;2024-03-12\n1044;Zielińska Biuro;Kraków;;2024-03-12\n```\n\nKolumna `nip` bywa pusta — takie wiersze trafią do raportu, nie do bazy."
+                }
+              ],
+              "at": "2026-11-07T08:10:00.000Z"
+            },
+            {
+              "seq": 3,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "tool-call",
+                  "toolName": "Read",
+                  "summary": "data/klienci.csv",
+                  "detail": "{\n  \"file_path\": \"data/klienci.csv\"\n}",
+                  "inputKind": "json"
+                }
+              ],
+              "at": "2026-11-07T08:20:00.000Z"
+            },
+            {
+              "seq": 4,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "tool-call",
+                  "toolName": "Grep",
+                  "summary": "id;nazwa",
+                  "detail": "{\n  \"pattern\": \"id;nazwa\",\n  \"path\": \"data\"\n}",
+                  "inputKind": "json"
+                }
+              ],
+              "at": "2026-11-07T08:21:00.000Z"
+            },
+            {
+              "seq": 5,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "tool-call",
+                  "toolName": "Bash",
+                  "summary": "wc -l data/klienci.csv",
+                  "detail": "wc -l data/klienci.csv",
+                  "inputKind": "shell"
+                }
+              ],
+              "at": "2026-11-07T08:22:00.000Z"
+            },
+            {
+              "seq": 6,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "tool-call",
+                  "toolName": "Bash",
+                  "summary": "npm test -- import",
+                  "detail": "npm test -- import && open https://example.com/raport-importu",
+                  "inputKind": "shell"
+                }
+              ],
+              "at": "2026-11-07T08:23:00.000Z"
+            },
+            {
+              "seq": 7,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "tool-call",
+                  "toolName": "Write",
+                  "summary": "src/import/report.ts",
+                  "detail": "+ import type { ImportRow } from './types.ts';\n+ \n+ export interface ImportReport {\n+   total: number;\n+   imported: number;\n+   duplicates: number;\n+   rejected: RejectedRow[];\n+ }\n+ \n+ export interface RejectedRow {\n+   line: number;\n+   reason: string;\n+ }\n+ \n+ export function buildReport(rows: ImportRow[], saved: Set<string>): ImportReport {\n+   const seen = new Set<string>();\n+   const rejected: RejectedRow[] = [];\n+   let duplicates = 0;\n+   rows.forEach((row, index) => {\n+     if (row.id === '') {\n+       rejected.push({ line: index + 2, reason: 'pusty identyfikator' });\n+       return;\n+     }\n+     if (seen.has(row.id)) {\n+       duplicates += 1;\n+       return;\n+     }\n+     seen.add(row.id);\n+   });\n+   const imported = [...seen].filter((id) => saved.has(id)).length;\n+   return { total: rows.length, imported, duplicates, rejected };\n+ }\n+ \n+ export function formatReport(report: ImportReport): string {\n+   const lines = [\n+     `Rekordów w pliku: ${report.total}`,\n+     `Zaimportowano: ${report.imported}`,\n+     `Duplikaty: ${report.duplicates}`,\n+   ];\n+   if (report.rejected.length === 0) {\n+     lines.push('Rozbieżności: brak');\n+   } else {\n+     lines.push('Rozbieżności:');\n+     for (const row of report.rejected) {\n+       lines.push(`  linia ${row.line}: ${row.reason}`);\n+     }\n+   }\n+   return lines.join('\\n');\n+ }\n+ ",
+                  "detailKind": "diff",
+                  "inputKind": "json"
+                }
+              ],
+              "at": "2026-11-07T08:30:00.000Z"
+            },
+            {
+              "seq": 8,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## Import zakończony\n\n- 214 rekordów w bazie,\n- 0 duplikatów,\n- 12 testów zielonych.\n\nRaport rozbieżności jest pusty — nic nie wypadło po drodze.\n\nCo sprawdziłem po drodze:\n\n1. Nagłówek pliku zgadza się ze schematem tabeli.\n2. Puste `nip` trafiają do raportu, nie do bazy — w tym pliku takich nie było.\n3. Ponowny import tego samego pliku nie tworzy duplikatów.\n4. Daty `utworzono` mieszczą się w zakresie eksportu.\n\nRaport leży w `src/import/report.ts`; uruchomisz go przez `npm run import:report`.\nPrzy następnym eksporcie wystarczy podmienić plik w `data/` i odpalić to samo."
+                }
+              ],
+              "at": "2026-11-07T08:34:00.000Z"
+            }
+          ],
+          "pendingPermissions": [],
+          "pendingQuestions": []
+        }
+      ],
+      "demo-pipe-link": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-pipe-link",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Dorób mostek zdarzeń i log obecności."
+                }
+              ],
+              "at": "2026-11-07T07:50:00.000Z"
+            },
+            {
+              "seq": 2,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "<task-notification>\n<task-id>demo-48</task-id>\n<status>completed</status>\n<summary>Background command \"pnpm test -- bridge\" completed (exit code 0)</summary>\n</task-notification>"
+                }
+              ],
+              "at": "2026-11-07T08:12:00.000Z",
+              "notice": {
+                "kind": "command",
+                "outcome": "done",
+                "name": "pnpm test -- bridge",
+                "exitCode": 0
+              }
+            },
+            {
+              "seq": 3,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Tak wygląda log obecności na iPadzie po przełączeniu sieci — zrzut i notatki z testu."
+                }
+              ],
+              "at": "2026-11-07T08:16:00.000Z",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "name": "",
+                  "bytes": "png",
+                  "mime": "image/png",
+                  "file": "1790000000000-6c6f676f62656373.png"
+                },
+                {
+                  "kind": "file",
+                  "name": "notatki-obecnosc.pdf",
+                  "bytes": 182431,
+                  "mime": "application/pdf"
+                }
+              ]
+            },
+            {
+              "seq": 4,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Jeszcze zrzut z telefonu i ten z wczoraj."
+                }
+              ],
+              "at": "2026-11-07T08:18:00.000Z",
+              "attachments": [
+                {
+                  "kind": "image",
+                  "name": "",
+                  "bytes": 0,
+                  "mime": "image/png",
+                  "file": "1790000000001-69706164736e6170.png"
+                },
+                {
+                  "kind": "image",
+                  "name": "",
+                  "bytes": 0,
+                  "mime": "image/png",
+                  "file": "1789000000000-7a6e696b6e696574.png"
+                }
+              ]
+            },
+            {
+              "seq": 5,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Zdarzenia obecności z ostatniej godziny — przerwy pokrywają się z przełączeniem sieci:"
+                },
+                {
+                  "type": "image",
+                  "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAADICAIAAABK7OzYAAAIYUlEQVR4nO2UwQ0lVRADNz7OJLJXTgRFPKQCGSD1/inh+lOld7bGbY9//BMRceTH//0BEeGj4YiIMw1HRJxpOCLiTMMREWcajog403BExJmGIyLONBwRcabhiIgzDUdEnGk4IuJMwxERZxqOiDjTcETEmYYjIs40HBFxpuGIiDMNR0ScaTgivpzf/v7zF95/azYcEV9OwxERZxqOiDjTcETEmYYjIs40HBFxpuGIiDMNR8SXQ/zkDUfEl9NwxCsgSvlmGo54BQ3HszQc8QoajmdpOOIVNBzP0nDEK7AU3YLlng1HfISl6BYs92w44iMsRbdguWfDER9hKboFyz0bjvgIS9EtWO7ZcMRHWIpuwXLPhuNFWErZcOzfs+F4EZZSNhz792w4XoSllJbhsHhvOOIjLKVsOPY1G44XYSllw7Gv2XC8CEspG459zYbjRVhK2XDsazYcL8JSyoZjX3N6OCwFsmAppSV3i/eGY7RAFiyltORu8d5wjBbIgqWUltwt3huO0QJZsJTSkrvFe8MxekQLlntaMrJ4JzQbjtFSEljuacnI4p3QbDhGS0lguaclI4t3QrPhGC0lgeWelows3gnNhmO0lASWe1oysngnNBuO0VISWO5pycjindBsOEZLSWC5pyUji3dCs+EYLSWB5Z6WjCzeCc3HhsNi2FJKAss9LRlZvBOaDcdoKQks97RkZPFOaDYco6UksNzTkpHFO6HZcIyWksByT0tGFu+EZsMxWkoCyz0tGVm8E5oNx2gpCSz3tGRk8U5oNhyjpSSw3NOSkcU7odlwjJaSwHJPS0YW74RmwzFaSgLLPS0ZWbwTmg3HaCkJLPe0ZGTxTmg2HKOlJLDc05KRxTuh2XCMlpLAck9LRhbvhGbDMVpKAss9LRlZvBOaDcdoKQks97RkZPFOaDYco6UksNzTkpHFO6HZcIyWksByT0tGFu+EZsMxWkoCyz0tGVm8E5oNx2gpCSz3tGRk8U5oNhyjpSSw3NOSkcU7odlwjJaSwHJPS0YW74RmwzFaSgLLPS0ZWbwTmg3HaCkJLPe0ZGTxTmg2HKOlJLDc05KRxTuh2XCMlpLAck9LRhbvhGbDMVpKAss9LRlZvBOaDcdoKQks97RkZPFOaDYco6UksNzTkpHFO6HZcIyWksByT0tGFu+EZsMxWkoCyz0tGVm8E5oNx2gpCSz3tGRk8U5oNhyjpSSw3NOSkcU7odlwjJaSwHJPS0YW74RmwzFaSgLLPS0ZWbwTmg3HaCkJLPe0ZGTxTmg2HKOlJLDc05KRxTuh2XCMlpLAck9LRhbvhGbDMVpKAss9LRlZvBOaDcdoKQks97RkZPFOaDYco6UksNzTkpHFO6HZcIyWksByT0tGFu+EZsMxWkoCyz0tGVm8E5oNx2gpCSz3tGRk8U5oNhyjpSSw3NOSkcU7odlwjJaSwHJPS0YW74RmwzFaSgLLPS0ZWbwTmg3HaCkJLPe0ZGTxTmg2HKOlJLDc05KRxTuh2XCMlpLAck9LRhbvhGbDMVpKAss9LRlZvBOaDcdoKQks97RkZPFOaDYco6UksNzTkpHFO6HZcIyWksByT0tGFu+EZsMxWkoCyz0tGVm8E5oNx2gpCSz3tGRk8U5oNhyjpSSw3NOSkcU7odlwjJaSwHJPS0YW74RmwzFaSgLLPS0ZWbwTmg3HaCkJLPe0ZGTxTmg2HKOlJLDc05KRxTuh2XCMlpLAck9LRhbvhGbDMVpKAss9LRlZvBOaDcdoKQks97RkZPFOaDYco6UksNzTkpHFO6HZcIyWksByT0tGFu+EZsMxWkoCyz0tGVm8E5oNx2gpCSz3tGRk8U5oNhyjpSSw3NOSkcU7odlwjJaSwHJPS0YW74RmwzFaSgLLPS0ZWbwTmg3HaCkJLPe0ZGTxTmg2HKOlJLDc05KRxTuh2XCMlpLAck9LRhbvhGbDMVpKAss9LRlZvBOaDcdoKQks97RkZPFOaDYco6UksNzTkpHFO6HZcIyWksByT0tGFu+EZsMxWkoCyz2RjP76/VfeV3gnNBuOJ0opwXJPJKOG41HNhuOJUkqw3BPJqOF4VLPheKKUEiz3RDJqOB7VbDhGS0lguaclI4t3QrPhGC0lgeWelows3gnNhmO0lASWe1oysngnNBuO0VISWO5pycjindBsOEZLWdH3M7J4JzQbjtFSVvT9jCzeCc2GY7SUFX0/I4t3QrPhGC1lRd/PyOKd0Gw4RktZ0fczsngnNBuO0VJW9P2MLN4JzYZjtJQVfT8ji3dCs+EYLWVF38/I4p3QbDhGS1nR9zOyeCc0G47RUlb0/Yws3gnNhmO0lBV9PyOLd0Kz4RgtZUXfz8jindBsOEZLWdH3M7J4JzQbjtFSVvT9jCzeCc2GY7SUFX0/I4t3QrPhGC1lRd/PyOKd0Gw4RktZ0fczsngnNBuO0VJW9P2MLN4JzYZjtJQVfT8ji3dCs+EYLWVF38/I4p3QbDhGS1nR9zOyeCc0G47RUlb0/Yws3gnNhmO0lBV9PyOLd0Kz4RgtZUXfz8jindBsOEZLWdH3M7J4JzQbjtFSVvT9jCzeCc2GY7SUFX0/I4t3QrPhGC1lRd/PyOKd0Gw4RktZ0fczsngnNBuO0VJW9P2MLN4JzYZjtJQVfT8ji3dCs+EYLWVF38/I4p3QbDhGS1nR9zOyeCc0G47RUlb0/Yws3gnNhmO0lBV9PyOLd0Kz4RgtZUXfz8jindA8D8fPn3/0er0ve9cdaDh6vR4/HBERDUdEnGk4IuJMwxERZxqOiDjTcETEmYYjIs40HBFxpuGIiDMNR0ScaTgi4kzDERFnGo6IONNwRMSZhiMizjQcEXGm4YiIMw1HRJz5F19bw0hkELZeAAAAAElFTkSuQmCC",
+                  "alt": "Wykres zdarzeń obecności"
+                }
+              ],
+              "at": "2026-11-07T08:24:00.000Z"
+            },
+            {
+              "seq": 6,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "<task-notification>\n<task-id>demo-30</task-id>\n<status>killed</status>\n<summary>Agent \"przegląd logu obecności\" was stopped</summary>\n</task-notification>"
+                }
+              ],
+              "at": "2026-11-07T08:30:00.000Z",
+              "notice": {
+                "kind": "agent",
+                "outcome": "halted",
+                "name": "przegląd logu obecności"
+              }
+            },
+            {
+              "seq": 7,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "<task-notification>\n<task-id>demo-22</task-id>\n<status>failed</status>\n<summary>Background command \"pnpm run e2e:presence\" failed with exit code 1</summary>\n</task-notification>"
+                }
+              ],
+              "at": "2026-11-07T08:38:00.000Z",
+              "notice": {
+                "kind": "command",
+                "outcome": "failed",
+                "name": "pnpm run e2e:presence",
+                "exitCode": 1
+              }
+            },
+            {
+              "seq": 8,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Mam już szkielet mostka i zapisuję zdarzenia do bufora. Zostało podpięcie\nretry przy zerwanym połączeniu — wracam do tego po restarcie."
+                }
+              ],
+              "at": "2026-11-07T08:41:00.000Z"
+            }
+          ],
+          "pendingPermissions": [],
+          "pendingQuestions": []
+        }
+      ],
+      "demo-map-view": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-map-view",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Przepisz panel klienta na nowy layout i zaktualizuj testy widoków."
+                }
+              ],
+              "at": "2026-11-07T07:25:00.000Z"
+            },
+            {
+              "seq": 2,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## Stan prac\n\nLayout jest przepisany, zostały dwa widoki listy i migracja testów:\n\n- nagłówek i nawigacja gotowe,\n- tabela klientów przeniesiona na grid,\n- testy widoków w połowie."
+                }
+              ],
+              "at": "2026-11-07T08:50:00.000Z"
+            },
+            {
+              "seq": 3,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Zanim przeniosę dwa ostatnie widoki listy, potrzebuję jednej decyzji.\n\n**Do Ciebie:** przenosimy listy na nowy grid teraz, czy zostają na starym układzie do następnego wydania?\n\n1. Grid teraz — jeden komponent tabeli dla całego panelu, testy widoków do przepisania.\n2. Stary układ — mniej zmian dziś, dwa komponenty do utrzymania do wydania.\n\nPo decyzji odpalę testy widoków:\n\n```bash\npnpm test -- --run src/views\n```\n\n| Wariant | Pliki | Testy do zmiany |\n| --- | --- | --- |\n| grid teraz | 6 | 14 |\n| stary układ | 2 | 3 |"
+                }
+              ],
+              "at": "2026-11-07T08:51:00.000Z"
+            }
+          ],
+          "pendingPermissions": [],
+          "pendingQuestions": []
+        }
+      ],
+      "demo-rarog-stop": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-rarog-stop",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Policz pokrycie testami modułu transkryptu i wypisz luki."
+                }
+              ],
+              "at": "2026-11-07T08:59:40.000Z"
+            }
+          ],
+          "pendingPermissions": [],
+          "pendingQuestions": []
+        }
+      ]
+    },
+    "notes": {
+      "/Users/demo/Projects/willow": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "text": "",
+          "updatedAt": 0
+        }
+      },
+      "/Users/demo/Projects/rarog": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "text": "",
+          "updatedAt": 0
+        }
+      },
+      "/Users/demo/Projects/fleet-ops": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "text": "",
+          "updatedAt": 0
+        }
+      },
+      "/Users/demo/Projects/data-loader": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "text": "## Przed deployem\n- `pnpm run restart` po każdej zmianie w `server/`\n- sprawdź `/health`: `herdr: true`\n\nChangelog herdr: https://herdr.dev",
+          "updatedAt": 1792006800000
+        }
+      },
+      "/Users/demo/Projects/pipe-link": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "text": "",
+          "updatedAt": 0
+        }
+      },
+      "/Users/demo/Projects/map-view": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "text": "",
+          "updatedAt": 0
+        }
+      }
+    },
+    "fs": [
+      {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "path": null,
+          "parent": null,
+          "entries": [
+            {
+              "name": "willow",
+              "path": "/Users/demo/Projects/willow",
+              "git": true,
+              "history": true
+            },
+            {
+              "name": "rarog",
+              "path": "/Users/demo/Projects/rarog",
+              "git": true,
+              "history": true
+            },
+            {
+              "name": "fleet-ops",
+              "path": "/Users/demo/Projects/fleet-ops",
+              "git": true,
+              "history": true
+            },
+            {
+              "name": "data-loader",
+              "path": "/Users/demo/Projects/data-loader",
+              "git": true,
+              "history": true
+            },
+            {
+              "name": "pipe-link",
+              "path": "/Users/demo/Projects/pipe-link",
+              "git": true,
+              "history": true
+            },
+            {
+              "name": "map-view",
+              "path": "/Users/demo/Projects/map-view",
+              "git": true,
+              "history": true
+            }
+          ],
+          "truncated": false
+        }
+      },
+      {
+        "status": 400,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "error": "path-not-allowed",
+          "message": "This directory isn't in the project list.",
+          "messageRef": {
+            "code": "rest.cwd-not-in-projects"
+          }
+        }
+      }
+    ],
+    "projects": {
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "body": {
+        "projects": [
+          {
+            "path": "/Users/demo/Projects/willow",
+            "name": "willow"
+          },
+          {
+            "path": "/Users/demo/Projects/rarog",
+            "name": "rarog"
+          },
+          {
+            "path": "/Users/demo/Projects/fleet-ops",
+            "name": "fleet-ops"
+          },
+          {
+            "path": "/Users/demo/Projects/data-loader",
+            "name": "data-loader"
+          },
+          {
+            "path": "/Users/demo/Projects/pipe-link",
+            "name": "pipe-link"
+          },
+          {
+            "path": "/Users/demo/Projects/map-view",
+            "name": "map-view"
+          }
+        ]
+      }
+    },
+    "resumable": {
+      "/Users/demo/Projects/willow": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "sessions": [
+            {
+              "engineSessionId": "demo-engine-willow-0",
+              "cwd": "/Users/demo/Projects/willow",
+              "mtime": "2026-11-07T08:56:00.000Z",
+              "firstPrompt": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "title": "zapis notatek",
+              "gitBranch": "main",
+              "liveInHerdr": true,
+              "sessionId": "demo-willow"
+            },
+            {
+              "engineSessionId": "demo-engine-willow-1",
+              "cwd": "/Users/demo/Projects/willow",
+              "mtime": "2026-11-07T08:25:00.000Z",
+              "firstPrompt": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "title": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "gitBranch": "feat/csv-parser",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-willow-2",
+              "cwd": "/Users/demo/Projects/willow",
+              "mtime": "2026-11-07T05:00:00.000Z",
+              "firstPrompt": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "title": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "gitBranch": "fix/lista-ostatni",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-willow-3",
+              "cwd": "/Users/demo/Projects/willow",
+              "mtime": "2026-11-06T07:00:00.000Z",
+              "firstPrompt": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "title": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            }
+          ]
+        }
+      },
+      "/Users/demo/Projects/rarog": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "sessions": [
+            {
+              "engineSessionId": "demo-engine-rarog-0",
+              "cwd": "/Users/demo/Projects/rarog",
+              "mtime": "2026-11-07T08:56:00.000Z",
+              "firstPrompt": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "title": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-rarog-1",
+              "cwd": "/Users/demo/Projects/rarog",
+              "mtime": "2026-11-07T08:25:00.000Z",
+              "firstPrompt": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "title": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "gitBranch": "feat/csv-parser",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-rarog-2",
+              "cwd": "/Users/demo/Projects/rarog",
+              "mtime": "2026-11-07T05:00:00.000Z",
+              "firstPrompt": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "title": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "gitBranch": "fix/lista-ostatni",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-rarog-3",
+              "cwd": "/Users/demo/Projects/rarog",
+              "mtime": "2026-11-06T07:00:00.000Z",
+              "firstPrompt": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "title": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            }
+          ]
+        }
+      },
+      "/Users/demo/Projects/fleet-ops": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "sessions": [
+            {
+              "engineSessionId": "demo-engine-fleet-ops-0",
+              "cwd": "/Users/demo/Projects/fleet-ops",
+              "mtime": "2026-11-07T08:56:00.000Z",
+              "firstPrompt": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "title": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-fleet-ops-1",
+              "cwd": "/Users/demo/Projects/fleet-ops",
+              "mtime": "2026-11-07T08:25:00.000Z",
+              "firstPrompt": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "title": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "gitBranch": "feat/csv-parser",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-fleet-ops-2",
+              "cwd": "/Users/demo/Projects/fleet-ops",
+              "mtime": "2026-11-07T05:00:00.000Z",
+              "firstPrompt": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "title": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "gitBranch": "fix/lista-ostatni",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-fleet-ops-3",
+              "cwd": "/Users/demo/Projects/fleet-ops",
+              "mtime": "2026-11-06T07:00:00.000Z",
+              "firstPrompt": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "title": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            }
+          ]
+        }
+      },
+      "/Users/demo/Projects/data-loader": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "sessions": [
+            {
+              "engineSessionId": "demo-engine-data-loader-0",
+              "cwd": "/Users/demo/Projects/data-loader",
+              "mtime": "2026-11-07T08:56:00.000Z",
+              "firstPrompt": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "title": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-data-loader-1",
+              "cwd": "/Users/demo/Projects/data-loader",
+              "mtime": "2026-11-07T08:25:00.000Z",
+              "firstPrompt": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "title": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "gitBranch": "feat/csv-parser",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-data-loader-2",
+              "cwd": "/Users/demo/Projects/data-loader",
+              "mtime": "2026-11-07T05:00:00.000Z",
+              "firstPrompt": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "title": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "gitBranch": "fix/lista-ostatni",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-data-loader-3",
+              "cwd": "/Users/demo/Projects/data-loader",
+              "mtime": "2026-11-06T07:00:00.000Z",
+              "firstPrompt": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "title": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            }
+          ]
+        }
+      },
+      "/Users/demo/Projects/pipe-link": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "sessions": [
+            {
+              "engineSessionId": "demo-engine-pipe-link-0",
+              "cwd": "/Users/demo/Projects/pipe-link",
+              "mtime": "2026-11-07T08:56:00.000Z",
+              "firstPrompt": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "title": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-pipe-link-1",
+              "cwd": "/Users/demo/Projects/pipe-link",
+              "mtime": "2026-11-07T08:25:00.000Z",
+              "firstPrompt": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "title": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "gitBranch": "feat/csv-parser",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-pipe-link-2",
+              "cwd": "/Users/demo/Projects/pipe-link",
+              "mtime": "2026-11-07T05:00:00.000Z",
+              "firstPrompt": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "title": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "gitBranch": "fix/lista-ostatni",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-pipe-link-3",
+              "cwd": "/Users/demo/Projects/pipe-link",
+              "mtime": "2026-11-06T07:00:00.000Z",
+              "firstPrompt": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "title": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            }
+          ]
+        }
+      },
+      "/Users/demo/Projects/map-view": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "sessions": [
+            {
+              "engineSessionId": "demo-engine-map-view-0",
+              "cwd": "/Users/demo/Projects/map-view",
+              "mtime": "2026-11-07T08:56:00.000Z",
+              "firstPrompt": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "title": "Dopisz zapis notatek przy wyjściu z edytora.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-map-view-1",
+              "cwd": "/Users/demo/Projects/map-view",
+              "mtime": "2026-11-07T08:25:00.000Z",
+              "firstPrompt": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "title": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+              "gitBranch": "feat/csv-parser",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-map-view-2",
+              "cwd": "/Users/demo/Projects/map-view",
+              "mtime": "2026-11-07T05:00:00.000Z",
+              "firstPrompt": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "title": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+              "gitBranch": "fix/lista-ostatni",
+              "liveInHerdr": false
+            },
+            {
+              "engineSessionId": "demo-engine-map-view-3",
+              "cwd": "/Users/demo/Projects/map-view",
+              "mtime": "2026-11-06T07:00:00.000Z",
+              "firstPrompt": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "title": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+              "gitBranch": "main",
+              "liveInHerdr": false
+            }
+          ]
+        }
+      }
+    },
+    "diff": {
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "body": {
+        "files": [
+          {
+            "path": "src/notes.ts",
+            "status": "M",
+            "linesAdded": 2,
+            "linesDeleted": 2
+          },
+          {
+            "path": "src/notes.test.ts",
+            "status": "A",
+            "linesAdded": 9,
+            "linesDeleted": 0
+          },
+          {
+            "path": "src/notes-legacy.ts",
+            "status": "D",
+            "linesAdded": 0,
+            "linesDeleted": 4
+          }
+        ],
+        "patch": "diff --git a/src/notes.ts b/src/notes.ts\nindex 8f4c1d2..3ab97e5 100644\n--- a/src/notes.ts\n+++ b/src/notes.ts\n@@ -12,8 +12,12 @@ export interface Note {\n export async function saveNote(note: Note): Promise<void> {\n-  emitter.emit(\"note-saved\", note.id);\n-  await store.write(note);\n+  await store.write(note);\n+  emitter.emit(\"note-saved\", note.id);\n }\n\ndiff --git a/src/notes.test.ts b/src/notes.test.ts\nnew file mode 100644\nindex 0000000..7c1e4b8\n--- /dev/null\n+++ b/src/notes.test.ts\n@@ -0,0 +1,9 @@\n+import { describe, expect, it } from \"vitest\";\n+import { saveNote } from \"./notes.ts\";\n+\n+describe(\"saveNote\", () => {\n+  it(\"zapisuje przed rozgłoszeniem\", async () => {\n+    await saveNote({ id: \"a\", text: \"x\" });\n+    expect(store.written).toEqual([\"a\"]);\n+  });\n+});\n\ndiff --git a/src/notes-legacy.ts b/src/notes-legacy.ts\ndeleted file mode 100644\nindex 5b2e9c4..0000000\n--- a/src/notes-legacy.ts\n+++ /dev/null\n@@ -1,4 +0,0 @@\n-export function saveNoteLegacy(note: Note): void {\n-  // Zapis bez kolejki — zastąpiony przez saveNote.\n-  fs.writeFileSync(note.path, note.text);\n-}\n",
+        "truncated": false
+      }
+    },
+    "diffFiles": {
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "body": {
+        "files": [
+          {
+            "path": "src/notes.ts",
+            "status": "M",
+            "linesAdded": 2,
+            "linesDeleted": 2
+          },
+          {
+            "path": "src/notes.test.ts",
+            "status": "A",
+            "linesAdded": 9,
+            "linesDeleted": 0
+          },
+          {
+            "path": "src/notes-legacy.ts",
+            "status": "D",
+            "linesAdded": 0,
+            "linesDeleted": 4
+          }
+        ],
+        "truncated": false
+      }
+    },
+    "diffFile": {
+      "src/notes.ts": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "path": "src/notes.ts",
+          "patch": "diff --git a/src/notes.ts b/src/notes.ts\nindex 8f4c1d2..3ab97e5 100644\n--- a/src/notes.ts\n+++ b/src/notes.ts\n@@ -12,8 +12,12 @@ export interface Note {\n export async function saveNote(note: Note): Promise<void> {\n-  emitter.emit(\"note-saved\", note.id);\n-  await store.write(note);\n+  await store.write(note);\n+  emitter.emit(\"note-saved\", note.id);\n }\n",
+          "truncated": false
+        }
+      },
+      "src/notes.test.ts": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "path": "src/notes.test.ts",
+          "patch": "diff --git a/src/notes.test.ts b/src/notes.test.ts\nnew file mode 100644\nindex 0000000..7c1e4b8\n--- /dev/null\n+++ b/src/notes.test.ts\n@@ -0,0 +1,9 @@\n+import { describe, expect, it } from \"vitest\";\n+import { saveNote } from \"./notes.ts\";\n+\n+describe(\"saveNote\", () => {\n+  it(\"zapisuje przed rozgłoszeniem\", async () => {\n+    await saveNote({ id: \"a\", text: \"x\" });\n+    expect(store.written).toEqual([\"a\"]);\n+  });\n+});\n",
+          "truncated": false
+        }
+      },
+      "src/notes-legacy.ts": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "path": "src/notes-legacy.ts",
+          "patch": "diff --git a/src/notes-legacy.ts b/src/notes-legacy.ts\ndeleted file mode 100644\nindex 5b2e9c4..0000000\n--- a/src/notes-legacy.ts\n+++ /dev/null\n@@ -1,4 +0,0 @@\n-export function saveNoteLegacy(note: Note): void {\n-  // Zapis bez kolejki — zastąpiony przez saveNote.\n-  fs.writeFileSync(note.path, note.text);\n-}\n",
+          "truncated": false
+        }
+      }
+    },
+    "uploads": {
+      "demo-pipe-link/1790000000000-6c6f676f62656373.png": {
+        "status": 200,
+        "type": "image/png",
+        "pixels": "4cc5136d1afc049da8bc14d0c6162689aa460290515702f962d06419aae386c6"
+      },
+      "demo-pipe-link/1790000000001-69706164736e6170.png": {
+        "status": 200,
+        "type": "image/png",
+        "pixels": "a24054240ecc6bbec2abaf5ba6b7e561c599ef1a42b1cdcb56d1cd2fcbc74eea"
+      },
+      "demo-pipe-link/1789000000000-7a6e696b6e696574.png": {
+        "status": 404,
+        "type": "application/json; charset=utf-8",
+        "sha256": "31f9a7fa90d4484fe01c1d81fca3f16a8b0a012a8d1752a10413f975fe5365b0",
+        "bytes": 104
+      }
+    },
+    "turn": {
+      "permission": {
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "ok": true
+        }
+      },
+      "send": {
+        "status": 202,
+        "type": "application/json; charset=utf-8",
+        "body": {
+          "ok": true,
+          "clientMessageId": "00000000-0000-4000-8000-00000000a501"
+        }
+      },
+      "frames": [
+        {
+          "type": "transcript-snapshot",
+          "sessionId": "demo-willow",
+          "messages": [
+            {
+              "seq": 1,
+              "role": "user",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Popraw zapis notatek — po restarcie gubi ostatnią zmianę. Dopisz test."
+                }
+              ],
+              "at": "2026-11-07T08:48:00.000Z"
+            },
+            {
+              "seq": 2,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## Diagnoza\n\nZapis leci do pliku po rozgłoszeniu zmiany, więc restart w tym oknie gubi ostatnią notatkę.\n\n- zapis jest asynchroniczny,\n- UI dostaje potwierdzenie od razu,\n- brak testu na kolejność."
+                }
+              ],
+              "at": "2026-11-07T08:49:00.000Z"
+            },
+            {
+              "seq": 3,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "Zmieniam kolejność i domykam zapis przed powiadomieniem:\n\n```ts\nexport async function saveNote(note: Note): Promise<void> {\n  await store.write(note);\n  emitter.emit(\"note-saved\", note.id);\n}\n```\n\nTeraz uruchomię testy jednostkowe modułu notatek."
+                }
+              ],
+              "at": "2026-11-07T08:54:00.000Z"
+            },
+            {
+              "seq": 4,
+              "role": "assistant",
+              "blocks": [
+                {
+                  "type": "tool-call",
+                  "toolName": "Edit",
+                  "summary": "src/notes.ts",
+                  "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  emitter.emit(\"note-saved\", note.id);\n-  await store.write(note);\n+  await store.write(note);\n+  emitter.emit(\"note-saved\", note.id);",
+                  "inputKind": "json"
+                }
+              ],
+              "at": "2026-11-07T08:55:00.000Z"
+            }
+          ],
+          "pendingPermissions": [
+            {
+              "permId": "demo-perm-willow",
+              "sessionId": "demo-willow",
+              "toolName": "Bash",
+              "displayText": "npm test -- --run src/notes.test.ts",
+              "risk": "normal",
+              "cwd": "/Users/demo/Projects/willow",
+              "createdAt": "2026-11-07T08:56:00.000Z",
+              "subject": "tool",
+              "inputKind": "shell"
+            }
+          ],
+          "pendingQuestions": []
+        },
+        {
+          "type": "permission-resolved",
+          "sessionId": "demo-willow",
+          "permId": "demo-perm-willow",
+          "decision": "allow",
+          "by": "iPhone·test"
+        },
+        {
+          "type": "state",
+          "sessionId": "demo-willow",
+          "state": "running",
+          "since": "2026-11-07T09:00:00.000Z"
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:00.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:00.000Z",
+            "turnSince": "2026-11-07T08:56:00.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "activity",
+          "sessionId": "demo-willow",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "sessionId": "demo-willow",
+          "message": {
+            "seq": 9,
+            "role": "assistant",
+            "blocks": [
+              {
+                "type": "tool-call",
+                "toolName": "Edit",
+                "summary": "src/notes.ts",
+                "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+                "inputKind": "json"
+              }
+            ],
+            "at": "2026-11-07T09:00:00.200Z"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:00.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:00.200Z",
+            "turnSince": "2026-11-07T08:56:00.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "activity",
+          "sessionId": "demo-willow",
+          "kind": "thinking"
+        },
+        {
+          "type": "git-status",
+          "sessionId": "demo-willow",
+          "branch": "main",
+          "dirtyCount": 1,
+          "files": [
+            "src/notes.ts"
+          ],
+          "ahead": 2,
+          "behind": 0,
+          "fileKinds": {
+            "added": 0,
+            "modified": 1,
+            "deleted": 0
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            }
+          ]
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:00.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:00.200Z",
+            "turnSince": "2026-11-07T08:56:00.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 1,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 0,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "model": "claude-fable-5-1",
+            "effort": "high",
+            "activity": {
+              "kind": "thinking"
+            }
+          }
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "## Plan\n\nZaczynam od najcieńszej warstwy, "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "żeby test złapał regresję zanim "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "dotknę reszty:\n\n1. wydzielam czystą funkcję "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "z handlera,\n2. dopisuję test na "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "przypadek brzegowy (pusty wynik),\n3. dopiero "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "potem podmieniam wywołanie w widoku.\n\nPodmiana "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "wygląda tak:\n\n```ts\nexport function normalize(input: string): "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "test przejdzie, zostaje tylko usunięcie "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "starej gałęzi `if` i krótki "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "commit."
+        },
+        {
+          "type": "message",
+          "sessionId": "demo-willow",
+          "message": {
+            "seq": 13,
+            "role": "assistant",
+            "blocks": [
+              {
+                "type": "text",
+                "text": "## Plan\n\nZaczynam od najcieńszej warstwy, żeby test złapał regresję zanim dotknę reszty:\n\n1. wydzielam czystą funkcję z handlera,\n2. dopisuję test na przypadek brzegowy (pusty wynik),\n3. dopiero potem podmieniam wywołanie w widoku.\n\nPodmiana wygląda tak:\n\n```ts\nexport function normalize(input: string): string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli test przejdzie, zostaje tylko usunięcie starej gałęzi `if` i krótki commit."
+              }
+            ],
+            "at": "2026-11-07T09:00:01.720Z"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:00.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:01.720Z",
+            "turnSince": "2026-11-07T08:56:00.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 1,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 0,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "activity",
+          "sessionId": "demo-willow",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "sessionId": "demo-willow",
+          "message": {
+            "seq": 15,
+            "role": "assistant",
+            "blocks": [
+              {
+                "type": "tool-call",
+                "toolName": "Edit",
+                "summary": "src/notes.ts",
+                "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+                "inputKind": "json"
+              }
+            ],
+            "at": "2026-11-07T09:00:01.920Z"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:00.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:01.920Z",
+            "turnSince": "2026-11-07T08:56:00.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 1,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 0,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "git-status",
+          "sessionId": "demo-willow",
+          "branch": "main",
+          "dirtyCount": 2,
+          "files": [
+            "src/notes.ts",
+            "src/notes.test.ts"
+          ],
+          "ahead": 2,
+          "behind": 0,
+          "fileKinds": {
+            "added": 1,
+            "modified": 1,
+            "deleted": 0
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            },
+            {
+              "path": "src/notes.test.ts",
+              "kind": "added",
+              "linesAdded": 9,
+              "linesDeleted": 0
+            }
+          ]
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:00.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:01.920Z",
+            "turnSince": "2026-11-07T08:56:00.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "state",
+          "sessionId": "demo-willow",
+          "state": "waiting-input",
+          "since": "2026-11-07T09:00:02.320Z"
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-input",
+            "stateSince": "2026-11-07T09:00:02.320Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:02.320Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-input",
+            "stateSince": "2026-11-07T09:00:02.320Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:02.320Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "usage",
+          "sessionId": "demo-willow",
+          "contextTokens": 12800,
+          "contextLimit": 200000
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-input",
+            "stateSince": "2026-11-07T09:00:02.320Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:02.320Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-input",
+            "stateSince": "2026-11-07T09:00:02.320Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:02.320Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "message",
+          "sessionId": "demo-willow",
+          "message": {
+            "seq": 25,
+            "role": "user",
+            "blocks": [
+              {
+                "type": "text",
+                "text": "Sprawdź jeszcze raz zapis."
+              }
+            ],
+            "at": "2026-11-07T09:00:10.000Z",
+            "clientMessageId": "00000000-0000-4000-8000-00000000a501"
+          }
+        },
+        {
+          "type": "state",
+          "sessionId": "demo-willow",
+          "state": "running",
+          "since": "2026-11-07T09:00:10.000Z"
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:10.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:10.000Z",
+            "turnSince": "2026-11-07T09:00:10.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:10.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:10.000Z",
+            "turnSince": "2026-11-07T09:00:10.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "activity",
+          "sessionId": "demo-willow",
+          "kind": "thinking"
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "## Co znalazłem\n\nBłąd nie jest "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "w renderze, tylko w kolejności "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "zapisu — stan leci do "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "UI, zanim rejestr\nzdąży się zapisać. "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "Efekt widać dopiero po restarcie, "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "więc łatwo go przegapić.\n\n- zapis "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "na dysk jest asynchroniczny,\n- broadcast "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "idzie synchronicznie,\n- przy restarcie w "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "tym oknie wpis wraca w "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "starym stanie.\n\n```ts\nawait store.save();\nbroadcast(sessionChanged(summary));\n```\n\nPoprawka to jedna "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "linia kolejności plus test, który "
+        },
+        {
+          "type": "delta",
+          "sessionId": "demo-willow",
+          "text": "wymusza zapis przed rozgłoszeniem."
+        },
+        {
+          "type": "message",
+          "sessionId": "demo-willow",
+          "message": {
+            "seq": 29,
+            "role": "assistant",
+            "blocks": [
+              {
+                "type": "text",
+                "text": "## Co znalazłem\n\nBłąd nie jest w renderze, tylko w kolejności zapisu — stan leci do UI, zanim rejestr\nzdąży się zapisać. Efekt widać dopiero po restarcie, więc łatwo go przegapić.\n\n- zapis na dysk jest asynchroniczny,\n- broadcast idzie synchronicznie,\n- przy restarcie w tym oknie wpis wraca w starym stanie.\n\n```ts\nawait store.save();\nbroadcast(sessionChanged(summary));\n```\n\nPoprawka to jedna linia kolejności plus test, który wymusza zapis przed rozgłoszeniem."
+              }
+            ],
+            "at": "2026-11-07T09:00:11.840Z"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:10.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:11.840Z",
+            "turnSince": "2026-11-07T09:00:10.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "activity",
+          "sessionId": "demo-willow",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "sessionId": "demo-willow",
+          "message": {
+            "seq": 31,
+            "role": "assistant",
+            "blocks": [
+              {
+                "type": "tool-call",
+                "toolName": "Edit",
+                "summary": "src/notes-legacy.ts",
+                "detail": "--- src/notes-legacy.ts\n+++ src/notes-legacy.ts\n@@\n-  return input;\n+  return input.trim();",
+                "inputKind": "json"
+              }
+            ],
+            "at": "2026-11-07T09:00:12.040Z"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:10.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:12.040Z",
+            "turnSince": "2026-11-07T09:00:10.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 2,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 0
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "git-status",
+          "sessionId": "demo-willow",
+          "branch": "main",
+          "dirtyCount": 3,
+          "files": [
+            "src/notes.ts",
+            "src/notes.test.ts",
+            "src/notes-legacy.ts"
+          ],
+          "ahead": 2,
+          "behind": 0,
+          "fileKinds": {
+            "added": 1,
+            "modified": 1,
+            "deleted": 1
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            },
+            {
+              "path": "src/notes.test.ts",
+              "kind": "added",
+              "linesAdded": 9,
+              "linesDeleted": 0
+            },
+            {
+              "path": "src/notes-legacy.ts",
+              "kind": "deleted",
+              "linesAdded": 0,
+              "linesDeleted": 4
+            }
+          ]
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "running",
+            "stateSince": "2026-11-07T09:00:10.000Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:12.040Z",
+            "turnSince": "2026-11-07T09:00:10.000Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 3,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 1
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "state",
+          "sessionId": "demo-willow",
+          "state": "waiting-input",
+          "since": "2026-11-07T09:00:12.440Z"
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-input",
+            "stateSince": "2026-11-07T09:00:12.440Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:12.440Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 3,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 1
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-input",
+            "stateSince": "2026-11-07T09:00:12.440Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:12.440Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 3,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 1
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 12800,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 12800,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        },
+        {
+          "type": "usage",
+          "sessionId": "demo-willow",
+          "contextTokens": 25600,
+          "contextLimit": 200000
+        },
+        {
+          "type": "session-changed",
+          "session": {
+            "id": "demo-willow",
+            "cwd": "/Users/demo/Projects/willow",
+            "title": "willow",
+            "state": "waiting-input",
+            "stateSince": "2026-11-07T09:00:12.440Z",
+            "createdAt": "2026-11-07T08:48:00.000Z",
+            "lastActivityAt": "2026-11-07T09:00:12.440Z",
+            "paneId": "w0:demo-willow",
+            "launchedByRarog": true,
+            "herdrMode": "auto",
+            "label": "zapis notatek",
+            "branch": "main",
+            "dirtyCount": 3,
+            "ahead": 2,
+            "behind": 0,
+            "fileKinds": {
+              "added": 1,
+              "modified": 1,
+              "deleted": 1
+            },
+            "lastCommit": {
+              "hash": "3f9a2c1",
+              "subject": "feat(notes): zapis notatki po każdej zmianie",
+              "at": "2026-09-03T08:12:00.000Z"
+            },
+            "usage": {
+              "contextTokens": 25600,
+              "contextLimit": 200000
+            },
+            "context": {
+              "kind": "known",
+              "tokens": 25600,
+              "limit": 200000,
+              "source": "model"
+            },
+            "lastSummary": "Zmiana wprowadzona, testy przechodzą.",
+            "model": "claude-fable-5-1",
+            "effort": "high"
+          }
+        }
+      ]
+    }
+  },
+  "driver": {
+    "limit": [
+      {
+        "type": "init",
+        "engineSessionId": "mock-engine-session",
+        "model": "claude-fable-5-1"
+      },
+      {
+        "type": "limit-reached",
+        "resetAt": "1970-01-01T02:00:00.400Z"
+      }
+    ],
+    "błąd": [
+      {
+        "type": "init",
+        "engineSessionId": "mock-engine-session",
+        "model": "claude-fable-5-1"
+      },
+      {
+        "type": "exit",
+        "ok": false,
+        "reason": {
+          "text": "the engine finished with an error",
+          "ref": {
+            "code": "state.driver-error"
+          }
+        }
+      }
+    ],
+    "blad": [
+      {
+        "type": "init",
+        "engineSessionId": "mock-engine-session",
+        "model": "claude-fable-5-1"
+      },
+      {
+        "type": "exit",
+        "ok": false,
+        "reason": {
+          "text": "the engine finished with an error",
+          "ref": {
+            "code": "state.driver-error"
+          }
+        }
+      }
+    ],
+    "zwykłe zdanie": [
+      [
+        {
+          "type": "init",
+          "engineSessionId": "mock-engine-session",
+          "model": "claude-fable-5-1"
+        }
+      ],
+      [
+        {
+          "type": "activity",
+          "kind": "thinking"
+        },
+        {
+          "type": "delta",
+          "text": "## Plan\n\nZaczynam od najcieńszej warstwy, "
+        },
+        {
+          "type": "delta",
+          "text": "żeby test złapał regresję zanim "
+        },
+        {
+          "type": "delta",
+          "text": "dotknę reszty:\n\n1. wydzielam czystą funkcję "
+        },
+        {
+          "type": "delta",
+          "text": "z handlera,\n2. dopisuję test na "
+        },
+        {
+          "type": "delta",
+          "text": "przypadek brzegowy (pusty wynik),\n3. dopiero "
+        },
+        {
+          "type": "delta",
+          "text": "potem podmieniam wywołanie w widoku.\n\nPodmiana "
+        },
+        {
+          "type": "delta",
+          "text": "wygląda tak:\n\n```ts\nexport function normalize(input: string): "
+        },
+        {
+          "type": "delta",
+          "text": "string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli "
+        },
+        {
+          "type": "delta",
+          "text": "test przejdzie, zostaje tylko usunięcie "
+        },
+        {
+          "type": "delta",
+          "text": "starej gałęzi `if` i krótki "
+        },
+        {
+          "type": "delta",
+          "text": "commit."
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": {
+                "text": "## Plan\n\nZaczynam od najcieńszej warstwy, żeby test złapał regresję zanim dotknę reszty:\n\n1. wydzielam czystą funkcję z handlera,\n2. dopisuję test na przypadek brzegowy (pusty wynik),\n3. dopiero potem podmieniam wywołanie w widoku.\n\nPodmiana wygląda tak:\n\n```ts\nexport function normalize(input: string): string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli test przejdzie, zostaje tylko usunięcie starej gałęzi `if` i krótki commit."
+              }
+            }
+          ]
+        },
+        {
+          "type": "activity",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool-call",
+              "toolName": "Edit",
+              "summary": "src/notes.ts",
+              "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+              "inputKind": "json"
+            }
+          ]
+        },
+        {
+          "type": "git-status",
+          "branch": "main",
+          "dirtyCount": 1,
+          "files": [
+            "src/notes.ts"
+          ],
+          "fileKinds": {
+            "added": 0,
+            "modified": 1,
+            "deleted": 0
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            }
+          ],
+          "ahead": 2,
+          "behind": 0
+        },
+        {
+          "type": "activity",
+          "kind": "idle"
+        },
+        {
+          "type": "result",
+          "subtype": "success",
+          "summary": "Zmiana wprowadzona, testy przechodzą."
+        },
+        {
+          "type": "usage",
+          "context": {
+            "kind": "known",
+            "tokens": 12800,
+            "limit": 200000,
+            "source": "model"
+          }
+        }
+      ],
+      [
+        {
+          "type": "activity",
+          "kind": "thinking"
+        },
+        {
+          "type": "delta",
+          "text": "## Co znalazłem\n\nBłąd nie jest "
+        },
+        {
+          "type": "delta",
+          "text": "w renderze, tylko w kolejności "
+        },
+        {
+          "type": "delta",
+          "text": "zapisu — stan leci do "
+        },
+        {
+          "type": "delta",
+          "text": "UI, zanim rejestr\nzdąży się zapisać. "
+        },
+        {
+          "type": "delta",
+          "text": "Efekt widać dopiero po restarcie, "
+        },
+        {
+          "type": "delta",
+          "text": "więc łatwo go przegapić.\n\n- zapis "
+        },
+        {
+          "type": "delta",
+          "text": "na dysk jest asynchroniczny,\n- broadcast "
+        },
+        {
+          "type": "delta",
+          "text": "idzie synchronicznie,\n- przy restarcie w "
+        },
+        {
+          "type": "delta",
+          "text": "tym oknie wpis wraca w "
+        },
+        {
+          "type": "delta",
+          "text": "starym stanie.\n\n```ts\nawait store.save();\nbroadcast(sessionChanged(summary));\n```\n\nPoprawka to jedna "
+        },
+        {
+          "type": "delta",
+          "text": "linia kolejności plus test, który "
+        },
+        {
+          "type": "delta",
+          "text": "wymusza zapis przed rozgłoszeniem."
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": {
+                "text": "## Co znalazłem\n\nBłąd nie jest w renderze, tylko w kolejności zapisu — stan leci do UI, zanim rejestr\nzdąży się zapisać. Efekt widać dopiero po restarcie, więc łatwo go przegapić.\n\n- zapis na dysk jest asynchroniczny,\n- broadcast idzie synchronicznie,\n- przy restarcie w tym oknie wpis wraca w starym stanie.\n\n```ts\nawait store.save();\nbroadcast(sessionChanged(summary));\n```\n\nPoprawka to jedna linia kolejności plus test, który wymusza zapis przed rozgłoszeniem."
+              }
+            }
+          ]
+        },
+        {
+          "type": "activity",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool-call",
+              "toolName": "Edit",
+              "summary": "src/notes.test.ts",
+              "detail": "--- src/notes.test.ts\n+++ src/notes.test.ts\n@@\n-  return input;\n+  return input.trim();",
+              "inputKind": "json"
+            }
+          ]
+        },
+        {
+          "type": "git-status",
+          "branch": "main",
+          "dirtyCount": 2,
+          "files": [
+            "src/notes.ts",
+            "src/notes.test.ts"
+          ],
+          "fileKinds": {
+            "added": 1,
+            "modified": 1,
+            "deleted": 0
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            },
+            {
+              "path": "src/notes.test.ts",
+              "kind": "added",
+              "linesAdded": 9,
+              "linesDeleted": 0
+            }
+          ],
+          "ahead": 2,
+          "behind": 0
+        },
+        {
+          "type": "activity",
+          "kind": "idle"
+        },
+        {
+          "type": "result",
+          "subtype": "success",
+          "summary": "Zmiana wprowadzona, testy przechodzą."
+        },
+        {
+          "type": "usage",
+          "context": {
+            "kind": "known",
+            "tokens": 25600,
+            "limit": 200000,
+            "source": "model"
+          }
+        }
+      ],
+      [
+        {
+          "type": "activity",
+          "kind": "thinking"
+        },
+        {
+          "type": "delta",
+          "text": "## Wynik\n\nTesty przechodzą lokalnie, łącznie "
+        },
+        {
+          "type": "delta",
+          "text": "z tym, który wcześniej migotał. "
+        },
+        {
+          "type": "delta",
+          "text": "Wąskim gardłem był\ntimer w teście, "
+        },
+        {
+          "type": "delta",
+          "text": "nie kod produkcyjny — po "
+        },
+        {
+          "type": "delta",
+          "text": "podmianie na zegar wstrzykiwany jest "
+        },
+        {
+          "type": "delta",
+          "text": "stabilnie.\n\n- 34 testy, 0 pominiętych,\n- "
+        },
+        {
+          "type": "delta",
+          "text": "czas: 1,8 s,\n- brak ostrzeżeń "
+        },
+        {
+          "type": "delta",
+          "text": "typów.\n\n```sh\npnpm vitest run server/test\n```\n\nZostawiam podsumowanie "
+        },
+        {
+          "type": "delta",
+          "text": "w commicie i czekam na "
+        },
+        {
+          "type": "delta",
+          "text": "dalsze polecenia."
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": {
+                "text": "## Wynik\n\nTesty przechodzą lokalnie, łącznie z tym, który wcześniej migotał. Wąskim gardłem był\ntimer w teście, nie kod produkcyjny — po podmianie na zegar wstrzykiwany jest stabilnie.\n\n- 34 testy, 0 pominiętych,\n- czas: 1,8 s,\n- brak ostrzeżeń typów.\n\n```sh\npnpm vitest run server/test\n```\n\nZostawiam podsumowanie w commicie i czekam na dalsze polecenia."
+              }
+            }
+          ]
+        },
+        {
+          "type": "activity",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool-call",
+              "toolName": "Edit",
+              "summary": "src/notes-legacy.ts",
+              "detail": "--- src/notes-legacy.ts\n+++ src/notes-legacy.ts\n@@\n-  return input;\n+  return input.trim();",
+              "inputKind": "json"
+            }
+          ]
+        },
+        {
+          "type": "git-status",
+          "branch": "main",
+          "dirtyCount": 3,
+          "files": [
+            "src/notes.ts",
+            "src/notes.test.ts",
+            "src/notes-legacy.ts"
+          ],
+          "fileKinds": {
+            "added": 1,
+            "modified": 1,
+            "deleted": 1
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            },
+            {
+              "path": "src/notes.test.ts",
+              "kind": "added",
+              "linesAdded": 9,
+              "linesDeleted": 0
+            },
+            {
+              "path": "src/notes-legacy.ts",
+              "kind": "deleted",
+              "linesAdded": 0,
+              "linesDeleted": 4
+            }
+          ],
+          "ahead": 2,
+          "behind": 0
+        },
+        {
+          "type": "activity",
+          "kind": "idle"
+        },
+        {
+          "type": "result",
+          "subtype": "success",
+          "summary": "Zmiana wprowadzona, testy przechodzą."
+        },
+        {
+          "type": "usage",
+          "context": {
+            "kind": "known",
+            "tokens": 38400,
+            "limit": 200000,
+            "source": "model"
+          }
+        }
+      ]
+    ],
+    "pytanie": {
+      "request": [
+        {
+          "type": "init",
+          "engineSessionId": "mock-engine-session",
+          "model": "claude-fable-5-1"
+        },
+        {
+          "type": "question-request",
+          "reqId": "q-mock-engine-session-1",
+          "questions": [
+            {
+              "question": "Jak zapisujemy rejestr sesji?",
+              "header": "Zapis",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "JSON + rename",
+                  "description": "Zapis atomowy, zero zależności."
+                },
+                {
+                  "label": "SQLite",
+                  "description": "Transakcje, ale nowa zależność natywna."
+                }
+              ]
+            },
+            {
+              "question": "Które testy dopisać przy okazji?",
+              "header": "Testy",
+              "multiSelect": true,
+              "options": [
+                {
+                  "label": "Jednostkowe",
+                  "description": "Czyste funkcje i parser."
+                },
+                {
+                  "label": "Integracyjne",
+                  "description": "Manager na mock-driverze."
+                },
+                {
+                  "label": "Property-based",
+                  "description": "Maszyna stanów na losowych ciągach."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "outcome": {
+        "kind": "applied"
+      },
+      "after": [
+        {
+          "type": "activity",
+          "kind": "thinking"
+        },
+        {
+          "type": "delta",
+          "text": "## Plan\n\nZaczynam od najcieńszej warstwy, "
+        },
+        {
+          "type": "delta",
+          "text": "żeby test złapał regresję zanim "
+        },
+        {
+          "type": "delta",
+          "text": "dotknę reszty:\n\n1. wydzielam czystą funkcję "
+        },
+        {
+          "type": "delta",
+          "text": "z handlera,\n2. dopisuję test na "
+        },
+        {
+          "type": "delta",
+          "text": "przypadek brzegowy (pusty wynik),\n3. dopiero "
+        },
+        {
+          "type": "delta",
+          "text": "potem podmieniam wywołanie w widoku.\n\nPodmiana "
+        },
+        {
+          "type": "delta",
+          "text": "wygląda tak:\n\n```ts\nexport function normalize(input: string): "
+        },
+        {
+          "type": "delta",
+          "text": "string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli "
+        },
+        {
+          "type": "delta",
+          "text": "test przejdzie, zostaje tylko usunięcie "
+        },
+        {
+          "type": "delta",
+          "text": "starej gałęzi `if` i krótki "
+        },
+        {
+          "type": "delta",
+          "text": "commit."
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": {
+                "text": "## Plan\n\nZaczynam od najcieńszej warstwy, żeby test złapał regresję zanim dotknę reszty:\n\n1. wydzielam czystą funkcję z handlera,\n2. dopisuję test na przypadek brzegowy (pusty wynik),\n3. dopiero potem podmieniam wywołanie w widoku.\n\nPodmiana wygląda tak:\n\n```ts\nexport function normalize(input: string): string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli test przejdzie, zostaje tylko usunięcie starej gałęzi `if` i krótki commit."
+              }
+            }
+          ]
+        },
+        {
+          "type": "activity",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool-call",
+              "toolName": "Edit",
+              "summary": "src/notes.ts",
+              "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+              "inputKind": "json"
+            }
+          ]
+        },
+        {
+          "type": "git-status",
+          "branch": "main",
+          "dirtyCount": 1,
+          "files": [
+            "src/notes.ts"
+          ],
+          "fileKinds": {
+            "added": 0,
+            "modified": 1,
+            "deleted": 0
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            }
+          ],
+          "ahead": 2,
+          "behind": 0
+        },
+        {
+          "type": "activity",
+          "kind": "idle"
+        },
+        {
+          "type": "result",
+          "subtype": "success",
+          "summary": "Zmiana wprowadzona, testy przechodzą."
+        },
+        {
+          "type": "usage",
+          "context": {
+            "kind": "known",
+            "tokens": 12800,
+            "limit": 200000,
+            "source": "model"
+          }
+        }
+      ]
+    },
+    "czerwone allow": {
+      "request": [
+        {
+          "type": "init",
+          "engineSessionId": "mock-engine-session",
+          "model": "claude-fable-5-1"
+        },
+        {
+          "type": "permission-request",
+          "reqId": "p-mock-engine-session-1",
+          "toolName": "Bash",
+          "input": {
+            "command": "rm -rf ./dist && git push --force origin main"
+          },
+          "displayText": "rm -rf ./dist && git push --force origin main"
+        }
+      ],
+      "outcome": {
+        "kind": "applied"
+      },
+      "after": [
+        {
+          "type": "activity",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool-call",
+              "toolName": "Edit",
+              "summary": "src/notes.ts",
+              "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+              "inputKind": "json"
+            }
+          ]
+        },
+        {
+          "type": "activity",
+          "kind": "thinking"
+        },
+        {
+          "type": "git-status",
+          "branch": "main",
+          "dirtyCount": 1,
+          "files": [
+            "src/notes.ts"
+          ],
+          "fileKinds": {
+            "added": 0,
+            "modified": 1,
+            "deleted": 0
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            }
+          ],
+          "ahead": 2,
+          "behind": 0
+        },
+        {
+          "type": "delta",
+          "text": "## Plan\n\nZaczynam od najcieńszej warstwy, "
+        },
+        {
+          "type": "delta",
+          "text": "żeby test złapał regresję zanim "
+        },
+        {
+          "type": "delta",
+          "text": "dotknę reszty:\n\n1. wydzielam czystą funkcję "
+        },
+        {
+          "type": "delta",
+          "text": "z handlera,\n2. dopisuję test na "
+        },
+        {
+          "type": "delta",
+          "text": "przypadek brzegowy (pusty wynik),\n3. dopiero "
+        },
+        {
+          "type": "delta",
+          "text": "potem podmieniam wywołanie w widoku.\n\nPodmiana "
+        },
+        {
+          "type": "delta",
+          "text": "wygląda tak:\n\n```ts\nexport function normalize(input: string): "
+        },
+        {
+          "type": "delta",
+          "text": "string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli "
+        },
+        {
+          "type": "delta",
+          "text": "test przejdzie, zostaje tylko usunięcie "
+        },
+        {
+          "type": "delta",
+          "text": "starej gałęzi `if` i krótki "
+        },
+        {
+          "type": "delta",
+          "text": "commit."
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": {
+                "text": "## Plan\n\nZaczynam od najcieńszej warstwy, żeby test złapał regresję zanim dotknę reszty:\n\n1. wydzielam czystą funkcję z handlera,\n2. dopisuję test na przypadek brzegowy (pusty wynik),\n3. dopiero potem podmieniam wywołanie w widoku.\n\nPodmiana wygląda tak:\n\n```ts\nexport function normalize(input: string): string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli test przejdzie, zostaje tylko usunięcie starej gałęzi `if` i krótki commit."
+              }
+            }
+          ]
+        },
+        {
+          "type": "activity",
+          "kind": "tool",
+          "toolName": "Edit"
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "tool-call",
+              "toolName": "Edit",
+              "summary": "src/notes.ts",
+              "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+              "inputKind": "json"
+            }
+          ]
+        },
+        {
+          "type": "git-status",
+          "branch": "main",
+          "dirtyCount": 2,
+          "files": [
+            "src/notes.ts",
+            "src/notes.test.ts"
+          ],
+          "fileKinds": {
+            "added": 1,
+            "modified": 1,
+            "deleted": 0
+          },
+          "lastCommit": {
+            "hash": "3f9a2c1",
+            "subject": "feat(notes): zapis notatki po każdej zmianie",
+            "at": "2026-09-03T08:12:00.000Z"
+          },
+          "fileDetails": [
+            {
+              "path": "src/notes.ts",
+              "kind": "modified",
+              "linesAdded": 2,
+              "linesDeleted": 2
+            },
+            {
+              "path": "src/notes.test.ts",
+              "kind": "added",
+              "linesAdded": 9,
+              "linesDeleted": 0
+            }
+          ],
+          "ahead": 2,
+          "behind": 0
+        },
+        {
+          "type": "activity",
+          "kind": "idle"
+        },
+        {
+          "type": "result",
+          "subtype": "success",
+          "summary": "Zmiana wprowadzona, testy przechodzą."
+        },
+        {
+          "type": "usage",
+          "context": {
+            "kind": "known",
+            "tokens": 12800,
+            "limit": 200000,
+            "source": "model"
+          }
+        }
+      ]
+    },
+    "czerwone deny": {
+      "request": [
+        {
+          "type": "init",
+          "engineSessionId": "mock-engine-session",
+          "model": "claude-fable-5-1"
+        },
+        {
+          "type": "permission-request",
+          "reqId": "p-mock-engine-session-1",
+          "toolName": "Bash",
+          "input": {
+            "command": "rm -rf ./dist && git push --force origin main"
+          },
+          "displayText": "rm -rf ./dist && git push --force origin main"
+        }
+      ],
+      "outcome": {
+        "kind": "applied"
+      },
+      "after": [
+        {
+          "type": "message",
+          "role": "assistant",
+          "blocks": [
+            {
+              "type": "text",
+              "text": {
+                "text": "Nie wykonuję tej komendy — odmowa przyjęta. Czekam na dalsze polecenia."
+              }
+            }
+          ]
+        },
+        {
+          "type": "activity",
+          "kind": "idle"
+        },
+        {
+          "type": "result",
+          "subtype": "success",
+          "summary": "Komenda odrzucona przez użytkownika."
+        },
+        {
+          "type": "usage",
+          "context": {
+            "kind": "known",
+            "tokens": 12800,
+            "limit": 200000,
+            "source": "model"
+          }
+        }
+      ]
+    },
+    "obrazki 1": [
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "Dostałem 1 obrazek — odbijam, żeby było widać, co przyszło:"
+            }
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 1"
+          }
+        ]
+      },
+      {
+        "type": "activity",
+        "kind": "thinking"
+      },
+      {
+        "type": "delta",
+        "text": "## Plan\n\nZaczynam od najcieńszej warstwy, "
+      },
+      {
+        "type": "delta",
+        "text": "żeby test złapał regresję zanim "
+      },
+      {
+        "type": "delta",
+        "text": "dotknę reszty:\n\n1. wydzielam czystą funkcję "
+      },
+      {
+        "type": "delta",
+        "text": "z handlera,\n2. dopisuję test na "
+      },
+      {
+        "type": "delta",
+        "text": "przypadek brzegowy (pusty wynik),\n3. dopiero "
+      },
+      {
+        "type": "delta",
+        "text": "potem podmieniam wywołanie w widoku.\n\nPodmiana "
+      },
+      {
+        "type": "delta",
+        "text": "wygląda tak:\n\n```ts\nexport function normalize(input: string): "
+      },
+      {
+        "type": "delta",
+        "text": "string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli "
+      },
+      {
+        "type": "delta",
+        "text": "test przejdzie, zostaje tylko usunięcie "
+      },
+      {
+        "type": "delta",
+        "text": "starej gałęzi `if` i krótki "
+      },
+      {
+        "type": "delta",
+        "text": "commit."
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "## Plan\n\nZaczynam od najcieńszej warstwy, żeby test złapał regresję zanim dotknę reszty:\n\n1. wydzielam czystą funkcję z handlera,\n2. dopisuję test na przypadek brzegowy (pusty wynik),\n3. dopiero potem podmieniam wywołanie w widoku.\n\nPodmiana wygląda tak:\n\n```ts\nexport function normalize(input: string): string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli test przejdzie, zostaje tylko usunięcie starej gałęzi `if` i krótki commit."
+            }
+          }
+        ]
+      },
+      {
+        "type": "activity",
+        "kind": "tool",
+        "toolName": "Edit"
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "tool-call",
+            "toolName": "Edit",
+            "summary": "src/notes.ts",
+            "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+            "inputKind": "json"
+          }
+        ]
+      },
+      {
+        "type": "git-status",
+        "branch": "main",
+        "dirtyCount": 1,
+        "files": [
+          "src/notes.ts"
+        ],
+        "fileKinds": {
+          "added": 0,
+          "modified": 1,
+          "deleted": 0
+        },
+        "lastCommit": {
+          "hash": "3f9a2c1",
+          "subject": "feat(notes): zapis notatki po każdej zmianie",
+          "at": "2026-09-03T08:12:00.000Z"
+        },
+        "fileDetails": [
+          {
+            "path": "src/notes.ts",
+            "kind": "modified",
+            "linesAdded": 2,
+            "linesDeleted": 2
+          }
+        ],
+        "ahead": 2,
+        "behind": 0
+      },
+      {
+        "type": "activity",
+        "kind": "idle"
+      },
+      {
+        "type": "result",
+        "subtype": "success",
+        "summary": "Zmiana wprowadzona, testy przechodzą."
+      },
+      {
+        "type": "usage",
+        "context": {
+          "kind": "known",
+          "tokens": 12800,
+          "limit": 200000,
+          "source": "model"
+        }
+      }
+    ],
+    "obrazki 2": [
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "Dostałem 2 obrazki — odbijam, żeby było widać, co przyszło:"
+            }
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 1"
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 2"
+          }
+        ]
+      },
+      {
+        "type": "activity",
+        "kind": "thinking"
+      },
+      {
+        "type": "delta",
+        "text": "## Plan\n\nZaczynam od najcieńszej warstwy, "
+      },
+      {
+        "type": "delta",
+        "text": "żeby test złapał regresję zanim "
+      },
+      {
+        "type": "delta",
+        "text": "dotknę reszty:\n\n1. wydzielam czystą funkcję "
+      },
+      {
+        "type": "delta",
+        "text": "z handlera,\n2. dopisuję test na "
+      },
+      {
+        "type": "delta",
+        "text": "przypadek brzegowy (pusty wynik),\n3. dopiero "
+      },
+      {
+        "type": "delta",
+        "text": "potem podmieniam wywołanie w widoku.\n\nPodmiana "
+      },
+      {
+        "type": "delta",
+        "text": "wygląda tak:\n\n```ts\nexport function normalize(input: string): "
+      },
+      {
+        "type": "delta",
+        "text": "string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli "
+      },
+      {
+        "type": "delta",
+        "text": "test przejdzie, zostaje tylko usunięcie "
+      },
+      {
+        "type": "delta",
+        "text": "starej gałęzi `if` i krótki "
+      },
+      {
+        "type": "delta",
+        "text": "commit."
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "## Plan\n\nZaczynam od najcieńszej warstwy, żeby test złapał regresję zanim dotknę reszty:\n\n1. wydzielam czystą funkcję z handlera,\n2. dopisuję test na przypadek brzegowy (pusty wynik),\n3. dopiero potem podmieniam wywołanie w widoku.\n\nPodmiana wygląda tak:\n\n```ts\nexport function normalize(input: string): string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli test przejdzie, zostaje tylko usunięcie starej gałęzi `if` i krótki commit."
+            }
+          }
+        ]
+      },
+      {
+        "type": "activity",
+        "kind": "tool",
+        "toolName": "Edit"
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "tool-call",
+            "toolName": "Edit",
+            "summary": "src/notes.ts",
+            "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+            "inputKind": "json"
+          }
+        ]
+      },
+      {
+        "type": "git-status",
+        "branch": "main",
+        "dirtyCount": 1,
+        "files": [
+          "src/notes.ts"
+        ],
+        "fileKinds": {
+          "added": 0,
+          "modified": 1,
+          "deleted": 0
+        },
+        "lastCommit": {
+          "hash": "3f9a2c1",
+          "subject": "feat(notes): zapis notatki po każdej zmianie",
+          "at": "2026-09-03T08:12:00.000Z"
+        },
+        "fileDetails": [
+          {
+            "path": "src/notes.ts",
+            "kind": "modified",
+            "linesAdded": 2,
+            "linesDeleted": 2
+          }
+        ],
+        "ahead": 2,
+        "behind": 0
+      },
+      {
+        "type": "activity",
+        "kind": "idle"
+      },
+      {
+        "type": "result",
+        "subtype": "success",
+        "summary": "Zmiana wprowadzona, testy przechodzą."
+      },
+      {
+        "type": "usage",
+        "context": {
+          "kind": "known",
+          "tokens": 12800,
+          "limit": 200000,
+          "source": "model"
+        }
+      }
+    ],
+    "obrazki 5": [
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "Dostałem 5 obrazków — odbijam, żeby było widać, co przyszło:"
+            }
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 1"
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 2"
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 3"
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 4"
+          },
+          {
+            "type": "image",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+            "alt": "Załącznik 5"
+          }
+        ]
+      },
+      {
+        "type": "activity",
+        "kind": "thinking"
+      },
+      {
+        "type": "delta",
+        "text": "## Plan\n\nZaczynam od najcieńszej warstwy, "
+      },
+      {
+        "type": "delta",
+        "text": "żeby test złapał regresję zanim "
+      },
+      {
+        "type": "delta",
+        "text": "dotknę reszty:\n\n1. wydzielam czystą funkcję "
+      },
+      {
+        "type": "delta",
+        "text": "z handlera,\n2. dopisuję test na "
+      },
+      {
+        "type": "delta",
+        "text": "przypadek brzegowy (pusty wynik),\n3. dopiero "
+      },
+      {
+        "type": "delta",
+        "text": "potem podmieniam wywołanie w widoku.\n\nPodmiana "
+      },
+      {
+        "type": "delta",
+        "text": "wygląda tak:\n\n```ts\nexport function normalize(input: string): "
+      },
+      {
+        "type": "delta",
+        "text": "string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli "
+      },
+      {
+        "type": "delta",
+        "text": "test przejdzie, zostaje tylko usunięcie "
+      },
+      {
+        "type": "delta",
+        "text": "starej gałęzi `if` i krótki "
+      },
+      {
+        "type": "delta",
+        "text": "commit."
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "## Plan\n\nZaczynam od najcieńszej warstwy, żeby test złapał regresję zanim dotknę reszty:\n\n1. wydzielam czystą funkcję z handlera,\n2. dopisuję test na przypadek brzegowy (pusty wynik),\n3. dopiero potem podmieniam wywołanie w widoku.\n\nPodmiana wygląda tak:\n\n```ts\nexport function normalize(input: string): string {\n  return input.trim().toLowerCase();\n}\n```\n\nJeśli test przejdzie, zostaje tylko usunięcie starej gałęzi `if` i krótki commit."
+            }
+          }
+        ]
+      },
+      {
+        "type": "activity",
+        "kind": "tool",
+        "toolName": "Edit"
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "tool-call",
+            "toolName": "Edit",
+            "summary": "src/notes.ts",
+            "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  return input;\n+  return input.trim();",
+            "inputKind": "json"
+          }
+        ]
+      },
+      {
+        "type": "git-status",
+        "branch": "main",
+        "dirtyCount": 1,
+        "files": [
+          "src/notes.ts"
+        ],
+        "fileKinds": {
+          "added": 0,
+          "modified": 1,
+          "deleted": 0
+        },
+        "lastCommit": {
+          "hash": "3f9a2c1",
+          "subject": "feat(notes): zapis notatki po każdej zmianie",
+          "at": "2026-09-03T08:12:00.000Z"
+        },
+        "fileDetails": [
+          {
+            "path": "src/notes.ts",
+            "kind": "modified",
+            "linesAdded": 2,
+            "linesDeleted": 2
+          }
+        ],
+        "ahead": 2,
+        "behind": 0
+      },
+      {
+        "type": "activity",
+        "kind": "idle"
+      },
+      {
+        "type": "result",
+        "subtype": "success",
+        "summary": "Zmiana wprowadzona, testy przechodzą."
+      },
+      {
+        "type": "usage",
+        "context": {
+          "kind": "known",
+          "tokens": 12800,
+          "limit": 200000,
+          "source": "model"
+        }
+      }
+    ],
+    "streaming": [
+      {
+        "type": "init",
+        "engineSessionId": "mock-engine-session",
+        "model": "claude-fable-5-1"
+      },
+      {
+        "type": "delta",
+        "text": "### Przeglądam moduł sesji\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Manager trzyma ring buffer per sesja, "
+      },
+      {
+        "type": "delta",
+        "text": "więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. "
+      },
+      {
+        "type": "delta",
+        "text": "Delty są ulotne — nie dostają `id`, "
+      },
+      {
+        "type": "delta",
+        "text": "przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "- stan liczy wyłącznie serwer,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- klient jest w pełni odtwarzalny,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- pending decyzje żyją w RAM.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "```ts\nconst seq = ring.push(event);\n```\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Następny krok to domknięcie testu integracyjnego na mock-driverze.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "### Przeglądam moduł sesji\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Manager trzyma ring buffer per sesja, "
+      },
+      {
+        "type": "delta",
+        "text": "więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. "
+      },
+      {
+        "type": "delta",
+        "text": "Delty są ulotne — nie dostają `id`, "
+      },
+      {
+        "type": "delta",
+        "text": "przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "- stan liczy wyłącznie serwer,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- klient jest w pełni odtwarzalny,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- pending decyzje żyją w RAM.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "```ts\nconst seq = ring.push(event);\n```\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Następny krok to domknięcie testu integracyjnego na mock-driverze.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "### Przeglądam moduł sesji\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Manager trzyma ring buffer per sesja, "
+      },
+      {
+        "type": "delta",
+        "text": "więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. "
+      },
+      {
+        "type": "delta",
+        "text": "Delty są ulotne — nie dostają `id`, "
+      },
+      {
+        "type": "delta",
+        "text": "przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "- stan liczy wyłącznie serwer,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- klient jest w pełni odtwarzalny,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- pending decyzje żyją w RAM.\n\n"
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "### Przeglądam moduł sesji\n\nManager trzyma ring buffer per sesja, więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. Delty są ulotne — nie dostają `id`, przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n- stan liczy wyłącznie serwer,\n- klient jest w pełni odtwarzalny,\n- pending decyzje żyją w RAM.\n\n```ts\nconst seq = ring.push(event);\n```\n\nNastępny krok to domknięcie testu integracyjnego na mock-driverze.\n\n### Przeglądam moduł sesji\n\nManager trzyma ring buffer per sesja, więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. Delty są ulotne — nie dostają `id`, przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n- stan liczy wyłącznie serwer,\n- klient jest w pełni odtwarzalny,\n- pending decyzje żyją w RAM.\n\n```ts\nconst seq = ring.push(event);\n```\n\nNastępny krok to domknięcie testu integracyjnego na mock-driverze.\n\n### Przeglądam moduł sesji\n\nManager trzyma ring buffer per sesja, więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. Delty są ulotne — nie dostają `id`, przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n- stan liczy wyłącznie serwer,\n- klient jest w pełni odtwarzalny,\n- pending decyzje żyją w RAM.\n\n"
+            }
+          }
+        ]
+      },
+      {
+        "type": "delta",
+        "text": "```ts\nconst seq = ring.push(event);\n```\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Następny krok to domknięcie testu integracyjnego na mock-driverze.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "### Przeglądam moduł sesji\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Manager trzyma ring buffer per sesja, "
+      },
+      {
+        "type": "delta",
+        "text": "więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. "
+      },
+      {
+        "type": "delta",
+        "text": "Delty są ulotne — nie dostają `id`, "
+      },
+      {
+        "type": "delta",
+        "text": "przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "- stan liczy wyłącznie serwer,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- klient jest w pełni odtwarzalny,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- pending decyzje żyją w RAM.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "```ts\nconst seq = ring.push(event);\n```\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Następny krok to domknięcie testu integracyjnego na mock-driverze.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "### Przeglądam moduł sesji\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Manager trzyma ring buffer per sesja, "
+      },
+      {
+        "type": "delta",
+        "text": "więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. "
+      },
+      {
+        "type": "delta",
+        "text": "Delty są ulotne — nie dostają `id`, "
+      },
+      {
+        "type": "delta",
+        "text": "przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "- stan liczy wyłącznie serwer,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- klient jest w pełni odtwarzalny,\n"
+      },
+      {
+        "type": "delta",
+        "text": "- pending decyzje żyją w RAM.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "```ts\nconst seq = ring.push(event);\n```\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Następny krok to domknięcie testu integracyjnego na mock-driverze.\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "### Przeglądam moduł sesji\n\n"
+      },
+      {
+        "type": "delta",
+        "text": "Manager trzyma ring buffer per sesja, "
+      },
+      {
+        "type": "delta",
+        "text": "więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. "
+      },
+      {
+        "type": "delta",
+        "text": "Delty są ulotne — nie dostają `id`, "
+      },
+      {
+        "type": "delta",
+        "text": "przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n"
+      },
+      {
+        "type": "message",
+        "role": "assistant",
+        "blocks": [
+          {
+            "type": "text",
+            "text": {
+              "text": "```ts\nconst seq = ring.push(event);\n```\n\nNastępny krok to domknięcie testu integracyjnego na mock-driverze.\n\n### Przeglądam moduł sesji\n\nManager trzyma ring buffer per sesja, więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. Delty są ulotne — nie dostają `id`, przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n- stan liczy wyłącznie serwer,\n- klient jest w pełni odtwarzalny,\n- pending decyzje żyją w RAM.\n\n```ts\nconst seq = ring.push(event);\n```\n\nNastępny krok to domknięcie testu integracyjnego na mock-driverze.\n\n### Przeglądam moduł sesji\n\nManager trzyma ring buffer per sesja, więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. Delty są ulotne — nie dostają `id`, przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n- stan liczy wyłącznie serwer,\n- klient jest w pełni odtwarzalny,\n- pending decyzje żyją w RAM.\n\n```ts\nconst seq = ring.push(event);\n```\n\nNastępny krok to domknięcie testu integracyjnego na mock-driverze.\n\n### Przeglądam moduł sesji\n\nManager trzyma ring buffer per sesja, więc `Last-Event-ID` wraca dokładnie do ostatniej domkniętej wiadomości. Delty są ulotne — nie dostają `id`, przez co reconnect nie próbuje odtworzyć połowy zdania.\n\n"
+            }
+          }
+        ]
+      },
+      {
+        "type": "delta",
+        "text": "- stan liczy wyłącznie serwer,\n"
+      }
+    ]
+  }
+}

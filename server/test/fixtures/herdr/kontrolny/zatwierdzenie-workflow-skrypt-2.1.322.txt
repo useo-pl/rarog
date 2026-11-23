@@ -1,0 +1,37 @@
+
+ ▐▛███▛█▄╱✦  Claude Code v2.1.322
+▝▜██████▘    Opus 5.5 with xhigh effort · API Usage Billing
+ ▝▝   ▝▝     ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: workflow.
+
+  Thought for 1s
+
+⏺ Workflow(Measure the workflow approval dialog)
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Run a dynamic workflow?
+
+  Measure the workflow approval dialog
+
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+    1 export const meta = {
+    2   name: 'control-set-probe',
+    3   description: 'Measure the workflow approval dialog',
+    4   phases: [{ title: 'Check', detail: 'One agent answers with one word' }, { title: 'Report' }],
+    5 }
+    6 const a = await agent('Answer with one word: done.', { label: 'check', phase: 'Check' })
+    7 const b = await agent('Answer with one word: ok.', { label: 'report', phase: 'Report' })
+    8 return { a, b }
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+
+  Dynamic workflows can use a lot of tokens quickly by running many subagents in parallel — which counts against your
+  usage limit. Stop a running workflow at any time with /workflows, or disable dynamic workflows in /config.
+
+  ❯ 1. Yes, run it
+    2. View workflow summary
+    3. No
+
+  Esc to cancel · Tab to amend
+  ctrl+g to edit script in $EDITOR

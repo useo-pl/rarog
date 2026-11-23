@@ -1,0 +1,38 @@
+{
+  "files": [
+    {
+      "path": "src/notes.ts",
+      "status": "M",
+      "linesAdded": 2,
+      "linesDeleted": 2
+    },
+    {
+      "path": "src/new-name.ts",
+      "status": "M",
+      "linesAdded": 1,
+      "linesDeleted": 0
+    },
+    {
+      "path": "assets/logo.png",
+      "status": "M",
+      "binary": true
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "status": "M",
+      "linesAdded": 120,
+      "linesDeleted": 80
+    },
+    {
+      "path": "src/notes-legacy.ts",
+      "status": "D",
+      "linesAdded": 0,
+      "linesDeleted": 4
+    },
+    {
+      "path": "docs/nowy plik.md",
+      "status": "A"
+    }
+  ],
+  "truncated": true
+}

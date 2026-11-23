@@ -1,0 +1,48 @@
+ │ open(path,'w').write(text)
+ │ EOF
+ │ xcrun xcodebuild build-for-testing -project Demo.xcodeproj
+ │ -scheme Demo -destination 'platform=iOS
+ │ Simulator,id=00000000-0000-4000-8000-000000000001'
+ │ -derivedDataPath .build/DerivedData >
+ │ .build/demo-build.log 2>&1; echo rc=$?; rm -rf
+ │ .build/results/demo.xcresult; xcrun xcodebuild
+ │ test-without-building -project Demo.xcodeproj -scheme Demo
+ │ -destination 'platform=iOS
+ │ Simulator,id=00000000-0000-4000-8000-000000000001'
+ │ -derivedDataPath .build/DerivedData
+ │ -collect-test-diagnostics never -resultBundlePath
+ │ .build/results/demo.xcresult -only-testing:DemoUITests/Scr
+ │ eenshotFlowTests/testIndexScreen > .build/demo-test.log
+ │ 2>&1; echo rc=$?; mkdir -p .build/shots/raw; xcrun
+ │ xcresulttool export attachments --path
+ │ .build/results/demo.xcresult --output-path
+ │ .build/shots/raw >/dev/null 2>&1; rm -f
+ │ .build/shots/old-index.png; python3 - <<'EOF'
+ │ import json,os,shutil
+ │ src='.build/shots/raw'
+ │ manifest=json.load(open(os.path.join(src,'manifest.json'))
+ │ )
+ │ saved=[]
+ │ for test in manifest:
+ │   for item in test.get('attachments',[]):
+ │     label=item.get('suggestedHumanReadableName','')
+ │     file=item['exportedFileName']
+ │     if file.endswith('.png'):
+ │       name=label.split('_0_')[0]
+ │       shutil.copy(os.path.join(src,file),
+ │ os.path.join('.build/shots', name + '.png'))
+ │       saved.append(name)
+ │ print(sorted(saved))
+ │ EOF
+ │ rm -r .build/shots/raw
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ A variable in this command can't be checked before it runs
+ Ask rule Bash(rm -rf *) overrides auto mode for this
+ command.
+ /permissions to let auto mode decide
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend · ctrl+x ctrl+k twice to stop …

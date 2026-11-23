@@ -1,0 +1,921 @@
+{
+  "_comment": [
+    "Kontrakt rejestru relaya iroh /v1/* (shared/src/relay-auth.ts, relay-auth/README.md). Czytają go",
+    "shared/test/relay-auth.test.ts i RelayAuthWireTests (RarogContract). Klucz testowy ma syntetyczne ziarno (bajt",
+    "0x07 powtórzony 32 razy), nie sekret; endpointId to jego klucz publiczny. Serwery to syntetyczne EndpointId",
+    "(powtórzony bajt), token DeviceCheck to syntetyczny base64 o powtórzonym wzorze, token APNs to powtórzony wzór",
+    "hex, bearery mówią TEST-ONLY wprost. requests: przypadek z signingText jest poprawny (podpis",
+    "sig kluczem testowym nad bajtami signingBytes), przypadek z field jest odrzucony na tym polu. Wartości są",
+    "wpisane przez generator poza repo, który składa tekst do podpisu niezależnie od modułu kontraktu.",
+    "registries: relay iroh (postać kanoniczna r=) → origin Workera rejestru, który go pilnuje; relay spoza mapy nie",
+    "ma rejestru. Zgodność z relay-vps/access-adapter.conf i relay-auth/wrangler.toml: server/test/relay-auth-mapa.test.ts."
+  ],
+  "key": {
+    "source": "syntetyczne ziarno testowe: bajt 0x07 powtórzony 32 razy",
+    "secretKey": "0707070707070707070707070707070707070707070707070707070707070707",
+    "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c"
+  },
+  "registries": {
+    "https://relay.rarog.ai/": "https://relay-auth.rarog.ai"
+  },
+  "paths": {
+    "register": "/v1/app/register",
+    "renew": "/v1/app/renew",
+    "sponsor": "/v1/app/sponsor",
+    "forget": "/v1/app/forget",
+    "deny": "/v1/admin/deny",
+    "allow": "/v1/admin/allow",
+    "health": "/v1/health",
+    "access": "/v1/access"
+  },
+  "errorStatus": {
+    "bad-request": 400,
+    "bad-signature": 401,
+    "clock-skew": 401,
+    "denied": 403,
+    "gate-mismatch": 400,
+    "gate-unreachable": 502,
+    "internal": 500,
+    "kind-conflict": 409,
+    "limited": 429,
+    "method-not-allowed": 405,
+    "not-found": 404,
+    "not-implemented": 501,
+    "not-registered": 404,
+    "proof-rejected": 422,
+    "quota-exceeded": 429,
+    "unauthorized": 401,
+    "unavailable": 503
+  },
+  "headers": {
+    "app": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-app/0.1.0"
+    },
+    "admin": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-admin/0.1.0",
+      "authorization": "Bearer TEST-ONLY-admin-bearer-0123456789"
+    }
+  },
+  "requests": {
+    "register.devicecheck": {
+      "description": "Rejestracja z dowodem DeviceCheck (build z App Store albo TestFlight: production).",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "signingText": "rarog-relay-auth/v1\n/v1/app/register\nea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c\n1793700000\ndevicecheck\nproduction\nQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD",
+      "signingBytes": "7261726f672d72656c61792d617574682f76310a2f76312f6170702f72656769737465720a656134613663363365323963353230616265663535303762313332656335663939353437373661656265626537623932343231656561363931343436643232630a313739333730303030300a646576696365636865636b0a70726f64756374696f6e0a51554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a44"
+    },
+    "register.apns": {
+      "description": "Rejestracja z dowodem próbnego pusha APNs (build z Xcode: development).",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "apns",
+          "environment": "development",
+          "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00"
+        },
+        "sig": "e86d3d75daaf89cc9061c817d821245cf9757946129436515136828f82e5b3203ce00f8bbaba83b106e7d5c3e69f548e6ca6b7669f30c4f0154d37d26de50104"
+      },
+      "signingText": "rarog-relay-auth/v1\n/v1/app/register\nea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c\n1793700000\napns\ndevelopment\nc0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "signingBytes": "7261726f672d72656c61792d617574682f76310a2f76312f6170702f72656769737465720a656134613663363365323963353230616265663535303762313332656335663939353437373661656265626537623932343231656561363931343436643232630a313739333730303030300a61706e730a646576656c6f706d656e740a63306666656530306330666665653030633066666565303063306666656530306330666665653030633066666565303063306666656530306330666665653030"
+    },
+    "register.unknown-field": {
+      "description": "Nieznane pole (label) odpada z wyniku i nie wchodzi do podpisu: tekst i podpis jak w register.devicecheck.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e",
+        "label": "iPad"
+      },
+      "signingText": "rarog-relay-auth/v1\n/v1/app/register\nea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c\n1793700000\ndevicecheck\nproduction\nQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD",
+      "signingBytes": "7261726f672d72656c61792d617574682f76310a2f76312f6170702f72656769737465720a656134613663363365323963353230616265663535303762313332656335663939353437373661656265626537623932343231656561363931343436643232630a313739333730303030300a646576696365636865636b0a70726f64756374696f6e0a51554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a4451554a44"
+    },
+    "renew.servers": {
+      "description": "Odnowienie z dwoma zapisanymi serwerami: jedna linia, EndpointId rozdzielone przecinkiem.",
+      "route": "renew",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "servers": [
+          "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        ],
+        "sig": "199f07446b682dc3e811aeffbd6c1be744b6bf7afa9c8f992573c3c9d6ed1fb73fd63fb58f1729e28036fffe4e10c137be6b278ebae457934fb93e8866317603"
+      },
+      "signingText": "rarog-relay-auth/v1\n/v1/app/renew\nea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c\n1793700000\na1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1,b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+      "signingBytes": "7261726f672d72656c61792d617574682f76310a2f76312f6170702f72656e65770a656134613663363365323963353230616265663535303762313332656335663939353437373661656265626537623932343231656561363931343436643232630a313739333730303030300a613161316131613161316131613161316131613161316131613161316131613161316131613161316131613161316131613161316131613161316131613161312c62326232623262326232623262326232623262326232623262326232623262326232623262326232623262326232623262326232623262326232623262326232"
+    },
+    "renew.empty": {
+      "description": "Odnowienie bez serwerów: ostatnia linia pusta, więc tekst kończy się znakiem nowej linii.",
+      "route": "renew",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "servers": [],
+        "sig": "de2b609b1bfe7f7d034b33580212352c417288fc7c316c807a844fa8e752a6a4a68937587c6106e76d56cfab7f0ccf41fd53d430bab29e6d157b28345de1bd0b"
+      },
+      "signingText": "rarog-relay-auth/v1\n/v1/app/renew\nea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c\n1793700000\n",
+      "signingBytes": "7261726f672d72656c61792d617574682f76310a2f76312f6170702f72656e65770a656134613663363365323963353230616265663535303762313332656335663939353437373661656265626537623932343231656561363931343436643232630a313739333730303030300a"
+    },
+    "sponsor": {
+      "description": "Poręczenie serwera.",
+      "route": "sponsor",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "server": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "sig": "97898ea543d7ea19b6b8ef7e6aa7a160fe7d85c952ca511eea57fd929d56455a675757fa7548f75c421f18fc2c3ac929461d814b4df875834a35f8663d18a609"
+      },
+      "signingText": "rarog-relay-auth/v1\n/v1/app/sponsor\nea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c\n1793700000\na1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "signingBytes": "7261726f672d72656c61792d617574682f76310a2f76312f6170702f73706f6e736f720a656134613663363365323963353230616265663535303762313332656335663939353437373661656265626537623932343231656561363931343436643232630a313739333730303030300a61316131613161316131613161316131613161316131613161316131613161316131613161316131613161316131613161316131613161316131613161316131"
+    },
+    "forget": {
+      "description": "Usunięcie wpisu apki: bez pól trasy, tekst kończy się na issuedAt.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "sig": "7e3c8eb27acdf16a1dde851214d7a9d67455056be2f3e5ad6486f1ba7d941a065946c95dea80263e748e3495d55f9297febedef2028a52968c2ad92a0c25f205"
+      },
+      "signingText": "rarog-relay-auth/v1\n/v1/app/forget\nea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c\n1793700000",
+      "signingBytes": "7261726f672d72656c61792d617574682f76310a2f76312f6170702f666f726765740a656134613663363365323963353230616265663535303762313332656335663939353437373661656265626537623932343231656561363931343436643232630a31373933373030303030"
+    },
+    "register.body-array": {
+      "description": "Ciało nie jest obiektem.",
+      "route": "register",
+      "body": [],
+      "error": "bad-request",
+      "field": "body"
+    },
+    "register.body-null": {
+      "description": "Ciało null.",
+      "route": "register",
+      "body": null,
+      "error": "bad-request",
+      "field": "body"
+    },
+    "register.v-missing": {
+      "description": "Brak v.",
+      "route": "register",
+      "body": {
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "v"
+    },
+    "renew.v-2": {
+      "description": "v inne niż 1.",
+      "route": "renew",
+      "body": {
+        "v": 2,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "servers": [],
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "v"
+    },
+    "forget.v-string": {
+      "description": "v jako napis.",
+      "route": "forget",
+      "body": {
+        "v": "1",
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "v"
+    },
+    "register.endpoint-uppercase": {
+      "description": "EndpointId wielkimi literami: kontrakt zna jedną postać.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "EA4A6C63E29C520ABEF5507B132EC5F9954776AEBEBE7B92421EEA691446D22C",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "endpointId"
+    },
+    "sponsor.endpoint-short": {
+      "description": "EndpointId o 63 znakach.",
+      "route": "sponsor",
+      "body": {
+        "v": 1,
+        "endpointId": "a4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "server": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "endpointId"
+    },
+    "register.order": {
+      "description": "Kilka złych pól naraz: wygrywa pierwsze w kolejności kontraktu (endpointId przed proof i sig).",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "x",
+        "issuedAt": 1793700000,
+        "proof": "x",
+        "sig": "x"
+      },
+      "error": "bad-request",
+      "field": "endpointId"
+    },
+    "forget.issued-at-string": {
+      "description": "issuedAt jako napis.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": "1793700000",
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "issuedAt"
+    },
+    "forget.issued-at-fraction": {
+      "description": "issuedAt z częścią ułamkową.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000.5,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "issuedAt"
+    },
+    "forget.issued-at-zero": {
+      "description": "issuedAt równe 0.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 0,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "issuedAt"
+    },
+    "forget.issued-at-11-digits": {
+      "description": "issuedAt o jedenastu cyfrach.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 10000000000,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "issuedAt"
+    },
+    "forget.issued-at-bool": {
+      "description": "issuedAt jako wartość logiczna.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": true,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "issuedAt"
+    },
+    "register.proof-missing": {
+      "description": "Brak proof.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof"
+    },
+    "register.proof-string": {
+      "description": "proof jako napis.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD",
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof"
+    },
+    "register.proof-kind": {
+      "description": "Rodzaj bramki spoza listy (App Attest odrzucony).",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "appattest",
+          "environment": "production",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof.kind"
+    },
+    "register.proof-environment": {
+      "description": "Środowisko spoza listy.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "sandbox",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof.environment"
+    },
+    "register.proof-token-base64url": {
+      "description": "Token DeviceCheck w base64url zamiast base64 standardowego.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "ab-_"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof.token"
+    },
+    "register.proof-token-no-padding": {
+      "description": "Token DeviceCheck bez dopełnienia (długość niepodzielna przez 4).",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "QUJDQQ"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof.token"
+    },
+    "register.proof-token-too-long": {
+      "description": "Token DeviceCheck dłuższy niż 8192 znaki.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof.token"
+    },
+    "register.proof-token-apns-short": {
+      "description": "Token APNs krótszy niż 32 znaki hex.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "apns",
+          "environment": "development",
+          "token": "c0ffeec0ffeec0ffeec0ffeec0ffee"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof.token"
+    },
+    "register.proof-token-apns-as-devicecheck": {
+      "description": "Rodzaj apns z tokenem w kształcie DeviceCheck: kształt tokenu idzie za rodzajem.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "apns",
+          "environment": "production",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "proof.token"
+    },
+    "renew.servers-missing": {
+      "description": "Brak servers.",
+      "route": "renew",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "servers"
+    },
+    "renew.servers-duplicate": {
+      "description": "Powtórzony serwer.",
+      "route": "renew",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "servers": [
+          "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+        ],
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "servers"
+    },
+    "renew.servers-too-many": {
+      "description": "Więcej niż 32 serwery.",
+      "route": "renew",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "servers": [
+          "0000000000000000000000000000000000000000000000000000000000000000",
+          "0000000000000000000000000000000000000000000000000000000000000001",
+          "0000000000000000000000000000000000000000000000000000000000000002",
+          "0000000000000000000000000000000000000000000000000000000000000003",
+          "0000000000000000000000000000000000000000000000000000000000000004",
+          "0000000000000000000000000000000000000000000000000000000000000005",
+          "0000000000000000000000000000000000000000000000000000000000000006",
+          "0000000000000000000000000000000000000000000000000000000000000007",
+          "0000000000000000000000000000000000000000000000000000000000000008",
+          "0000000000000000000000000000000000000000000000000000000000000009",
+          "000000000000000000000000000000000000000000000000000000000000000a",
+          "000000000000000000000000000000000000000000000000000000000000000b",
+          "000000000000000000000000000000000000000000000000000000000000000c",
+          "000000000000000000000000000000000000000000000000000000000000000d",
+          "000000000000000000000000000000000000000000000000000000000000000e",
+          "000000000000000000000000000000000000000000000000000000000000000f",
+          "0000000000000000000000000000000000000000000000000000000000000010",
+          "0000000000000000000000000000000000000000000000000000000000000011",
+          "0000000000000000000000000000000000000000000000000000000000000012",
+          "0000000000000000000000000000000000000000000000000000000000000013",
+          "0000000000000000000000000000000000000000000000000000000000000014",
+          "0000000000000000000000000000000000000000000000000000000000000015",
+          "0000000000000000000000000000000000000000000000000000000000000016",
+          "0000000000000000000000000000000000000000000000000000000000000017",
+          "0000000000000000000000000000000000000000000000000000000000000018",
+          "0000000000000000000000000000000000000000000000000000000000000019",
+          "000000000000000000000000000000000000000000000000000000000000001a",
+          "000000000000000000000000000000000000000000000000000000000000001b",
+          "000000000000000000000000000000000000000000000000000000000000001c",
+          "000000000000000000000000000000000000000000000000000000000000001d",
+          "000000000000000000000000000000000000000000000000000000000000001e",
+          "000000000000000000000000000000000000000000000000000000000000001f",
+          "0000000000000000000000000000000000000000000000000000000000000020"
+        ],
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "servers"
+    },
+    "renew.servers-not-endpoint": {
+      "description": "Element listy nie jest EndpointId.",
+      "route": "renew",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "servers": [
+          "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "x"
+        ],
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "servers"
+    },
+    "renew.servers-number": {
+      "description": "Element listy jako liczba.",
+      "route": "renew",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "servers": [
+          1
+        ],
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "servers"
+    },
+    "sponsor.server-self": {
+      "description": "Apka poręcza samą siebie.",
+      "route": "sponsor",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "server": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "server"
+    },
+    "sponsor.server-missing": {
+      "description": "Brak server.",
+      "route": "sponsor",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "sig": "7c9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "server"
+    },
+    "forget.sig-missing": {
+      "description": "Brak sig.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000
+      },
+      "error": "bad-request",
+      "field": "sig"
+    },
+    "forget.sig-uppercase": {
+      "description": "sig wielkimi literami.",
+      "route": "forget",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "sig": "7C9B1ACA4FFB3D744F0749F202019E153144176BD1D3E91E1A95E2FA04E8551BFE8DA281353320AB2EFCAB52601232AE47C0A5A026B2AF9CB36668152D883B0E"
+      },
+      "error": "bad-request",
+      "field": "sig"
+    },
+    "register.sig-short": {
+      "description": "sig o 126 znakach.",
+      "route": "register",
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "issuedAt": 1793700000,
+        "proof": {
+          "kind": "devicecheck",
+          "environment": "production",
+          "token": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD"
+        },
+        "sig": "9b1aca4ffb3d744f0749f202019e153144176bd1d3e91e1a95e2fa04e8551bfe8da281353320ab2efcab52601232ae47c0a5a026b2af9cb36668152d883b0e"
+      },
+      "error": "bad-request",
+      "field": "sig"
+    }
+  },
+  "admin": {
+    "deny": {
+      "route": "deny",
+      "body": {
+        "v": 1,
+        "endpointId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+      }
+    },
+    "allow": {
+      "route": "allow",
+      "body": {
+        "v": 1,
+        "endpointId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+      }
+    }
+  },
+  "responses": {
+    "register.ok": {
+      "route": "register",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "endpointId": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "expiresAt": 1801476000
+      }
+    },
+    "renew.ok": {
+      "route": "renew",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "expiresAt": 1801476000,
+        "unsponsored": [
+          "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        ]
+      }
+    },
+    "sponsor.ok": {
+      "route": "sponsor",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "server": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "expiresAt": 1801476000
+      }
+    },
+    "forget.ok": {
+      "route": "forget",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "forgotten": true
+      }
+    },
+    "deny.ok": {
+      "route": "deny",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "endpointId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "denied": true
+      }
+    },
+    "allow.ok": {
+      "route": "allow",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "endpointId": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "denied": false
+      }
+    },
+    "health.skeleton": {
+      "route": "health",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "ok": false,
+        "version": "1.0.0+fixture",
+        "gate": null,
+        "enforce": false
+      }
+    },
+    "health.devicecheck": {
+      "route": "health",
+      "status": 200,
+      "body": {
+        "v": 1,
+        "ok": true,
+        "version": "1.0.0+fixture",
+        "gate": "devicecheck",
+        "enforce": true
+      }
+    },
+    "register.bad-request": {
+      "route": "register",
+      "status": 400,
+      "body": {
+        "v": 1,
+        "error": "bad-request"
+      }
+    },
+    "register.gate-mismatch": {
+      "route": "register",
+      "status": 400,
+      "body": {
+        "v": 1,
+        "error": "gate-mismatch",
+        "gate": "apns"
+      }
+    },
+    "register.bad-signature": {
+      "route": "register",
+      "status": 401,
+      "body": {
+        "v": 1,
+        "error": "bad-signature"
+      }
+    },
+    "renew.clock-skew": {
+      "route": "renew",
+      "status": 401,
+      "body": {
+        "v": 1,
+        "error": "clock-skew"
+      }
+    },
+    "deny.unauthorized": {
+      "route": "deny",
+      "status": 401,
+      "body": {
+        "v": 1,
+        "error": "unauthorized"
+      }
+    },
+    "register.denied": {
+      "route": "register",
+      "status": 403,
+      "body": {
+        "v": 1,
+        "error": "denied"
+      }
+    },
+    "unknown.not-found": {
+      "route": null,
+      "status": 404,
+      "body": {
+        "v": 1,
+        "error": "not-found"
+      }
+    },
+    "renew.not-registered": {
+      "route": "renew",
+      "status": 404,
+      "body": {
+        "v": 1,
+        "error": "not-registered"
+      }
+    },
+    "health.method-not-allowed": {
+      "route": "health",
+      "status": 405,
+      "body": {
+        "v": 1,
+        "error": "method-not-allowed"
+      }
+    },
+    "sponsor.kind-conflict": {
+      "route": "sponsor",
+      "status": 409,
+      "body": {
+        "v": 1,
+        "error": "kind-conflict"
+      }
+    },
+    "register.proof-rejected": {
+      "route": "register",
+      "status": 422,
+      "body": {
+        "v": 1,
+        "error": "proof-rejected"
+      }
+    },
+    "sponsor.quota-exceeded": {
+      "route": "sponsor",
+      "status": 429,
+      "body": {
+        "v": 1,
+        "error": "quota-exceeded"
+      }
+    },
+    "register.limited": {
+      "route": "register",
+      "status": 429,
+      "body": {
+        "v": 1,
+        "error": "limited"
+      }
+    },
+    "register.internal": {
+      "route": "register",
+      "status": 500,
+      "body": {
+        "v": 1,
+        "error": "internal"
+      }
+    },
+    "sponsor.not-implemented": {
+      "route": "sponsor",
+      "status": 501,
+      "body": {
+        "v": 1,
+        "error": "not-implemented"
+      }
+    },
+    "register.gate-unreachable": {
+      "route": "register",
+      "status": 502,
+      "body": {
+        "v": 1,
+        "error": "gate-unreachable"
+      }
+    },
+    "register.unavailable": {
+      "route": "register",
+      "status": 503,
+      "body": {
+        "v": 1,
+        "error": "unavailable"
+      }
+    }
+  },
+  "access": {
+    "allow": {
+      "description": "Klient z wpisem: zgoda.",
+      "request": {
+        "method": "POST",
+        "path": "/v1/access",
+        "headers": {
+          "authorization": "Bearer TEST-ONLY-relay-hook-bearer-01234",
+          "x-iroh-endpoint-id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": "true"
+      }
+    },
+    "deny": {
+      "description": "Klient bez wpisu przy egzekwowaniu: odmowa.",
+      "request": {
+        "method": "POST",
+        "path": "/v1/access",
+        "headers": {
+          "authorization": "Bearer TEST-ONLY-relay-hook-bearer-01234",
+          "x-iroh-endpoint-id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": "false"
+      }
+    },
+    "unauthorized": {
+      "description": "Zły bearer: to nie jest decyzja (adapter na VPS liczy ją jak awarię).",
+      "request": {
+        "method": "POST",
+        "path": "/v1/access",
+        "headers": {
+          "authorization": "Bearer TEST-ONLY-wrong-bearer",
+          "x-iroh-endpoint-id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+        }
+      },
+      "response": {
+        "status": 401,
+        "body": "{\"v\":1,\"error\":\"unauthorized\"}"
+      }
+    }
+  }
+}

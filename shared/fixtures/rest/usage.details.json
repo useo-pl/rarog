@@ -1,0 +1,18 @@
+{
+  "stale": true,
+  "fetchedAt": "2026-10-04T07:00:00.000Z",
+  "fiveHour": {
+    "percent": 22,
+    "resetsAt": "2026-10-04T13:20:00.403Z"
+  },
+  "weekly": {
+    "percent": 57,
+    "resetsAt": "2026-10-09T15:00:00.403Z"
+  },
+  "weeklyModel": {
+    "percent": 34,
+    "resetsAt": "2026-10-09T15:00:00.403Z",
+    "model": "Fable"
+  },
+  "account": "demo@example.com"
+}

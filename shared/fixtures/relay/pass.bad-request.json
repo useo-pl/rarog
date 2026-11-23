@@ -1,0 +1,25 @@
+{
+  "description": "Ciało niezgodne z kontraktem (tu: token nie jest hex). Także: brak pól, v ≠ 1, devicePass przy alert, ciało > 8 KiB.",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "not-a-token",
+      "environment": "development",
+      "type": "alert",
+      "topic": "ai.rarog.app"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "v": 1,
+      "error": "bad-request"
+    }
+  }
+}

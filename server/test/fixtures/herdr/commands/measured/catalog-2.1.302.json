@@ -1,0 +1,704 @@
+{
+  "cli": "2.1.302",
+  "method": "$.command.list() przy session.start (mod pomiarowy Claude Code, sam scenariusz komend)",
+  "counts": {
+    "builtin": 122,
+    "plugin": 18,
+    "user": 28
+  },
+  "commands": [
+    {
+      "name": "__remote-workflow",
+      "source": "builtin"
+    },
+    {
+      "name": "add-dir",
+      "source": "builtin"
+    },
+    {
+      "name": "advisor",
+      "source": "builtin"
+    },
+    {
+      "name": "agents",
+      "source": "builtin"
+    },
+    {
+      "name": "artifact-capabilities",
+      "source": "builtin"
+    },
+    {
+      "name": "artifact-design",
+      "source": "builtin"
+    },
+    {
+      "name": "artifact-diagramming",
+      "source": "builtin"
+    },
+    {
+      "name": "artifacts",
+      "source": "builtin"
+    },
+    {
+      "name": "auto-mode-setup",
+      "source": "builtin"
+    },
+    {
+      "name": "autocompact",
+      "source": "builtin"
+    },
+    {
+      "name": "autofix-pr",
+      "source": "builtin"
+    },
+    {
+      "name": "background",
+      "source": "builtin"
+    },
+    {
+      "name": "batch",
+      "source": "builtin"
+    },
+    {
+      "name": "branch",
+      "source": "builtin"
+    },
+    {
+      "name": "btw",
+      "source": "builtin"
+    },
+    {
+      "name": "bug",
+      "source": "builtin"
+    },
+    {
+      "name": "cd",
+      "source": "builtin"
+    },
+    {
+      "name": "chrome",
+      "source": "builtin"
+    },
+    {
+      "name": "claim-credit",
+      "source": "builtin"
+    },
+    {
+      "name": "claude-api",
+      "source": "builtin"
+    },
+    {
+      "name": "claude-in-chrome",
+      "source": "builtin"
+    },
+    {
+      "name": "clear",
+      "source": "builtin"
+    },
+    {
+      "name": "code-review",
+      "source": "builtin"
+    },
+    {
+      "name": "color",
+      "source": "builtin"
+    },
+    {
+      "name": "compact",
+      "source": "builtin"
+    },
+    {
+      "name": "config",
+      "source": "builtin"
+    },
+    {
+      "name": "context",
+      "source": "builtin"
+    },
+    {
+      "name": "copy",
+      "source": "builtin"
+    },
+    {
+      "name": "dataviz",
+      "source": "builtin"
+    },
+    {
+      "name": "debug",
+      "source": "builtin"
+    },
+    {
+      "name": "deep-research",
+      "source": "builtin"
+    },
+    {
+      "name": "design",
+      "source": "builtin"
+    },
+    {
+      "name": "design-consent",
+      "source": "builtin"
+    },
+    {
+      "name": "design-login",
+      "source": "builtin"
+    },
+    {
+      "name": "design-revoke",
+      "source": "builtin"
+    },
+    {
+      "name": "design-sync",
+      "source": "builtin"
+    },
+    {
+      "name": "desktop",
+      "source": "builtin"
+    },
+    {
+      "name": "doctor",
+      "source": "builtin"
+    },
+    {
+      "name": "effort",
+      "source": "builtin"
+    },
+    {
+      "name": "exit",
+      "source": "builtin"
+    },
+    {
+      "name": "export",
+      "source": "builtin"
+    },
+    {
+      "name": "extra-usage",
+      "source": "builtin"
+    },
+    {
+      "name": "fast",
+      "source": "builtin"
+    },
+    {
+      "name": "feedback",
+      "source": "builtin"
+    },
+    {
+      "name": "fewer-permission-prompts",
+      "source": "builtin"
+    },
+    {
+      "name": "focus",
+      "source": "builtin"
+    },
+    {
+      "name": "fork",
+      "source": "builtin"
+    },
+    {
+      "name": "goal",
+      "source": "builtin"
+    },
+    {
+      "name": "heapdump",
+      "source": "builtin"
+    },
+    {
+      "name": "help",
+      "source": "builtin"
+    },
+    {
+      "name": "hooks",
+      "source": "builtin"
+    },
+    {
+      "name": "ide",
+      "source": "builtin"
+    },
+    {
+      "name": "import",
+      "source": "builtin"
+    },
+    {
+      "name": "init",
+      "source": "builtin"
+    },
+    {
+      "name": "insights",
+      "source": "builtin"
+    },
+    {
+      "name": "install-github-app",
+      "source": "builtin"
+    },
+    {
+      "name": "install-slack-app",
+      "source": "builtin"
+    },
+    {
+      "name": "keybindings",
+      "source": "builtin"
+    },
+    {
+      "name": "keybindings-help",
+      "source": "builtin"
+    },
+    {
+      "name": "limit-reset",
+      "source": "builtin"
+    },
+    {
+      "name": "list-agents",
+      "source": "builtin"
+    },
+    {
+      "name": "login",
+      "source": "builtin"
+    },
+    {
+      "name": "logout",
+      "source": "builtin"
+    },
+    {
+      "name": "loop",
+      "source": "builtin"
+    },
+    {
+      "name": "low-priority",
+      "source": "builtin"
+    },
+    {
+      "name": "mcp",
+      "source": "builtin"
+    },
+    {
+      "name": "memory",
+      "source": "builtin"
+    },
+    {
+      "name": "mobile",
+      "source": "builtin"
+    },
+    {
+      "name": "model",
+      "source": "builtin"
+    },
+    {
+      "name": "output-style",
+      "source": "builtin"
+    },
+    {
+      "name": "passes",
+      "source": "builtin"
+    },
+    {
+      "name": "permissions",
+      "source": "builtin"
+    },
+    {
+      "name": "plan",
+      "source": "builtin"
+    },
+    {
+      "name": "plugin",
+      "source": "builtin"
+    },
+    {
+      "name": "plugin-authoring",
+      "source": "builtin"
+    },
+    {
+      "name": "powerup",
+      "source": "builtin"
+    },
+    {
+      "name": "privacy-settings",
+      "source": "builtin"
+    },
+    {
+      "name": "pro-trial-expired",
+      "source": "builtin"
+    },
+    {
+      "name": "radio",
+      "source": "builtin"
+    },
+    {
+      "name": "rate-limit-options",
+      "source": "builtin"
+    },
+    {
+      "name": "recap",
+      "source": "builtin"
+    },
+    {
+      "name": "release-notes",
+      "source": "builtin"
+    },
+    {
+      "name": "reload-plugins",
+      "source": "builtin"
+    },
+    {
+      "name": "reload-skills",
+      "source": "builtin"
+    },
+    {
+      "name": "remote-control",
+      "source": "builtin"
+    },
+    {
+      "name": "remote-env",
+      "source": "builtin"
+    },
+    {
+      "name": "rename",
+      "source": "builtin"
+    },
+    {
+      "name": "resume",
+      "source": "builtin"
+    },
+    {
+      "name": "rewind",
+      "source": "builtin"
+    },
+    {
+      "name": "run",
+      "source": "builtin"
+    },
+    {
+      "name": "run-skill-generator",
+      "source": "builtin"
+    },
+    {
+      "name": "sandbox",
+      "source": "builtin"
+    },
+    {
+      "name": "schedule",
+      "source": "builtin"
+    },
+    {
+      "name": "scroll-speed",
+      "source": "builtin"
+    },
+    {
+      "name": "security-review",
+      "source": "builtin"
+    },
+    {
+      "name": "setup-bedrock",
+      "source": "builtin"
+    },
+    {
+      "name": "setup-vertex",
+      "source": "builtin"
+    },
+    {
+      "name": "simplify",
+      "source": "builtin"
+    },
+    {
+      "name": "skill-doctor",
+      "source": "builtin"
+    },
+    {
+      "name": "skills",
+      "source": "builtin"
+    },
+    {
+      "name": "slides",
+      "source": "builtin"
+    },
+    {
+      "name": "status",
+      "source": "builtin"
+    },
+    {
+      "name": "statusline",
+      "source": "builtin"
+    },
+    {
+      "name": "stickers",
+      "source": "builtin"
+    },
+    {
+      "name": "subtask",
+      "source": "builtin"
+    },
+    {
+      "name": "tasks",
+      "source": "builtin"
+    },
+    {
+      "name": "team-onboarding",
+      "source": "builtin"
+    },
+    {
+      "name": "teleport",
+      "source": "builtin"
+    },
+    {
+      "name": "terminal-setup",
+      "source": "builtin"
+    },
+    {
+      "name": "theme",
+      "source": "builtin"
+    },
+    {
+      "name": "tui",
+      "source": "builtin"
+    },
+    {
+      "name": "ultrareview",
+      "source": "builtin"
+    },
+    {
+      "name": "update-config",
+      "source": "builtin"
+    },
+    {
+      "name": "upgrade",
+      "source": "builtin"
+    },
+    {
+      "name": "usage",
+      "source": "builtin"
+    },
+    {
+      "name": "usage-credits",
+      "source": "builtin"
+    },
+    {
+      "name": "verify",
+      "source": "builtin"
+    },
+    {
+      "name": "voice",
+      "source": "builtin"
+    },
+    {
+      "name": "web-setup",
+      "source": "builtin"
+    },
+    {
+      "name": "workflow-authoring",
+      "source": "builtin"
+    },
+    {
+      "name": "workflow-launch-exec",
+      "source": "builtin"
+    },
+    {
+      "name": "workflows",
+      "source": "builtin"
+    },
+    {
+      "name": "cowork-plugin-management:cowork-plugin-customizer",
+      "source": "plugin",
+      "plugin": "cowork-plugin-management"
+    },
+    {
+      "name": "cowork-plugin-management:create-cowork-plugin",
+      "source": "plugin",
+      "plugin": "cowork-plugin-management"
+    },
+    {
+      "name": "demo:skill-01",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-02",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-03",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-04",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-05",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-06",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-07",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-08",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-09",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-10",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-11",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-12",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-13",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "demo:skill-14",
+      "source": "plugin",
+      "plugin": "demo"
+    },
+    {
+      "name": "frontend-design:frontend-design",
+      "source": "plugin",
+      "plugin": "frontend-design"
+    },
+    {
+      "name": "pr-review-toolkit:review-pr",
+      "source": "plugin",
+      "plugin": "pr-review-toolkit"
+    },
+    {
+      "name": "user-skill-01",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-02",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-03",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-04",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-05",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-06",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-07",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-08",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-09",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-10",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-11",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-12",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-13",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-14",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-15",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-16",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-17",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-18",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-19",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-20",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-21",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-22",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-23",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-24",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-25",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-26",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-27",
+      "source": "user"
+    },
+    {
+      "name": "user-skill-28",
+      "source": "user"
+    }
+  ],
+  "skillSets": {
+    "demo": "2f2acc591a43100d"
+  }
+}

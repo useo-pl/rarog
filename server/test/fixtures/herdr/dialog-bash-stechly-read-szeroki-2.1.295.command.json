@@ -1,0 +1,4 @@
+{
+  "toolName": "Bash",
+  "command": "D=~/Library/Developer/Xcode/DerivedData; O=(); for d in $D/Rarog-*; do w=$(/usr/libexec/PlistBuddy -c \"Print :WorkspacePath\" \"$d/info.plist\" 2>/dev/null); [[ -n \"$w\" && ! -e \"$w\" ]] && O+=(\"$d\"); done; rm -r -- \"${O[@]}\"; echo rc=$?; ls -d $D/Rarog-* | wc -l"
+}

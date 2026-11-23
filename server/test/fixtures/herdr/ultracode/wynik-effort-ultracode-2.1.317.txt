@@ -1,0 +1,52 @@
+
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ /effort ultracode off
+  ⎿  Ultracode off. Effort stays xhigh.
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ /effort ultracode
+  ⎿  Ultracode on (this session only): dynamic workflows on every task. Effort stays xhigh.
+                                                                                                ◉ xhigh · ultracode · /effort
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────── ultracode ─
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle)

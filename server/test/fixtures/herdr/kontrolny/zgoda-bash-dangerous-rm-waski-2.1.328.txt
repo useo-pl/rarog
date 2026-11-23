@@ -1,0 +1,38 @@
+
+
+❯ ZESTAW-KONTROLNY-BASH: dangerous-rm-waski.
+
+⏺ Copying the changed files and rerunning the checks
+  ⎿  $ P=kopia-testowa && files=(${(f)"$(git diff
+     --name-only -- src)"}) && for f in "${files[@]}"; do
+     cp "$f" "$HOME/$P/$f" && echo "cp $f"; done &&
+     LISTA="${(j: :)${(M)files:#*.ts}}" && sh -c "cd
+     $HOME/$P && command grep -c demo src/modul.ts;
+     timeout 600 pnpm exec vitest run src/modul.test.ts
+     2>/dev/n…
+
+─────────────────────────────────────────────────────────
+ Bash command
+ Copy the changed files and rerun the checks
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ P=kopia-testowa && files=(${(f)"$(git diff
+ │ --name-only -- src)"}) && for f in "${files[@]}"; do
+ │ cp "$f" "$HOME/$P/$f" && echo "cp $f"; done &&
+ │ LISTA="${(j: :)${(M)files:#*.ts}}" && sh -c "cd
+ │ $HOME/$P && command grep -c demo src/modul.ts;
+ │ timeout 600 pnpm exec vitest run src/modul.test.ts
+ │ 2>/dev/null | command grep -E 'passed|failed' ; node
+ │ -e 'process.argv.slice(1).forEach((f) =>
+ │ console.log(\"ok \" + f))' $LISTA 2>&1 | command grep
+ │ -v 'not a git'"
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ Claude Code can't be sure it read this command the
+ │ way the shell will, so it can't rule out a dangerous
+ │ removal. Read the command, and don't go ahead if you
+ │ can't tell what it does.
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

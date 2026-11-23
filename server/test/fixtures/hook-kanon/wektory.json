@@ -1,0 +1,71 @@
+{
+  "opis": "Wspólne wektory kanonizacji tool_input: scripts/hooks/canon.mjs i server/src/herdr/dialogs/hook/canon.ts. Postać kanoniczna spisana ręcznie, sha256 policzone z jej bajtów UTF-8 poza Node (shasum -a 256).",
+  "wektory": [
+    {
+      "nazwa": "zgoda Bash: klucze w kolejności z CLI, nie alfabetycznej",
+      "wejscie": { "description": "Remove temp dir", "command": "rm -rf \"$TMPDIR/x\"" },
+      "kanon": "{\"command\":\"rm -rf \\\"$TMPDIR/x\\\"\",\"description\":\"Remove temp dir\"}",
+      "sha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20"
+    },
+    {
+      "nazwa": "zagnieżdżenie: klucze sortowane na każdym poziomie, tablica w swojej kolejności",
+      "wejscie": { "z": [ { "b": 2, "a": 1 }, { "d": [ 3, 2, 1 ], "c": null } ], "a": { "y": true, "x": false } },
+      "kanon": "{\"a\":{\"x\":false,\"y\":true},\"z\":[{\"a\":1,\"b\":2},{\"c\":null,\"d\":[3,2,1]}]}",
+      "sha256": "0089e8f7fc1f347ab5fe6628d2af6a04b185217275ab0745c1bcb981f43effc1"
+    },
+    {
+      "nazwa": "porządek jednostek UTF-16: wielkie przed małymi, cyfry przed literami, polskie znaki na końcu",
+      "wejscie": { "ż": 1, "a": 2, "B": 3, "1": 4, "_": 5, "ą": 6, "A": 7 },
+      "kanon": "{\"1\":4,\"A\":7,\"B\":3,\"_\":5,\"a\":2,\"ą\":6,\"ż\":1}",
+      "sha256": "345f5cb9e5867ceb9a4a0f33d2fafa03538eea322b191a2b0be00ae933105f46"
+    },
+    {
+      "nazwa": "Edit z polskimi znakami, emoji i nowymi liniami: tekst bez ucieczek poza wymaganymi przez JSON",
+      "wejscie": { "old_string": "zażółć\tgęślą\n", "new_string": "jaźń 🚀\r\n\"cudzysłów\" \\ ukośnik", "file_path": "/x/plik.md", "replace_all": false },
+      "kanon": "{\"file_path\":\"/x/plik.md\",\"new_string\":\"jaźń 🚀\\r\\n\\\"cudzysłów\\\" \\\\ ukośnik\",\"old_string\":\"zażółć\\tgęślą\\n\",\"replace_all\":false}",
+      "sha256": "10edc633cf7564d9aa2a9cadf83ea2719fdb005783521cd0d6305440cb1688d6"
+    },
+    {
+      "nazwa": "liczby w zapisie JSON silnika: całkowite, ułamek, wykładnik, minus zero jako 0",
+      "wejscie": { "a": 1, "b": -2.5, "c": 1e21, "d": 1.5e-7, "e": -0, "f": 100.0 },
+      "kanon": "{\"a\":1,\"b\":-2.5,\"c\":1e+21,\"d\":1.5e-7,\"e\":0,\"f\":100}",
+      "sha256": "ad08e6700b588f718d469fb45f706edb2cb7c934c68a08fe411a4476f72f7f03"
+    },
+    {
+      "nazwa": "znaki sterujące i samotny surogat jako ucieczki \\u",
+      "wejscie": { "s": "\u0001\u001f\u007f\ud800" },
+      "kanon": "{\"s\":\"\\u0001\\u001f\u007f\\ud800\"}",
+      "sha256": "cb0dcb4ae72d924dcae293cf38b413aceb2072761a11a53908fd5741c97adbad"
+    },
+    {
+      "nazwa": "klucz __proto__ to zwykły klucz z JSON.parse",
+      "wejscie": { "__proto__": { "polluted": true }, "a": 1 },
+      "kanon": "{\"__proto__\":{\"polluted\":true},\"a\":1}",
+      "sha256": "acb9124c160bde29f1302ed9ea8d241871f4ee6f634b8368cc11c9d09afe837a"
+    },
+    {
+      "nazwa": "pusty obiekt (ExitPlanMode bez planu)",
+      "wejscie": {},
+      "kanon": "{}",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "nazwa": "pusta tablica i napis pusty",
+      "wejscie": { "a": [], "b": "" },
+      "kanon": "{\"a\":[],\"b\":\"\"}",
+      "sha256": "39c0baaa5b31ee45d7848dba754c7164031e563a7b2365db6b1fa0c0b789365b"
+    },
+    {
+      "nazwa": "null (brak tool_input w payloadzie)",
+      "wejscie": null,
+      "kanon": "null",
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    {
+      "nazwa": "wartość prosta na szczycie",
+      "wejscie": "tekst",
+      "kanon": "\"tekst\"",
+      "sha256": "c41a5f384758a951aeba972ce6263b9d7392bcb799a760e6ebc21cf8a22672dd"
+    }
+  ]
+}

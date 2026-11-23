@@ -1,0 +1,60 @@
+
+  ⎿  Cancelled
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+   Select model
+   Switch between
+   Claude models. Your
+   pick becomes the
+   default for new
+   sessions. For
+   other/previous
+   model names,
+   specify with
+   --model.
+
+     1.  Defau…  Opus
+                 5.5 ·
+                 Best
+                 for
+                 every
+                 day,
+                 compl
+                 ex
+                 tasks
+     2.  Opus …  For
+                 compl
+                 ex
+                 work
+                 and
+                 every
+                 day
+                 tasks
+     3.  Fable…  For
+                 your
+                 tough
+                 est
+                 chall
+                 enges
+     4.  Sonne…  Most
+                 effic
+                 ient
+                 for
+                 simpl
+                 er
+                 tasks
+   ❯ 5.  Hai… ✔  Faste
+                 st
+                 for
+                 quick
+                 answ
+                 ers
+     6.  Haiku…  Faste
+                 st
+                 for
+                 quick
+                 answ
+                 ers
+     7.  Sonne…  Effic
+                 ient
+                 for
+                 routi ↓

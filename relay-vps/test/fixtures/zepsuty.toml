@@ -1,0 +1,2 @@
+# Celowo zepsuta fikstura testu bramki (`relay-vps/test/bramka.test.ts`): wartość bez cudzysłowu, więc `tomllib` pada.
+hostname = relay.example.net

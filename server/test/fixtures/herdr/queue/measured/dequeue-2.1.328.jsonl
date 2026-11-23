@@ -1,0 +1,9 @@
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy w trakcie odpowiedzi przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Nie używaj żadnych narzędzi. Wypisz liczby od 1 do 300, każdą w osobnej linii, bez komentarza. Krótką wiadomość, która przyjdzie potem, potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok."}}
+{"_pomiar":"prompt-B-wyslany"}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-01-01T00:00:01.000Z","content":"pomiar B: ok"}
+{"type":"assistant","timestamp":"2026-01-01T00:00:02.000Z","content":[{"type":"text"}]}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2026-01-01T00:00:04.000Z"}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:03.000Z"}
+{"type":"user","timestamp":"2026-01-01T00:00:05.000Z","uuid":"00000000-0000-4000-8000-000000000004","promptId":"00000000-0000-4000-8000-000000000005","origin":{"kind":"human"},"message":{"role":"user","content":"pomiar B: ok"}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:06.000Z","content":[{"type":"text"}]}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:07.000Z"}

@@ -1,0 +1,7 @@
+{
+  "error": "bad-state",
+  "message": "This pane doesn't support restarting from Rarog.",
+  "messageRef": {
+    "code": "restart.unsupported"
+  }
+}

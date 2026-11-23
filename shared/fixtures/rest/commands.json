@@ -1,0 +1,160 @@
+{
+  "revision": "bcf498e8d56097f1",
+  "commands": [
+    {
+      "name": "artifact-capabilities",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "artifact-diagramming",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "batch",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "claude-api",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "claude-in-chrome",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "clear",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "code-review",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "compact",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "context",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "dataviz",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "debug",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "deep-research",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "design",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "design-sync",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "doctor",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "fewer-permission-prompts",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "init",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "insights",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "loop",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "plan",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "plugin-authoring",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "recap",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "rename",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "run",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "run-skill-generator",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "security-review",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "simplify",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "slides",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "update-config",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "verify",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "workflow-authoring",
+      "kind": "prompt",
+      "source": "builtin"
+    }
+  ]
+}

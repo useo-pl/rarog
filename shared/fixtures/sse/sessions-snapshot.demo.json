@@ -1,0 +1,174 @@
+{
+  "type": "sessions-snapshot",
+  "sessions": [
+    {
+      "id": "demo-rarog",
+      "cwd": "/Users/demo/Projects/rarog",
+      "title": "rarog",
+      "state": "running",
+      "stateSince": "2026-10-03T08:59:20.000Z",
+      "createdAt": "2026-10-03T08:57:00.000Z",
+      "lastActivityAt": "2026-10-03T08:59:58.000Z",
+      "paneId": "w0:demo-rarog",
+      "launchedByRarog": true,
+      "label": "resync transkryptu",
+      "branch": "main",
+      "dirtyCount": 3,
+      "ahead": 0,
+      "behind": 1,
+      "model": "claude-opus-4-6",
+      "effort": "xhigh",
+      "ultracode": true
+    },
+    {
+      "id": "demo-rarog-stop",
+      "cwd": "/Users/demo/Projects/rarog",
+      "title": "rarog",
+      "state": "running",
+      "stateSince": "2026-10-03T08:59:40.000Z",
+      "createdAt": "2026-10-03T08:56:00.000Z",
+      "lastActivityAt": "2026-10-03T08:59:40.000Z",
+      "paneId": "w0:demo-rarog-stop",
+      "launchedByRarog": true,
+      "label": "przegląd pokrycia",
+      "branch": "main",
+      "dirtyCount": 3,
+      "ahead": 0,
+      "behind": 1,
+      "model": "claude-opus-4-6",
+      "effort": "high"
+    },
+    {
+      "id": "demo-fleet-ops",
+      "cwd": "/Users/demo/Projects/fleet-ops",
+      "title": "fleet-ops",
+      "state": "waiting-permission",
+      "stateSince": "2026-10-03T08:59:00.000Z",
+      "createdAt": "2026-10-03T08:52:00.000Z",
+      "lastActivityAt": "2026-10-03T08:59:00.000Z",
+      "paneId": "w0:demo-fleet-ops",
+      "launchedByRarog": true,
+      "label": "czyszczenie builda",
+      "branch": "main",
+      "dirtyCount": 1,
+      "model": "claude-sonnet-5",
+      "effort": "medium",
+      "waitingFor": {
+        "kind": "permission",
+        "tool": "Bash",
+        "text": "rm -rf ./dist && git push --force origin main",
+        "subject": "tool"
+      }
+    },
+    {
+      "id": "demo-willow",
+      "cwd": "/Users/demo/Projects/willow",
+      "title": "willow",
+      "state": "waiting-permission",
+      "stateSince": "2026-10-03T08:56:00.000Z",
+      "createdAt": "2026-10-03T08:48:00.000Z",
+      "lastActivityAt": "2026-10-03T08:56:00.000Z",
+      "paneId": "w0:demo-willow",
+      "launchedByRarog": true,
+      "label": "zapis notatek",
+      "branch": "main",
+      "dirtyCount": 2,
+      "ahead": 2,
+      "behind": 0,
+      "model": "claude-fable-5-1",
+      "effort": "high",
+      "waitingFor": {
+        "kind": "permission",
+        "tool": "Bash",
+        "text": "npm test -- --run src/notes.test.ts",
+        "subject": "tool"
+      }
+    },
+    {
+      "id": "demo-map-view",
+      "cwd": "/Users/demo/Projects/map-view",
+      "title": "map-view",
+      "state": "limit-reached",
+      "stateSince": "2026-10-03T08:51:00.000Z",
+      "createdAt": "2026-10-03T07:25:00.000Z",
+      "lastActivityAt": "2026-10-03T08:51:00.000Z",
+      "paneId": "w0:demo-map-view",
+      "launchedByRarog": true,
+      "label": "nowy layout panelu",
+      "stateDetail": "resetAt=2026-10-03T11:00:00.000Z",
+      "stateDetailRef": {
+        "code": "state.limit-reached",
+        "args": [
+          "2026-10-03T11:00:00.000Z"
+        ]
+      },
+      "branch": "feat/panel",
+      "dirtyCount": 4,
+      "model": "claude-fable-5-1",
+      "effort": "max"
+    },
+    {
+      "id": "demo-pipe-link",
+      "cwd": "/Users/demo/Projects/pipe-link",
+      "title": "pipe-link",
+      "state": "resumable",
+      "stateSince": "2026-10-03T08:42:00.000Z",
+      "createdAt": "2026-10-03T07:50:00.000Z",
+      "lastActivityAt": "2026-10-03T08:42:00.000Z",
+      "paneId": "w0:demo-pipe-link",
+      "launchedByRarog": true,
+      "label": "mostek zdarzeń",
+      "stateDetail": "interrupted — backend restarted",
+      "stateDetailRef": {
+        "code": "demo.seed-backend-restarted"
+      },
+      "branch": "feat/bridge",
+      "dirtyCount": 2,
+      "model": "claude-sonnet-5",
+      "effort": "low"
+    },
+    {
+      "id": "demo-data-loader",
+      "cwd": "/Users/demo/Projects/data-loader",
+      "title": "data-loader",
+      "state": "done",
+      "stateSince": "2026-10-03T08:34:00.000Z",
+      "createdAt": "2026-10-03T08:05:00.000Z",
+      "lastActivityAt": "2026-10-03T08:34:00.000Z",
+      "paneId": "w0:demo-data-loader",
+      "launchedByRarog": true,
+      "label": "import CSV",
+      "branch": "main",
+      "dirtyCount": 0,
+      "lastSummary": "Zaimportowano 214 rekordów, testy zielone.",
+      "model": "claude-haiku-4-5"
+    },
+    {
+      "id": "demo-willow-parser",
+      "cwd": "/Users/demo/Projects/willow",
+      "title": "willow",
+      "state": "done",
+      "stateSince": "2026-10-03T08:27:00.000Z",
+      "createdAt": "2026-10-03T07:56:00.000Z",
+      "lastActivityAt": "2026-10-03T08:27:00.000Z",
+      "paneId": "w0:demo-willow-parser",
+      "launchedByRarog": true,
+      "label": "parser dat",
+      "branch": "main",
+      "dirtyCount": 2,
+      "ahead": 2,
+      "behind": 0,
+      "lastSummary": "Parser dat wydzielony, 9 testów zielonych.",
+      "model": "claude-fable-5-1"
+    }
+  ],
+  "herdrStatus": {
+    "available": true,
+    "agentCount": 4,
+    "readOnly": false,
+    "canLaunch": true
+  },
+  "notesCwds": [
+    "/Users/demo/Projects/willow"
+  ]
+}

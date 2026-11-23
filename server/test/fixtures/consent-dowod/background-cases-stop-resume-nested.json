@@ -1,0 +1,1405 @@
+[
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8s-1",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000007",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "tools-used@-5515",
+        "queue-operation/enqueue@1211=",
+        "queue-operation/enqueue@1211=",
+        "queue-operation/dequeue@1211=",
+        "queue-operation/dequeue@1211=",
+        "system/agents_killed@1211=",
+        "file-history-snapshot@1211=",
+        "api-request-blob:text@1211=",
+        "api-request@1211=",
+        "user@1211=",
+        "user@1211="
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": 1211,
+      "rozstrzygniecie": "null"
+    },
+    "hook": "background-stop-1.hook.json",
+    "transkrypt": "background-stop-1.subagent.jsonl",
+    "metaPlik": "background-stop-1.meta.json",
+    "transkryptGlowny": "background-stop-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8s-1",
+    "klucz": "00000000-0000-4000-9000-000000000061-b6b5e16319536106431e06ea4592aa14",
+    "agentId": "af76fd1b58cb74502",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000006",
+      "runInBackground": "tak(napis)",
+      "ms": -2697,
+      "msTimestamp": -2771,
+      "przedHookiem": "tak",
+      "toolUseMs": -2697
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 70,
+      "toolUseMsTimestamp": -78,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "null+przerwane",
+      "wynikMs": 6796
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+stoppedByUser+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": true,
+      "finished": null
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "opis",
+      "status": "stopped",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 6796,
+      "poWyniku": 0
+    },
+    "agentsKilled": 1,
+    "hook": "background-stop-1.hook.json",
+    "transkrypt": "background-stop-1.subagent.jsonl",
+    "metaPlik": "background-stop-1.meta.json",
+    "transkryptGlowny": "background-stop-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8s-2",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000020",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "attachment/total_tokens_reminder@-4755",
+        "assistant:text@-4755",
+        "system/stop_hook_summary@-4755",
+        "system/turn_duration@-4755",
+        "queue-operation/enqueue@1240=",
+        "queue-operation/dequeue@1240=",
+        "system/agents_killed@1240=",
+        "file-history-snapshot@1240=",
+        "user@1240=",
+        "api-request-blob:text@1240=",
+        "api-request@1240=",
+        "last-prompt@1240=",
+        "ai-title@1240=",
+        "mode@1240=",
+        "permission-mode@1240=",
+        "session-owner@1240=",
+        "atis-latch@1240="
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": 1240,
+      "rozstrzygniecie": "null"
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8s-2",
+    "klucz": "00000000-0000-4000-9000-000000000193-1a37233ad91687ee41097221a860117a",
+    "agentId": "a9f1fc6e6d3376ae7",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000021",
+      "runInBackground": "tak(napis)",
+      "ms": -2952,
+      "msTimestamp": -3032,
+      "przedHookiem": "tak",
+      "toolUseMs": -2952
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 69,
+      "toolUseMsTimestamp": -74,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "null+przerwane",
+      "wynikMs": 6638
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+stoppedByUser+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": true,
+      "finished": null
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "opis",
+      "status": "stopped",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "user",
+        "api-request-blob:text",
+        "last-prompt"
+      ],
+      "ms": 6638,
+      "poWyniku": 0
+    },
+    "agentsKilled": 1
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8s-3",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000022",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "attachment/total_tokens_reminder@-4571",
+        "assistant:text@-4571",
+        "system/stop_hook_summary@-4571",
+        "system/turn_duration@-4571",
+        "queue-operation/enqueue@1201=",
+        "queue-operation/dequeue@1201=",
+        "system/agents_killed@1201=",
+        "file-history-snapshot@1201=",
+        "api-request-blob:text@1201=",
+        "api-request@1201=",
+        "user@1201="
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": 1201,
+      "rozstrzygniecie": "null"
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8s-3",
+    "klucz": "00000000-0000-4000-9000-000000000194-11d8a154815cbacef80d9c5b3af3b3de",
+    "agentId": "a11a7eb259c8ba6ab",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000023",
+      "runInBackground": "tak(napis)",
+      "ms": -2471,
+      "msTimestamp": -2562,
+      "przedHookiem": "tak",
+      "toolUseMs": -2471
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 74,
+      "toolUseMsTimestamp": -65,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "null+przerwane",
+      "wynikMs": 6728
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+stoppedByUser+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": true,
+      "finished": null
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "opis",
+      "status": "stopped",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 6728,
+      "poWyniku": 0
+    },
+    "agentsKilled": 1
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8t-1",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000009",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "tools-used@-15426",
+        "attachment/total_tokens_reminder@-15168",
+        "assistant:text@-15168",
+        "system/stop_hook_summary@-15168",
+        "system/turn_duration@-15168",
+        "file-history-snapshot@-9470",
+        "api-request-blob@-9470",
+        "api-request-blob:text@-9470",
+        "api-request@-9470",
+        "user@-9470",
+        "attachment/total_tokens_reminder@-9470",
+        "assistant:text@-7856",
+        "system/stop_hook_summary@-7856",
+        "system/turn_duration@-7856"
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": null,
+      "rozstrzygniecie": "brak-wyniku"
+    },
+    "hook": "background-turn-1.hook.json",
+    "transkrypt": "background-turn-1.subagent.jsonl",
+    "metaPlik": "background-turn-1.meta.json",
+    "transkryptGlowny": "background-turn-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8t-1-wyjscie",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000009",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "tools-used@-46398",
+        "attachment/total_tokens_reminder@-46140",
+        "assistant:text@-46140",
+        "system/stop_hook_summary@-46140",
+        "system/turn_duration@-46140",
+        "file-history-snapshot@-40442",
+        "api-request-blob@-40442",
+        "api-request-blob:text@-40442",
+        "api-request@-40442",
+        "user@-40442",
+        "attachment/total_tokens_reminder@-40442",
+        "assistant:text@-38828",
+        "system/stop_hook_summary@-38828",
+        "system/turn_duration@-38828",
+        "file-history-snapshot@46",
+        "last-prompt@46",
+        "cost-state@46",
+        "user@149",
+        "user@149",
+        "user@149"
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": null,
+      "rozstrzygniecie": "brak-wyniku"
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8t-1",
+    "klucz": "00000000-0000-4000-9000-000000000089-647269f018db4702c4b87ea4ece28e51",
+    "agentId": "ad213b0f92049ad95",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000008",
+      "runInBackground": "tak(napis)",
+      "ms": -2064,
+      "msTimestamp": -2151,
+      "przedHookiem": "tak",
+      "toolUseMs": -2064
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 75,
+      "toolUseMsTimestamp": -79,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "brak-wyniku",
+      "wynikMs": null
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": null
+    },
+    "koniec": {
+      "jest": "nie"
+    },
+    "agentsKilled": 0,
+    "hook": "background-turn-1.hook.json",
+    "transkrypt": "background-turn-1.subagent.jsonl",
+    "metaPlik": "background-turn-1.meta.json",
+    "transkryptGlowny": "background-turn-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8t-2",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000024",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "tools-used@-15284",
+        "file-history-snapshot@-9441",
+        "api-request-blob@-9441",
+        "api-request-blob:text@-9441",
+        "api-request@-9441",
+        "user@-9441",
+        "attachment/total_tokens_reminder@-9441",
+        "assistant:text@-7829",
+        "system/stop_hook_summary@-7829",
+        "system/turn_duration@-7829"
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": null,
+      "rozstrzygniecie": "brak-wyniku"
+    }
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8t-2-wyjscie",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000024",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "tools-used@-46334",
+        "file-history-snapshot@-40491",
+        "api-request-blob@-40491",
+        "api-request-blob:text@-40491",
+        "api-request@-40491",
+        "user@-40491",
+        "attachment/total_tokens_reminder@-40491",
+        "assistant:text@-38879",
+        "system/stop_hook_summary@-38879",
+        "system/turn_duration@-38879",
+        "file-history-snapshot@71",
+        "last-prompt@71",
+        "cost-state@71",
+        "user@176",
+        "user@176",
+        "user@176"
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": null,
+      "rozstrzygniecie": "brak-wyniku"
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8t-2",
+    "klucz": "00000000-0000-4000-9000-000000000195-19f9d1afe12b9b28cbc27a86abd39a62",
+    "agentId": "a607f4d4b1a6b50ed",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000025",
+      "runInBackground": "tak(napis)",
+      "ms": -2336,
+      "msTimestamp": -2385,
+      "przedHookiem": "tak",
+      "toolUseMs": -2336
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 64,
+      "toolUseMsTimestamp": -70,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "brak-wyniku",
+      "wynikMs": null
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": null
+    },
+    "koniec": {
+      "jest": "nie"
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8t-3",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000026",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "tools-used@-17547",
+        "file-history-snapshot@-11606",
+        "api-request-blob@-11606",
+        "api-request-blob:text@-11606",
+        "api-request@-11606",
+        "user@-11606",
+        "attachment/total_tokens_reminder@-11606",
+        "assistant:text@-7482",
+        "system/stop_hook_summary@-7482",
+        "system/turn_duration@-7482"
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": null,
+      "rozstrzygniecie": "brak-wyniku"
+    }
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8t-3-wyjscie",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000026",
+    "okno": {
+      "wPliku": [],
+      "glowny": [
+        "tools-used@-47647",
+        "file-history-snapshot@-41706",
+        "api-request-blob@-41706",
+        "api-request-blob:text@-41706",
+        "api-request@-41706",
+        "user@-41706",
+        "attachment/total_tokens_reminder@-41706",
+        "assistant:text@-37582",
+        "system/stop_hook_summary@-37582",
+        "system/turn_duration@-37582",
+        "file-history-snapshot@28",
+        "last-prompt@80",
+        "cost-state@80",
+        "user@183",
+        "user@183",
+        "user@183"
+      ],
+      "poDecyzjiPrzedWynikiem": 0,
+      "wynikMs": null,
+      "rozstrzygniecie": "brak-wyniku"
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8t-3",
+    "klucz": "00000000-0000-4000-9000-000000000196-83043fe5d892bec01df5b1f30a7fcaa7",
+    "agentId": "ad7ce214e3b55a168",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000027",
+      "runInBackground": "tak(napis)",
+      "ms": -2711,
+      "msTimestamp": -2776,
+      "przedHookiem": "tak",
+      "toolUseMs": -2711
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 47,
+      "toolUseMsTimestamp": -76,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "brak-wyniku",
+      "wynikMs": null
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": null
+    },
+    "koniec": {
+      "jest": "nie"
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8a-1",
+    "klucz": "00000000-0000-4000-9000-000000000003-7e1df8a3e8ad8851673071be0cc70fc9",
+    "agentId": "ac5c1889291526980",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000001",
+      "runInBackground": "tak(napis)",
+      "ms": -1866,
+      "msTimestamp": -1933,
+      "przedHookiem": "tak",
+      "toolUseMs": -1866
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 595,
+      "toolUseMsTimestamp": -90,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 151926
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "user"
+      ],
+      "ms": 155634,
+      "poWyniku": 3708
+    },
+    "agentsKilled": 0,
+    "hook": "background-auto-1.hook.json",
+    "transkrypt": "background-auto-1.subagent.jsonl",
+    "metaPlik": "background-auto-1.meta.json"
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8a-2",
+    "klucz": "00000000-0000-4000-9000-000000000197-24889dd9ac2def47991d7c1806c8697c",
+    "agentId": "a2bc5b8a414f3c8cf",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000028",
+      "runInBackground": "tak(napis)",
+      "ms": -3452,
+      "msTimestamp": -3545,
+      "przedHookiem": "tak",
+      "toolUseMs": -3452
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 517,
+      "toolUseMsTimestamp": -73,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 150513
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "user"
+      ],
+      "ms": 151970,
+      "poWyniku": 1457
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8a-3",
+    "klucz": "00000000-0000-4000-9000-000000000198-7cbec72543a0bad90ad2b8084efe33f1",
+    "agentId": "aee9784f3a043a34e",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000029",
+      "runInBackground": "tak(napis)",
+      "ms": -1871,
+      "msTimestamp": -1984,
+      "przedHookiem": "tak",
+      "toolUseMs": -1871
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 118,
+      "toolUseMsTimestamp": -62,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 150754
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "user"
+      ],
+      "ms": 152325,
+      "poWyniku": 1571
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8w-1-a",
+    "klucz": "00000000-0000-4000-9000-000000000125-bc8baa72a1081601e8cbf0893a474475",
+    "agentId": "a1f3669ee8806b3e8",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000012",
+      "runInBackground": "tak(napis)",
+      "ms": -1694,
+      "msTimestamp": -1780,
+      "przedHookiem": "tak",
+      "toolUseMs": -1694
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 83,
+      "toolUseMsTimestamp": -83,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 6529
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 7155,
+      "poWyniku": 626
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "wznowienie",
+    "nazwa": "m8w-1-b",
+    "klucz": "00000000-0000-4000-9000-000000000106-4af6eedd62765d8eb6dfefbb1b6b6ae4",
+    "agent": "rowny",
+    "promptId": {
+      "wobecPierwszej": "inny",
+      "wobecPromptu": "rowny",
+      "userPrzed": "rowny",
+      "naToolUse": "brak"
+    },
+    "wznowienie": {
+      "jest": "tak",
+      "resumed": "rowny",
+      "success": true,
+      "ms": -1027
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 19,
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 6003
+    },
+    "powiadomienia": {
+      "stare": 2,
+      "stareMs": -6774,
+      "starePoWznowieniu": 0,
+      "nowe": 2,
+      "noweMs": 6576
+    },
+    "kolejnosc": [
+      "pow1:queue-operation/enqueue@-6774",
+      "pow1:user@-6774",
+      "SendMessage@-1132",
+      "wynik-SendMessage@-1027",
+      "hook@0",
+      "tool_use@19",
+      "wynik@6003",
+      "pow2:queue-operation/enqueue@6576",
+      "pow2:user@6576"
+    ],
+    "hook": "background-resume-1-b.hook.json",
+    "transkrypt": "background-resume-1-b.subagent.jsonl",
+    "metaPlik": "background-resume-1-b.meta.json",
+    "transkryptGlowny": "background-resume-1-b.glowny.jsonl"
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8w-2-a",
+    "klucz": "00000000-0000-4000-9000-000000000199-ab45cb02dea074917b1454ea809bed58",
+    "agentId": "a5846c2f143f57a59",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000030",
+      "runInBackground": "tak(napis)",
+      "ms": -1667,
+      "msTimestamp": -1728,
+      "przedHookiem": "tak",
+      "toolUseMs": -1667
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 64,
+      "toolUseMsTimestamp": -69,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 6042
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 6722,
+      "poWyniku": 680
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "wznowienie",
+    "nazwa": "m8w-2-b",
+    "klucz": "00000000-0000-4000-9000-000000000200-28cfdf425e50cc45375b2d1ebbf7e942",
+    "agent": "rowny",
+    "promptId": {
+      "wobecPierwszej": "inny",
+      "wobecPromptu": "rowny",
+      "userPrzed": "rowny",
+      "naToolUse": "brak"
+    },
+    "wznowienie": {
+      "jest": "tak",
+      "resumed": "rowny",
+      "success": true,
+      "ms": -1238
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 70,
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 5747
+    },
+    "powiadomienia": {
+      "stare": 2,
+      "stareMs": -5532,
+      "starePoWznowieniu": 0,
+      "nowe": 2,
+      "noweMs": 6425
+    },
+    "kolejnosc": [
+      "pow1:queue-operation/enqueue@-5532",
+      "pow1:user@-5427",
+      "SendMessage@-1343",
+      "wynik-SendMessage@-1238",
+      "hook@0",
+      "tool_use@70",
+      "wynik@5747",
+      "pow2:queue-operation/enqueue@6425",
+      "pow2:user@6425"
+    ]
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8w-3-a",
+    "klucz": "00000000-0000-4000-9000-000000000201-24e4b124db9350c96ec2d9904f5a4861",
+    "agentId": "a42ffb4d68fe3315a",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000031",
+      "runInBackground": "tak(napis)",
+      "ms": -1619,
+      "msTimestamp": -1676,
+      "przedHookiem": "tak",
+      "toolUseMs": -1619
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 54,
+      "toolUseMsTimestamp": -68,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 6031
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 6556,
+      "poWyniku": 525
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "wznowienie",
+    "nazwa": "m8w-3-b",
+    "klucz": "00000000-0000-4000-9000-000000000202-b43369a25eaef6091a6f8824c413eb60",
+    "agent": "rowny",
+    "promptId": {
+      "wobecPierwszej": "inny",
+      "wobecPromptu": "rowny",
+      "userPrzed": "rowny",
+      "naToolUse": "brak"
+    },
+    "wznowienie": {
+      "jest": "tak",
+      "resumed": "rowny",
+      "success": true,
+      "ms": -1238
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 72,
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 5742
+    },
+    "powiadomienia": {
+      "stare": 2,
+      "stareMs": -5680,
+      "starePoWznowieniu": 0,
+      "nowe": 2,
+      "noweMs": 6263
+    },
+    "kolejnosc": [
+      "pow1:queue-operation/enqueue@-5680",
+      "pow1:user@-5680",
+      "SendMessage@-1343",
+      "wynik-SendMessage@-1238",
+      "hook@0",
+      "tool_use@72",
+      "wynik@5742",
+      "pow2:queue-operation/enqueue@6263",
+      "pow2:user@6263"
+    ]
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8d-1",
+    "klucz": "00000000-0000-4000-9000-000000000035-e8951f30b1cc7149e9c635f23f851f61",
+    "agentId": "a5e4de78a661d560a",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000004",
+      "runInBackground": "tak(napis)",
+      "ms": -2070,
+      "msTimestamp": -2138,
+      "przedHookiem": "tak",
+      "toolUseMs": -2070
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 75,
+      "toolUseMsTimestamp": -72,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 601264
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 601946,
+      "poWyniku": 682
+    },
+    "agentsKilled": 0,
+    "hook": "background-long-1.hook.json",
+    "transkrypt": "background-long-1.subagent.jsonl",
+    "metaPlik": "background-long-1.meta.json",
+    "transkryptGlowny": "background-long-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8d-2",
+    "klucz": "00000000-0000-4000-9000-000000000203-9810c73bc17b05f7e76f7480236334b1",
+    "agentId": "a73bd86346fb16214",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000032",
+      "runInBackground": "tak(napis)",
+      "ms": -1515,
+      "msTimestamp": -1582,
+      "przedHookiem": "tak",
+      "toolUseMs": -1515
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 56,
+      "toolUseMsTimestamp": -77,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 600740
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 601523,
+      "poWyniku": 783
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8d-3",
+    "klucz": "00000000-0000-4000-9000-000000000204-22c56f13d52a0b5fb8fbc87a22445fa9",
+    "agentId": "a1fb1662c9fc8b450",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000033",
+      "runInBackground": "tak(napis)",
+      "ms": -3244,
+      "msTimestamp": -3326,
+      "przedHookiem": "tak",
+      "toolUseMs": -3244
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 52,
+      "toolUseMsTimestamp": -73,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 600602
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true,
+      "stoppedByUser": null,
+      "finished": true
+    },
+    "koniec": {
+      "jest": "tak",
+      "forma": "task-id",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 602270,
+      "poWyniku": 1668
+    },
+    "agentsKilled": 0
+  },
+  {
+    "rodzaj": "zagniezdzony",
+    "nazwa": "m8z-1",
+    "klucz": "00000000-0000-4000-9000-000000000141-ea907c3b18faa9c3961e72fe63cac2c7",
+    "hook": "nested-1.hook.json",
+    "hookFakty": {
+      "agentId": "tak",
+      "agentType": "general-purpose",
+      "transkryptGlowny": "tak"
+    },
+    "wywolanie": {
+      "plik": "subagents/agent-a15efadc8783024f0.jsonl",
+      "kandydaci": 1,
+      "idZPliku": "rowny",
+      "agentIdNaToolUse": "rowny",
+      "isSidechain": true,
+      "toolUseMs": 47,
+      "rozstrzygniecie": "hook/accept"
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+parentAgentId+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 2,
+      "rodzic": "tak",
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true
+    },
+    "start": {
+      "jest": "tak",
+      "plik": "subagents/agent-a36aa2a9baa7c2a60.jsonl",
+      "rodzicZPliku": "rowny",
+      "runInBackground": "brak",
+      "status": "async_launched",
+      "toolUseMs": -2302
+    },
+    "glowny": {
+      "agent": 1,
+      "workflow": 0,
+      "workflowWynik": "brak"
+    },
+    "transkrypt": "nested-1.subagent.jsonl",
+    "metaPlik": "nested-1.meta.json",
+    "transkryptGlowny": "nested-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "zagniezdzony",
+    "nazwa": "m8z-2",
+    "klucz": "00000000-0000-4000-9000-000000000205-d74f152d2ff0fc6da577b5c1ec5fda47",
+    "hookFakty": {
+      "agentId": "tak",
+      "agentType": "general-purpose",
+      "transkryptGlowny": "tak"
+    },
+    "wywolanie": {
+      "plik": "subagents/agent-a19815a59acd97483.jsonl",
+      "kandydaci": 1,
+      "idZPliku": "rowny",
+      "agentIdNaToolUse": "rowny",
+      "isSidechain": true,
+      "toolUseMs": 50,
+      "rozstrzygniecie": "hook/accept"
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+parentAgentId+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 2,
+      "rodzic": "tak",
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true
+    },
+    "start": {
+      "jest": "tak",
+      "plik": "subagents/agent-ab928865fd7116756.jsonl",
+      "rodzicZPliku": "rowny",
+      "runInBackground": "brak",
+      "status": "async_launched",
+      "toolUseMs": -2568
+    },
+    "glowny": {
+      "agent": 1,
+      "workflow": 0,
+      "workflowWynik": "brak"
+    }
+  },
+  {
+    "rodzaj": "zagniezdzony",
+    "nazwa": "m8z-3",
+    "klucz": "00000000-0000-4000-9000-000000000206-a07564848467c8d48536c114bf1938af",
+    "hookFakty": {
+      "agentId": "tak",
+      "agentType": "general-purpose",
+      "transkryptGlowny": "tak"
+    },
+    "wywolanie": {
+      "plik": "subagents/agent-a19dcebb4f3ecbdde.jsonl",
+      "kandydaci": 1,
+      "idZPliku": "rowny",
+      "agentIdNaToolUse": "rowny",
+      "isSidechain": true,
+      "toolUseMs": 85,
+      "rozstrzygniecie": "hook/accept"
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+parentAgentId+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 2,
+      "rodzic": "tak",
+      "toolUseId": "rowny",
+      "requestShape": "background",
+      "requestNonInteractive": true
+    },
+    "start": {
+      "jest": "tak",
+      "plik": "subagents/agent-a63f99747c9943a18.jsonl",
+      "rodzicZPliku": "rowny",
+      "runInBackground": "brak",
+      "status": "async_launched",
+      "toolUseMs": -2064
+    },
+    "glowny": {
+      "agent": 1,
+      "workflow": 0,
+      "workflowWynik": "brak"
+    }
+  },
+  {
+    "rodzaj": "zagniezdzony",
+    "nazwa": "m8zw-1",
+    "klucz": "00000000-0000-4000-9000-000000000167-d3884a3fc54b1321b2d035650f2a6ede",
+    "hook": "nested-workflow-1.hook.json",
+    "hookFakty": {
+      "agentId": "tak",
+      "agentType": "workflow-subagent",
+      "transkryptGlowny": "tak"
+    },
+    "wywolanie": {
+      "plik": "subagents/workflows/wf_fd25104f-f1d/agent-a2fe0e7bc433e7fd6.jsonl",
+      "kandydaci": 1,
+      "idZPliku": "rowny",
+      "agentIdNaToolUse": "rowny",
+      "isSidechain": true,
+      "toolUseMs": 83,
+      "rozstrzygniecie": "hook/accept"
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth",
+      "agentType": "workflow-subagent",
+      "spawnDepth": 1,
+      "rodzic": "nie",
+      "toolUseId": "bez-startu",
+      "requestShape": "foreground",
+      "requestNonInteractive": false
+    },
+    "start": {
+      "jest": "nie"
+    },
+    "glowny": {
+      "agent": 0,
+      "workflow": 1,
+      "workflowWynik": "runId+scriptPath+status+summary+taskId+taskType+transcriptDir+workflowName"
+    },
+    "transkrypt": "nested-workflow-1.subagent.jsonl",
+    "metaPlik": "nested-workflow-1.meta.json",
+    "transkryptGlowny": "nested-workflow-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "zagniezdzony",
+    "nazwa": "m8zw-2",
+    "klucz": "00000000-0000-4000-9000-000000000207-073b0a400d683b598bf6a8d94c81643e",
+    "hookFakty": {
+      "agentId": "tak",
+      "agentType": "workflow-subagent",
+      "transkryptGlowny": "tak"
+    },
+    "wywolanie": {
+      "plik": "subagents/workflows/wf_6230a55f-001/agent-adda5e4e62f0e6fbc.jsonl",
+      "kandydaci": 1,
+      "idZPliku": "rowny",
+      "agentIdNaToolUse": "rowny",
+      "isSidechain": true,
+      "toolUseMs": -28,
+      "rozstrzygniecie": "hook/accept"
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth",
+      "agentType": "workflow-subagent",
+      "spawnDepth": 1,
+      "rodzic": "nie",
+      "toolUseId": "bez-startu",
+      "requestShape": "foreground",
+      "requestNonInteractive": false
+    },
+    "start": {
+      "jest": "nie"
+    },
+    "glowny": {
+      "agent": 0,
+      "workflow": 1,
+      "workflowWynik": "runId+scriptPath+status+summary+taskId+taskType+transcriptDir+workflowName"
+    }
+  },
+  {
+    "rodzaj": "zagniezdzony",
+    "nazwa": "m8zw-3",
+    "klucz": "00000000-0000-4000-9000-000000000208-4d1af081b48c06112cc26e35aee8695e",
+    "hookFakty": {
+      "agentId": "tak",
+      "agentType": "workflow-subagent",
+      "transkryptGlowny": "tak"
+    },
+    "wywolanie": {
+      "plik": "subagents/workflows/wf_2ab61c8e-81d/agent-af4e175dfacbcb7d0.jsonl",
+      "kandydaci": 1,
+      "idZPliku": "rowny",
+      "agentIdNaToolUse": "rowny",
+      "isSidechain": true,
+      "toolUseMs": 87,
+      "rozstrzygniecie": "hook/accept"
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+isBuiltIn+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth",
+      "agentType": "workflow-subagent",
+      "spawnDepth": 1,
+      "rodzic": "nie",
+      "toolUseId": "bez-startu",
+      "requestShape": "foreground",
+      "requestNonInteractive": false
+    },
+    "start": {
+      "jest": "nie"
+    },
+    "glowny": {
+      "agent": 0,
+      "workflow": 1,
+      "workflowWynik": "runId+scriptPath+status+summary+taskId+taskType+transcriptDir+workflowName"
+    }
+  }
+]

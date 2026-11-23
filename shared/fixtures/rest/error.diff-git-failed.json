@@ -1,0 +1,7 @@
+{
+  "error": "git-failed",
+  "message": "Git didn't respond. Try again.",
+  "messageRef": {
+    "code": "rest.diff-git-failed"
+  }
+}

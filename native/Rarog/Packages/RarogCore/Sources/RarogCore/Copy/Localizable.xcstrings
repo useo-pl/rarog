@@ -1,0 +1,78 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "core.noConnection" : {
+      "comment" : "Odmowy bramek rdzenia.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't reach the server. Try again in a moment."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak połączenia z serwerem — spróbuj za chwilę."
+          }
+        }
+      }
+    },
+    "core.unsupportedSession" : {
+      "comment" : "Odmowy bramek rdzenia.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version of the app doesn't support this session. Update the app."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta wersja apki nie obsługuje tej sesji — zaktualizuj apkę."
+          }
+        }
+      }
+    },
+    "core.updateApp" : {
+      "comment" : "Odmowy bramek rdzenia.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server is newer than this version of the app. Update the app."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serwer jest nowszy niż ta wersja apki — zaktualizuj apkę."
+          }
+        }
+      }
+    },
+    "core.updateServer" : {
+      "comment" : "Odmowy bramek rdzenia. Apka jest nowsza niż serwer (serwer ma niższy protokół): zdanie odmowy mutacji i baner niezgodności. Parametr: %@ pełna komenda aktualizacji serwera z instalacją (bez tłumaczenia: npm i -g @rarog/server@latest && rarog update). Komenda kończy zdanie, bez kropki za nią.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app is newer than the server. Update the server: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apka jest nowsza niż serwer — zaktualizuj serwer: %@"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,18 @@
+❯ To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy w trakcie
+  pracy przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Proszę o jedno wywołanie
+  narzędzia Bash z command: echo pomiar-start; sleep 45; echo pomiar-koniec — zwykłe, na pierwszym planie, bez
+  run_in_background. Nie używaj żadnych narzędzi poza tym jednym wywołaniem. Po jego wyniku zakończ turę słowem: gotowe. Krótką
+  wiadomość, która przyjdzie w trakcie, potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok.
+
+  Running measurement sleep command · 8s
+  ⎿  $ echo pomiar-start; sleep 45; echo pomiar-koniec (8s · 2 lines)
+     (ctrl+b to run in background)
+
+❯ pomiar B: ok
+  ⎿  Queued · ctrl+enter to send now
+
+✳ Fluttering… (12s · ↓ 145 tokens)
+                                                          Advisor Tool (experimental) is on and may use more tokens · /advisor
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Press up to edit queued messages
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

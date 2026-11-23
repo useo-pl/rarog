@@ -1,0 +1,10 @@
+{
+  "error": "ultracode-refused",
+  "message": "The Claude Code version is unknown, and ultracode requires version 2.1.284 or later.",
+  "messageRef": {
+    "code": "model.ultracode-cli-unknown",
+    "args": [
+      "2.1.284"
+    ]
+  }
+}

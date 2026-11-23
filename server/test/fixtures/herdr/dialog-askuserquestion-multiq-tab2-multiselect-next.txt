@@ -1,0 +1,17 @@
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☒ Odstęp  ☐ Dodatki  ☐ Kolor  ✔ Submit  →
+
+Które dodatki włączyć?
+
+❯ 1. [ ] Posypka
+  Kolorowa
+  2. [ ] Polewa
+  Czekoladowa
+  3. [ ] Bita śmietana
+  Domowa
+  4. [ ] Type something
+     Next
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

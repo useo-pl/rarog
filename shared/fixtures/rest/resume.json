@@ -1,0 +1,19 @@
+{
+  "sessionId": "demo-pipe-link",
+  "session": {
+    "id": "demo-pipe-link",
+    "cwd": "/Users/demo/Projects/pipe-link",
+    "title": "pipe-link",
+    "state": "starting",
+    "stateSince": "2026-10-04T09:42:00.000Z",
+    "createdAt": "2026-10-04T08:50:00.000Z",
+    "lastActivityAt": "2026-10-04T09:42:00.000Z",
+    "paneId": "w0:demo-pipe-link",
+    "launchedByRarog": true,
+    "label": "mostek zdarzeń",
+    "branch": "feat/bridge",
+    "dirtyCount": 2,
+    "model": "claude-sonnet-5",
+    "effort": "low"
+  }
+}

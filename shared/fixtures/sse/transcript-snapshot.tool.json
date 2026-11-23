@@ -1,0 +1,13 @@
+{
+  "type": "transcript-snapshot",
+  "sessionId": "herdr-w4-p8",
+  "messages": [],
+  "pendingPermissions": [],
+  "pendingQuestions": [],
+  "activity": {
+    "kind": "tool",
+    "toolName": "Bash",
+    "summary": "pnpm test shared/test",
+    "description": "Run the shared contract tests"
+  }
+}

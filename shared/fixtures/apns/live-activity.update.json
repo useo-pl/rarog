@@ -1,0 +1,33 @@
+{
+  "headers": {
+    "apns-expiration": "1791368100",
+    "apns-priority": "10",
+    "apns-push-type": "liveactivity",
+    "apns-topic": "ai.rarog.app.push-type.liveactivity"
+  },
+  "payload": {
+    "aps": {
+      "timestamp": 1791367200,
+      "event": "update",
+      "content-state": {
+        "waiting": 2,
+        "working": 2,
+        "finished": 0,
+        "top": {
+          "sessionId": "demo-willow"
+        },
+        "limits": {
+          "fiveHour": 42,
+          "weekly": 81
+        },
+        "mac": {
+          "cpu": 35,
+          "ram": 70,
+          "disk": 60
+        },
+        "updatedEpoch": 1791367200
+      },
+      "stale-date": 1791368100
+    }
+  }
+}

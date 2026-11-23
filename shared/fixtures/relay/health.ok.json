@@ -1,0 +1,21 @@
+{
+  "description": "Stan przekaźnika: środowiska z kluczem i polityka alertów.",
+  "request": {
+    "method": "GET",
+    "path": "/v1/health",
+    "headers": {}
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "v": 1,
+      "ok": true,
+      "version": "1.0.0+fixture",
+      "environments": [
+        "development",
+        "production"
+      ],
+      "alertPolicy": "v2"
+    }
+  }
+}

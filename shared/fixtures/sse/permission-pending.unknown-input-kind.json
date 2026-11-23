@@ -1,0 +1,16 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "toolu_21",
+    "sessionId": "herdr-w1-p2",
+    "toolName": "Bash",
+    "displayText": "pnpm test shared/test/sse-fixtures.test.ts",
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/birch",
+    "createdAt": "2026-10-03T08:00:48.000Z",
+    "subject": "tool",
+    "inputKind": "sql",
+    "alwaysLabel": "Yes, and don't ask again for pnpm test commands in /Users/demo/Projects/birch",
+    "canAllow": true
+  }
+}

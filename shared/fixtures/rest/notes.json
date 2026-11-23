@@ -1,0 +1,4 @@
+{
+  "text": "## Przed deployem\n- `pnpm run restart` po każdej zmianie w `server/`\n- sprawdź `/health`: `herdr: true`\n\nChangelog herdr: https://herdr.dev",
+  "updatedAt": 1792006800000
+}

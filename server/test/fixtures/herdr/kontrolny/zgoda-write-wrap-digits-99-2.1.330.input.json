@@ -1,0 +1,9 @@
+{
+  "toolName": "Write",
+  "input": {
+    "file_path": "/Users/u/projekt/new-cyfry-99.md",
+    "content": "# Sample notes\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnop42 xuvwxyzabcdefghij\nEnd of notes.\n"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": []
+}

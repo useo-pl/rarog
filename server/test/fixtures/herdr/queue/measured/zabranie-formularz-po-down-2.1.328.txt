@@ -1,0 +1,39 @@
+
+❯ To pomiar techniczny do
+  repo rarog, nie
+  prawdziwe zadanie:
+  sprawdzam, co klawisze
+  strzałek robią w
+  stojącym formularzu
+  Claude Code. Ten prompt
+  wpisuje za mnie skrypt
+  scripts/measure-queue.
+  sh. Nie używaj żadnych
+  narzędzi poza jednym
+  wywołaniem
+  AskUserQuestion. Zadaj
+  dokładnie jedno pytanie
+  jednokrotnego wyboru:
+  'Jaki smak lodow?' z
+  opcjami: Wanilia,
+  Czekolada, Truskawka.
+  Nie pisz nic poza tym
+  wywołaniem.
+──────────────────────────
+ ☐ Smak lodów
+
+Jaki smak lodów?
+
+  1. Wanilia
+     Wanilia
+  2. Czekolada
+     Czekolada
+  3. Truskawka
+     Truskawka
+  4. Type something.
+──────────────────────────
+❯ 5. Chat about this
+
+Enter to select · ↑/↓ to
+navigate · ctrl+g to edit
+in Nvim · Esc to cancel

@@ -1,0 +1,46 @@
+{
+  "description": "Aktualizacja kafla z dzwonkiem „skończył” (literał LIVE_ACTIVITY_CHIME) przepustką typu liveactivity w formacie v2 (skrót rodzica; limit RL_PUSH per rodzic).",
+  "request": {
+    "method": "POST",
+    "path": "/v1/push",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "pass": "v2.k1.development.liveactivity.be11da276dbba8d6.c2a0b37a262809b4.1800525600.GcPw2X5PVocqL_2k6OHWtguXsKzCqsCPuWKqmObj9ms",
+      "token": "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+      "environment": "development",
+      "headers": {
+        "apns-expiration": "1791367230",
+        "apns-priority": "10",
+        "apns-push-type": "liveactivity",
+        "apns-topic": "ai.rarog.app.push-type.liveactivity"
+      },
+      "payload": "{\"aps\":{\"timestamp\":1791367200,\"event\":\"update\",\"content-state\":{\"waiting\":0,\"working\":1,\"finished\":1,\"top\":{\"sessionId\":\"demo-atlas\"},\"updatedEpoch\":1791367200},\"alert\":{\"title\":\"Agent skończył\",\"body\":\"Wynik czeka w Rarogu\",\"sound\":\"skonczyl.caf\"},\"stale-date\":1791368100}}"
+    }
+  },
+  "apns": {
+    "status": 200,
+    "body": ""
+  },
+  "apnsRequest": {
+    "url": "https://api.sandbox.push.apple.com/3/device/a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+    "headers": {
+      "apns-expiration": "1791367230",
+      "apns-priority": "10",
+      "apns-push-type": "liveactivity",
+      "apns-topic": "ai.rarog.app.push-type.liveactivity",
+      "content-type": "application/json"
+    },
+    "body": "{\"aps\":{\"timestamp\":1791367200,\"event\":\"update\",\"content-state\":{\"waiting\":0,\"working\":1,\"finished\":1,\"top\":{\"sessionId\":\"demo-atlas\"},\"updatedEpoch\":1791367200},\"alert\":{\"title\":\"Agent skończył\",\"body\":\"Wynik czeka w Rarogu\",\"sound\":\"skonczyl.caf\"},\"stale-date\":1791368100}}"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "v": 1,
+      "apnsStatus": 200
+    }
+  }
+}

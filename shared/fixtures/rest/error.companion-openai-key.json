@@ -1,0 +1,7 @@
+{
+  "error": "companion-openai-key",
+  "message": "OpenAI rejected the server's key. Set a new one with rarog voice-agent set-key on the server.",
+  "messageRef": {
+    "code": "rest.companion-openai-key"
+  }
+}

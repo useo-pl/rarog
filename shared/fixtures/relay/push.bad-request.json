@@ -1,0 +1,31 @@
+{
+  "description": "Ciało niezgodne z kontraktem (tu: brak payload). Także: payload nie jest łańcuchem, headers nie są obiektem napisów, ciało > 8 KiB.",
+  "request": {
+    "method": "POST",
+    "path": "/v1/push",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "pass": "v1.k1.development.alert.c2a0b37a262809b4.1800525600.ganNxIFp2SYBpvH2PDB72jFbieaMaxsAXHdxunpxUNk",
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "headers": {
+        "apns-collapse-id": "cr1xyyYpSec1JgrezziXOaeaqcM43hwA",
+        "apns-expiration": "1791367800",
+        "apns-priority": "10",
+        "apns-push-type": "alert",
+        "apns-topic": "ai.rarog.app"
+      }
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "v": 1,
+      "error": "bad-request"
+    }
+  }
+}

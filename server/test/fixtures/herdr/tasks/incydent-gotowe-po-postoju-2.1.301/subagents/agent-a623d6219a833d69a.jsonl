@@ -1,0 +1,63 @@
+{"type":"assistant","timestamp":"2026-10-16T16:03:21.921Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:05:06.182Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:07:16.098Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:07:18.384Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:08:51.323Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:08:56.673Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:09:47.344Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:11:21.204Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:13:37.112Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:15:47.580Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:16:22.563Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:16:26.598Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:16:54.081Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:18:01.315Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:19:43.640Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:19:48.834Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:21:29.583Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:22:04.488Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:22:26.372Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:22:45.314Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:23:05.834Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:23:08.021Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:24:18.536Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:24:43.911Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:25:00.815Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:25:47.659Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:26:04.880Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:26:31.182Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:26:52.671Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:28:04.247Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:28:16.184Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:30:04.355Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:30:04.523Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:30:46.331Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:31:14.874Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:31:52.190Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:31:57.110Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:32:23.852Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:32:44.461Z","isSidechain":true,"agentId":"a623d6219a833d69a","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_037","name":"Bash","input":{"run_in_background":true,"timeout":600000,"command":"<komenda poza fixture>","description":"opis 31 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T16:32:47.322Z","isSidechain":true,"agentId":"a623d6219a833d69a","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_037"}]},"toolUseResult":{"backgroundTaskId":"bangv3bee"}}
+{"type":"assistant","timestamp":"2026-10-16T16:33:07.742Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"attachment","timestamp":"2026-10-16T16:32:57.429Z","isSidechain":true,"agentId":"a623d6219a833d69a","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bangv3bee</task-id>\n<tool-use-id>toolu_037</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bangv3bee.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 31 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T16:33:57.158Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:34:25.360Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:34:48.247Z","isSidechain":true,"agentId":"a623d6219a833d69a","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_038","name":"Bash","input":{"run_in_background":true,"timeout":1200000,"command":"<komenda poza fixture>","description":"opis 27 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T16:34:48.564Z","isSidechain":true,"agentId":"a623d6219a833d69a","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_038"}]},"toolUseResult":{"backgroundTaskId":"b8sg2djn5"}}
+{"type":"assistant","timestamp":"2026-10-16T16:35:45.844Z","isSidechain":true,"agentId":"a623d6219a833d69a","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_039","name":"Monitor","input":{"timeout_ms":1800000,"command":"<komenda poza fixture>","description":"opis 32 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T16:35:46.191Z","isSidechain":true,"agentId":"a623d6219a833d69a","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_039"}]},"toolUseResult":{"taskId":"bo1f4hrgr","timeoutMs":1800000,"persistent":false}}
+{"type":"assistant","timestamp":"2026-10-16T16:35:50.710Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:41:02.073Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"attachment","timestamp":"2026-10-16T16:41:00.626Z","isSidechain":true,"agentId":"a623d6219a833d69a","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>b8sg2djn5</task-id>\n<tool-use-id>toolu_038</tool-use-id>\n<output-file>/Users/u/projekt/tasks/b8sg2djn5.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 27 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T16:42:39.415Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"attachment","timestamp":"2026-10-16T16:41:07.070Z","isSidechain":true,"agentId":"a623d6219a833d69a","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bo1f4hrgr</task-id>\n<tool-use-id>toolu_039</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bo1f4hrgr.output</output-file>\n<status>completed</status>\n<summary>Monitor \"opis 32 (treść poza fixture)\" stream ended</summary>\n<event>zdarzenie meldunku 39 (treść poza fixture)</event>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T16:43:20.842Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:43:42.366Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:43:54.621Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:44:21.691Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:44:48.212Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:45:35.067Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:47:02.631Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:47:22.894Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:48:02.878Z","isSidechain":true,"agentId":"a623d6219a833d69a"}
+{"type":"assistant","timestamp":"2026-10-16T16:48:03.208Z","isSidechain":true,"agentId":"a623d6219a833d69a"}

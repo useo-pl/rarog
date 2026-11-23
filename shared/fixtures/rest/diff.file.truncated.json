@@ -1,0 +1,5 @@
+{
+  "path": "pnpm-lock.yaml",
+  "patch": "diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml\nindex 3ab97e5..7c1e4b8 100644\n--- a/pnpm-lock.yaml\n+++ b/pnpm-lock.yaml\n@@ -1,3 +1,43 @@\n lockfileVersion: '9.0'\n+  /paczka-01@1.0.0: {}\n+  /paczka-02@1.0.0: {}\n+  /paczka-03@1.0.0: {}\n+  /paczka-04@1.0.0: {}\n+  /paczka-05@1.0.0: {}\n+  /paczka-06@1.0.0: {}\n+  /paczka-07@1.0.0: {}\n+  /paczka-08@1.0.0: {}\n+  /paczka-09@1.0.0: {}\n+  /paczka-10@1.0.0: {}\n+  /paczka-11@1.0.0: {}\n+  /paczka-12@1.0.0: {}\n+  /paczka-13@1.0.0: {}\n+  /paczka-14@1.0.0: {}\n",
+  "truncated": true
+}

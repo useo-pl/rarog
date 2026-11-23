@@ -1,0 +1,31 @@
+{
+  "type": "session-changed",
+  "session": {
+    "id": "herdr-w2-p4",
+    "cwd": "/Users/demo/Projects/dunes",
+    "title": "dunes",
+    "state": "waiting-question",
+    "stateSince": "2026-10-03T08:00:50.000Z",
+    "createdAt": "2026-10-03T08:00:49.000Z",
+    "lastActivityAt": "2026-10-03T08:00:50.000Z",
+    "turnSince": "2026-10-03T08:00:49.000Z",
+    "paneId": "w2:p4",
+    "launchedByRarog": false,
+    "stale": false,
+    "herdrMode": "plan",
+    "outOfScope": false,
+    "label": "manifest",
+    "context": {
+      "kind": "unknown",
+      "tokens": 184220,
+      "atLeast": 612000
+    },
+    "model": "claude-sonnet-5",
+    "effort": "medium",
+    "waitingFor": {
+      "kind": "question",
+      "text": "Gdzie trzymamy złote ramki SSE?",
+      "count": 2
+    }
+  }
+}

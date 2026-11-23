@@ -1,0 +1,28 @@
+[Unit]
+Description=Adapter haka dostępu iroh-relay (termin decyzji, fail-open)
+# Adapter żyje razem z relayem: stop relaya zatrzymuje adapter, start relaya ciągnie go przez Wants=. Śmierć
+# adaptera relaya nie rusza (iroh-relay.service ma Wants=, nie BindsTo=), a Restart= podnosi adapter po 1 s.
+BindsTo=iroh-relay.service
+Before=iroh-relay.service
+
+[Service]
+DynamicUser=yes
+EnvironmentFile=/etc/iroh-relay/access-adapter.conf
+ExecStart=/usr/bin/node /opt/relay-vps/access-adapter.mjs
+# Nazwa w dzienniku zamiast `node`: po niej rsyslog-relay.conf trzyma linie adaptera poza /var/log/syslog.
+SyslogIdentifier=relay-access
+# Gotowość: Before= przy Type=simple czeka tylko na start procesu, a relay przyjmował połączenia ok. 250 ms przed
+# listen() adaptera (pierwsze próby klientów po restarcie dostawały odmowę). ExecStartPost czeka na port, więc
+# relay startuje dopiero przy gotowym adapterze. Port = ADAPTER_PORT z access-adapter.conf i port `access.http.url`
+# w config.toml (pilnuje tego relay-vps/test/units.test.ts). Bez znaku dolara: systemd rozwija zmienne w linii.
+ExecStartPost=/usr/bin/bash -c 'for i in {1..50}; do (exec 3<>/dev/tcp/127.0.0.1/8081) 2>/dev/null && exit 0; sleep 0.1; done; exit 1'
+Restart=always
+RestartSec=1
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+MemoryMax=256M
+TasksMax=64
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

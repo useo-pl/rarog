@@ -1,0 +1,59 @@
+/**
+ * Czas w liniach logu serwera: każda linia stdout i stderr procesu serwera zaczyna
+ * się od czasu ISO 8601 w UTC z milisekundami i spacji (`2026-11-10T16:59:23.123Z `). Te strumienie to `server.log`
+ * pod launchd, `systemd --user` i `nohup`.
+ *
+ * Prefiks powstaje w JEDNYM miejscu: {@link timestampWrites} owija `write` strumienia, a instaluje go na stdout
+ * i stderr procesu serwera wyłącznie `log-timestamps-install.ts`, pierwszy import `index.ts` (wejście, które
+ * `serverExec` uruchamia po `execve` w `rarog serve`). Wywołania logu czasu nie dopisują; wstrzyknięte loggery
+ * w testach i wyjście komend `rarog …` dla człowieka go nie dostają.
+ *
+ * Granica linii to `\n` w bajtach zapisu: zapis wielowierszowy (stos błędu) dostaje prefiks na każdej linii, a linia
+ * zapisana kilkoma `write` jeden, z czasem pierwszego fragmentu. Czego nie obejmuje: bajtów, które omijają
+ * `process.stdout.write` / `process.stderr.write` (wydruk niezłapanego wyjątku z samego Node, proces potomny
+ * z odziedziczonym deskryptorem).
+ */
+
+/** Prefiks czasu na początku linii logu serwera. Czytelnicy logu przyjmują linię z nim i bez niego (stare pliki). */
+export const LOG_TIME_PREFIX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z /u;
+
+const NEWLINE = 0x0a;
+
+type WriteFn = (chunk: unknown, ...rest: unknown[]) => boolean;
+
+/**
+ * Owija `stream.write`: przed każdą linią wstawia czas z `now()` (raz na zapis, tylko gdy linia się w nim zaczyna).
+ * Napis z kodowaniem idzie jako bajty w tym kodowaniu, callback zapisu przechodzi bez zmian.
+ */
+export function timestampWrites(stream: NodeJS.WritableStream, now: () => Date = () => new Date()): void {
+  const original = stream.write.bind(stream) as WriteFn;
+  let atLineStart = true;
+  const write: WriteFn = (chunk, ...rest) => {
+    const [second, third] = rest;
+    const encoding = typeof second === 'string' ? second as BufferEncoding : undefined;
+    const callback = typeof second === 'function' ? second : third;
+    let bytes: Buffer;
+    if (typeof chunk === 'string') bytes = Buffer.from(chunk, encoding ?? 'utf8');
+    // Każdy widok bufora (`DataView`, dowolny `TypedArray`), nie tylko `Uint8Array`: `write` przyjmuje je wszystkie.
+    else if (ArrayBuffer.isView(chunk)) bytes = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+    else return original(chunk, ...rest);
+    if (bytes.length === 0) return original(chunk, ...rest);
+    const parts: Buffer[] = [];
+    let prefix: Buffer | null = null;
+    let from = 0;
+    while (from < bytes.length) {
+      if (atLineStart) {
+        prefix ??= Buffer.from(`${now().toISOString()} `, 'utf8');
+        parts.push(prefix);
+      }
+      const newline = bytes.indexOf(NEWLINE, from);
+      const end = newline === -1 ? bytes.length : newline + 1;
+      parts.push(bytes.subarray(from, end));
+      atLineStart = newline !== -1;
+      from = end;
+    }
+    const out = Buffer.concat(parts);
+    return typeof callback === 'function' ? original(out, callback) : original(out);
+  };
+  stream.write = write as typeof stream.write;
+}

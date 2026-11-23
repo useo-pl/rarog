@@ -1,0 +1,7 @@
+{
+  "error": "companion-throttled",
+  "message": "Too soon. Wait a moment and start the conversation again.",
+  "messageRef": {
+    "code": "rest.companion-throttled"
+  }
+}

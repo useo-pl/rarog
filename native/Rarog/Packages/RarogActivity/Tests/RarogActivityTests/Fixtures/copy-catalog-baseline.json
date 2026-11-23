@@ -1,0 +1,18 @@
+{
+  "liveActivity.levelWord.critical": ["krytyczne",""],
+  "liveActivity.levelWord.warning": ["wysokie",""],
+  "liveActivity.limit.fiveHour": ["5h",""],
+  "liveActivity.limit.label": ["limit ⟪0⟫","s"],
+  "liveActivity.limit.weekly": ["7d",""],
+  "liveActivity.mac.cpu": ["CPU",""],
+  "liveActivity.mac.disk": ["dysk",""],
+  "liveActivity.mac.ram": ["RAM",""],
+  "liveActivity.moreWorkflows": ["+⟪0⟫ workflow","i"],
+  "liveActivity.quietNote": ["kafel zniknie po 30 min ciszy",""],
+  "liveActivity.row.agents": ["agenci ⟪0⟫/⟪1⟫","ii"],
+  "liveActivity.row.agentsSpoken": ["agenci ⟪0⟫ z ⟪1⟫","ii"],
+  "liveActivity.row.phase": ["faza ⟪0⟫/⟪1⟫","ii"],
+  "liveActivity.row.phaseSpoken": ["faza ⟪0⟫ z ⟪1⟫","ii"],
+  "liveActivity.spoken.moreWorkflows": ["Jeszcze ⟪0⟫ workflow","i"],
+  "liveActivity.usageLead": ["usage",""]
+}

@@ -1,0 +1,35 @@
+  kolejny prompt. Ten
+  prompt wpisuje za mnie
+  skrypt scripts/measure-
+  queue.sh. Proszę o
+  jedno wywołanie
+  narzędzia Bash z
+  command: echo
+  pomiar-start; sleep 25;
+  echo pomiar-koniec —
+  zwykłe, na pierwszym
+  planie, bez
+  run_in_background. Nie
+  używaj żadnych narzędzi
+  poza tym jednym
+  wywołaniem. Po jego
+  wyniku zakończ turę
+  słowem: gotowe. Krótką
+  wiadomość, która
+  przyjdzie w trakcie,
+  potraktuj jako część
+  pomiaru i odpowiedz na
+  nią jednym słowem: ok.
+
+  Ran 1 shell command
+
+❯ pomiar B: ok
+
+⏺ <tekst poza fixture>
+
+✻ Baked for 30s · done
+  1:48 PM
+
+─── History 100/100 ──────
+❯ pomiar B: ok
+──────────────────────────

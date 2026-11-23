@@ -1,0 +1,17 @@
+{
+  "name": "@rarog/server",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.247",
+    "@number0/iroh": "1.2.0",
+    "@rarog/shared": "workspace:*",
+    "ws": "8.21.3",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.1"
+  }
+}

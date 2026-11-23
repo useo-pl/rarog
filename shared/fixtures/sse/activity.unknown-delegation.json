@@ -1,0 +1,28 @@
+{
+  "type": "activity",
+  "sessionId": "herdr-w1-p1",
+  "kind": "tool",
+  "toolName": "Workflow",
+  "agents": 3,
+  "elapsedSeconds": 42,
+  "delegation": "team",
+  "workflow": "kontrakt-semantyczny",
+  "agentsDone": 2,
+  "phases": [
+    {
+      "title": "Przegląd",
+      "agents": 2,
+      "done": 2
+    },
+    {
+      "title": "Implementacja",
+      "agents": 1,
+      "done": 0
+    },
+    {
+      "title": "Weryfikacja",
+      "agents": 0,
+      "done": 0
+    }
+  ]
+}

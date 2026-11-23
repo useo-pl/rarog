@@ -1,0 +1,17 @@
+❯ To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji,
+  gdy w trakcie pracy przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh.
+  Proszę o jedno wywołanie narzędzia Bash z command: echo pomiar-start; sleep 60; echo pomiar-koniec — zwykłe,
+  na pierwszym planie, bez run_in_background. Nie używaj żadnych narzędzi poza tym jednym wywołaniem. Po jego
+  wyniku zakończ turę słowem: gotowe. Krótką wiadomość, która przyjdzie w trakcie, potraktuj jako część pomiaru
+  i odpowiedz na nią jednym słowem: ok.
+
+  Running measurement sleep command · 14s
+  ⎿  $ echo pomiar-start; sleep 60; echo pomiar-koniec (13s · 2 lines)
+     (ctrl+b to run in background)
+
+✻ Scampering… (17s · ↓ 100 tokens)
+                                                                                         ctrl+g to edit in Nvim
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ pomiar B: ok
+  pomiar C: ok
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────

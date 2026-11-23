@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "protocolVersion": 3,
+  "serverStartId": "start-fixtures",
+  "voiceEnabled": true,
+  "termEnabled": false,
+  "tailnet": null,
+  "hookSeenAgo": null,
+  "notesEnabled": true,
+  "companionEnabled": true,
+  "companionSpeech": true,
+  "companionSessions": true,
+  "apnsEnabled": false,
+  "capabilities": [
+    "device-auth",
+    "pair",
+    "pair-from-device",
+    "push-relay",
+    "push-e2e-v2",
+    "companion",
+    "companion-sessions"
+  ],
+  "system": "macos",
+  "iroh": null
+}

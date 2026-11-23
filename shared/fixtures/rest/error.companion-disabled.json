@@ -1,0 +1,7 @@
+{
+  "error": "companion-disabled",
+  "message": "The voice agent is turned off on the server (RAROG_COMPANION).",
+  "messageRef": {
+    "code": "rest.companion-disabled"
+  }
+}

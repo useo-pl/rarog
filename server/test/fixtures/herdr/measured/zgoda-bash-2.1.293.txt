@@ -1,0 +1,28 @@
+
+
+❯ Nie używaj żadnych narzędzi poza Bash. Wykonaj polecenie:
+  touch ~/Library/Caches/pomiar-dialogow.txt. To katalog cache
+  poza sandboksem — użytkownik wprost prosi o wykonanie go od
+  razu poza sandboksem (dangerouslyDisableSandbox: true). Nie
+  proponuj innych komend i nie pisz nic poza tym wywołaniem.
+
+⏺ Creating empty file in Caches directory
+  ⎿  $ touch ~/Library/Caches/pomiar-dialogow.txt
+
+───────────────────────────────────────────────────────────────
+ Bash command (unsandboxed)
+ Tip: auto mode handles these prompts for you — choose "switch
+ to auto mode" below
+ Create empty file in Caches directory
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ touch ~/Library/Caches/pomiar-dialogow.txt
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and always allow access to
+      /Users/u/Library/Caches from this project
+   3. Yes, and switch to auto mode · auto mode handles these
+      prompts for you
+   4. No
+
+ Esc to cancel · Tab to amend

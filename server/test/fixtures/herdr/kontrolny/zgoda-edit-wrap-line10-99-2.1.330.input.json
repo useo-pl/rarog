@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/projekt/notes-n10-99.md",
+    "old_string": "Status: draft",
+    "new_string": "Status: final"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": [
+    {
+      "file_path": "/Users/u/projekt/notes-n10-99.md",
+      "content": "one\ntwo\nthree\nfour\nfive\nsix\nseven\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza\nnine\nStatus: draft\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza\ntwelve\nthirteen\nfourteen\n"
+    }
+  ]
+}

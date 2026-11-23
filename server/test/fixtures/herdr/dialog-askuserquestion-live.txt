@@ -1,0 +1,29 @@
+
+╭─── Claude Code v2.1.241 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting started                                                                      │
+│                    Welcome back!                   │ Run /init to create a CLAUDE.md file with instructions for Claude                             │
+│                                                    │ ───────────────────────────────────────────────────────────────────────────────────────────── │
+│                       ▐▛███▛█                      │ What's new                                                                                    │
+│                      ▝▜██████▀                     │ Bug fixes and reliability improvements                                                        │
+│                        ▝▝ ▝▝                       │ Bug fixes and reliability improvements                                                        │
+│      Fable 5 with high effort · Claude API ·       │ Cost estimates (`/cost`, status line, `--max-budget-usd`) now include the 1.1× US-only-infer… │
+│           user@example.com's Organization          │ /release-notes for more                                                                       │
+│                   ~/Projects/demo                  │                                                                                               │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+❯ Zapytaj mnie narzedziem AskUserQuestion, czy wolisz wariant A czy B. Nic wiecej nie rob.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Wariant
+
+Wolisz wariant A czy B?
+
+❯ 1. Wariant A
+     Wybierz wariant A
+  2. Wariant B
+     Wybierz wariant B
+  3. Type something.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel

@@ -1,0 +1,21 @@
+{
+  "name": "rarog-relay",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Przekaźnik push Raroga: bezstanowy Worker Cloudflare, przepustka per token, polityka aps.alert",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261016.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10",
+    "wrangler": "4.151.1"
+  }
+}

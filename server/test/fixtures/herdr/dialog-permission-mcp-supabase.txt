@@ -1,0 +1,19 @@
+
+❯ Tak, kontynuuj: wywolaj mcp__supabase__list_extensions
+  teraz.
+
+  Calling supabase…
+
+───────────────────────────────────────────────────────────────
+ Tool use
+
+   supabase — List extensions Tool: (MCP)
+
+   About the supabase — List extensions Tool:
+   │ Lists all extensions in the database.
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

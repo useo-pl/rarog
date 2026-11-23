@@ -1,0 +1,35 @@
+
+ ▐▛███▛█   Claude Code v2.1.321
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: shell-c-rm-auto.
+
+  Running the merge check and clean up
+  ⎿  $ bash -c '
+     set -uo pipefail
+     LOG="$HOME/zgody-bash-nie-ma-takiego-pliku"
+     cleanup() { rm -f "$LOG.pid" "$LOG.owner"; rmdir "$LOG.d" 2>/dev/null || true; }
+     trap cleanup EXIT
+     echo "rc=$?"; grep -E "Test Case .*(passed|failed)" "$LOG" | sort -u; rm -f -- "$LOG"'
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command
+ Run the merge check and clean up
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ bash -c '
+ │ set -uo pipefail
+ │ LOG="$HOME/zgody-bash-nie-ma-takiego-pliku"
+ │ cleanup() { rm -f "$LOG.pid" "$LOG.owner"; rmdir "$LOG.d" 2>/dev/null || true; }
+ │ trap cleanup EXIT
+ │ echo "rc=$?"; grep -E "Test Case .*(passed|failed)" "$LOG" | sort -u; rm -f -- "$LOG"'
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Ask rule Bash(bash -c *) overrides auto mode for this command.
+ /permissions to let auto mode decide
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

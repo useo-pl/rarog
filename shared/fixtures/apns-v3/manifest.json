@@ -1,0 +1,9 @@
+{
+  "alert.blocking.loc-keys.v3.json": { "pushType": "alert", "locKeys": true },
+  "alert.blocking.v3.json": { "pushType": "alert" },
+  "alert.device-paired.v3.json": { "pushType": "alert" },
+  "alert.done.v3.json": { "pushType": "alert" },
+  "alert.test.v3.json": { "pushType": "alert" },
+  "alert.version-changed.v3.json": { "pushType": "alert" },
+  "alert.weekly-limit.v3.json": { "pushType": "alert" }
+}

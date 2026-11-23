@@ -1,0 +1,27 @@
+{
+  "description": "Przepustka aktywności: za ważną przepustką urządzenia (typ alert, to samo środowisko), bez pushu do Apple. Format v2: po skrócie tokenu kafla skrót tokenu urządzenia-rodzica z devicePass. Termin kafla = min(teraz + 90 dni, termin devicePass), tu termin devicePass.",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+      "environment": "development",
+      "type": "liveactivity",
+      "topic": "ai.rarog.app",
+      "devicePass": "v1.k1.development.alert.c2a0b37a262809b4.1800525600.ganNxIFp2SYBpvH2PDB72jFbieaMaxsAXHdxunpxUNk"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "v": 1,
+      "pass": "v2.k1.development.liveactivity.be11da276dbba8d6.c2a0b37a262809b4.1800525600.GcPw2X5PVocqL_2k6OHWtguXsKzCqsCPuWKqmObj9ms",
+      "expiresAt": "2027-01-21T10:00:00.000Z"
+    }
+  }
+}

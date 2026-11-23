@@ -1,0 +1,28 @@
+
+ ▐▛███▛█   Claude Code v2.1.246
+▝▜██████▀  Fable 5 with medium effort · Claude Plan
+  ▝▝ ▝▝    ~/Projects/USEO/rarog
+
+
+❯ Zadaj mi przez narzędzie AskUserQuestion JEDNO pytanie z trzema opcjami single-select, każda opcja z polem preview zawierającym 5 linii
+  przykładowych ścieżek URL. Nie pisz nic przed ani po wywołaniu.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Schemat URL
+
+Który schemat ścieżek URL wolisz dla API Raroga?
+
+❯ 1. Płaski zasobowy              ┌──────────────────────────────────────────┐
+  2. Zagnieżdżony po projekcie    │ /api/sessions                            │
+  3. Wersjonowany RPC             │ /api/sessions/42                         │
+                                  │ /api/sessions/42/messages                │
+                                  │ /api/term                                │
+                                  │ /api/term/7/resize                       │
+                                  └──────────────────────────────────────────┘
+
+                                  Notes: press n to add notes
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Chat about this
+
+Enter to select · ↑/↓ to navigate · n to add notes · Esc to cancel

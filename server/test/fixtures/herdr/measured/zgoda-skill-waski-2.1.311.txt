@@ -1,0 +1,60 @@
+  bieżącym katalogu nową
+  komórkę markdown z
+  tekstem example. Jeśli
+  narzędzia
+  NotebookEdit nie masz,
+  napisz tylko: brak
+  NotebookEdit.
+
+⏺ Edit Notebook(pomiar.ip
+               ynb@undefi
+               ned)
+  ⎿  Error editing
+     notebook
+
+  Read 1 file
+
+⏺ Edit Notebook(pomiar.ip
+               ynb@c1)
+  ⎿  User     pomiar at
+     rejected .ipynbcell
+     insert         c1
+     cell in
+
+      1 example
+
+✻ <status pracy — gaszony przy zapisie>
+  10:04 AM
+
+❯ Użyj narzędzia Skill i
+  wywołaj skill o
+  nazwie pomiar. Jeśli
+  narzędzia Skill nie
+  masz albo skilla
+  pomiar nie ma, napisz
+  tylko: brak Skill.
+
+⏺ Skill(pomiar)
+
+─────────────────────────
+ Use skill "pomiar"?
+ Claude may use
+ instructions, code, or
+ files from this Skill.
+ Permission rule Skill
+ requires confirmation
+ for this tool.
+ /permissions to update
+ rules
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and don't ask
+      again for pomiar in
+      /private/tmp/claud
+      e-uid/z3-pomiar.RDO
+      Zq9/projekt
+   3. No
+
+ Esc to cancel · Tab to
+ amend

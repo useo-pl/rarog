@@ -1,0 +1,37 @@
+
+ ▐▛███▛█   Claude Code v2.1.330
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: zaw-edit-claude-md-57.
+
+  Thought for 1s, read 1 file
+
+⏺ Update(~/.claude/CLAUDE.md)
+
+─────────────────────────────────────────────────────────
+ Edit file
+ ../.claude/CLAUDE.md
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ 105
+ 106  - Keep answers short and plain.
+ 107  - Name each tool by what it does.
+ 108 -- Use one name for one thing.
+ 108 +- Use one name for one thing across the whole sessi
+     +on.
+ 109  - Write in full sentences.
+ 110
+ 111  - The quick brown fox jumps over the lazy dog while
+       the patient gardener waters every plant along the
+      narrow stone path, and the evening light slowly fad
+      es behind the old wooden barn near the quiet river
+      bank.
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to make this edit to CLAUDE.md?
+ ❯ 1. Yes
+   2. Yes, and allow Claude to edit files in its
+      ~/.claude folder for this session
+   3. No
+
+ Esc to cancel · Tab to amend

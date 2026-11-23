@@ -1,0 +1,60 @@
+
+           Claude Code
+ ▐▛███▛█   v2.1.312
+▝▜██████▀  Haiku 5.5
+ ▝▝   ▝▝   Claude Plan
+           /…/projekt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+   Effort
+
+   Fast           Smar
+   er             ter
+
+   ──────▲────────────
+   ────   ────────────
+          ───────
+   l   me   h   xh   m
+   o   di   i   ig   a
+   w   um   g   h    x
+            h
+
+   The default effort
+   for this model
+
+      Ultracode  off
+      Tab to toggle
+
+   ←/→ to adjust ·
+   Enter to confirm ·
+   s for this session
+   only · Esc to
+   cancel

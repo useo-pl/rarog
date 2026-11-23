@@ -1,0 +1,59 @@
+{
+  "headers": {
+    "apns-expiration": "1791368100",
+    "apns-priority": "5",
+    "apns-push-type": "liveactivity",
+    "apns-topic": "ai.rarog.app.push-type.liveactivity"
+  },
+  "payload": {
+    "aps": {
+      "timestamp": 1791367200,
+      "event": "update",
+      "content-state": {
+        "waiting": 0,
+        "working": 2,
+        "finished": 0,
+        "top": {
+          "sessionId": "demo-atlas"
+        },
+        "workflows": [
+          {
+            "sessionId": "demo-rarog",
+            "project": "rarog",
+            "name": "audyt-docs",
+            "agents": 4,
+            "done": 3,
+            "phase": {
+              "index": 2,
+              "count": 3,
+              "title": "A2 Weryfikacja"
+            },
+            "segments": [
+              100,
+              50,
+              0
+            ],
+            "states": [
+              "done",
+              "running",
+              "pending"
+            ]
+          },
+          {
+            "sessionId": "demo-atlas",
+            "project": "atlas-web",
+            "name": "review-changes",
+            "agents": 3,
+            "done": 1,
+            "segments": [
+              33
+            ]
+          }
+        ],
+        "moreWorkflows": 1,
+        "updatedEpoch": 1791367200
+      },
+      "stale-date": 1791368100
+    }
+  }
+}

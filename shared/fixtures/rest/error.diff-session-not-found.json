@@ -1,0 +1,7 @@
+{
+  "error": "session-not-found",
+  "message": "That session doesn't exist.",
+  "messageRef": {
+    "code": "rest.session-not-found"
+  }
+}

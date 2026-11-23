@@ -1,0 +1,52 @@
+{
+  "name": "@rarog/shared",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/src/protocol.d.ts",
+      "default": "./src/protocol.ts"
+    },
+    "./notify-copy": {
+      "types": "./dist/types/src/notify-copy.d.ts",
+      "default": "./src/notify-copy.ts"
+    },
+    "./workflow-phases": {
+      "types": "./dist/types/src/workflow-phases.d.ts",
+      "default": "./src/workflow-phases.ts"
+    },
+    "./decode": {
+      "types": "./dist/types/src/decode.d.ts",
+      "default": "./src/decode.ts"
+    },
+    "./rest": {
+      "types": "./dist/types/src/rest.d.ts",
+      "default": "./src/rest.ts"
+    },
+    "./sentences": {
+      "types": "./dist/types/src/sentences/index.d.ts",
+      "default": "./src/sentences/index.ts"
+    },
+    "./relay": {
+      "types": "./dist/types/src/relay.d.ts",
+      "default": "./src/relay.ts"
+    },
+    "./pairing-link": {
+      "types": "./dist/types/src/pairing-link.d.ts",
+      "default": "./src/pairing-link.ts"
+    },
+    "./iroh": {
+      "types": "./dist/types/src/iroh.d.ts",
+      "default": "./src/iroh.ts"
+    },
+    "./data-dir": {
+      "types": "./src/data-dir.d.mts",
+      "default": "./src/data-dir.mjs"
+    }
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}

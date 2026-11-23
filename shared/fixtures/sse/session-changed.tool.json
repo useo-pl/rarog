@@ -1,0 +1,26 @@
+{
+  "type": "session-changed",
+  "session": {
+    "id": "herdr-w4-p8",
+    "cwd": "/Users/demo/Projects/zeta",
+    "title": "zeta",
+    "state": "running",
+    "stateSince": "2026-10-03T08:00:53.000Z",
+    "createdAt": "2026-10-03T08:00:53.000Z",
+    "lastActivityAt": "2026-10-03T08:00:53.000Z",
+    "paneId": "w4:p8",
+    "launchedByRarog": true,
+    "stale": false,
+    "herdrMode": "auto",
+    "outOfScope": false,
+    "label": "testy dekodera",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "activity": {
+      "kind": "tool",
+      "toolName": "Bash",
+      "summary": "pnpm test shared/test",
+      "description": "Run the shared contract tests"
+    }
+  }
+}

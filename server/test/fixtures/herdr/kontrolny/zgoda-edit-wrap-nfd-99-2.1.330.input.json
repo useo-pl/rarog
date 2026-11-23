@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/projekt/notes-nfd-99.md",
+    "old_string": "Status: draft",
+    "new_string": "Status: final"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": [
+    {
+      "file_path": "/Users/u/projekt/notes-nfd-99.md",
+      "content": "# Sample notes\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopérstuvwxyzabcdefghijk\nStatus: draft\nEnd of notes.\n"
+    }
+  ]
+}

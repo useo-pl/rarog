@@ -1,0 +1,24 @@
+{
+  "type": "session-changed",
+  "session": {
+    "id": "herdr-w3-p6",
+    "cwd": "/Users/demo/Projects/omega",
+    "title": "omega",
+    "state": "starting",
+    "stateSince": "2026-10-03T08:00:53.000Z",
+    "createdAt": "2026-10-03T08:00:53.000Z",
+    "lastActivityAt": "2026-10-03T08:00:53.000Z",
+    "paneId": "w3:p6",
+    "launchedByRarog": false,
+    "stale": true,
+    "herdrMode": "auto",
+    "outOfScope": true,
+    "engine": "gemini",
+    "termId": "a1b2c3d4e5f60718",
+    "label": "codex",
+    "stateDetail": "pane state not known yet",
+    "stateDetailRef": {
+      "code": "state.herdr-unknown"
+    }
+  }
+}

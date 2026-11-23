@@ -1,0 +1,14 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "toolu_51",
+    "sessionId": "herdr-w5-p11",
+    "toolName": "ExitPlanMode",
+    "displayText": "# Plan\n\n1. Pola semantyczne w kontrakcie.\n2. Klient czyta pola.",
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/lambda",
+    "createdAt": "2026-10-03T08:00:53.000Z",
+    "subject": "review",
+    "canAllow": true
+  }
+}

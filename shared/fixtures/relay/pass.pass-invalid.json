@@ -1,0 +1,26 @@
+{
+  "description": "devicePass z innego środowiska niż żądanie (także: zły podpis, termin minął, typ liveactivity, nieznany kid).",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+      "environment": "development",
+      "type": "liveactivity",
+      "topic": "ai.rarog.app",
+      "devicePass": "v1.k1.production.alert.c2a0b37a262809b4.1800525600.vRgwYIAABqjRROrdrZwqfSqtnrh1tNweiRpvvRLexPQ"
+    }
+  },
+  "response": {
+    "status": 401,
+    "body": {
+      "v": 1,
+      "error": "pass-invalid"
+    }
+  }
+}

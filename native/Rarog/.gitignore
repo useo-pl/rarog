@@ -1,0 +1,6 @@
+# Artefakty SwiftPM i Xcode (budowane lokalnie przez `swift test` / `xcodebuild`).
+.build/
+.swiftpm/
+xcuserdata/
+DerivedData/
+build/

@@ -1,0 +1,7 @@
+# actionlint configuration for `.github/workflows/`.
+self-hosted-runner:
+  # `xcode-27` (the `macos-tests` and `swift-contract` jobs in check.yml) is a GitHub image with macOS 27 and Xcode 27.
+  # actionlint knows only the labels on its built-in list, so it does not recognize this one and without an entry
+  # reports a `runner-label` error.
+  labels:
+    - xcode-27

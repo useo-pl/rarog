@@ -1,0 +1,4 @@
+{
+  "toolName": "Bash",
+  "command": "B=\"$TMPDIR\"projekt-cleanup\ntypeset -a P\nP+=(\"$B\"/build.*(N) \"$B\"/logs.*(N))\necho \"pozycji: ${#P[@]}\"; du -shc \"${P[@]}\" 2>/dev/null | tail -1\nrm -rf -- \"${P[@]}\" && echo \"usunięte\"\nls \"$B\" | wc -l"
+}

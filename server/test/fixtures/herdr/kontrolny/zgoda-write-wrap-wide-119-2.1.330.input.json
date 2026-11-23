@@ -1,0 +1,9 @@
+{
+  "toolName": "Write",
+  "input": {
+    "file_path": "/Users/u/projekt/new-szeroki-119.md",
+    "content": "# Sample notes\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrst\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi漢klmnopqrstuvwxyzabcd\nEnd of notes.\n"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": []
+}

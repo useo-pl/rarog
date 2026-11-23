@@ -1,0 +1,28 @@
+❯ Pobierz narzędziem WebFetch stronę https://example.com i
+  streść ją jednym zdaniem.
+
+⏺ Fetch(https://example.com)
+  ⎿  Interrupted · What should Claude do instead?
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Użyj narzędzia WebSearch: wyszukaj frazę example i podaj
+  tytuł pierwszego wyniku.
+
+⏺ Web Search("example")
+
+───────────────────────────────────────────────────────────────
+ Tool use
+ │ Claude wants to search the web for: example
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Web Search("example")
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Permission rule WebSearch requires confirmation for this
+ tool.
+ /permissions to update rules
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

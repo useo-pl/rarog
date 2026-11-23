@@ -1,0 +1,16 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "hook:1763080020000",
+    "sessionId": "herdr-w7-p14",
+    "toolName": "Bash",
+    "displayText": "pnpm test shared/test/decode.test.ts",
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/xi",
+    "createdAt": "2026-10-03T08:01:01.000Z",
+    "subject": "tool",
+    "inputKind": "shell",
+    "canAllow": false,
+    "unavailable": "settings-changed"
+  }
+}

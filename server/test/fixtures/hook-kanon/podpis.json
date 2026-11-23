@@ -1,0 +1,255 @@
+{
+  "opis": "Wspólne wektory podpisu pliku odpowiedzi kanału zgód: server/src/herdr/dialogs/layer1/sign.ts i hook. Postaci kanoniczne kart i wiadomości spisane ręcznie; sha256 i HMAC-SHA256 policzone poza Node (Python hashlib i hmac, wyrywkowo openssl dgst). Klucz HMAC to 32 bajty sekretu (hex w polu sekret), wiadomość to bajty UTF-8. Wartości jawnie syntetyczne: sekret to bajty 0x00…0x1f, nonce klucza to powtórzony wzór c0ffee00, obcy sekret przypadków weryfikacji to bajty 0x20…0x3f. permissionsSha256 wektorów „zawsze” to sha256 postaci kanonicznej [{\"behavior\":\"allow\",\"destination\":\"localSettings\",\"rules\":[{\"ruleContent\":\"npm test\",\"toolName\":\"Bash\"}],\"type\":\"addRules\"}], a skrót innych zmian: [{\"behavior\":\"allow\",\"destination\":\"session\",\"rules\":[{\"ruleContent\":\"//tmp/**\",\"toolName\":\"Read\"}],\"type\":\"addRules\"}].",
+  "karty": [
+    {
+      "nazwa": "zgoda Bash wątku głównego",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "toolName": "Bash", "toolInput": {"description": "Remove temp dir", "command": "rm -rf \"$TMPDIR/x\""}, "cwd": "/Users/ktos/projekt", "agentId": null, "permissionMode": "default"},
+      "kanon": "{\"agentId\":null,\"cwd\":\"/Users/ktos/projekt\",\"permissionMode\":\"default\",\"sessionId\":\"3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c\",\"toolInput\":{\"command\":\"rm -rf \\\"$TMPDIR/x\\\"\",\"description\":\"Remove temp dir\"},\"toolName\":\"Bash\"}",
+      "sha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0"
+    },
+    {
+      "nazwa": "ta sama prośba w innym katalogu (podmieniony zrzut poza tool_input)",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "toolName": "Bash", "toolInput": {"description": "Remove temp dir", "command": "rm -rf \"$TMPDIR/x\""}, "cwd": "/Users/ktos/inny", "agentId": null, "permissionMode": "default"},
+      "kanon": "{\"agentId\":null,\"cwd\":\"/Users/ktos/inny\",\"permissionMode\":\"default\",\"sessionId\":\"3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c\",\"toolInput\":{\"command\":\"rm -rf \\\"$TMPDIR/x\\\"\",\"description\":\"Remove temp dir\"},\"toolName\":\"Bash\"}",
+      "sha256": "06590e17817865819b7d0f46f594f5d0dac23d3707d4c694422d4655a659576f"
+    },
+    {
+      "nazwa": "ta sama komenda z wyłączonym sandboxem",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "toolName": "Bash", "toolInput": {"description": "Remove temp dir", "command": "rm -rf \"$TMPDIR/x\"", "dangerouslyDisableSandbox": true}, "cwd": "/Users/ktos/projekt", "agentId": null, "permissionMode": "default"},
+      "kanon": "{\"agentId\":null,\"cwd\":\"/Users/ktos/projekt\",\"permissionMode\":\"default\",\"sessionId\":\"3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c\",\"toolInput\":{\"command\":\"rm -rf \\\"$TMPDIR/x\\\"\",\"dangerouslyDisableSandbox\":true,\"description\":\"Remove temp dir\"},\"toolName\":\"Bash\"}",
+      "sha256": "843a01eba4a5b28b16db335b17ffc243d0d8b350eababf0b5ccb930d2c63a637"
+    },
+    {
+      "nazwa": "prośba subagenta bez trybu uprawnień, Write z polskimi znakami",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "toolName": "Write", "toolInput": {"file_path": "/Users/ktos/projekt/notatka.md", "content": "Zażółć gęślą jaźń\n"}, "cwd": "/Users/ktos/projekt", "agentId": "a4f2c9e1b7d3", "permissionMode": null},
+      "kanon": "{\"agentId\":\"a4f2c9e1b7d3\",\"cwd\":\"/Users/ktos/projekt\",\"permissionMode\":null,\"sessionId\":\"3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c\",\"toolInput\":{\"content\":\"Zażółć gęślą jaźń\\n\",\"file_path\":\"/Users/ktos/projekt/notatka.md\"},\"toolName\":\"Write\"}",
+      "sha256": "11de5c0cbf41dbb240feb56a9607a75d0f5dbdc4380391d7be4d38cf159f934f"
+    }
+  ],
+  "wiadomosci": [
+    {
+      "nazwa": "zgoda z telefonu",
+      "sekret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345},
+      "wiadomosc": "rarog-consent-v1|3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c|7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00|allow|allow|1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20|ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0|1767225612345",
+      "mac": "3eae57b4cab10eed0f8a8feae6efdeaf5e12e0ef74921454db9b887a838517f3"
+    },
+    {
+      "nazwa": "„Odrzuć” z telefonu",
+      "sekret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "deny", "reasonId": "phone-deny", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345},
+      "wiadomosc": "rarog-consent-v1|3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c|7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00|deny|phone-deny|1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20|ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0|1767225612345",
+      "mac": "d37d0a85881f4d45949ebf075694348319dff0c616cd11ab117366ef6ec6dcfe"
+    },
+    {
+      "nazwa": "odmowa rodzeństwa po „Odrzuć”",
+      "sekret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "deny", "reasonId": "phone-deny-siblings", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345},
+      "wiadomosc": "rarog-consent-v1|3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c|7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00|deny|phone-deny-siblings|1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20|ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0|1767225612345",
+      "mac": "7a20b6bdd55964fcfe9bab40c32e9b2c16a01d20e051db967def1609e182d3d8"
+    },
+    {
+      "nazwa": "zwolnienie do terminala",
+      "sekret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "release", "reasonId": "release", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345},
+      "wiadomosc": "rarog-consent-v1|3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c|7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00|release|release|1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20|ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0|1767225612345",
+      "mac": "cd8b10ba7e2937ae10972e7f9513fd48bfb7d40442bfe4bff82f1ab02842e3f2"
+    },
+    {
+      "nazwa": "„zawsze” z telefonu (skrót zmian uprawnień: addRules Bash(npm test) w localSettings, postać kanoniczna w polu opis)",
+      "sekret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow-always", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "permissionsSha256": "e5ae05fd53ac4eb09dc288e5d1e9266138ca79b70688c82b67084e1629e20757"},
+      "wiadomosc": "rarog-consent-v1|3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c|7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00|allow|allow-always|1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20|ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0|1767225612345|e5ae05fd53ac4eb09dc288e5d1e9266138ca79b70688c82b67084e1629e20757",
+      "mac": "a4281c5059b4562c44616cbd7eeec3f622c833f3e9a96e74a96ad01342342b86"
+    }
+  ],
+  "rozjazdy": {
+    "baza": "„Odrzuć” z telefonu",
+    "zmiany": [
+      {"nazwa": "inna sesja", "pola": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3d"}, "mac": "76020ef61faeabbf69c1df77ca03498c3cb67de2b66426dee14f497f3a377d8f"},
+      {"nazwa": "inny klucz (ostatni znak nonce)", "pola": {"key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee01"}, "mac": "5233475237e4730ad5d688abc2f9f4f76d142f952d3f601582497d5171dc62fc"},
+      {"nazwa": "inna decyzja: zgoda", "pola": {"decision": "allow", "reasonId": "allow"}, "mac": "3eae57b4cab10eed0f8a8feae6efdeaf5e12e0ef74921454db9b887a838517f3"},
+      {"nazwa": "inna decyzja: zwolnienie", "pola": {"decision": "release", "reasonId": "release"}, "mac": "cd8b10ba7e2937ae10972e7f9513fd48bfb7d40442bfe4bff82f1ab02842e3f2"},
+      {"nazwa": "inny reasonId przy tej samej decyzji", "pola": {"reasonId": "phone-deny-siblings"}, "mac": "7a20b6bdd55964fcfe9bab40c32e9b2c16a01d20e051db967def1609e182d3d8"},
+      {"nazwa": "inne wejście", "pola": {"inputSha256": "0089e8f7fc1f347ab5fe6628d2af6a04b185217275ab0745c1bcb981f43effc1"}, "mac": "4af735b1dfcb827ff3cd2d9c1a719fbef6e249bf5cb58d1ee46ff59bc8af3c46"},
+      {"nazwa": "inna karta", "pola": {"cardSha256": "06590e17817865819b7d0f46f594f5d0dac23d3707d4c694422d4655a659576f"}, "mac": "c826a187aab51d436d77fae773f64024d909abc1cc1b67720433f1f5923b9395"},
+      {"nazwa": "chwila decyzji o 1 ms później", "pola": {"at": 1767225612346}, "mac": "64b6476031ffc392ccf9f0f661ee4a379d201bbc3ef506256c15705b2e87ac9f"},
+      {"nazwa": "sekret różny o jeden bit", "sekret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1e", "mac": "8887a072f2273baeb06b191a54c3943160e673d5c13f771ff68bf574e02fd4c0"}
+    ]
+  },
+  "weryfikacja": {
+    "oczekiwane": {"sekret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "rejestracja": 1767225600000, "notBefore": 1767225540000, "permissionsSha256": "e5ae05fd53ac4eb09dc288e5d1e9266138ca79b70688c82b67084e1629e20757"},
+    "przypadki": [
+      {
+        "nazwa": "ważna zgoda",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "3eae57b4cab10eed0f8a8feae6efdeaf5e12e0ef74921454db9b887a838517f3"},
+        "wynik": "ok"
+      },
+      {
+        "nazwa": "ważne „Odrzuć”",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "deny", "reasonId": "phone-deny", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "d37d0a85881f4d45949ebf075694348319dff0c616cd11ab117366ef6ec6dcfe"},
+        "wynik": "ok"
+      },
+      {
+        "nazwa": "ważne zwolnienie",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "release", "reasonId": "release", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "cd8b10ba7e2937ae10972e7f9513fd48bfb7d40442bfe4bff82f1ab02842e3f2"},
+        "wynik": "ok"
+      },
+      {
+        "nazwa": "chwila decyzji równa notBefore",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225540000, "mac": "40e8bdd468059bb6f455800ac9154e686d118fec15921f788a4fe2a3287ef01c"},
+        "wynik": "ok"
+      },
+      {
+        "nazwa": "chwila decyzji 1 ms przed notBefore (odpowiedź sprzed rejestracji)",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225539999, "mac": "a66fbbba9bb70c78df0ed674001b03cf7a06124e8caa1192a13fef6b3d9e7053"},
+        "wynik": "stale"
+      },
+      {
+        "nazwa": "pole message przy ważnym podpisie",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "deny", "reasonId": "phone-deny", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "d37d0a85881f4d45949ebf075694348319dff0c616cd11ab117366ef6ec6dcfe", "message": "Kontynuuj mimo odmowy."},
+        "wynik": "message"
+      },
+      {
+        "nazwa": "plik bez mac",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "podpis obcym sekretem",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "54a11f15e13240002e64a233eb16144fd75b0d675b2e145e1b73f2014cb8fd46"},
+        "wynik": "mac"
+      },
+      {
+        "nazwa": "mac innego klucza: podmieniony klucz, mac z oryginału",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee01", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "3eae57b4cab10eed0f8a8feae6efdeaf5e12e0ef74921454db9b887a838517f3"},
+        "wynik": "mac"
+      },
+      {
+        "nazwa": "mac innej decyzji: zgoda z mac odmowy",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "d37d0a85881f4d45949ebf075694348319dff0c616cd11ab117366ef6ec6dcfe"},
+        "wynik": "mac"
+      },
+      {
+        "nazwa": "mac innego reasonId: odmowa rodzeństwa z mac „Odrzuć”",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "deny", "reasonId": "phone-deny-siblings", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "d37d0a85881f4d45949ebf075694348319dff0c616cd11ab117366ef6ec6dcfe"},
+        "wynik": "mac"
+      },
+      {
+        "nazwa": "ważny podpis dla innej sesji",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3d", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "7d48f7be0487c4584feba4db9d66b43bceaceadd8e2444d30b10b321609e00db"},
+        "wynik": "binding"
+      },
+      {
+        "nazwa": "ważny podpis dla innego klucza",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee01", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "f508ea72be8f1b9ff9fa12f3726f4305108629a06f6a37761389672aeb80186f"},
+        "wynik": "binding"
+      },
+      {
+        "nazwa": "ważny podpis, inne wejście",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "0089e8f7fc1f347ab5fe6628d2af6a04b185217275ab0745c1bcb981f43effc1", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "ea5e1ece1b6655b4c61baa653c2198ae5e34e42e12769fd7709a5c4396760535"},
+        "wynik": "input"
+      },
+      {
+        "nazwa": "ważny podpis, inna karta",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "06590e17817865819b7d0f46f594f5d0dac23d3707d4c694422d4655a659576f", "at": 1767225612345, "mac": "eb31099e4f51184cd583c408cd19599faf0783ae5c9e15d305a2fdb37f3ce243"},
+        "wynik": "card"
+      },
+      {
+        "nazwa": "reasonId spoza listy",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "deny", "reasonId": "timeout", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "ca0f535a5488ee6eea8b51df9f8010346767b1bbe4dcdcbe1f190c662d051d3f"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "reasonId innej decyzji: zgoda z powodem odmowy",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "phone-deny", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "b87a5420e77837685fb31cde1df5e7c7f8dbbf8eb976b98896405179d7ab56fa"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "decyzja spoza listy",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "ask", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "4ae0941b9ea7e42c7afa4d6a71a6e259881c359aeaab4e291737e64937fe3071"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "mac wielkimi literami",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "3EAE57B4CAB10EED0F8A8FEAE6EFDEAF5E12E0EF74921454DB9B887A838517F3"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "mac skrócony o znak",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "3eae57b4cab10eed0f8a8feae6efdeaf5e12e0ef74921454db9b887a838517f"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "chwila decyzji jako napis (ta sama wiadomość)",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": "1767225612345", "mac": "3eae57b4cab10eed0f8a8feae6efdeaf5e12e0ef74921454db9b887a838517f3"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "chwila decyzji ułamkowa",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345.5, "mac": "38e17bb5055983692173e04ead55090b3196a9aa5882c724b0210ca272abb7ae"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "nieznane pole przy ważnym podpisie",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "3eae57b4cab10eed0f8a8feae6efdeaf5e12e0ef74921454db9b887a838517f3", "note": "x"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "separator | w sessionId",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c|x", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "1c50d4230531f806dbd26f3e41db06814bde31dbe3ff1770dbba0a5b66340f1c"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "skrót wejścia wielkimi literami",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1BEF7FC4D423DDF7DD8F42CC227A2682E5641BE85FE57550119C22B5D0E7EF20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "709ecdadf67b7184b595372eba84dcd3a6919df30f9ddcfeab637af5639f2125"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "kolejność: pole message w pliku bez mac",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "deny", "reasonId": "phone-deny", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "message": "x"},
+        "wynik": "message"
+      },
+      {
+        "nazwa": "kolejność: nieznane pole i obcy sekret",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "54a11f15e13240002e64a233eb16144fd75b0d675b2e145e1b73f2014cb8fd46", "note": "x"},
+        "wynik": "shape"
+      },
+      {
+        "nazwa": "kolejność: obcy sekret, inna sesja i inna karta",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3d", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "06590e17817865819b7d0f46f594f5d0dac23d3707d4c694422d4655a659576f", "at": 1767225612345, "mac": "4b43cca01c5d03fc48ece40c27c64c58a8eb95bcc8f16f01e5ff6b0d5ea46cfa"},
+        "wynik": "mac"
+      },
+      {
+        "nazwa": "kolejność: ważny podpis, inny klucz i inne wejście",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee01", "decision": "allow", "reasonId": "allow", "inputSha256": "0089e8f7fc1f347ab5fe6628d2af6a04b185217275ab0745c1bcb981f43effc1", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "f88e83d676e8ca7e737c76fe2daca79bdb5dd582e2ae6c85f96b89a462706fd1"},
+        "wynik": "binding"
+      },
+      {
+        "nazwa": "kolejność: ważny podpis, inne wejście i inna karta",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "0089e8f7fc1f347ab5fe6628d2af6a04b185217275ab0745c1bcb981f43effc1", "cardSha256": "06590e17817865819b7d0f46f594f5d0dac23d3707d4c694422d4655a659576f", "at": 1767225612345, "mac": "d2eb6c5d7d3e04e1d4833b535dd134ae4a21cbbdb34c8512613d1dc39e694244"},
+        "wynik": "input"
+      },
+      {
+        "nazwa": "kolejność: ważny podpis, inna karta i chwila przed notBefore",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "06590e17817865819b7d0f46f594f5d0dac23d3707d4c694422d4655a659576f", "at": 1767225539999, "mac": "282a4f0721e788224fdfb541a7079ed1743da248496adbc5df612575fe40c415"},
+        "wynik": "card"
+      },
+      {
+        "nazwa": "„zawsze”: ważny podpis, skrót zmian uprawnień zgodny z wejściem hooka",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow-always", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "permissionsSha256": "e5ae05fd53ac4eb09dc288e5d1e9266138ca79b70688c82b67084e1629e20757", "mac": "a4281c5059b4562c44616cbd7eeec3f622c833f3e9a96e74a96ad01342342b86"},
+        "wynik": "ok"
+      },
+      {
+        "nazwa": "„zawsze”: ważny podpis, skrót innych zmian uprawnień niż w wejściu hooka",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow-always", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "permissionsSha256": "d9698ba65e43476fabfd701ef5a0b67c32481e8277d851ec6712324da9383581", "mac": "02c3c1490b24a3bf279f3b6ab22af5229acf219c093aba14abf0cb8de5974b45"},
+        "wynik": "permissions"
+      },
+      {
+        "nazwa": "„zawsze” bez skrótu zmian uprawnień",
+        "plik": {"sessionId": "3f2b8c1e-5a7d-4e9f-b0c6-2d8e4f6a1b3c", "key": "7c9e6679-7425-40de-944b-e07fc1f90ae7-c0ffee00c0ffee00c0ffee00c0ffee00", "decision": "allow", "reasonId": "allow-always", "inputSha256": "1bef7fc4d423ddf7dd8f42cc227a2682e5641be85fe57550119c22b5d0e7ef20", "cardSha256": "ff79188ab85878638314e56548b89166e042ef58a393025fa5b5257715a43ff0", "at": 1767225612345, "mac": "a4281c5059b4562c44616cbd7eeec3f622c833f3e9a96e74a96ad01342342b86"},
+        "wynik": "shape"
+      }
+    ]
+  }
+}

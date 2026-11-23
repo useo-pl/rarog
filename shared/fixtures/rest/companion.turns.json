@@ -1,0 +1,88 @@
+{
+  "messages": [
+    {
+      "seq": 1,
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "prompt 1"
+        }
+      ],
+      "at": "2026-11-20T10:01:00.000Z"
+    },
+    {
+      "seq": 2,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "answer 1"
+        }
+      ],
+      "at": "2026-11-20T10:01:00.000Z"
+    },
+    {
+      "seq": 3,
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "<task-notification>\n<task-id>bash_1</task-id>\n<status>completed</status>\n<summary>Background command finished</summary>\n</task-notification>"
+        }
+      ],
+      "at": "2026-11-20T10:02:00.000Z",
+      "notice": {
+        "kind": "command",
+        "outcome": "done"
+      }
+    },
+    {
+      "seq": 4,
+      "role": "system",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "⚠ A hook blocked the prompt. It wasn't sent.\npolicy says no\nPrompt: drop the cache",
+          "ref": {
+            "code": "commands.prompt-blocked.reason-and-prompt",
+            "args": [
+              "policy says no",
+              "drop the cache"
+            ]
+          }
+        }
+      ],
+      "at": "2026-11-20T10:03:00.000Z",
+      "promptBlocked": {
+        "reason": "policy says no",
+        "prompt": "drop the cache"
+      }
+    },
+    {
+      "seq": 5,
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "prompt 4"
+        }
+      ],
+      "at": "2026-11-20T10:04:00.000Z"
+    },
+    {
+      "seq": 6,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "answer 4"
+        }
+      ],
+      "at": "2026-11-20T10:04:00.000Z"
+    }
+  ],
+  "conversation": "Tjo8_3WvcQtfOj3emIfRG3",
+  "stateSince": "2026-08-21T10:00:00.000Z",
+  "complete": true
+}

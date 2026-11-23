@@ -1,0 +1,29 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w7-p14",
+  "message": {
+    "seq": 4,
+    "role": "assistant",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "[image]",
+        "ref": {
+          "code": "transcript.image-placeholder"
+        }
+      },
+      {
+        "type": "tool-call",
+        "toolName": "Bash",
+        "summary": "pnpm test shared/test",
+        "detail": "pnpm test shared/test/decode.test.ts shared/test/decode.test.ts shared/test/deco\n… (92 characters cut off)",
+        "inputKind": "shell",
+        "truncation": {
+          "cut": 92,
+          "footer": 26
+        }
+      }
+    ],
+    "at": "2026-10-03T08:00:59.000Z"
+  }
+}

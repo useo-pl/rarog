@@ -1,0 +1,7 @@
+{
+  "error": "device-required",
+  "message": "This action requires the key of a paired device.",
+  "messageRef": {
+    "code": "rest.device-required"
+  }
+}

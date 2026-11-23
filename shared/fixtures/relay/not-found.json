@@ -1,0 +1,15 @@
+{
+  "description": "Ścieżka spoza /v1/pass, /v1/push, /v1/health.",
+  "request": {
+    "method": "GET",
+    "path": "/v1/unknown",
+    "headers": {}
+  },
+  "response": {
+    "status": 404,
+    "body": {
+      "v": 1,
+      "error": "not-found"
+    }
+  }
+}

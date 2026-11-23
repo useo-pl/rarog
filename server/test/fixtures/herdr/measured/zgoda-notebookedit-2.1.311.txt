@@ -1,0 +1,28 @@
+
+⏺ Web Search("example")
+  ⎿  Interrupted · What should Claude do instead?
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Użyj narzędzia NotebookEdit: wstaw do pliku pomiar.ipynb w
+  bieżącym katalogu nową komórkę markdown z tekstem example,
+  za komórką c1.
+
+  Read 1 file
+
+⏺ Edit Notebook(pomiar.ipynb@c1)
+
+───────────────────────────────────────────────────────────────
+ Edit notebook
+ /Users/u/projekt/pomiar.ipynb
+ Insert new cell for cell c1 (markdown)
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+  1 example
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to insert this cell into pomiar.ipynb?
+ ❯ 1. Yes
+   2. Yes, and switch to accept edits (auto-approve file edits
+      and common file commands) for this session (shift+tab)
+   3. No
+
+ Esc to cancel · Tab to amend

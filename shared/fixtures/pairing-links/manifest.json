@@ -1,0 +1,826 @@
+{
+  "sources": {
+    "endpointId": "Postać `k=` = `Display` EndpointId w iroh v1.4.1 (tag v1.4.1, crate iroh-base 1.4.1): iroh-base/src/key.rs:70 `pub type EndpointId = PublicKey`, :221-225 `impl Display for PublicKey` = `data_encoding::HEXLOWER` (64 znaki hex małymi literami). `FromStr` (:249-256, `decode_base32_hex` :475-496) przyjmuje też base32 RFC 4648 bez dopełnienia (52 znaki, dowolna wielkość liter) — link nie. Wiązanie JS @number0/iroh 1.2.0 (iroh-ffi v1.2.0, Cargo.lock: iroh-base 1.4.1) oddaje `toString()` = `Display` (iroh-js/src/key.rs:76-78). Wartość próbna `k`: wektor testu `test_endpoint_id` z iroh-ffi v1.2.0 src/key.rs:177-178 (ważny punkt krzywej).",
+    "relay": "Postać `r=` = zapis `RelayUrl` w iroh v1.4.1: iroh-base/src/relay_url.rs:18-21 (`derive_more::Display` nad `url::Url`), test :93-99 (`https://example.com` → `https://example.com/`); relaye n0: iroh/src/defaults.rs:24-33 (hosty z kropką na końcu, np. `euc1-1.relay.n0.iroh.link.`) i :66 (`https://{HOSTNAME}`); klient relaya podmienia ścieżkę na `/relay` (iroh-relay/src/client.rs:268)."
+  },
+  "cases": {
+    "u": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.demo-loopback-http": {
+      "text": "rarog://pair#v=1&u=http%3A%2F%2F127.0.0.1%3A18930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "http://127.0.0.1:18930",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=http%3A%2F%2F127.0.0.1%3A18930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.localhost-http": {
+      "text": "rarog://pair#v=1&u=http://localhost:18930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "http://localhost:18930",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=http%3A%2F%2Flocalhost%3A18930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.port": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A8443&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net:8443",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A8443&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.port-443-kept": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A443&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net:443",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A443&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.trailing-slash": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.unencoded": {
+      "text": "rarog://pair#v=1&u=https://rarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.uppercase": {
+      "text": "rarog://pair#v=1&u=HTTPS%3A%2F%2FRAROG.Example.TS.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "HTTPS://RAROG.Example.TS.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=HTTPS%3A%2F%2FRAROG.Example.TS.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.uppercase-loopback-http": {
+      "text": "rarog://pair#v=1&u=HTTP%3A%2F%2FLOCALHOST%3A18930%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "HTTP://LOCALHOST:18930",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=HTTP%3A%2F%2FLOCALHOST%3A18930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.ipv6": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2F%5B2001%3Adb8%3A%3A1%5D&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://[2001:db8::1]",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2F%5B2001%3Adb8%3A%3A1%5D&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.ipv6-port-ipv4-tail": {
+      "text": "rarog://pair#v=1&u=https://[::ffff:192.0.2.1]:8930/&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://[::ffff:192.0.2.1]:8930",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2F%5B%3A%3Affff%3A192.0.2.1%5D%3A8930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.ipv6-full-uppercase": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2F%5B2001%3ADB8%3A0%3A0%3A0%3A0%3A0%3A1%5D&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://[2001:DB8:0:0:0:0:0:1]",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2F%5B2001%3ADB8%3A0%3A0%3A0%3A0%3A0%3A1%5D&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.trailing-dot": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net.&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net.",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net.&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u.ipv4": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2F192.0.2.10%3A8930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://192.0.2.10:8930",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2F192.0.2.10%3A8930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "field-name-encoded": {
+      "text": "rarog://pair#v=1&%75=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u+k+r": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "k+r": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "u+k+r+t": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&t=dG9rZW4tcmVsYXlh&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "k+r+t": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&t=dG9rZW4tcmVsYXlh&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "field-order": {
+      "text": "rarog://pair#c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&u=https%3A%2F%2Frarog.example.ts.net&v=1",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "r.no-trailing-slash": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "r.unencoded": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https://use1-1.relay.n0.iroh.link./&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://use1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Fuse1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "r.port-443-dropped": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%3A443%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "r.port": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%3A8443&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://relay.example.com:8443/"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%3A8443%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "r.uppercase": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=HTTPS%3A%2F%2FRelay.Example.COM&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://relay.example.com/"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "r.ipv4": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2F203.0.113.7%3A8443%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://203.0.113.7:8443/"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2F203.0.113.7%3A8443%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "unknown-fields": {
+      "text": "rarog://pair#v=1&x=1&&ver=2&flag&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI&",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "scheme-host-case": {
+      "text": "RAROG://PAIR#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "universal.u": {
+      "text": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "universal.k+r": {
+      "text": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "universal.u+k+r": {
+      "text": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "universal.scheme-host-case": {
+      "text": "HTTPS://RAROG.AI/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "universal.version.2": {
+      "text": "https://rarog.ai/pair#v=2&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "unsupported-version"
+    },
+    "universal.c.missing": {
+      "text": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net",
+      "error": "bad-code"
+    },
+    "universal.not-a-link.www": {
+      "text": "https://www.rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.http": {
+      "text": "http://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.trailing-slash": {
+      "text": "https://rarog.ai/pair/#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.port": {
+      "text": "https://rarog.ai:443/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.userinfo": {
+      "text": "https://u@rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.query": {
+      "text": "https://rarog.ai/pair?v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.query-before-fragment": {
+      "text": "https://rarog.ai/pair?x=1#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.other-host": {
+      "text": "https://evil.example/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "universal.not-a-link.no-fragment": {
+      "text": "https://rarog.ai/pair",
+      "error": "not-a-link"
+    },
+    "whitespace.edges": {
+      "text": "  rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\n",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "whitespace.wrapped": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts\n.net&c=AgICAgICAgICAgICAgIC\r\nAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "whitespace.wrapped-iroh": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205\n115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay\t.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": null,
+        "iroh": {
+          "endpointId": "523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea",
+          "relay": "https://euc1-1.relay.n0.iroh.link./"
+        },
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "whitespace.bom": {
+      "text": "\ufeffrarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgI\ufeffCAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "whitespace.zero-width-space": {
+      "text": "\u200brarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgIC\u200bAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "whitespace.unicode": {
+      "text": "\u3000rarog://pair#v=1\u00a0&u=https%3A%2F%2Frarog.example.ts.net\u2028&c=AgICAgICAg\u0085ICAgICAgICAgICAgICAg\u000b\fICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "not-a-link.empty": {
+      "text": "",
+      "error": "not-a-link"
+    },
+    "not-a-link.text": {
+      "text": "zwykły tekst",
+      "error": "not-a-link"
+    },
+    "not-a-link.https": {
+      "text": "https://rarog.example.ts.net",
+      "error": "not-a-link"
+    },
+    "not-a-link.query": {
+      "text": "rarog://pair?v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "not-a-link.no-fragment": {
+      "text": "rarog://pair",
+      "error": "not-a-link"
+    },
+    "not-a-link.other-scheme": {
+      "text": "inny://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "not-a-link.other-host": {
+      "text": "rarog://list#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "not-a-link.path": {
+      "text": "rarog://pair/x#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "not-a-link.no-slashes": {
+      "text": "rarog:pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "not-a-link.missing-v": {
+      "text": "rarog://pair#u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "not-a-link.v-without-value": {
+      "text": "rarog://pair#v&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "v.bad-percent": {
+      "text": "rarog://pair#v=%zz&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "not-a-link"
+    },
+    "u.bad-percent": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%zz&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "k.bad-percent": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=%zz&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "r.bad-percent": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=%E0%A4%A&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "c.bad-percent": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI%",
+      "error": "bad-code"
+    },
+    "duplicate.u-bad-percent": {
+      "text": "rarog://pair#v=1&u=%zz&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "unknown.bad-utf8": {
+      "text": "rarog://pair#v=1&x=%C3%28&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "unknown.bad-percent-name": {
+      "text": "rarog://pair#v=1&%zz=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "ok": {
+        "server": "https://rarog.example.ts.net",
+        "iroh": null,
+        "code": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+      },
+      "link": "https://rarog.ai/pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    },
+    "not-a-link.empty-fragment": {
+      "text": "rarog://pair#",
+      "error": "not-a-link"
+    },
+    "version.2": {
+      "text": "rarog://pair#v=2&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "unsupported-version"
+    },
+    "version.9-alone": {
+      "text": "rarog://pair#v=9",
+      "error": "unsupported-version"
+    },
+    "version.empty": {
+      "text": "rarog://pair#v=&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "unsupported-version"
+    },
+    "version.leading-zero": {
+      "text": "rarog://pair#v=01&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "unsupported-version"
+    },
+    "version.2-before-duplicate": {
+      "text": "rarog://pair#v=2&u=https%3A%2F%2Frarog.example.ts.net&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "unsupported-version"
+    },
+    "version.2-k-only": {
+      "text": "rarog://pair#v=2&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "unsupported-version"
+    },
+    "duplicate.v": {
+      "text": "rarog://pair#v=1&v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "duplicate.v-valueless": {
+      "text": "rarog://pair#v&v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "duplicate.u": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&u=https%3A%2F%2Fother.example&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "duplicate.u-same": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "duplicate.k": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "duplicate.r": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "duplicate.c": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "duplicate-field"
+    },
+    "duplicate.before-bad-address": {
+      "text": "rarog://pair#v=1&u=http%3A%2F%2Fa.example&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI&c=x",
+      "error": "duplicate-field"
+    },
+    "u.http-remote": {
+      "text": "rarog://pair#v=1&u=http%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.path": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%2Fapi&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.userinfo": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Fx%40rarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.query": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3Fa%3D1&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.fragment": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%23x&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-http-loopback": {
+      "text": "rarog://pair#v=1&u=http://[::1]:18930&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-double-compress": {
+      "text": "rarog://pair#v=1&u=https://[1::2::3]&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-zone": {
+      "text": "rarog://pair#v=1&u=https://[fe80::1%2525en0]&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-too-many-groups": {
+      "text": "rarog://pair#v=1&u=https://[1:2:3:4:5:6:7:8:9]&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-too-few-groups": {
+      "text": "rarog://pair#v=1&u=https://[1:2:3:4:5:6:7]&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-ipv4-not-last": {
+      "text": "rarog://pair#v=1&u=https://[1.2.3.4::]&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-long-group": {
+      "text": "rarog://pair#v=1&u=https://[12345::1]&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-unbracketed": {
+      "text": "rarog://pair#v=1&u=https://2001:db8::1&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ipv6-empty": {
+      "text": "rarog://pair#v=1&u=https://[]&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.ftp": {
+      "text": "rarog://pair#v=1&u=ftp%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.empty": {
+      "text": "rarog://pair#v=1&u=&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.valueless": {
+      "text": "rarog://pair#v=1&u&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.port-zero": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A0&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.port-too-big": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A65536&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.port-leading-zero": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A08443&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.port-empty": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net%3A&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.numeric-host": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2F127.1&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.empty-label": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog..example&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.unicode-host": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Fza%C5%BC%C3%B3%C5%82%C4%87.example&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.no-host": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "no-transport": {
+      "text": "rarog://pair#v=1&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "no-transport.t-only": {
+      "text": "rarog://pair#v=1&t=dG9rZW4tcmVsYXlh&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "u.bad-before-k-r": {
+      "text": "rarog://pair#v=1&u=http%3A%2F%2Fa.example&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-address"
+    },
+    "k.uppercase": {
+      "text": "rarog://pair#v=1&k=523C7996BAD77424E96786CF7A7205115337A5B4565CD25506A0F297B191A5EA&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.base32": {
+      "text": "rarog://pair#v=1&k=KI6HTFV2252CJ2LHQ3HXU4QFCFJTPJNUKZONEVIGUDZJPMMRUXVA&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.short": {
+      "text": "rarog://pair#v=1&k=23c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.long": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea0&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.non-hex": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5eg&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.empty": {
+      "text": "rarog://pair#v=1&k=&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.valueless": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.newline-encoded": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea%0A&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.bad-with-u": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=23c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-endpoint-id"
+    },
+    "k.bad-before-bad-code": {
+      "text": "rarog://pair#v=1&k=23c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=x",
+      "error": "bad-endpoint-id"
+    },
+    "r.http": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=http%3A%2F%2Frelay.example.com%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.wss": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=wss%3A%2F%2Frelay.example.com%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.path": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%2Frelay&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.query": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%2F%3Fa%3D1&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.fragment": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%2F%23x&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.userinfo": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Fu%3Ap%40relay.example.com%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.port-zero": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%3A0%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.ipv6": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2F%5B2001%3Adb8%3A%3A1%5D%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.not-url": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=relay.example.com&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.empty": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.double-slash": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Frelay.example.com%2F%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "r.bad-with-u": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=http%3A%2F%2Frelay.example.com&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-relay"
+    },
+    "k-without-r": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "missing-relay"
+    },
+    "k-without-r.no-u": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "missing-relay"
+    },
+    "r-without-k": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "missing-endpoint-id"
+    },
+    "r-without-k.no-u": {
+      "text": "rarog://pair#v=1&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "missing-endpoint-id"
+    },
+    "c.missing": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net",
+      "error": "bad-code"
+    },
+    "c.short": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-code"
+    },
+    "c.long": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA",
+      "error": "bad-code"
+    },
+    "c.padding": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=",
+      "error": "bad-code"
+    },
+    "c.base64-plus": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c=gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI%2B",
+      "error": "bad-code"
+    },
+    "c.valueless": {
+      "text": "rarog://pair#v=1&u=https%3A%2F%2Frarog.example.ts.net&c",
+      "error": "bad-code"
+    },
+    "c.iroh-ok": {
+      "text": "rarog://pair#v=1&k=523c7996bad77424e96786cf7a7205115337a5b4565cd25506a0f297b191a5ea&r=https%3A%2F%2Feuc1-1.relay.n0.iroh.link.%2F&c=gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+      "error": "bad-code"
+    }
+  }
+}

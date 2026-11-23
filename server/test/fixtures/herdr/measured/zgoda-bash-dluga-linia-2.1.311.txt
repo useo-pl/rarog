@@ -1,0 +1,28 @@
+  example example example example example example example
+  example example example example. Parametr description: Długa
+  komenda. Nic więcej.
+
+  Długa komenda
+  ⎿  $ echo example example example example example example
+     example example example example example example example
+     example example example example example example example
+     example example
+
+───────────────────────────────────────────────────────────────
+ Bash command (unsandboxed)
+ Długa komenda
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ echo example example example example example example
+ │ example example example example example example example
+ │ example example example example example example example
+ │ example example
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ Permission rule Bash requires confirmation for this
+ │ command.
+ /permissions to update rules
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

@@ -1,0 +1,21 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w1-p2",
+  "message": {
+    "seq": 13,
+    "role": "assistant",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "Zrzut zgadza się z raportem — dokładam podgląd:"
+      },
+      {
+        "type": "image",
+        "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==",
+        "alt": "Podgląd karty nieobsługiwanej sesji",
+        "placeholder": true
+      }
+    ],
+    "at": "2026-10-03T08:00:47.000Z"
+  }
+}

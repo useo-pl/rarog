@@ -1,0 +1,7 @@
+{
+  "error": "companion-limit",
+  "message": "The Claude plan limit is used up, so the voice agent can't check the session now.",
+  "messageRef": {
+    "code": "rest.companion-limit"
+  }
+}

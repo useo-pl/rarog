@@ -1,0 +1,37 @@
+{
+  "type": "question-pending",
+  "request": {
+    "qId": "screen:q:cc2e396c3293",
+    "sessionId": "herdr-w5-p10",
+    "questions": [
+      {
+        "question": "Jak traktować zgody na testy w tym projekcie?",
+        "header": "Testy",
+        "multiSelect": false,
+        "options": [
+          {
+            "label": "Tylko ten raz",
+            "description": "Zgoda na jedno uruchomienie testów.",
+            "role": "answer"
+          },
+          {
+            "label": "Yes, and don't ask again for pnpm test commands",
+            "terminalOnly": true,
+            "role": "answer"
+          },
+          {
+            "label": "Type something.",
+            "role": "custom"
+          },
+          {
+            "label": "Chat about this",
+            "role": "exit"
+          }
+        ]
+      }
+    ],
+    "createdAt": "2026-10-03T08:00:52.000Z",
+    "channel": "keys",
+    "customAnswer": false
+  }
+}

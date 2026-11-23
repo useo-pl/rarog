@@ -1,0 +1,12 @@
+{
+  "agentType": "general-purpose",
+  "isBuiltIn": true,
+  "launchedWithDefaults": true,
+  "description": "Wykonaj jedno polecenie Bash",
+  "toolUseId": "toolu_000000000000000000000001",
+  "spawnDepth": 1,
+  "requestShape": "background",
+  "requestNonInteractive": true,
+  "pickedEffortModel": "claude-haiku-5-5",
+  "finished": true
+}

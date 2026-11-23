@@ -1,0 +1,44 @@
+rarog: 0.1.0
+at: 2026-10-27T10:44:26.021Z
+reason: mismatch
+toolName: Edit
+sessionId: <sesja>
+hook: PermissionRequest Edit at=2026-10-27T10:44:24.757Z
+jsonl: Edit id=toolu_000000000000000000000001
+cliDialog: permission
+reqId: toolu_000000000000000000000001:d:e3b0c44298fc
+source: jsonl
+toolUseId: toolu_000000000000000000000001
+mismatchReason: tool-name
+optionCount: 3
+dialogTitle: brak
+paneRows: 28
+--- ekran ---
+     +the build pipeline publishes the sample app from the `mai
+     +n` branch and a preview build from every pull request; lo
+     +cal services start with `pnpm dev`; static pages are buil
+     +t with `pnpm run build`; documentation is generated in CI
+     + and served from the same storage bucket as the preview b
+     +uilds (static)",
+ 642        "**Network posture**: Example developer laptop with
+       ordinary internet access; no inbound services are expose
+      d, and all outbound traffic uses the default route of the
+       local network",
+ 643        "**Host containment**: Example developer laptop wit
+      h ordinary internet access; it runs only local developmen
+      t servers and test databases, and both are reset on each
+      run",
+ 644        "**Protected deployment namespaces / environments**
+      : the production deployment of the sample app, the `main`
+       and `release` branches of its repository (auto-deploy),
+      any namespace whose name contains `prod`, and the shared
+      staging database",
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to make this edit to settings.json?
+ ❯ 1. Yes
+   2. Yes, and always allow access to
+      /Users/u/Projects/atlas/config/claude-settings for
+      this session (shift+tab)
+   3. No
+
+ Esc to cancel · Tab to amend

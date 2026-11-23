@@ -1,0 +1,52 @@
+
+ ▐▛███▛█   Claude Code v2.1.328
+▝▜██████▀  Sonnet 5 with medium effort · Claude Plan
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ Nie pisz planu i nie używaj żadnych narzędzi poza ExitPlanMode. Od razu wywołaj ExitPlanMode bez żadnego planu. Nie pisz nic
+  poza tym wywołaniem.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Exit plan mode?
+
+    Claude wants to exit plan mode
+
+    ❯ 1. Yes, and switch to default (ask each time) for this session
+      2. No

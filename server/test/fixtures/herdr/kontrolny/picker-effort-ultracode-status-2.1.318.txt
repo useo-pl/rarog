@@ -1,0 +1,52 @@
+
+ ▐▛███▛█▄╱✦  Claude Code v2.1.318
+▝▜██████▘    Haiku 5.5 with xhigh effort · API Usage Billing
+ ▝▝   ▝▝     ~/projekt
+
+
+❯ /effort status
+  ⎿  Current effort level: xhigh (Deeper reasoning than high, just below maximum (on supported models)) · Ultracode on
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔ ◉ xhigh · ultracode · /effort ▔
+   Effort
+
+                                 Faster                             Smarter
+                                 ──────────────────────────────▲───────────      Ultracode  on
+                                 low     medium     high     xhigh      max      Tab to toggle
+                                 Ultracode: dynamic workflows on every task
+
+   ←/→ to adjust · Enter to confirm · s for this session only · Esc to cancel

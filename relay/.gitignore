@@ -1,0 +1,6 @@
+# Stan lokalny wranglera (cache, `wrangler dev`). `node_modules` i `dist/` ignoruje `.gitignore` korzenia repo.
+.wrangler/
+# Sekrety `wrangler dev` (zmienne lokalne Workera); szablon `*.example` zostaje w repo.
+.dev.vars
+.dev.vars.*
+!*.example

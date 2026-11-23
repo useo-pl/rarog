@@ -1,0 +1,10 @@
+# Relay iroh: strażnicy co 5 min i nocna kopia cert_dir. Na VPS: /etc/cron.d/iroh-relay (install.sh).
+# Alerty idą do sysloga (tag relay-alert, daemon.crit) i do /var/log/relay-alert.log.
+#   relay-tc.sh cron   brak drzewa qdisc = stop iroh-relay i alert
+#   relay-watch.mjs    tx_bytes (80 % łącza przez godzinę, 15 TB w miesiącu), połączenia > 6000, 401 Workera
+#   relay-certs-backup kopia cert_dir przed restartem po aktualizacji o 04:00; cel z /etc/iroh-relay/backup.conf
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root /opt/relay-vps/relay-tc.sh cron >/dev/null 2>&1
+*/5 * * * * root /usr/bin/node /opt/relay-vps/relay-watch.mjs >/dev/null 2>&1
+17 3 * * * root /opt/relay-vps/relay-certs-backup.sh >/dev/null 2>&1

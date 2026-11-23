@@ -1,0 +1,9 @@
+{
+  "error": "device-revoked",
+  "message": "This device was revoked. Pair it with the server again.",
+  "messageRef": {
+    "code": "rest.device-revoked"
+  },
+  "revokedAt": "2026-10-04T10:03:00.000Z",
+  "revokedBy": "admin"
+}

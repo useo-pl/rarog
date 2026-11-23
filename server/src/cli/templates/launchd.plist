@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Rarog service: supervised AFTER the user logs in, in the gui/$UID domain. The file comes from the template
+    server/src/cli/templates/launchd.plist through `rarog service install`; the next install overwrites manual edits.
+    The server environment does NOT live here (no EnvironmentVariables): `rarog serve` builds it from ~/.config/rarog
+    (config.json and the secrets file) through the explicit allow-list of the variable registry. The first
+    ProgramArguments items are service.wrapper from config.json (e.g. the wrapper of a secrets manager that supplies
+    them), then the node that ran the installation, and bin/rarog.mjs serve.
+  -->
+  <key>Label</key>
+  <string>{{LABEL}}</string>
+  <key>ProgramArguments</key>
+  <array>
+{{PROGRAM_ARGUMENTS}}
+  </array>
+  <key>WorkingDirectory</key>
+  <string>{{WORKING_DIRECTORY}}</string>
+  <!-- Start on load (= after login) and restart after EVERY process exit. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- `Interactive`, not `Background`: the server serves a person in real time. -->
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <!-- Server log in the data directory; launchd APPENDS to it (it creates the file, the installation the directory). -->
+  <key>StandardOutPath</key>
+  <string>{{LOG}}</string>
+  <key>StandardErrorPath</key>
+  <string>{{LOG}}</string>
+</dict>
+</plist>

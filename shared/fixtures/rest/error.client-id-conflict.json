@@ -1,0 +1,7 @@
+{
+  "error": "client-id-conflict",
+  "message": "A message with this ID already arrived with different content. Nothing was sent.",
+  "messageRef": {
+    "code": "session.client-id-conflict"
+  }
+}

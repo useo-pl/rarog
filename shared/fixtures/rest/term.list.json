@@ -1,0 +1,28 @@
+{
+  "terminals": [
+    {
+      "id": "fd413e13ed78ca03",
+      "cwd": "/Users/demo/Projects/rarog",
+      "live": false,
+      "slot": 1,
+      "proc": "zsh",
+      "role": "shell"
+    },
+    {
+      "id": "61af410d664301a2",
+      "cwd": "/Users/demo/Projects/rarog",
+      "live": false,
+      "slot": 0,
+      "proc": "zsh",
+      "role": "lazygit"
+    },
+    {
+      "id": "2a98b9ca79eff7f9",
+      "cwd": "/Users/demo/Projects/rarog",
+      "live": false,
+      "slot": 2,
+      "proc": "zsh",
+      "role": "shell"
+    }
+  ]
+}

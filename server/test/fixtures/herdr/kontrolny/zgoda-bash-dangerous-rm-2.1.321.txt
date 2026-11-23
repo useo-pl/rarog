@@ -1,0 +1,30 @@
+
+ ▐▛███▛█   Claude Code v2.1.321
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: dangerous-rm.
+
+⏺ Copying the changed files and rerunning the checks
+  ⎿  $ P=kopia-testowa && files=(${(f)"$(git diff --name-only -- src)"}) && for f in "${files[@]}"; do cp "$f"
+     "$HOME/$P/$f" && echo "cp $f"; done && LISTA="${(j: :)${(M)files:#*.ts}}" && sh -c "cd $HOME/$P && command grep -c
+     demo src/modul.ts; timeout 600 pnpm exec vitest run src/modul.test.ts 2>/dev/n…
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command
+ Copy the changed files and rerun the checks
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ P=kopia-testowa && files=(${(f)"$(git diff --name-only -- src)"}) && for f in "${files[@]}"; do cp "$f"
+ │ "$HOME/$P/$f" && echo "cp $f"; done && LISTA="${(j: :)${(M)files:#*.ts}}" && sh -c "cd $HOME/$P && command grep -c
+ │ demo src/modul.ts; timeout 600 pnpm exec vitest run src/modul.test.ts 2>/dev/null | command grep -E 'passed|failed'
+ │ ; node -e 'process.argv.slice(1).forEach((f) => console.log(\"ok \" + f))' $LISTA 2>&1 | command grep -v 'not a
+ │ git'"
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ Dangerous rm operation not ruled out — the shell may read this command differently than it was parsed
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

@@ -1,0 +1,7 @@
+{
+  "error": "pair-unknown",
+  "message": "The pairing code isn't valid. Generate a new one and try again.",
+  "messageRef": {
+    "code": "rest.pair-code-invalid"
+  }
+}

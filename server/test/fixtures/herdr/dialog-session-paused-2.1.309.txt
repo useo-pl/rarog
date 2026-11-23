@@ -1,0 +1,23 @@
+❯ Sprawdź testy
+
+⏺ Bash(pnpm test server/test/herdr-screen.test.ts)
+  ⎿   Test Files  1 passed (1)
+           Tests  214 passed (214)
+
+⏺ Testy przechodzą: 214 z 214 w herdr-screen.test.ts.
+
+❯ Dopisz test na pusty ekran
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Session paused
+
+  Opus 5.5 (1M context)'s safeguards flagged this session. You may be seeing this for the first time: Opus 5.5 (1M context) is
+  more capable and has stronger safeguards as a result, which can sometimes flag non-cybersecurity work. We're improving
+  these safeguards to reduce the amount of incorrectly flagged messages. Edit and retry, or continue with Opus 4.8. Send
+  feedback with /feedback or learn more: https://support.claude.com/en/articles/8106465
+
+  Details: `[cyber]`
+
+  ❯ 1. Switch to Opus 4.8
+    2. Edit prompt and retry with Opus 5.5 (1M context)
+

@@ -1,0 +1,204 @@
+{
+  "revision": "a26243fb98b1e3e2",
+  "commands": [
+    {
+      "name": "artifact-capabilities",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "artifact-diagramming",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "batch",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "claude-api",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "claude-in-chrome",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "clear",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "cloudflare",
+      "kind": "prompt",
+      "source": "skill",
+      "description": "Comprehensive Cloudflare platform skill. Workers, Pages, KV, D1, R2. Workers, Pages, KV, D1, R2. Workers, Pages, KV, D1, R2. Workers, Pages, KV, D1, R2. Workers, Pages, KV, D1, R2. Workers, Pages, KV…"
+    },
+    {
+      "name": "code-review",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "compact",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "context",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "dataviz",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "debug",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "deep-research",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "design",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "design-sync",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "doctor",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "fewer-permission-prompts",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "handoff",
+      "kind": "prompt",
+      "source": "skill",
+      "description": "Write a short summary of the session for the next one.",
+      "argumentHint": "What should the summary focus on?"
+    },
+    {
+      "name": "init",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "insights",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "loop",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "narzedzia:review-pr",
+      "kind": "prompt",
+      "source": "plugin",
+      "description": "Review the branch diff before a merge",
+      "argumentHint": "[review-aspects]"
+    },
+    {
+      "name": "narzedzia:szkic",
+      "kind": "prompt",
+      "source": "plugin",
+      "description": "Szkic planu"
+    },
+    {
+      "name": "notatka",
+      "kind": "prompt",
+      "source": "skill"
+    },
+    {
+      "name": "plan",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "plugin-authoring",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "recap",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "rename",
+      "kind": "local",
+      "source": "builtin"
+    },
+    {
+      "name": "roundtable",
+      "kind": "prompt",
+      "source": "skill",
+      "description": "Use when the user asks several models to compare their answers to one question."
+    },
+    {
+      "name": "run",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "run-skill-generator",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "security-review",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "simplify",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "slides",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "update-config",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "verify",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "workflow-authoring",
+      "kind": "prompt",
+      "source": "builtin"
+    },
+    {
+      "name": "wydanie",
+      "kind": "prompt",
+      "source": "skill",
+      "description": "Wydanie projektu demo",
+      "argumentHint": "[wersja]"
+    }
+  ]
+}

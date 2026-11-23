@@ -1,0 +1,35 @@
+  wywołaniem. Po jego
+  wyniku zakończ turę
+  słowem: gotowe. Krótką
+  wiadomość, która
+  przyjdzie w trakcie,
+  potraktuj jako część
+  pomiaru i odpowiedz na
+  nią jednym słowem: ok.
+
+⏺ <tekst poza fixture>
+  ⎿  $ echo pomiar-start;
+     sleep 150; echo
+     pomiar-koniec (16s ·
+     2 lines)
+     (ctrl+b to run in
+     background)
+
+✳ Meandering… (15s)
+  ctrl+g to edit in Nvim
+─── ↑ 13 more ────────────
+  linia, zeby pole po
+  zabraniu mialo kilka
+  dlugich linii; prosze
+  odpowiedziec jednym
+  slowem: ok.
+  pomiar F: trzecia
+  dluga wiadomosc z
+  telefonu, ostatnia w
+  kolejce; razem z
+  dwiema poprzednimi ma
+  byc wyzsza niz pole
+  waskiego panelu;
+  prosze odpowiedziec
+  jednym slowem: ok.
+──────────────────────────

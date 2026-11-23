@@ -1,0 +1,388 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "fixture.percent" : {
+      "comment" : "Próbka: procent w zdaniu bez parametrów (dosłownie).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "100% done"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gotowe w 100%"
+          }
+        }
+      }
+    },
+    "fixture.plain" : {
+      "comment" : "Próbka: zdanie bez parametrów.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hello"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cześć"
+          }
+        }
+      }
+    },
+    "fixture.sessions" : {
+      "comment" : "Próbka: liczba mnoga.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld session"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sessions"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sesje"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sesji"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sesja"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sesji"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "fixture.sessionsInProjects" : {
+      "comment" : "Próbka: dwie liczby mnogie w jednym zdaniu.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@sessions@ in %#@projects@"
+          },
+          "substitutions" : {
+            "projects" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg project"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg projects"
+                    }
+                  }
+                }
+              }
+            },
+            "sessions" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg session"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg sessions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@sessions@ w %#@projects@"
+          },
+          "substitutions" : {
+            "projects" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "few" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg projektach"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg projektach"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg projekcie"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg projektach"
+                    }
+                  }
+                }
+              }
+            },
+            "sessions" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "few" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg sesje"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg sesji"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg sesja"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg sesji"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "fixture.waiting" : {
+      "comment" : "Próbka: parametr tekstowy i procent w zdaniu z parametrami.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session %@ is waiting (%lld%%)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesja %@ czeka (%lld%%)"
+          }
+        }
+      }
+    },
+    "server.fixture.at" : {
+      "comment" : "Próbka tłumacza zdań serwera: argument instant (deskryptor wstrzyknięty w teście).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back at %1$@."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wraca o %1$@."
+          }
+        }
+      }
+    },
+    "server.fixture.because" : {
+      "comment" : "Próbka tłumacza zdań serwera: argument code, podzdanie z katalogu.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refused: %1$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odmowa: %1$@"
+          }
+        }
+      }
+    },
+    "server.fixture.counted" : {
+      "comment" : "Próbka tłumacza zdań serwera: zdanie z własnym argumentem int (podzdanie z argumentami odpada).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld items"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld elementów"
+          }
+        }
+      }
+    },
+    "server.fixture.extra-position" : {
+      "comment" : "Próbka tłumacza zdań serwera: wzorzec z pozycją spoza deskryptora.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ and %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ i %2$@"
+          }
+        }
+      }
+    },
+    "server.fixture.kind-mismatch" : {
+      "comment" : "Próbka tłumacza zdań serwera: specyfikator tekstu przy rodzaju int.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Count: %1$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liczba: %1$@"
+          }
+        }
+      }
+    },
+    "server.fixture.quiet" : {
+      "comment" : "Próbka tłumacza zdań serwera: deskryptor z argumentem int, wzorzec bez specyfikatora (podzdanie odpada po deskryptorze).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "some items"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kilka elementów"
+          }
+        }
+      }
+    },
+    "server.fixture.reason" : {
+      "comment" : "Próbka tłumacza zdań serwera: podzdanie bez argumentów.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the card is stale"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "karta jest nieaktualna"
+          }
+        }
+      }
+    },
+    "server.fixture.retired" : {
+      "comment" : "Próbka tłumacza zdań serwera: kod wycofany (RETIRED).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Old sentence"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stare zdanie"
+          }
+        }
+      }
+    },
+    "server.fixture.swap" : {
+      "comment" : "Próbka tłumacza zdań serwera: pozycje przestawione i powtórzone.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$@ before %1$@, then %1$@ again"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$@ przed %1$@, potem znowu %1$@"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

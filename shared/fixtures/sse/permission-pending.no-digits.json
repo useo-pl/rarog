@@ -1,0 +1,14 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "toolu_41",
+    "sessionId": "herdr-w2-p5",
+    "toolName": "Bash",
+    "displayText": "rm -rf ./build",
+    "risk": "red",
+    "cwd": "/Users/demo/Projects/ember",
+    "createdAt": "2026-10-03T08:00:51.000Z",
+    "subject": "tool",
+    "canAllow": false
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "Polityka ładunku przekaźnika push. Kontrakt z serwerem: przekaźnik",
+    "ma te wartości wkompilowane (relay/src/alert-policy.ts), test relay/test/alert-policy-fixture.test.ts porównuje.",
+    "v2 = jedyna polityka: alert bez aps.alert albo z tekstem zastępczym (literał albo klucze, bez loc-args,",
+    "z mutable-content: 1); liveactivity bez aps.alert albo z dzwonkiem (literał albo klucze w postaci kafla).",
+    "Klucze aps i najwyższego poziomu: zamknięte zestawy per typ; blok rarog nieczytany."
+  ],
+  "policies": ["v2"],
+  "alert": {
+    "placeholder": { "title": "Rarog", "body": "Nowe powiadomienie" },
+    "placeholderKeys": { "title-loc-key": "push.placeholder.title", "loc-key": "push.placeholder.body" },
+    "mutableContent": 1
+  },
+  "liveactivity": {
+    "chime": { "title": "Agent skończył", "body": "Wynik czeka w Rarogu", "sound": "skonczyl.caf" },
+    "chimeKeys": { "title": "push.chime.title", "body": "push.chime.body" }
+  },
+  "topLevelKeys": {
+    "alert": ["aps", "rarog"],
+    "liveactivity": ["aps"]
+  },
+  "apsKeys": {
+    "alert": ["alert", "badge", "sound", "thread-id", "mutable-content"],
+    "liveactivity": ["timestamp", "event", "content-state", "stale-date", "dismissal-date", "alert"]
+  },
+  "payloadMaxBytes": 4096,
+  "rules": [
+    "headers", "push-type", "topic", "payload-size", "payload-json", "payload-canonical", "top-level", "aps-key",
+    "aps-value", "alert"
+  ]
+}

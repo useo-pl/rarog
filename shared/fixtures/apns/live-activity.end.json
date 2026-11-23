@@ -1,0 +1,21 @@
+{
+  "headers": {
+    "apns-expiration": "1791396000",
+    "apns-priority": "5",
+    "apns-push-type": "liveactivity",
+    "apns-topic": "ai.rarog.app.push-type.liveactivity"
+  },
+  "payload": {
+    "aps": {
+      "timestamp": 1791367200,
+      "event": "end",
+      "content-state": {
+        "waiting": 0,
+        "working": 0,
+        "finished": 0,
+        "updatedEpoch": 1791367200
+      },
+      "dismissal-date": 1791367200
+    }
+  }
+}

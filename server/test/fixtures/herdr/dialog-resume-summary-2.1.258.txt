@@ -1,0 +1,15 @@
+✻ Brewed for 6s · done Friday 10:27 AM
+
+※ recap: Pracujemy nad refaktorem demo: testy zielone, wszystko zacommitowane. Następny krok: git push.
+  (disable recaps in /config)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  This session is 5d 8h old and 778.9k tokens.
+
+  Resuming the full session will consume a substantial portion of your usage limits. We recommend resuming from a summary.
+
+  ❯ 1. Resume from summary (recommended)
+    2. Resume full session as-is
+    3. Don't ask me again
+
+  Enter to confirm · Esc to cancel

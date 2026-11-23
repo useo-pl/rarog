@@ -1,0 +1,57 @@
+{
+  "name": "rarog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server for Rarog, the iPhone and iPad app for Claude Code sessions running in herdr",
+  "keywords": [
+    "claude-code",
+    "herdr",
+    "iphone",
+    "ipad",
+    "remote",
+    "terminal",
+    "ai-agents"
+  ],
+  "homepage": "https://rarog.ai",
+  "bugs": {
+    "url": "https://github.com/useo-pl/rarog/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/useo-pl/rarog.git"
+  },
+  "type": "module",
+  "bin": {
+    "rarog": "bin/rarog.mjs"
+  },
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": ">=22.15 <23 || >=23.11",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "check": "bash scripts/check.sh",
+    "restart": "node bin/rarog.mjs restart",
+    "ios:shots": "bash scripts/ios-shots.sh",
+    "demo:server": "RAROG_DEMO=1 tsx server/src/index.ts",
+    "build": "tsc -b",
+    "package": "node scripts/package.mjs",
+    "hooks:install": "tsx scripts/hooks-config.ts install",
+    "hooks:print": "tsx scripts/hooks-config.ts print",
+    "hooks:doctor": "tsx scripts/hooks-config.ts doctor",
+    "rarog": "node bin/rarog.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "fast-check": "4.9.0",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  },
+  "dependencies": {
+    "qrcode": "1.5.4",
+    "tsx": "4.23.12"
+  }
+}

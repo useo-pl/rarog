@@ -1,0 +1,2427 @@
+{
+  "version": 1,
+  "about": [
+    "Ground truth for layer 2 (CLI dialog card) over every .txt screen in this directory tree, keyed by path.",
+    "category: layer2 (CLI dialog), consent (layer 1), form (question form) or non-dialog.",
+    "class: the CLI registry class for the screen (CliDialogClass, null = no class). The capture header (cliDialog) and",
+    "the control-set manifest (waitingFor) give it where measured; note says when it is not.",
+    "today (layer2 only): buttons, or the reason the card has none today (unreadable, no-jsonl, terminal-only).",
+    "v2: expected layer2Verdict(readBlock(screen), class) with empty key confirmations in TERMINAL_DIALOGS; the class",
+    "check comes before the block check. choices are in screen order: digit options, then footer keys.",
+    "v2Confirmed: the verdict once the TERMINAL_DIALOGS entry named by terminalDialog carries a key confirmation.",
+    "planned: the plan task that is expected to add buttons later.",
+    "pairs: every digit option line of a layer2 screen: 0-based screen line, digit, label (text after \"N. \", trimmed)",
+    "and wrap (continuation lines indented to the label column, trimmed). The full label joins them with one space."
+  ],
+  "screens": {
+    "composer-empty-2.1.258.ansi.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "composer-ghost-suggestion-2.1.258.ansi.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "composer-region-empty-2.1.283.ansi.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "composer-region-leading-blank-2.1.283.ansi.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "composer-region-one-line-2.1.283.ansi.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "composer-region-wrapped-2.1.283.ansi.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "dialog-askuserquestion-2126.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-linia-nazwy-2.1.281.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-linia-nazwy-luka-2.1.281.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-live.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multi-live-review.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multi-live-start.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multi-live-submit.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multi.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multiq-jednopytaniowy-submit.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multiq-pytanie-w-ramce.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multiq-review.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multiq-tab1-jednokrotne.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multiq-tab2-multiselect-next.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-multiq-tab3-ostatnie.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-notes.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-preview.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion-scrollback.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-askuserquestion.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},
+    "dialog-automode-teach-2.1.258.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to change usage","segment":"←/→ to change usage"},
+          {"key":"right","label":"→ to change usage","segment":"←/→ to change usage"},
+          {"key":"enter","label":"Enter to continue"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "auto mode teaching dialog. class not in a capture header or the control-set manifest; dialog of a REPL command"
+    },
+    "dialog-background-work-exit-2.1.309.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "terminal-only",
+      "terminalDialog": "background-work-exit",
+      "v2": {"kind":"none","why":"terminal-dialog"},
+      "v2Confirmed": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"digit":1,"label":"Exit and stop tasks"},
+          {"digit":2,"label":"Move to background and exit"},
+          {"digit":3,"label":"Stay"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "pairs": [
+        {"line":11,"digit":1,"label":"Exit and stop tasks"},
+        {"line":12,"digit":2,"label":"Move to background and exit"},
+        {"line":13,"digit":3,"label":"Stay"}
+      ],
+      "note": "class from the audit log entries of this dialog"
+    },
+    "dialog-bash-ask-rule-2.1.295.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-cytat-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-kolejka-licznik-2.1.319.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-licznik-block-2.1.316.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-opis-telefon-2.1.302.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-przewiniety-widok-2.1.295.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-stechly-read-2.1.295.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-stechly-read-szeroki-2.1.295.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-subagent-naglowek-2.1.302.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-subagent-telefon-2.1.302.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-subagent-uciety-62x29-2.1.309.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-bash-uciety-naglowek-2.1.294.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-effort-change.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "buttons",
+      "v2": {"kind":"none","why":"cut-bottom"},
+      "pairs": [{"line":11,"digit":1,"label":"Yes, switch to high"},{"line":12,"digit":2,"label":"No, go back"}],
+      "note": "no footer and no registry shape. class not in a capture header or the control-set manifest; dialog of a REPL command"
+    },
+    "dialog-exitplanmode.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-model-switch.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "buttons",
+      "v2": {"kind":"none","why":"cut-bottom"},
+      "pairs": [{"line":16,"digit":1,"label":"Yes, switch to Opus 5"},{"line":17,"digit":2,"label":"No, go back"}],
+      "note": "older \"Switch model?\" without footer and without a registry shape. class not in a capture header or the control-set manifest; dialog of a REPL command"
+    },
+    "dialog-permission-ask-rule-auto.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-cd-advisory-2.1.265.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-mcp-supabase.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-mcp.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-odczyt-z-projektu-waski.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-odczyt-z-projektu.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-opis.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-read-2.1.278.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-subagent.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission-unsandboxed.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "dialog-permission.txt": {"category":"consent","class":"permission","v2":{"kind":"none","why":"class-not-dialog"}},
+    "dialog-resume-summary-2.1.258.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "buttons",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"digit":1,"label":"Resume from summary (recommended)"},
+          {"digit":2,"label":"Resume full session as-is"},
+          {"digit":3,"label":"Don't ask me again"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "pairs": [
+        {"line":10,"digit":1,"label":"Resume from summary (recommended)"},
+        {"line":11,"digit":2,"label":"Resume full session as-is"},
+        {"line":12,"digit":3,"label":"Don't ask me again"}
+      ],
+      "note": "class not in a capture header or the control-set manifest; dialog of a REPL command"
+    },
+    "dialog-session-paused-2.1.309.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "terminal-only",
+      "terminalDialog": "session-paused-safeguards",
+      "v2": {"kind":"none","why":"terminal-dialog"},
+      "v2Confirmed": {
+        "kind": "choices",
+        "end": "terminal-match",
+        "choices": [
+          {"digit":1,"label":"Switch to Opus 4.8"},
+          {"digit":2,"label":"Edit prompt and retry with Opus 5.5 (1M context)"}
+        ]
+      },
+      "pairs": [
+        {"line":20,"digit":1,"label":"Switch to Opus 4.8"},
+        {"line":21,"digit":2,"label":"Edit prompt and retry with Opus 5.5 (1M context)"}
+      ],
+      "note": "class not in a capture header or the control-set manifest; dialog of a REPL command"
+    },
+    "dialog-trust-2.1.293.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "folder trust (arrow keys). shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "dialog-trust.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "pairs": [{"line":18,"digit":1,"label":"Yes, I trust this folder"},{"line":19,"digit":2,"label":"No, exit"}],
+      "note": "older folder trust with digits. shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "ekran-login-2.1.293.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "unreadable",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "/login result screen; class null like a dialog before the REPL"
+    },
+    "footer-auto-tacka.txt": {"category":"non-dialog","class":null,"v2":{"kind":"none","why":"class-unknown"}},
+    "footer-auto.txt": {"category":"non-dialog","class":null,"v2":{"kind":"none","why":"class-unknown"}},
+    "kontrolny/auto-bez-kontroli-bash-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"enter","label":"Enter to stay in auto mode"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "\"Auto mode can't check actions in this session\" under a bare rule; the shift+Tab segment names a key outside DialogKey, so it gives no choice"
+    },
+    "kontrolny/auto-bez-kontroli-bash-po-enter-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/pauza-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "terminal-only",
+      "terminalDialog": "session-paused-safeguards",
+      "v2": {"kind":"none","why":"terminal-dialog"},
+      "v2Confirmed": {
+        "kind": "choices",
+        "end": "terminal-match",
+        "choices": [
+          {"digit":1,"label":"Switch to Opus 4.8"},
+          {"digit":2,"label":"Edit prompt and retry with Opus 5.5"}
+        ]
+      },
+      "pairs": [
+        {"line":20,"digit":1,"label":"Switch to Opus 4.8"},
+        {"line":21,"digit":2,"label":"Edit prompt and retry with Opus 5.5"}
+      ],
+      "note": "safeguards pause caused by a fake API refusal (control set M1); no footer, the end of the block comes from the closed match"
+    },
+    "kontrolny/picker-effort-2.1.314.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider"
+    },
+    "kontrolny/picker-effort-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider"
+    },
+    "kontrolny/picker-effort-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider"
+    },
+    "kontrolny/picker-effort-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider"
+    },
+    "kontrolny/picker-effort-po-prawo-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider after right, under a bare rule"
+    },
+    "kontrolny/picker-effort-po-tab-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider after left and tab: Ultracode on, under a bare rule"
+    },
+    "kontrolny/picker-effort-ultracode-on-2.1.317.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider"
+    },
+    "kontrolny/picker-effort-ultracode-status-2.1.318.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider"
+    },
+    "kontrolny/picker-model-klucz-api-2.1.314.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {"kind":"none","why":"sets-default"},
+      "pairs": [
+        {
+          "line": 42,
+          "digit": 1,
+          "label": "Default (recommended)  Use the default model (currently Opus 5.5) · $4/$20 per Mtok"
+        },
+        {
+          "line": 43,
+          "digit": 2,
+          "label": "Opus                   Opus 5.5 · Best for everyday, complex tasks · $4/$20 per Mtok"
+        },
+        {
+          "line": 44,
+          "digit": 3,
+          "label": "Fable                  Fable 5.1 · Most capable for your hardest and longest-running tasks · $10/$50 per Mtok"
+        },
+        {
+          "line": 45,
+          "digit": 4,
+          "label": "Sonnet ✔               Sonnet 5.5 · Efficient for routine tasks · $2/$10 per Mtok"
+        },
+        {
+          "line": 46,
+          "digit": 5,
+          "label": "Haiku                  Haiku 5.5 · Fastest for quick answers · $0.10/$0.50 per Mtok ($0.50/$2.50 for prompts over",
+          "wrap": ["100k)"]
+        }
+      ],
+      "note": "/model picker: no buttons, a digit there sets the default model for new sessions (footer \"Enter to set as default\", CLI 2.1.323); the footer refuses (sets-default), not the effort line"
+    },
+    "kontrolny/picker-model-klucz-api-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {"kind":"none","why":"sets-default"},
+      "pairs": [
+        {
+          "line": 29,
+          "digit": 1,
+          "label": "Default (recommended)  Use the default model (currently Opus 5.5) · $4/$20 per Mtok"
+        },
+        {
+          "line": 30,
+          "digit": 2,
+          "label": "Opus                   Opus 5.5 · Best for everyday, complex tasks · $4/$20 per Mtok"
+        },
+        {
+          "line": 31,
+          "digit": 3,
+          "label": "Fable                  Fable 5.1 · Most capable for your hardest and longest-running tasks · $10/$50 per",
+          "wrap": ["Mtok"]
+        },
+        {
+          "line": 33,
+          "digit": 4,
+          "label": "Sonnet ✔               Sonnet 5.5 · Efficient for routine tasks · $2/$10 per Mtok"
+        },
+        {
+          "line": 34,
+          "digit": 5,
+          "label": "Haiku                  Haiku 5.5 · Fastest for quick answers · $0.10/$0.50 per Mtok ($0.50/$2.50 for prompts",
+          "wrap": ["over 100k)"]
+        }
+      ],
+      "note": "/model picker: no buttons, a digit there sets the default model for new sessions (footer \"Enter to set as default\", CLI 2.1.323); the footer refuses (sets-default), not the effort line"
+    },
+    "kontrolny/picker-model-klucz-api-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {"kind":"none","why":"sets-default"},
+      "pairs": [
+        {
+          "line": 42,
+          "digit": 1,
+          "label": "Default (recommended)  Use the default model (currently Opus 5.5) · $4/$20 per Mtok"
+        },
+        {
+          "line": 43,
+          "digit": 2,
+          "label": "Opus                   Opus 5.5 · Best for everyday, complex tasks · $4/$20 per Mtok"
+        },
+        {
+          "line": 44,
+          "digit": 3,
+          "label": "Fable                  Fable 5.1 · Most capable for your hardest and longest-running tasks · $10/$50 per Mtok"
+        },
+        {
+          "line": 45,
+          "digit": 4,
+          "label": "Sonnet ✔               Sonnet 5.5 · Efficient for routine tasks · $2/$10 per Mtok"
+        },
+        {
+          "line": 46,
+          "digit": 5,
+          "label": "Haiku                  Haiku 5.5 · Fastest for quick answers · $0.10/$0.50 per Mtok ($0.50/$2.50 for prompts over",
+          "wrap": ["100k)"]
+        }
+      ],
+      "note": "/model picker: no buttons, a digit there sets the default model for new sessions (footer \"Enter to set as default\", CLI 2.1.323); the footer refuses (sets-default), not the effort line"
+    },
+    "kontrolny/picker-model-klucz-api-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {"kind":"none","why":"sets-default"},
+      "pairs": [
+        {"line":30,"digit":1,"label":"Default (recommended)  Use the default model (currently Opus 5.5) · $4/$20 per Mtok"},
+        {"line":31,"digit":2,"label":"Opus                   Opus 5.5 · Best for everyday, complex tasks · $4/$20 per Mtok"},
+        {"line":32,"digit":3,"label":"Fable                  Fable 5.2 · Most capable for your hardest and longest-running tasks · $8/$40 per Mtok"},
+        {"line":33,"digit":4,"label":"Sonnet ✔               Sonnet 5.5 · Efficient for routine tasks · $2/$10 per Mtok"},
+        {"line":34,"digit":5,"label":"Haiku                  Haiku 5.5 · Fastest for quick answers · $0.10/$0.50 per Mtok ($0.50/$2.50 for prompts","wrap":["over 100k)"]}
+      ],
+      "note": "/model picker: no buttons, a digit there sets the default model for new sessions (footer \"Enter to set as default\", CLI 2.1.323); the footer refuses (sets-default), not the effort line"
+    },
+    "kontrolny/potwierdzenie-model-2.1.314.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Opus 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Opus 5.5"},{"line":50,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Opus 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":37,"digit":1,"label":"Yes, switch to Opus 5.5"},{"line":38,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Opus 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Opus 5.5"},{"line":50,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-fable-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Fable 5.1"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":37,"digit":1,"label":"Yes, switch to Fable 5.1"},{"line":38,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-fable-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Fable 5.1"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Fable 5.1"},{"line":50,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-haiku-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Haiku 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":37,"digit":1,"label":"Yes, switch to Haiku 5.5"},{"line":38,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-haiku-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Haiku 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Haiku 5.5"},{"line":50,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-haiku-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "buttons",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [
+          {"digit":1,"label":"Yes, switch to Haiku 5.5"},
+          {"digit":2,"label":"No, go back"}
+        ]
+      },
+      "pairs": [
+        {"line":37,"digit":1,"label":"Yes, switch to Haiku 5.5"},
+        {"line":38,"digit":2,"label":"No, go back"}
+      ],
+      "note": "\"Switch model?\" under a bare rule: known dialog:model today"
+    },
+    "kontrolny/potwierdzenie-model-opus-1m-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Opus 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":37,"digit":1,"label":"Yes, switch to Opus 5.5"},{"line":38,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-opus-1m-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Opus 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Opus 5.5"},{"line":50,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-opus-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "buttons",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Opus 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":37,"digit":1,"label":"Yes, switch to Opus 5.5"},{"line":38,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under a bare rule: known dialog:model today"
+    },
+    "kontrolny/potwierdzenie-model-opus-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "buttons",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Opus 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Opus 5.5"},{"line":50,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under a bare rule: known dialog:model today"
+    },
+    "kontrolny/potwierdzenie-model-sonnet-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Sonnet 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":37,"digit":1,"label":"Yes, switch to Sonnet 5.5"},{"line":38,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/potwierdzenie-model-sonnet-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {
+        "kind": "choices",
+        "end": "shape",
+        "choices": [{"digit":1,"label":"Yes, switch to Sonnet 5.5"},{"digit":2,"label":"No, go back"}]
+      },
+      "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Sonnet 5.5"},{"line":50,"digit":2,"label":"No, go back"}],
+      "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/pytanie-2.1.314.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},
+    "kontrolny/pytanie-2.1.316.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},
+    "kontrolny/pytanie-2.1.319.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},
+    "kontrolny/tryb-bypass-2.1.319.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "unreadable",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "bypass permissions warning. shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/usage-klucz-api-2.1.314.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {"kind":"choices","end":"footer","choices":[{"key":"escape","label":"Esc to cancel"}]},
+      "note": "usage view (limits)"
+    },
+    "kontrolny/usage-klucz-api-2.1.316.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {"kind":"choices","end":"footer","choices":[{"key":"escape","label":"Esc to cancel"}]},
+      "note": "usage view (limits)"
+    },
+    "kontrolny/usage-klucz-api-2.1.319.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {"kind":"choices","end":"footer","choices":[{"key":"escape","label":"Esc to cancel"}]},
+      "note": "usage view (limits)"
+    },
+    "kontrolny/usage-klucz-api-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "usage view on an API key (Settings tabs)"
+    },
+    "kontrolny/widok-help-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/help view"
+    },
+    "kontrolny/wyjscie-tlo-2.1.322.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "terminalDialog": "background-work-exit",
+      "v2": {"kind":"none","why":"terminal-dialog"},
+      "v2Confirmed": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"digit":1,"label":"Exit and stop tasks"},
+          {"digit":2,"label":"Move to background and exit"},
+          {"digit":3,"label":"Stay"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "pairs": [
+        {"line":35,"digit":1,"label":"Exit and stop tasks"},
+        {"line":36,"digit":2,"label":"Move to background and exit"},
+        {"line":37,"digit":3,"label":"Stay"}
+      ],
+      "note": "background work exit under the status rule; today the control-set measurement reads no-jsonl, not terminal-only"
+    },
+    "kontrolny/zatwierdzenie-workflow-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zatwierdzenie-workflow-auto-bez-kontroli-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zatwierdzenie-workflow-skrypt-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zatwierdzenie-workflow-waski-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zaufanie-2.1.314.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "folder trust (arrow keys). shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/zaufanie-2.1.316.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "folder trust (arrow keys). shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/zaufanie-2.1.319.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "folder trust (arrow keys). shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/zaufanie-po-down-2.1.319.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "folder trust (arrow keys). shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/zgoda-bash-brace-quote-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-brace-quote-default-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-2.1.319.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-user-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-project-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-local-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-sandbox-2.1.319.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-auto-sandbox-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-2.1.319.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-regula-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-regula-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-regula-user-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-regula-project-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-regula-local-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-sandbox-2.1.319.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-cytat-default-sandbox-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-czysty-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-dangerous-rm-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-dangerous-rm-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-dangerous-rm-sredni-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-dangerous-rm-waski-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-dangerous-rm-telefon-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-parser-skipped-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-parser-skipped-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-regula-bash-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-regula-bash-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-shell-c-rm-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-shell-c-rm-auto-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-shell-c-rm-pelny-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-shell-c-rm-pelny-auto-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-shell-expansion-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-tilde-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-tilde-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-variable-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bash-variable-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-default-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-regula-2.1.321.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-change-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-change-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-change-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-claude-md-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-digits-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-digits-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-digits-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-fake-frame-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-fake-frame-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-fake-frame-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-geo-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-geo-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-geo-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-hunks-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-hunks-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-hunks-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-ideo-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-ideo-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-ideo-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-line10-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-line10-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-line10-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-line100-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-line100-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-line100-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-nbsp-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-nbsp-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-nbsp-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-nfd-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-nfd-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-nfd-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-polish-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-polish-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-polish-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-both-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-both-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-both-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-w-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-w-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-w-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-after-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-after-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-space-after-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-tab-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-tab-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-tab-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-wide-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-wide-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-wide-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-zwsp-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-zwsp-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-edit-wrap-zwsp-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-mcp-interakcja-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-siec-2.1.322.txt": {
+      "category": "consent",
+      "class": "sandbox",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-digits-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-digits-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-digits-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-fake-frame-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-fake-frame-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-fake-frame-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-geo-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-geo-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-geo-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-ideo-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-ideo-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-ideo-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-line10-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-line10-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-line10-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-nbsp-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-nbsp-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-nbsp-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-nfd-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-nfd-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-nfd-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-polish-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-polish-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-polish-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-both-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-both-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-both-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-w-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-w-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-w-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-after-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-after-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-space-after-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-tab-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-tab-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-tab-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-wide-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-wide-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-wide-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-zwsp-119-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-zwsp-57-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-write-wrap-zwsp-99-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-2.1.258.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-2.1.278.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-2.1.293.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-bez-planu-2.1.293.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-bez-planu-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-bez-planu-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode-bez-planu.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/exitplanmode.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/multiselect-2.1.258.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/multiselect-2.1.278.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/multiselect-2.1.285.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/multiselect-2.1.293.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/multiselect-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/multiselect.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},
+    "measured/picker-effort-2.1.312-26kol.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"tab","label":"Tab to toggle"},
+          {"key":"left","label":"← to adjust","segment":"←/→ to adjust"},
+          {"key":"right","label":"→ to adjust","segment":"←/→ to adjust"},
+          {"key":"enter","label":"Enter to confirm"},
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/effort slider at 26 columns, footer wrapped from the \"Tab to toggle\" line down. class not in a capture header or the control-set manifest; dialog of a REPL command"
+    },
+    "measured/picker-model-2.1.312-26kol.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "no-jsonl",
+      "v2": {"kind":"none","why":"scroll"},
+      "pairs": [
+        {"line":14,"digit":1,"label":"Defau…  Opus","wrap":["5.5 ·","Best","for","every","day,","compl","ex","tasks"]},
+        {"line":23,"digit":2,"label":"Opus …  For","wrap":["compl","ex","work","and","every","day","tasks"]},
+        {"line":31,"digit":3,"label":"Fable…  For","wrap":["your","tough","est","chall","enges"]},
+        {"line":37,"digit":4,"label":"Sonne…  Most","wrap":["effic","ient","for","simpl","er","tasks"]},
+        {"line":44,"digit":5,"label":"Hai… ✔  Faste","wrap":["st","for","quick","answ","ers"]},
+        {"line":50,"digit":6,"label":"Haiku…  Faste","wrap":["st","for","quick","answ","ers"]},
+        {"line":56,"digit":7,"label":"Sonne…  Effic","wrap":["ient","for","routi ↓"]}
+      ],
+      "note": "/model picker at 26 columns: cut labels and a scroll marker. class not in a capture header or the control-set manifest; dialog of a REPL command"
+    },
+    "measured/pytanie-jednokrotne-2.1.258.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-jednokrotne-2.1.278.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-jednokrotne-2.1.285.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-jednokrotne-2.1.293.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-jednokrotne-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-jednokrotne.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-preview-2.1.293.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-preview-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/pytanie-preview.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},
+    "measured/wielopytaniowy-jednokrotne-2.1.258.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-jednokrotne-2.1.278.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-jednokrotne-2.1.285.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-jednokrotne-2.1.293.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-jednokrotne-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-jednokrotne.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-2.1.258.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-2.1.278.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-2.1.285.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-2.1.293.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-zakladka2-2.1.258.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-zakladka2-2.1.278.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-zakladka2-2.1.285.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-zakladka2-2.1.293.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-zakladka2-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect-zakladka2.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/wielopytaniowy-multiselect.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-2.1.258.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-2.1.278.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-2.1.285.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-2.1.293.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-dluga-linia-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-komenda-z-kreska-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-opis-z-kreska-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-wysoka-2.1.295.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-wysoka-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash-wysoka.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-bash.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-drugi-edit-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-edit-2.1.258.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-edit-2.1.278.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-edit-2.1.285.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-edit-2.1.293.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-edit-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-edit-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-edit.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-mcp-2.1.293.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-mcp-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-mcp-argumenty-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-mcp-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-mcp.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-notebookedit-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-notebookedit-delete-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-notebookedit-insert-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-notebookedit-replace-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-notebookedit-waski-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-read-dluga-sciezka-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-read-kolejka-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-read-offset-limit-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-read-poza-projektem-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-siec-2.1.293.txt": {
+      "category": "consent",
+      "class": "sandbox",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-siec-2.1.322.txt": {
+      "category": "consent",
+      "class": "sandbox",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-siec-2.1.328.txt": {
+      "category": "consent",
+      "class": "sandbox",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-siec.txt": {"category":"consent","class":"sandbox","v2":{"kind":"none","why":"class-not-dialog"}},
+    "measured/zgoda-skill-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-skill-waski-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-webfetch-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-webfetch-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-webfetch-prompt-wieloliniowy-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-webfetch-waski-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-webfetch-waski-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-websearch-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-websearch-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-websearch-waski-2.1.311.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-2.1.258.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-2.1.278.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-2.1.285.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-2.1.293.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-dluga-linia-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-dluga-tresc-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-dluga-tresc-waski-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-falszywy-naglowek-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-nadpisanie-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-poza-projektem-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write-waski-2.1.322.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "measured/zgoda-write.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "model-set-inline-2.1.258.txt": {"category":"non-dialog","class":null,"v2":{"kind":"none","why":"class-unknown"}},
+    "queue/measured/esc-nad-kolejka-po-esc-2.1.299.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/esc-nad-kolejka-po-esc-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/esc-nad-kolejka-przed-esc-2.1.299.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/esc-nad-kolejka-przed-esc-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/esc-w-tekscie-po-esc-2.1.299.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/esc-w-tekscie-po-esc-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/esc-w-tekscie-przed-esc-2.1.299.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/esc-w-tekscie-przed-esc-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-dialog-po-up-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "queue/measured/zabranie-dialog-przed-2.1.328.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "queue/measured/zabranie-dlugie-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-formularz-po-down-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "queue/measured/zabranie-formularz-po-up-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "queue/measured/zabranie-formularz-przed-2.1.328.txt": {
+      "category": "form",
+      "class": "input",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "queue/measured/zabranie-historia-po-down-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-historia-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-historia-szeroki-po-down-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-historia-szeroki-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-meldunek-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-meldunek-przed-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-przed-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-szeroki-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-szeroki-przed-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wklejka-po-ctrl-u-1-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wklejka-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wklejka-przed-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wklejka-szeroki-po-ctrl-u-1-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wklejka-szeroki-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wklejka-szeroki-przed-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wyscig-koniec-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "queue/measured/zabranie-wyscig-wynik-po-up-2.1.328.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "refusals/powloka-komunikat-przed-promptem.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "refusals/powloka-zawiniete-polecenie.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "refusals/widok-help-2.1.310.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {"kind":"choices","end":"footer","choices":[{"key":"escape","label":"Esc to cancel"}]},
+      "note": "/help view"
+    },
+    "refusals/widok-skills-2.1.310.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {"kind":"none","why":"block-no-digits"},
+      "note": "/skills view: the list runs past the bottom, no footer on screen"
+    },
+    "refusals/widok-status-2.1.310.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {
+        "kind": "choices",
+        "end": "footer",
+        "choices": [
+          {"key":"escape","label":"Esc to cancel"}
+        ]
+      },
+      "note": "/status view under a bare ▔ rule (no session status on the rule): the block has a top and only Esc in the footer"
+    },
+    "refusals/widok-status-stechly-zrzut-2.1.310.txt": {
+      "category": "layer2",
+      "class": "dialog",
+      "today": "unreadable",
+      "v2": {"kind":"choices","end":"footer","choices":[{"key":"escape","label":"Esc to cancel"}]},
+      "note": "/status view under the status rule"
+    },
+    "refusals/zaufanie-bez-cyfr-2.1.311.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "folder trust (arrow keys). shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "refusals/zgoda-edit-uciety-naglowek-63x28.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "ultracode/rename-ultracode-2.1.317.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "ultracode/start-ultracode-2.1.317.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "ultracode/start-ultracode-niedostepny-2.1.317.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "ultracode/wynik-effort-ultracode-2.1.317.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "ultracode/wynik-effort-ultracode-off-2.1.317.txt": {
+      "category": "non-dialog",
+      "class": null,
+      "v2": {"kind":"none","why":"class-unknown"}
+    },
+    "ultracode/zgoda-bash-ultracode-2.1.317.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    }
+  }
+}

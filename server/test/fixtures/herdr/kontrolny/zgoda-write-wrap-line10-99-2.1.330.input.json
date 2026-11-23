@@ -1,0 +1,9 @@
+{
+  "toolName": "Write",
+  "input": {
+    "file_path": "/Users/u/projekt/new-n10-99.md",
+    "content": "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\nten\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\ntwelve\n"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": []
+}

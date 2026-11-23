@@ -1,0 +1,15 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "toolu_63",
+    "sessionId": "herdr-w7-p14",
+    "toolName": "Bash",
+    "displayText": "echo \u202egnp.exe",
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/xi",
+    "createdAt": "2026-10-03T08:01:01.000Z",
+    "subject": "tool",
+    "inputKind": "shell",
+    "canAllow": false
+  }
+}

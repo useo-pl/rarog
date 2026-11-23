@@ -1,0 +1,67 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.07451,0.07451,0.05882,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "eye.svg",
+          "name" : "eye"
+        },
+        {
+          "fill" : {
+            "linear-gradient" : [
+              "srgb:1.00000,0.90588,0.63922,1.00000",
+              "srgb:1.00000,0.77255,0.41961,1.00000"
+            ]
+          },
+          "glass" : true,
+          "image-name" : "head.svg",
+          "name" : "head"
+        }
+      ],
+      "name" : "Head",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.3
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : true,
+          "image-name" : "flame-inner.svg",
+          "name" : "flame-inner"
+        },
+        {
+          "glass" : true,
+          "image-name" : "flame-middle.svg",
+          "name" : "flame-middle"
+        },
+        {
+          "glass" : true,
+          "image-name" : "flame-outer.svg",
+          "name" : "flame-outer"
+        }
+      ],
+      "name" : "Flames",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}

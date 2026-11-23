@@ -1,0 +1,16 @@
+  1. Run the unit tests once more on a clean checkout — the cache from the earlier run can hide a missing fixture, so a fresh run is the
+     only proof.
+  2. Read the new error message in the log viewer and tell me if the wording is clear enough.
+
+  I will update the changelog after both checks pass.
+
+✻ Churned for 49s · done Friday 11:59 AM
+
+❯ /model claude-fable-5-1
+  ⎿  Set model to Fable 5.1 and saved as your default for new sessions
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── refactor ─
+❯
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Fable 5.1 ⚡medium 18% | 5h:--% | 20m | ~/project (main) ?8
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← 1 agent

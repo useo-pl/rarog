@@ -1,0 +1,85 @@
+# Przekaźnik push Raroga.
+# Bezstanowy: ŻADNYCH bindingów magazynu (KV, D1, R2, Durable Objects, Queues). Jedyne bindingi to liczniki
+# Rate Limiting. Test `test/config.test.ts` pilnuje tego pliku. Opis i konfiguracja: `relay/README.md`.
+#
+# Jedno środowisko: PRODUKCJA `rarog-relay` na `push.rarog.ai`. Staging, gdy będzie potrzebny: osobny Worker i osobne
+# `PASS_KEYS` — dopisać `[env.staging]` z WŁASNYMI `routes`, `vars` i `ratelimits` (`vars` i `ratelimits` nie
+# dziedziczą się do `[env.*]`, a `routes` tak: staging bez własnych zająłby domenę produkcji).
+
+name = "rarog-relay"
+# Konto Cloudflare: bez pola `account_id`, bo konto należy do tego, kto wdraża. Wrangler bierze je ze zmiennej
+# `CLOUDFLARE_ACCOUNT_ID`, ustawianej przy każdej komendzie, która rozmawia z Cloudflare (`relay/README.md`,
+# „Account and domain”). Przed pierwszym wdrożeniem: `wrangler whoami` i strefa domeny z `routes` na tym koncie.
+main = "src/worker.ts"
+# Najnowsza data obsługiwana przez `workerd` z wranglera 4.151.1 (1.20261012.1).
+compatibility_date = "2026-10-12"
+
+# Tylko Custom Domain: bez *.workers.dev i bez adresów podglądu wersji.
+workers_dev = false
+preview_urls = false
+
+[[routes]]
+pattern = "push.rarog.ai"
+custom_domain = true
+
+# Logi tylko z białej listy `src/log.ts`. Logi wywołań (żądanie i odpowiedź z metadanymi) wyłączone, bo nie da
+# się ich przefiltrować.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = false
+
+# Zmienne niesekretne. APNS_TEAM_ID = zespół Apple wydawcy apki (`iss` JWT). APNS_ENVIRONMENTS = środowiska APNs,
+# które obsługuje JEDEN klucz (Sandbox & Production). PASS_KID = `kid` nowych przepustek (musi być kluczem
+# w PASS_KEYS).
+# DEPLOY_SHA nadpisuje wdrożenie: `wrangler deploy --var DEPLOY_SHA:$(git rev-parse --short HEAD)`.
+# ALERT_POLICY = `v2`, jedyna polityka: baner tylko z tekstem zastępczym albo bez alertu, treść w szyfrogramie;
+# inna wartość wyłącza przekaźnik (`alert-policy-invalid`). Politykę wdrożonej wersji pokazuje
+# `curl -sS https://push.rarog.ai/v1/health` (`"alertPolicy":"v2"`).
+[vars]
+APNS_TEAM_ID = "97TDXJ84WH"
+APNS_ENVIRONMENTS = "development,production"
+ALERT_POLICY = "v2"
+PASS_KID = "k1"
+DEPLOY_SHA = "dev"
+
+# Sekrety (`wrangler secret put <NAZWA>` ze stdin, uruchamia użytkownik; `relay/README.md`, „Secrets”). Tu nazwy:
+# APNS_KEY      PEM klucza APNs z portalu Apple
+# APNS_KEY_ID   Key ID tego klucza
+# PASS_KEYS     JSON {kid: klucz base64 >= 32 B}; generowany prosto do Cloudflare, bez kopii (README, „Secrets”)
+
+# Liczniki Rate Limiting. namespace_id unikalne w koncie: 8101–8103 nie pokrywają się z licznikami pozostałych
+# Workerów wydawcy na tym samym koncie. Okno per lokalizacja Cloudflare, przybliżone: hamulec, nie sufit (przed
+# Workerem hamuje też reguła WAF, `relay/README.md`, „Operations”).
+# Klucze składa wyłącznie `src/client-key.ts`.
+# RL_PASS: `/v1/pass` per adres klienta (IPv4; IPv6 po /64, `src/worker.ts` i `src/client-key.ts`) i wydawanie
+# kafli per urządzenie-rodzic (`la:<skrót>`); awaria licznika = 429.
+[[ratelimits]]
+name = "RL_PASS"
+namespace_id = "8101"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+# RL_PUSH: `/v1/push` per urządzenie (`a:<skrót>` banera, `la:<skrót rodzica>` kafla), liczony po sprawdzeniu
+# przepustki; awaria licznika przepuszcza.
+[[ratelimits]]
+name = "RL_PUSH"
+namespace_id = "8102"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+# RL_PUSH_ADDR: `/v1/push` per adres klienta (klucz jak w RL_PASS), po sprawdzeniu przepustki, przed Apple;
+# awaria licznika przepuszcza. Próg z zapasem na CGNAT: kilka serwerów za jednym adresem dzieli licznik.
+[[ratelimits]]
+name = "RL_PUSH_ADDR"
+namespace_id = "8103"
+
+  [ratelimits.simple]
+  limit = 600
+  period = 60

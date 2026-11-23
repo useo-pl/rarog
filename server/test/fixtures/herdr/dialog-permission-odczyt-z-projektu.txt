@@ -1,0 +1,21 @@
+
+⏺ Usuwam katalog roboczy pomiaru i stary plik spoza projektu.
+
+  Deleting leftover directory and stale file
+  ⎿  $ rm -r -- /Users/u/projekt/stary /Users/u/.local/share/dane/stary.json && ls /Users/u/projekt | tr '\n' ' '
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command (unsandboxed)
+ Delete leftover directory and stale file
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ rm -r -- /Users/u/projekt/stary /Users/u/.local/share/dane/stary.json && ls /Users/u/projekt | tr '\n' ' '
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Ask rule Bash(rm -r *) overrides auto mode for this command.
+ /permissions to let auto mode decide
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, allow reading from /Users/u/.local/share/dane from this project
+   3. No
+
+ Esc to cancel · Tab to amend

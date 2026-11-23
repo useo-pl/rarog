@@ -1,0 +1,9 @@
+{
+  "toolName": "Write",
+  "input": {
+    "file_path": "/Users/u/projekt/new-nfd-57.md",
+    "content": "# Sample notes\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghij\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyéabcdefghijklmnopqrst\nEnd of notes.\n"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": []
+}

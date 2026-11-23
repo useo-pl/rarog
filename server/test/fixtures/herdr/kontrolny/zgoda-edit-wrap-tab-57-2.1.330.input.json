@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/projekt/notes-tab-57.md",
+    "old_string": "Status: draft",
+    "new_string": "Status: final"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": [
+    {
+      "file_path": "/Users/u/projekt/notes-tab-57.md",
+      "content": "# Sample notes\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx\tzabcdefghijklmnopqrstu\nStatus: draft\nEnd of notes.\n"
+    }
+  ]
+}

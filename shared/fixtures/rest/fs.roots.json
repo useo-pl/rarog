@@ -1,0 +1,43 @@
+{
+  "path": null,
+  "parent": null,
+  "entries": [
+    {
+      "name": "willow",
+      "path": "/Users/demo/Projects/willow",
+      "git": true,
+      "history": true
+    },
+    {
+      "name": "rarog",
+      "path": "/Users/demo/Projects/rarog",
+      "git": true,
+      "history": true
+    },
+    {
+      "name": "fleet-ops",
+      "path": "/Users/demo/Projects/fleet-ops",
+      "git": true,
+      "history": true
+    },
+    {
+      "name": "data-loader",
+      "path": "/Users/demo/Projects/data-loader",
+      "git": true,
+      "history": true
+    },
+    {
+      "name": "pipe-link",
+      "path": "/Users/demo/Projects/pipe-link",
+      "git": true,
+      "history": true
+    },
+    {
+      "name": "map-view",
+      "path": "/Users/demo/Projects/map-view",
+      "git": true,
+      "history": true
+    }
+  ],
+  "truncated": false
+}

@@ -1,0 +1,11 @@
+{
+  "error": "conflict",
+  "message": "The notes changed on another device.",
+  "messageRef": {
+    "code": "rest.notes-conflict"
+  },
+  "current": {
+    "text": "## Przed deployem\n- `pnpm run restart` po każdej zmianie w `server/`\n- sprawdź `/health`: `herdr: true`\n\nChangelog herdr: https://herdr.dev\n- dopisek z telefonu",
+    "updatedAt": 1792006800001
+  }
+}

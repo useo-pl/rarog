@@ -1,0 +1,51 @@
+
+
+❯ Nie używaj żadnych narzędzi poza Bash. Jednym wywołaniem Bash zapisz do pliku ~/Library/Caches/pomiar-dialogow.txt
+  dziewięćdziesiąt linii: komenda printf '%s\n' z argumentami od pomiar-linia-01 do pomiar-linia-90, KAŻDY argument w osobnej
+  linii komendy zakończonej backslashem, przekierowanie do pliku w ostatniej linii. To katalog cache poza sandboksem —
+  użytkownik prosi o wykonanie od razu poza sandboksem (dangerouslyDisableSandbox: true). Nie pisz nic poza tym wywołaniem.
+
+  Did not run 1 call
+  ⎿  $ printf '%s\n' \
+     pomiar-linia-01 \…
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ Nie używaj żadnych narzędzi poza Read i Edit. Przeczytaj plik pomiar-dialogow.txt i jednym wywołaniem Edit zamień w nim linię
+  'stara wartosc' na 'nowa wartosc'. Nie proponuj innych zmian i nie pisz nic poza tymi wywołaniami.
+
+  Read 1 file
+
+⏺ Update(pomiar-dialogow.txt)
+  ⎿  Rejected update to pomiar-dialogow.txt
+      1 -stara wartosc
+      1 +nowa wartosc
+
+❯ Nie używaj żadnych narzędzi poza Write. Jednym wywołaniem Write utwórz plik pomiar-dialogow-nowy.txt z jedną linią: 'pomiar'.
+  Nie pisz nic poza tym wywołaniem.
+
+⏺ Write(pomiar-dialogow-nowy.txt)
+  ⎿  Rejected write to pomiar-dialogow-nowy.txt
+      1 pomiar
+
+❯ Nie używaj żadnych narzędzi poza mcp__catalog__catalog_get_project_tree_layout. Wywołaj je raz bez argumentów. Nie pisz nic
+  poza tym wywołaniem.
+
+  Did not run 1 call
+  ⎿  catalog - Get Project Tree Layout (MCP)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ Nie używaj żadnych narzędzi poza Bash. Wykonaj w sandboksie (bez dangerouslyDisableSandbox) polecenie: curl -sI
+  https://example.org. Nie proponuj innych komend i nie pisz nic poza tym wywołaniem.
+
+⏺ Fetching HTTP headers from example.org
+  ⎿  $ curl -sI https://example.org
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Network request outside of sandbox
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Host: example.org
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to allow this connection?
+ ❯ 1. Yes
+   2. Yes, and don't ask again for example.org
+   3. No, and tell Claude what to do differently (esc)

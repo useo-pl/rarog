@@ -1,0 +1,12 @@
+{
+  "alerts" : false,
+  "environment" : "production",
+  "label" : "iPhone·Rarog",
+  "locKeys" : true,
+  "pushFormats" : [
+    3
+  ],
+  "test" : true,
+  "token" : "a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4",
+  "topic" : "ai.rarog.app"
+}

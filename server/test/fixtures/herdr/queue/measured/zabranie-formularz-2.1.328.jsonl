@@ -1,0 +1,9 @@
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co klawisze strzałek robią w stojącym formularzu Claude Code. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie jednokrotnego wyboru: 'Jaki smak lodow?' z opcjami: Wanilia, Czekolada, Truskawka. Nie pisz nic poza tym wywołaniem."}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:01.000Z","content":[{"type":"tool_use","name":"AskUserQuestion","id":"toolu_01"}]}
+{"_pomiar":"up"}
+{"_pomiar":"down"}
+{"_pomiar":"ctrl-u"}
+{"_pomiar":"esc"}
+{"type":"user","timestamp":"2026-01-01T00:00:02.000Z","uuid":"00000000-0000-4000-8000-000000000004","promptId":"00000000-0000-4000-8000-000000000003","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01","is_error":true}]}}
+{"type":"user","timestamp":"2026-01-01T00:00:03.000Z","uuid":"00000000-0000-4000-8000-000000000005","promptId":"00000000-0000-4000-8000-000000000003","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}
+{"_pomiar":"obserwacje","ramkaPola":"26","ekranPrzed":"zapisano","ekranPo-up":"zapisano","statusPo-up":"done","ekranPo-down":"zapisano","statusPo-down":"done","ekranPo-ctrl-u":"bez-zmian","statusPo-ctrl-u":"done","statusPoEsc":"done","opsKolejki":"-","turaPrzerwana":"tak"}

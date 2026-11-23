@@ -1,0 +1,52 @@
+{
+  "description": "Do exp zostało mniej niż 7 dni: po 200 Apple odpowiedź niesie renewedPass.",
+  "request": {
+    "method": "POST",
+    "path": "/v1/push",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "pass": "v1.k1.development.alert.c2a0b37a262809b4.1793872800.Zb-tcm4zPFURF207SvwAuBIiWoawnSWPHA12S7pLA9o",
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "headers": {
+        "apns-push-type": "alert",
+        "apns-topic": "ai.rarog.app",
+        "apns-priority": "10",
+        "apns-collapse-id": "cr1xyyYpSec1JgrezziXOaeaqcM43hwA",
+        "apns-expiration": "1793614200"
+      },
+      "payload": "{\"aps\":{\"alert\":{\"title\":\"Rarog\",\"body\":\"Nowe powiadomienie\"},\"mutable-content\":1,\"sound\":\"default\",\"thread-id\":\"3f2a9c1b7e5d4a60\"},\"rarog\":{\"v\":3,\"kid\":\"1a2b3c4d\",\"n\":\"AAAAAAAAAAAAAAAA\",\"c\":\"c3p5ZnJvZ3JhbQ\"}}"
+    }
+  },
+  "apns": {
+    "status": 200,
+    "body": ""
+  },
+  "apnsRequest": {
+    "url": "https://api.sandbox.push.apple.com/3/device/c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+    "headers": {
+      "apns-push-type": "alert",
+      "apns-topic": "ai.rarog.app",
+      "apns-priority": "10",
+      "apns-collapse-id": "cr1xyyYpSec1JgrezziXOaeaqcM43hwA",
+      "apns-expiration": "1793614200",
+      "content-type": "application/json"
+    },
+    "body": "{\"aps\":{\"alert\":{\"title\":\"Rarog\",\"body\":\"Nowe powiadomienie\"},\"mutable-content\":1,\"sound\":\"default\",\"thread-id\":\"3f2a9c1b7e5d4a60\"},\"rarog\":{\"v\":3,\"kid\":\"1a2b3c4d\",\"n\":\"AAAAAAAAAAAAAAAA\",\"c\":\"c3p5ZnJvZ3JhbQ\"}}"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "v": 1,
+      "apnsStatus": 200,
+      "renewedPass": {
+        "pass": "v1.k1.development.alert.c2a0b37a262809b4.1801389600.Tt0O1VzUDynDL0Rq6BpH-GB8GIVqEWL_5JgFOUGTkDk",
+        "expiresAt": "2027-01-31T10:00:00.000Z"
+      }
+    }
+  }
+}

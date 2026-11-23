@@ -1,0 +1,35 @@
+# iroh-relay 1.4.1 pod relay.rarog.ai. Na VPS: /etc/iroh-relay/config.toml (instaluje install.sh).
+# Klucze i wartości domyślne: iroh-relay/src/main.rs @v1.4.1 (struct Config, TlsConfig, Limits). Parser ignoruje
+# nieznane klucze, a brak `[access]` znaczy „wpuść każdego”, więc literówka otwiera relay po cichu: zestaw kluczy
+# i wartości pilnuje relay-vps/test/config.test.ts.
+
+enable_relay = true
+# Port 80: sonda portalu przechwytującego klienta iroh (`GET /generate_204`). Z [tls] reszta usług idzie na 443.
+http_bind_addr = "[::]:80"
+# QAD (QUIC address discovery) na UDP 7842, domyślnym porcie; wymaga [tls].
+enable_quic_addr_discovery = true
+
+# Metryki zbiorcze tylko na pętli (domyślnie słuchałyby na [::]:9090).
+enable_metrics = true
+metrics_bind_addr = "127.0.0.1:9090"
+
+[tls]
+https_bind_addr = "[::]:443"
+# Certyfikat z Let's Encrypt, wyzwanie TLS-ALPN-01 na 443. Odnawia go relay sam.
+cert_mode = "LetsEncrypt"
+hostname = "relay.rarog.ai"
+contact = "security@rarog.ai"
+# Konto ACME i certyfikat przeżywają restart i reboot (StateDirectory jednostki). Kopia: relay-certs-backup.sh.
+cert_dir = "/var/lib/iroh-relay/certs"
+prod_tls = true
+
+# Limit per połączenie po stronie odczytu relaya: 3 MB/s, burst 16 MB (jednostki dziesiętne). Każde nowe
+# połączenie dostaje pełny burst, więc sufitem kosztu jest `tc` (relay-tc.sh), nie ten limit.
+[limits.client.rx]
+bytes_per_second = 3_000_000
+max_burst_bytes = 16_000_000
+
+# Hak dostępu przez lokalny adapter (access-adapter.mjs): termin decyzji i fail-open. Bearer dla adaptera:
+# IROH_RELAY_HTTP_BEARER_TOKEN z /etc/iroh-relay/relay.env (EnvironmentFile 0600), nigdy w tym pliku.
+[access.http]
+url = "http://127.0.0.1:8081/v1/access"

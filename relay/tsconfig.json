@@ -1,0 +1,29 @@
+{
+  // Osobny projekt: nie należy do `tsc -b` korzenia. Typy środowiska to
+  // `@cloudflare/workers-types` (bez `@types/node`): kod Workera i testy używają wyłącznie WebCrypto, `fetch`
+  // i strumieni, a testy czytają pliki przez `import.meta.glob` Vite (`test/env.d.ts`).
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "types": ["@cloudflare/workers-types"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    // `scripts/smoke.mjs` to zwykły Node bez zależności; test importuje z niego czyste funkcje.
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "test"]
+}

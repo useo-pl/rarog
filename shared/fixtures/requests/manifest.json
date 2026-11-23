@@ -1,0 +1,31 @@
+{
+  "answers.json": { "route": "POST /api/sessions/{id}/answers/{qId}", "schema": "answersBody" },
+  "answers.notes.json": { "route": "POST /api/sessions/{id}/answers/{qId}", "schema": "answersBody" },
+  "apns.register.json": { "route": "POST /api/push/apns", "schema": "apnsRegisterBody" },
+  "apns.register.test.json": { "route": "POST /api/push/apns", "schema": "apnsRegisterBody" },
+  "apns.status.json": { "route": "POST /api/push/apns/status", "schema": "apnsStatusBody" },
+  "apns.unregister.json": { "route": "POST /api/push/apns/unregister", "schema": "apnsUnregisterBody" },
+  "companion.ask.json": { "route": "POST /api/sessions/{id}/companion/ask", "schema": "companionAskBody" },
+  "companion.speech-token.json": { "route": "POST /api/companion/speech-token", "schema": "companionSpeechTokenBody" },
+  "companion.token.json": { "route": "POST /api/companion/token", "schema": "companionTokenBody" },
+  "fs.mkdir.json": { "route": "POST /api/fs/mkdir", "schema": "makeDirBody" },
+  "live-activity.end.json": { "route": "POST /api/push/live-activity/end", "schema": "liveActivityEndBody" },
+  "live-activity.register.json": {
+    "route": "POST /api/push/live-activity", "schema": "liveActivityRegisterBody"
+  },
+  "messages.json": { "route": "POST /api/sessions/{id}/messages", "schema": "messageBody" },
+  "messages.voice-agent.json": { "route": "POST /api/sessions/{id}/messages", "schema": "messageBody" },
+  "notes.put.json": { "route": "PUT /api/notes", "schema": "notesPutBody" },
+  "pair.json": { "route": "POST /api/pair", "schema": "pairBody" },
+  "restart.json": { "route": "POST /api/sessions/{id}/restart", "schema": "restartBody" },
+  "restart.resend.json": { "route": "POST /api/sessions/{id}/restart", "schema": "restartBody" },
+  "seen.json": { "route": "POST /api/sessions/{id}/seen", "schema": "seenBody" },
+  "seen.voice-agent.json": { "route": "POST /api/sessions/{id}/seen", "schema": "seenBody" },
+  "sessions.create.ultracode.json": { "route": "POST /api/sessions", "schema": "createSessionBody" },
+  "sessions.model.ultracode-off.json": { "route": "POST /api/sessions/{id}/model", "schema": "sessionModelBody" },
+  "sessions.model.ultracode-on.json": { "route": "POST /api/sessions/{id}/model", "schema": "sessionModelBody" },
+  "term.open.json": { "route": "POST /api/term", "schema": "termOpenBody" },
+  "term.open.next.json": { "route": "POST /api/term", "schema": "termOpenBody" },
+  "term.open.popup.json": { "route": "POST /api/term", "schema": "termOpenBody" },
+  "term.open.slot.json": { "route": "POST /api/term", "schema": "termOpenBody" }
+}

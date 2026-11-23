@@ -1,0 +1,965 @@
+{
+  "activity.max.json": { "expect": "ok" },
+  "activity.min.json": { "expect": "ok" },
+  "activity.tool.json": { "expect": "ok" },
+  "activity.unknown-delegation.json": {
+    "expect": "degraded",
+    "base": "activity.max.json",
+    "patch": [
+      { "path": "/delegation", "value": "team" }
+    ],
+    "result": [
+      { "path": "/delegation", "value": "agents" }
+    ],
+    "degrades": ["activity.delegation"]
+  },
+  "activity.unknown-kind.json": {
+    "expect": "ignored",
+    "base": "activity.max.json",
+    "patch": [
+      { "path": "/kind", "value": "compacting" }
+    ]
+  },
+  "delta.max.json": { "expect": "ok" },
+  "git-status.file-detail-without-path.json": {
+    "expect": "ignored",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails/0/path", "remove": true }
+    ]
+  },
+  "git-status.max.json": { "expect": "ok" },
+  "git-status.negative-lines-deleted.json": {
+    "expect": "ignored",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails/0/linesDeleted", "value": -7 }
+    ]
+  },
+  "git-status.null-file-binary.json": {
+    "expect": "ignored",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails/1/binary", "value": null }
+    ]
+  },
+  "git-status.null-file-details.json": {
+    "expect": "ignored",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails", "value": null }
+    ]
+  },
+  "git-status.numeric-file-kind.json": {
+    "expect": "ignored",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails/0/kind", "value": 1 }
+    ]
+  },
+  "git-status.string-lines-added.json": {
+    "expect": "ignored",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails/0/linesAdded", "value": "42" }
+    ]
+  },
+  "git-status.unknown-file-kind.json": {
+    "expect": "degraded",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails/0/kind", "value": "renamed" }
+    ],
+    "result": [
+      { "path": "/fileDetails/0/kind", "value": "modified" }
+    ],
+    "degrades": ["fileDetails.kind"]
+  },
+  "git-status.without-file-details.json": {
+    "expect": "ok",
+    "base": "git-status.max.json",
+    "patch": [
+      { "path": "/fileDetails", "remove": true }
+    ]
+  },
+  "hello.broken-json.json": {
+    "expect": "ignored",
+    "raw": true
+  },
+  "hello.heartbeat-above-range.json": {
+    "expect": "ok",
+    "base": "hello.max.json",
+    "patch": [
+      { "path": "/heartbeatMs", "value": 60001 }
+    ]
+  },
+  "hello.heartbeat-below-range.json": {
+    "expect": "ok",
+    "base": "hello.max.json",
+    "patch": [
+      { "path": "/heartbeatMs", "value": 999 }
+    ]
+  },
+  "hello.max.json": { "expect": "ok" },
+  "hello.min.json": { "expect": "ok" },
+  "hello.null-heartbeat.json": {
+    "expect": "ignored",
+    "base": "hello.max.json",
+    "patch": [
+      { "path": "/heartbeatMs", "value": null }
+    ]
+  },
+  "hello.null-min-client-build.json": {
+    "expect": "ignored",
+    "base": "hello.max.json",
+    "patch": [
+      { "path": "/minClientBuild", "value": null }
+    ]
+  },
+  "hello.zero-heartbeat.json": {
+    "expect": "ignored",
+    "base": "hello.max.json",
+    "patch": [
+      { "path": "/heartbeatMs", "value": 0 }
+    ]
+  },
+  "hello.zero-min-client-build.json": {
+    "expect": "ignored",
+    "base": "hello.max.json",
+    "patch": [
+      { "path": "/minClientBuild", "value": 0 }
+    ]
+  },
+  "herdr-status.max.json": { "expect": "ok" },
+  "herdr-status.pane-cap.json": { "expect": "ok" },
+  "herdr-status.empty-ref-code.json": {
+    "expect": "ignored",
+    "base": "herdr-status.pane-cap.json",
+    "patch": [
+      { "path": "/detailRef/code", "value": "" }
+    ]
+  },
+  "message.block-without-type.json": {
+    "expect": "ignored",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/0/type", "remove": true }
+    ]
+  },
+  "message.broken-tool-call.json": {
+    "expect": "ignored",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/1/summary", "remove": true }
+    ]
+  },
+  "message.extra-key.json": {
+    "expect": "ok",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/2/przyszlePole", "value": "x" },
+      { "path": "/message/przyszlePole", "value": 1 }
+    ],
+    "strip": ["/message/blocks/2/przyszlePole", "/message/przyszlePole"]
+  },
+  "message.image.json": { "expect": "ok" },
+  "message.image-placeholder.json": {
+    "expect": "ok",
+    "base": "message.image.json",
+    "patch": [
+      { "path": "/message/blocks/1/placeholder", "value": true }
+    ]
+  },
+  "message.refs.json": { "expect": "ok" },
+  "message.footer-past-detail.json": {
+    "expect": "ignored",
+    "base": "message.refs.json",
+    "patch": [
+      { "path": "/message/blocks/1/truncation/footer", "value": 9999 }
+    ]
+  },
+  "message.max.json": { "expect": "ok" },
+  "message.min.json": { "expect": "ok" },
+  "message.notice-artifact-watch.json": { "expect": "ok" },
+  "message.notice-waiting.json": { "expect": "ok" },
+  "message.notice.json": { "expect": "ok" },
+  "message.prompt-blocked-terminal.json": { "expect": "ok" },
+  "message.prompt-blocked.json": { "expect": "ok" },
+  "message.null-notice.json": {
+    "expect": "ignored",
+    "base": "message.notice.json",
+    "patch": [
+      { "path": "/message/notice", "value": null }
+    ]
+  },
+  "message.numeric-block-type.json": {
+    "expect": "ignored",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/0/type", "value": 3 }
+    ]
+  },
+  "message.numeric-delegation.json": {
+    "expect": "ignored",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/3/delegation", "value": 2 }
+    ]
+  },
+  "message.numeric-notice-kind.json": {
+    "expect": "ignored",
+    "base": "message.notice.json",
+    "patch": [
+      { "path": "/message/notice/kind", "value": 4 }
+    ]
+  },
+  "message.string-exit-code.json": {
+    "expect": "ignored",
+    "base": "message.notice.json",
+    "patch": [
+      { "path": "/message/notice/exitCode", "value": "0" }
+    ]
+  },
+  "message.tool-calls.json": { "expect": "ok" },
+  "message.unicode.json": { "expect": "ok" },
+  "message.unknown-attachment-kind.json": {
+    "expect": "degraded",
+    "base": "message.max.json",
+    "patch": [
+      { "path": "/message/attachments/0/kind", "value": "video" }
+    ],
+    "result": [
+      { "path": "/message/attachments/0/kind", "value": "file" }
+    ],
+    "degrades": ["attachments.kind"]
+  },
+  "message.unknown-delegation.json": {
+    "expect": "degraded",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/4/delegation", "value": "swarm" }
+    ],
+    "result": [
+      { "path": "/message/blocks/4/delegation", "value": "agents" }
+    ],
+    "degrades": ["block.delegation"]
+  },
+  "message.unknown-detail-kind.json": {
+    "expect": "degraded",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/2/detailKind", "value": "patch" }
+    ],
+    "result": [
+      { "path": "/message/blocks/2/detailKind", "remove": true }
+    ],
+    "degrades": ["block.detailKind"]
+  },
+  "message.unknown-input-kind.json": {
+    "expect": "degraded",
+    "base": "message.tool-calls.json",
+    "patch": [
+      { "path": "/message/blocks/1/inputKind", "value": "sql" }
+    ],
+    "result": [
+      { "path": "/message/blocks/1/inputKind", "remove": true }
+    ],
+    "degrades": ["block.inputKind"]
+  },
+  "message.unknown-notice-kind.json": {
+    "expect": "degraded",
+    "base": "message.notice.json",
+    "patch": [
+      { "path": "/message/notice/kind", "value": "cron" }
+    ],
+    "result": [
+      { "path": "/message/notice/kind", "value": "unknown" }
+    ],
+    "degrades": ["notice.kind"]
+  },
+  "message.unknown-notice-outcome.json": {
+    "expect": "degraded",
+    "base": "message.notice.json",
+    "patch": [
+      { "path": "/message/notice/outcome", "value": "partial" }
+    ],
+    "result": [
+      { "path": "/message/notice/outcome", "remove": true }
+    ],
+    "degrades": ["notice.outcome"]
+  },
+  "notes.max.json": { "expect": "ok" },
+  "permission-pending.boolean-risk.json": {
+    "expect": "ignored",
+    "base": "permission-pending.max.json",
+    "patch": [
+      { "path": "/request/risk", "value": true }
+    ]
+  },
+  "permission-pending.degraded.json": { "expect": "ok" },
+  "permission-pending.truncation.json": { "expect": "ok" },
+  "permission-pending.hidden.json": { "expect": "ok" },
+  "permission-pending.screen-settings-changed.json": { "expect": "ok" },
+  "permission-pending.screen-no-channel.json": { "expect": "ok" },
+  "permission-pending.screen-truncated.json": { "expect": "ok" },
+  "permission-pending.negative-cut.json": {
+    "expect": "ignored",
+    "base": "permission-pending.truncation.json",
+    "patch": [
+      { "path": "/request/truncation/cut", "value": -1 }
+    ]
+  },
+  "permission-pending.max.json": { "expect": "ok" },
+  "permission-pending.no-digits.json": { "expect": "ok" },
+  "permission-pending.plan.json": { "expect": "ok" },
+  "permission-pending.unknown-input-kind.json": {
+    "expect": "degraded",
+    "base": "permission-pending.max.json",
+    "patch": [
+      { "path": "/request/inputKind", "value": "sql" }
+    ],
+    "result": [
+      { "path": "/request/inputKind", "remove": true }
+    ],
+    "degrades": ["permission.inputKind"]
+  },
+  "permission-pending.unknown-risk.json": {
+    "expect": "degraded",
+    "base": "permission-pending.max.json",
+    "patch": [
+      { "path": "/request/risk", "value": "amber" }
+    ],
+    "result": [
+      { "path": "/request/risk", "value": "red" }
+    ],
+    "degrades": ["risk"]
+  },
+  "permission-pending.unknown-subject.json": {
+    "expect": "degraded",
+    "base": "permission-pending.plan.json",
+    "patch": [
+      { "path": "/request/subject", "value": "review" }
+    ],
+    "result": [
+      { "path": "/request/subject", "value": "tool" }
+    ],
+    "degrades": ["subject"]
+  },
+  "permission-pending.hook.json": { "expect": "ok" },
+  "permission-pending.hook-always.json": { "expect": "ok" },
+  "permission-pending.hook-running.json": { "expect": "ok" },
+  "permission-pending.hook-sandbox.json": { "expect": "ok" },
+  "permission-pending.hook-siblings.json": { "expect": "ok" },
+  "permission-pending.hook-truncated.json": { "expect": "ok" },
+  "permission-pending.hook-hidden.json": { "expect": "ok" },
+  "permission-pending.unknown-state.json": {
+    "expect": "degraded",
+    "base": "permission-pending.hook.json",
+    "patch": [
+      { "path": "/request/state", "value": "deciding" }
+    ],
+    "result": [
+      { "path": "/request/state", "value": "unsupported" }
+    ],
+    "degrades": ["permission.state"]
+  },
+  "permission-pending.unknown-unavailable.json": {
+    "expect": "degraded",
+    "base": "permission-pending.hook.json",
+    "patch": [
+      { "path": "/request/unavailable", "value": "rate-limited" }
+    ],
+    "result": [
+      { "path": "/request/unavailable", "value": "unsupported" }
+    ],
+    "degrades": ["permission.unavailable"]
+  },
+  "permission-pending.unknown-note.json": {
+    "expect": "degraded",
+    "base": "permission-pending.hook-sandbox.json",
+    "patch": [
+      { "path": "/request/notes/0", "value": "network-open" }
+    ],
+    "result": [
+      { "path": "/request/notes/0", "value": "unsupported" }
+    ],
+    "degrades": ["permission.notes"]
+  },
+  "permission-resolved.max.json": { "expect": "ok" },
+  "permission-resolved.release.json": { "expect": "ok" },
+  "permission-settled.max.json": { "expect": "ok" },
+  "permission-settled.unknown-state.json": {
+    "expect": "degraded",
+    "base": "permission-settled.max.json",
+    "patch": [
+      { "path": "/state", "value": "deciding" }
+    ],
+    "result": [
+      { "path": "/state", "value": "unsupported" }
+    ],
+    "degrades": ["permission.state"]
+  },
+  "permission-resolved.unknown-decision.json": {
+    "expect": "degraded",
+    "base": "permission-resolved.max.json",
+    "patch": [
+      { "path": "/decision", "value": "allow-session" }
+    ],
+    "result": [
+      { "path": "/decision", "value": "unsupported" }
+    ],
+    "degrades": ["permission-resolved.decision"]
+  },
+  "question-pending.keys.json": { "expect": "ok" },
+  "question-pending.fallback.json": { "expect": "ok" },
+  "question-pending.max.json": { "expect": "ok" },
+  "question-pending.min.json": { "expect": "ok" },
+  "question-pending.numeric-preview.json": {
+    "expect": "ignored",
+    "base": "question-pending.preview.json",
+    "patch": [
+      { "path": "/request/questions/0/options/0/preview", "value": 7 }
+    ]
+  },
+  "question-pending.numeric-role.json": {
+    "expect": "ignored",
+    "base": "question-pending.max.json",
+    "patch": [
+      { "path": "/request/questions/0/options/0/role", "value": 1 }
+    ]
+  },
+  "question-pending.preview.json": { "expect": "ok" },
+  "question-pending.review.json": { "expect": "ok" },
+  "question-pending.string-notes.json": {
+    "expect": "ignored",
+    "base": "question-pending.preview.json",
+    "patch": [
+      { "path": "/request/questions/0/notes", "value": "true" }
+    ]
+  },
+  "question-pending.string-review-answers.json": {
+    "expect": "ignored",
+    "base": "question-pending.review.json",
+    "patch": [
+      { "path": "/request/questions/0/review/1/answers", "value": "Posypka, Polewa" }
+    ]
+  },
+  "question-pending.string-custom-answer.json": {
+    "expect": "ignored",
+    "base": "question-pending.max.json",
+    "patch": [
+      { "path": "/request/customAnswer", "value": "true" }
+    ]
+  },
+  "question-pending.unknown-channel.json": {
+    "expect": "degraded",
+    "base": "question-pending.max.json",
+    "patch": [
+      { "path": "/request/channel", "value": "voice" }
+    ],
+    "result": [
+      { "path": "/request/channel", "remove": true }
+    ],
+    "degrades": ["channel"]
+  },
+  "question-pending.unknown-role.json": {
+    "expect": "degraded",
+    "base": "question-pending.keys.json",
+    "patch": [
+      { "path": "/request/questions/0/options/3/role", "value": "skip" }
+    ],
+    "result": [
+      { "path": "/request/questions/0/options/3/role", "value": "answer" }
+    ],
+    "degrades": ["option.role"]
+  },
+  "question-resolved.max.json": { "expect": "ok" },
+  "session-changed.absent-effort.json": {
+    "expect": "ok",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/effort", "remove": true }
+    ]
+  },
+  "session-changed.absent-ultracode.json": {
+    "expect": "ok",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/ultracode", "remove": true }
+    ]
+  },
+  "session-changed.artifact-without-url.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/artifacts/0/url", "remove": true }
+    ]
+  },
+  "session-changed.broken-context.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/context/limit", "remove": true }
+    ]
+  },
+  "session-changed.cli-dialog.json": { "expect": "ok" },
+  "session-changed.codex.json": { "expect": "ok" },
+  "session-changed.false-artifact-gone.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/artifacts/1/gone", "value": false }
+    ]
+  },
+  "session-changed.idle.json": { "expect": "ok" },
+  "session-changed.label-ref.json": { "expect": "ok" },
+  "session-changed.marked-unseen.json": { "expect": "ok" },
+  "session-changed.marked-unseen-false.json": {
+    "expect": "ignored",
+    "base": "session-changed.marked-unseen.json",
+    "patch": [
+      { "path": "/session/markedUnseen", "value": false }
+    ]
+  },
+  "session-changed.null-pull-request-state.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/pullRequests/0/state", "value": null }
+    ]
+  },
+  "session-changed.null-scheduled-tasks.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/scheduledTasks", "value": null }
+    ]
+  },
+  "session-changed.null-seen-by.json": {
+    "expect": "ignored",
+    "base": "session-changed.seen-by-voice-agent.json",
+    "patch": [
+      { "path": "/session/seenBy", "value": null }
+    ]
+  },
+  "session-changed.scheduled-task-without-id.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/scheduledTasks/0/id", "remove": true }
+    ]
+  },
+  "session-changed.string-scheduled-task-recurring.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/scheduledTasks/1/recurring", "value": "true" }
+    ]
+  },
+  "session-changed.null-state-detail-ref.json": {
+    "expect": "ignored",
+    "base": "session-changed.codex.json",
+    "patch": [
+      { "path": "/session/stateDetailRef", "value": null }
+    ]
+  },
+  "session-changed.max.json": { "expect": "ok" },
+  "session-changed.missing-id.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/id", "remove": true }
+    ]
+  },
+  "session-changed.no-digits.json": { "expect": "ok" },
+  "session-changed.null-activity.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/activity", "value": null }
+    ]
+  },
+  "session-changed.null-artifacts.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/artifacts", "value": null }
+    ]
+  },
+  "session-changed.null-effort.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/effort", "value": null }
+    ]
+  },
+  "session-changed.null-label.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/label", "value": null }
+    ]
+  },
+  "session-changed.numeric-context-kind.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/context/kind", "value": 7 }
+    ]
+  },
+  "session-changed.null-ultracode.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/ultracode", "value": null }
+    ]
+  },
+  "session-changed.numeric-title.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/title", "value": 5 }
+    ]
+  },
+  "session-changed.numeric-pull-request-state.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/pullRequests/0/state", "value": 7 }
+    ]
+  },
+  "session-changed.prompt-blocked.json": { "expect": "ok" },
+  "session-changed.question.json": { "expect": "ok" },
+  "session-changed.seen-by-voice-agent.json": { "expect": "ok" },
+  "session-changed.tool.json": { "expect": "ok" },
+  "session-changed.trust-dialog.json": { "expect": "ok" },
+  "session-changed.unknown-activity-kind.json": {
+    "expect": "degraded",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/activity/kind", "value": "compacting" }
+    ],
+    "result": [
+      { "path": "/session/activity", "remove": true }
+    ],
+    "degrades": ["activity.kind"]
+  },
+  "session-changed.unknown-cli-dialog.json": {
+    "expect": "degraded",
+    "base": "session-changed.cli-dialog.json",
+    "patch": [
+      { "path": "/session/cliDialog", "value": "approval" }
+    ],
+    "result": [
+      { "path": "/session/cliDialog", "remove": true }
+    ],
+    "degrades": ["cliDialog"]
+  },
+  "session-changed.unknown-context-source.json": {
+    "expect": "degraded",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/context/source", "value": "api" }
+    ],
+    "result": [
+      { "path": "/session/context/source", "value": "unsupported" }
+    ],
+    "degrades": ["context.source"]
+  },
+  "session-changed.unknown-dialog-reason.json": {
+    "expect": "degraded",
+    "base": "session-changed.no-digits.json",
+    "patch": [
+      { "path": "/session/herdrDialogReason", "value": "screen-timeout" }
+    ],
+    "result": [
+      { "path": "/session/herdrDialogReason", "remove": true }
+    ],
+    "degrades": ["herdrDialogReason"]
+  },
+  "session-changed.unknown-dialog.json": {
+    "expect": "degraded",
+    "base": "session-changed.trust-dialog.json",
+    "patch": [
+      { "path": "/session/herdrDialog", "value": "mcp" }
+    ],
+    "result": [
+      { "path": "/session/herdrDialog", "remove": true }
+    ],
+    "degrades": ["herdrDialog"]
+  },
+  "session-changed.unknown-engine.json": {
+    "expect": "degraded",
+    "base": "session-changed.codex.json",
+    "patch": [
+      { "path": "/session/engine", "value": "gemini" }
+    ],
+    "result": [
+      { "path": "/session/engine", "value": "unsupported" }
+    ],
+    "degrades": ["engine"]
+  },
+  "session-changed.unknown-pull-request-state.json": {
+    "expect": "degraded",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/pullRequests/0/state", "value": "queued" }
+    ],
+    "result": [
+      { "path": "/session/pullRequests/0/state", "remove": true }
+    ],
+    "degrades": ["pullRequests.state"]
+  },
+  "session-changed.unknown-seen-by.json": {
+    "expect": "degraded",
+    "base": "session-changed.seen-by-voice-agent.json",
+    "patch": [
+      { "path": "/session/seenBy", "value": "robot" }
+    ],
+    "result": [
+      { "path": "/session/seenBy", "remove": true }
+    ],
+    "degrades": ["seenBy"]
+  },
+  "session-changed.unknown-task-kind.json": {
+    "expect": "degraded",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/backgroundTasks/3/kind", "value": "cron" }
+    ],
+    "result": [
+      { "path": "/session/backgroundTasks/3/kind", "value": "unsupported" }
+    ],
+    "degrades": ["backgroundTasks.kind"]
+  },
+  "sessions-snapshot.demo.json": { "expect": "ok" },
+  "sessions-snapshot.extra-key.json": {
+    "expect": "ok",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/przyszlePole", "value": {"wersja":4} },
+      { "path": "/sessions/9/przyszlePole", "value": "x" },
+      { "path": "/herdrStatus/przyszlePole", "value": true }
+    ],
+    "strip": ["/przyszlePole", "/sessions/9/przyszlePole", "/herdrStatus/przyszlePole"]
+  },
+  "sessions-snapshot.max.json": { "expect": "ok" },
+  "sessions-snapshot.label-ref.json": { "expect": "ok" },
+  "sessions-snapshot.marked-unseen.json": { "expect": "ok" },
+  "sessions-snapshot.min.json": { "expect": "ok" },
+  "sessions-snapshot.null-state.json": {
+    "expect": "ignored",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/0/state", "value": null }
+    ]
+  },
+  "sessions-snapshot.prompt-blocked.json": { "expect": "ok" },
+  "sessions-snapshot.seen-by-voice-agent.json": { "expect": "ok" },
+  "sessions-snapshot.unknown-context-kind.json": {
+    "expect": "degraded",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/6/context/kind", "value": "estimated" }
+    ],
+    "result": [
+      { "path": "/sessions/6/context", "remove": true }
+    ],
+    "degrades": ["context.kind"]
+  },
+  "sessions-snapshot.unknown-effort.json": {
+    "expect": "degraded",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/9/effort", "value": "ultra" }
+    ],
+    "result": [
+      { "path": "/sessions/9/effort", "value": "unsupported" }
+    ],
+    "degrades": ["effort"]
+  },
+  "sessions-snapshot.unknown-herdr-mode.json": {
+    "expect": "degraded",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/0/herdrMode", "value": "acceptEdits" }
+    ],
+    "result": [
+      { "path": "/sessions/0/herdrMode", "value": "unknown" }
+    ],
+    "degrades": ["herdrMode"]
+  },
+  "sessions-snapshot.unknown-many.json": {
+    "expect": "degraded",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/2/engine", "value": "gemini" },
+      { "path": "/sessions/3/state", "value": "paused" }
+    ],
+    "result": [
+      { "path": "/sessions/2/engine", "value": "unsupported" },
+      { "path": "/sessions/3/state", "value": "unsupported" }
+    ],
+    "degrades": ["engine", "state"]
+  },
+  "sessions-snapshot.unknown-state.json": {
+    "expect": "degraded",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/0/state", "value": "paused" }
+    ],
+    "result": [
+      { "path": "/sessions/0/state", "value": "unsupported" }
+    ],
+    "degrades": ["state"]
+  },
+  "sessions-snapshot.unknown-waiting-for.json": {
+    "expect": "degraded",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/5/waitingFor/kind", "value": "plan" }
+    ],
+    "result": [
+      { "path": "/sessions/5/waitingFor", "remove": true }
+    ],
+    "degrades": ["waitingFor.kind"]
+  },
+  "sessions-snapshot.unknown-waiting-subject.json": {
+    "expect": "degraded",
+    "base": "sessions-snapshot.max.json",
+    "patch": [
+      { "path": "/sessions/1/waitingFor/subject", "value": "review" }
+    ],
+    "result": [
+      { "path": "/sessions/1/waitingFor/subject", "value": "tool" }
+    ],
+    "degrades": ["waitingFor.subject"]
+  },
+  "state.nine-ref-args.json": {
+    "expect": "ignored",
+    "base": "state.max.json",
+    "patch": [
+      { "path": "/detailRef/args", "value": ["1", "2", "3", "4", "5", "6", "7", "8", "9"] }
+    ]
+  },
+  "state.numeric-ref-arg.json": {
+    "expect": "ignored",
+    "base": "state.max.json",
+    "patch": [
+      { "path": "/detailRef/args/0", "value": 5 }
+    ]
+  },
+  "state.max.json": { "expect": "ok" },
+  "state.min.json": { "expect": "ok" },
+  "state.missing-since.json": {
+    "expect": "ignored",
+    "base": "state.max.json",
+    "patch": [
+      { "path": "/since", "remove": true }
+    ]
+  },
+  "state.null-state.json": {
+    "expect": "ignored",
+    "base": "state.max.json",
+    "patch": [
+      { "path": "/state", "value": null }
+    ]
+  },
+  "state.numeric-state.json": {
+    "expect": "ignored",
+    "base": "state.max.json",
+    "patch": [
+      { "path": "/state", "value": 7 }
+    ]
+  },
+  "state.unknown-state.json": {
+    "expect": "degraded",
+    "base": "state.max.json",
+    "patch": [
+      { "path": "/state", "value": "paused" }
+    ],
+    "result": [
+      { "path": "/state", "value": "unsupported" }
+    ],
+    "degrades": ["state"]
+  },
+  "transcript-snapshot.broken-text-block.json": {
+    "expect": "ignored",
+    "base": "transcript-snapshot.max.json",
+    "patch": [
+      { "path": "/messages/4/blocks/0/text", "value": 9 }
+    ]
+  },
+  "transcript-snapshot.hook.json": { "expect": "ok" },
+  "transcript-snapshot.demo.json": { "expect": "ok" },
+  "transcript-snapshot.keys.json": { "expect": "ok" },
+  "transcript-snapshot.max.json": { "expect": "ok" },
+  "transcript-snapshot.image-placeholder.json": {
+    "expect": "ok",
+    "base": "transcript-snapshot.max.json",
+    "patch": [
+      { "path": "/messages/3/blocks/1/placeholder", "value": true }
+    ]
+  },
+  "transcript-snapshot.refs.json": { "expect": "ok" },
+  "transcript-snapshot.min.json": { "expect": "ok" },
+  "transcript-snapshot.notice-waiting.json": { "expect": "ok" },
+  "transcript-snapshot.preview.json": { "expect": "ok" },
+  "transcript-snapshot.prompt-blocked.json": { "expect": "ok" },
+  "transcript-snapshot.question.json": { "expect": "ok" },
+  "transcript-snapshot.review.json": { "expect": "ok" },
+  "transcript-snapshot.running.json": { "expect": "ok" },
+  "transcript-snapshot.tool.json": { "expect": "ok" },
+  "transcript-snapshot.unknown-activity-kind.json": {
+    "expect": "degraded",
+    "base": "transcript-snapshot.running.json",
+    "patch": [
+      { "path": "/activity/kind", "value": "compacting" }
+    ],
+    "result": [
+      { "path": "/activity", "remove": true }
+    ],
+    "degrades": ["activity.kind"]
+  },
+  "transcript-snapshot.unknown-block-type.json": {
+    "expect": "degraded",
+    "base": "transcript-snapshot.max.json",
+    "patch": [
+      { "path": "/messages/3/blocks/1/type", "value": "video" }
+    ],
+    "result": [
+      { "path": "/messages/3/blocks/1", "value": {"type":"unsupported"} }
+    ],
+    "degrades": ["block.type"]
+  },
+  "transcript-snapshot.unknown-role.json": {
+    "expect": "degraded",
+    "base": "transcript-snapshot.max.json",
+    "patch": [
+      { "path": "/messages/4/role", "value": "tool" }
+    ],
+    "result": [
+      { "path": "/messages/4/role", "value": "system" }
+    ],
+    "degrades": ["message.role"]
+  },
+  "usage.max.json": { "expect": "ok" },
+  "usage.wrong-type.json": {
+    "expect": "ignored",
+    "base": "usage.max.json",
+    "patch": [
+      { "path": "/contextTokens", "value": "412000" }
+    ]
+  },
+  "x-future.degradable-field.json": {
+    "expect": "ignored",
+    "base": "x-future.unknown-type.json",
+    "patch": [
+      { "path": "/state", "value": "paused" }
+    ]
+  },
+  "x-future.unknown-type.json": { "expect": "ignored" },
+  "x-root.array.json": { "expect": "ignored" },
+  "x-root.null.json": { "expect": "ignored" },
+  "x-root.number.json": { "expect": "ignored" }
+}

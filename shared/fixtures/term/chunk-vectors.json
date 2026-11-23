@@ -1,0 +1,556 @@
+{
+  "maxFrameBytes": 8192,
+  "frameOverheadBytes": 17,
+  "cases": [
+    {
+      "name": "pusty tekst nie daje ani jednej ramki",
+      "max": 8192,
+      "input": "",
+      "chunks": [],
+      "frameBytes": []
+    },
+    {
+      "name": "krótkie polecenie mieści się w jednej ramce",
+      "max": 8192,
+      "input": "ls -la ~/Projects\r",
+      "chunks": [
+        "ls -la ~/Projects\r"
+      ],
+      "frameBytes": [
+        36
+      ]
+    },
+    {
+      "name": "ukośnik 1 B, cudzysłów i backslash po 2 B",
+      "max": 22,
+      "input": "a/b\"c\\d/e\"f",
+      "chunks": [
+        "a/b\"",
+        "c\\d/",
+        "e\"f"
+      ],
+      "frameBytes": [
+        22,
+        22,
+        21
+      ]
+    },
+    {
+      "name": "znaki sterujące: ESC 6 B, \\r \\n \\t po 2 B",
+      "max": 25,
+      "input": "\u001b[A\u001b[B\r\n\t\u0000x\u001f",
+      "chunks": [
+        "\u001b[A",
+        "\u001b[B",
+        "\r\n\t",
+        "\u0000x",
+        "\u001f"
+      ],
+      "frameBytes": [
+        25,
+        25,
+        23,
+        24,
+        23
+      ]
+    },
+    {
+      "name": "polskie litery po 2 B",
+      "max": 22,
+      "input": "zażółć gęślą jaźń",
+      "chunks": [
+        "zaż",
+        "ół",
+        "ć g",
+        "ęśl",
+        "ą ja",
+        "źń"
+      ],
+      "frameBytes": [
+        21,
+        21,
+        21,
+        22,
+        22,
+        21
+      ]
+    },
+    {
+      "name": "emoji spoza BMP nie łamie się w środku (4 B)",
+      "max": 22,
+      "input": "a😀b👍🏽c🇵🇱",
+      "chunks": [
+        "a😀",
+        "b👍",
+        "🏽c",
+        "🇵",
+        "🇱"
+      ],
+      "frameBytes": [
+        22,
+        22,
+        22,
+        21,
+        21
+      ]
+    },
+    {
+      "name": "DEL 1 B, U+0085 2 B, separatory U+2028/U+2029 i U+FFFD po 3 B",
+      "max": 21,
+      "input": "\u007f\u2028\u2029�!",
+      "chunks": [
+        "\u007f",
+        "\u2028",
+        "\u2029",
+        "�!"
+      ],
+      "frameBytes": [
+        20,
+        20,
+        20,
+        21
+      ]
+    },
+    {
+      "name": "samotne surogaty po 6 B (tylko UTF-16)",
+      "max": 24,
+      "inputUtf16": [
+        97,
+        55296,
+        98,
+        56320,
+        55357
+      ],
+      "utf16Only": true,
+      "chunksUtf16": [
+        [
+          97,
+          55296
+        ],
+        [
+          98,
+          56320
+        ],
+        [
+          55357
+        ]
+      ],
+      "frameBytes": [
+        24,
+        24,
+        23
+      ]
+    },
+    {
+      "name": "sufit poniżej narzutu ramki: po jednym znaku",
+      "max": 14,
+      "input": "abc",
+      "chunks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "frameBytes": [
+        18,
+        18,
+        18
+      ]
+    },
+    {
+      "name": "wklejka 20 kB (250 linii po 80 B z \\n)",
+      "max": 8192,
+      "repeat": {
+        "unit": "0123456789012345678901234567890123456789012345678901234567890123456789abcdefghi\n",
+        "count": 250
+      },
+      "chunkScalars": [
+        8075,
+        8074,
+        3851
+      ],
+      "frameBytes": [
+        8192,
+        8192,
+        3917
+      ]
+    },
+    {
+      "name": "sekwencje ANSI na prawdziwym suficie",
+      "max": 8192,
+      "repeat": {
+        "unit": "\u001b[31mx",
+        "count": 2000
+      },
+      "chunkScalars": [
+        4458,
+        4458,
+        3084
+      ],
+      "frameBytes": [
+        8190,
+        8190,
+        5671
+      ]
+    },
+    {
+      "name": "emoji na prawdziwym suficie",
+      "max": 8192,
+      "repeat": {
+        "unit": "😀",
+        "count": 5000
+      },
+      "chunkScalars": [
+        2043,
+        2043,
+        914
+      ],
+      "frameBytes": [
+        8189,
+        8189,
+        3673
+      ]
+    },
+    {
+      "name": "ukośniki i cudzysłowy na prawdziwym suficie",
+      "max": 8192,
+      "repeat": {
+        "unit": "/\"\\",
+        "count": 4000
+      },
+      "chunkScalars": [
+        4905,
+        4905,
+        2190
+      ],
+      "frameBytes": [
+        8192,
+        8192,
+        3667
+      ]
+    }
+  ],
+  "maxPasteBytes": 524288,
+  "paste": [
+    {
+      "name": "pusta wklejka nie daje ani jednej ramki",
+      "max": 8192,
+      "input": "",
+      "chunks": [],
+      "frameBytes": [],
+      "ends": []
+    },
+    {
+      "name": "trzy linie z CRLF i znacznikiem 201~ jadą surowo w jednej ramce",
+      "max": 8192,
+      "input": "raz\r\ndwa\ntrzy\u001b[201~",
+      "chunks": [
+        "raz\r\ndwa\ntrzy\u001b[201~"
+      ],
+      "frameBytes": [
+        53
+      ],
+      "ends": [
+        true
+      ]
+    },
+    {
+      "name": "wklejka 20 kB: kawałki o 10 B krótsze niż przy `in` (pole `e`)",
+      "max": 8192,
+      "repeat": {
+        "unit": "0123456789012345678901234567890123456789012345678901234567890123456789abcdefghi\n",
+        "count": 250
+      },
+      "chunkScalars": [
+        8065,
+        8064,
+        3871
+      ],
+      "frameBytes": [
+        8192,
+        8192,
+        3946
+      ],
+      "ends": [
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "ESC, cudzysłowy i ukośniki na prawdziwym suficie",
+      "max": 8192,
+      "repeat": {
+        "unit": "\u001b[201~\"/\\",
+        "count": 2000
+      },
+      "chunkScalars": [
+        4590,
+        4590,
+        4590,
+        4230
+      ],
+      "frameBytes": [
+        8187,
+        8187,
+        8187,
+        7546
+      ],
+      "ends": [
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "emoji wklejki nie łamie się w środku",
+      "max": 8192,
+      "repeat": {
+        "unit": "😀",
+        "count": 5000
+      },
+      "chunkScalars": [
+        2041,
+        2041,
+        918
+      ],
+      "frameBytes": [
+        8191,
+        8191,
+        3698
+      ],
+      "ends": [
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "dokładnie sufit wklejki (512 kB) przechodzi",
+      "max": 8192,
+      "repeat": {
+        "unit": "x",
+        "count": 524288
+      },
+      "chunkScalars": [
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        8165,
+        1728
+      ],
+      "frameBytes": [
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        8192,
+        1754
+      ],
+      "ends": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "bajt ponad sufit: odmowa w całości",
+      "max": 8192,
+      "repeat": {
+        "unit": "x",
+        "count": 524289
+      },
+      "refused": true
+    },
+    {
+      "name": "sufit liczony w bajtach UTF-8, nie w znakach",
+      "max": 8192,
+      "repeat": {
+        "unit": "ą",
+        "count": 262145
+      },
+      "refused": true
+    }
+  ]
+}

@@ -1,0 +1,400 @@
+{
+  "opis": "Wyjątki zapadki polskich literałów (server/test/polski-literal-zapadka.test.ts): plik → klasa → teksty literałów, które zostają polskie; powód klasy stoi w teście (KLASY). Wpis zdejmuje jeden literał o tym tekście; wpis bez literału przewraca test. Cały plik albo pole objęte regułą (REGULY w teście) nie ma tu wpisów.",
+  "pliki": {
+    "server/src/cli-version.ts": {
+      "server-log": [
+        "rejestr CLI: to nie jest plik zwykły w sufit"
+      ]
+    },
+    "server/src/cli/io.ts": {
+      "cli-input": [
+        "tak"
+      ]
+    },
+    "server/src/client-log.ts": {
+      "server-log": [
+        "Paczka logów klienta przekracza 64 kB."
+      ]
+    },
+    "server/src/demo/control.ts": {
+      "demo-content": [
+        "+ linia ${…} długiego pliku demo"
+      ]
+    },
+    "server/src/demo/scenarios.ts": {
+      "demo-content": [
+        "Dodaj eksport notatek do CSV i otwórz PR.",
+        "Dopisz testy do modułu notatek i puść je.",
+        "Jak odebrać M1?",
+        "M1 strumień",
+        "M1 wiadomość ${…}",
+        "M1: nierozpoznana zgoda",
+        "Odbiór M1",
+        "Opisz eksport w dokumentacji i otwórz PR.",
+        "PR z dokumentacją otwarty.",
+        "Policz pokrycie testami modułu transkryptu.",
+        "Przegląd pokrycia testami",
+        "Puszczam subagenta w tle.",
+        "Sprawdź aplikację",
+        "Subagent puścił testy w tle i czeka na ich wynik. Wrócę, gdy skończy.",
+        "Szkic prezentacji usunięto na claude.ai — już go nie obserwuję.",
+        "Tylko w terminalu",
+        "Zrób raport tygodniowy, potem go popraw.",
+        "Zwykła odpowiedź",
+        "przegląd M1",
+        "| Zadanie | Stan | | --- | --- | | Odbiór M1 | Gotowe | **Tekst** i `kod`."
+      ]
+    },
+    "server/src/demo/seeds.ts": {
+      "demo-content": [
+        "projekt"
+      ]
+    },
+    "server/src/drivers/herdr-driver.ts": {
+      "internal-file": [
+        "blad"
+      ],
+      "internal-reason": [
+        "agent nie czeka na decyzję",
+        "brak jednoznacznej opcji „nie pytaj więcej\"",
+        "brak odpowiedzi na pytanie z ekranu",
+        "dialog z listy terminalowej",
+        "dialog z listy terminalowej",
+        "dialog zgody CLI",
+        "dialog zgody CLI zniknął z ekranu",
+        "dialog zniknął między cyfrą a enter",
+        "ekran zmienił się po odpowiedzi",
+        "ekran zmienił się przed wysłaniem decyzji",
+        "etykiety nie ma na żywej liście opcji",
+        "inna decyzja",
+        "notatka: hook nie odebrał pliku odpowiedzi",
+        "nowa sesja silnika",
+        "nowa sesja silnika",
+        "nowa sesja silnika",
+        "opcja eskalująca uprawnienia",
+        "opcja eskalująca uprawnienia",
+        "opcja tylko z terminala na karcie",
+        "panel zniknął z herdr",
+        "pytania z ekranu nie ma na karcie",
+        "sieć sandboksa: tylko zgoda jednorazowa",
+        "weryfikacja przed enter: ${…}",
+        "wielokrotny wybór",
+        "wielokrotny wybór",
+        "zgoda bez jednoznacznej opcji „tak\""
+      ]
+    },
+    "server/src/drivers/herdr/cli-reserve.ts": {
+      "internal-reason": [
+        "dialog CLI zniknął z ekranu",
+        "rejestr CLI: dialog zamknięty",
+        "rejestr CLI: formularz zamknięty"
+      ]
+    },
+    "server/src/drivers/herdr/form-reserve.ts": {
+      "internal-reason": [
+        "formularz pytania już nie czeka",
+        "formularz pytania zniknął z ekranu"
+      ]
+    },
+    "server/src/git-status.ts": {
+      "server-log": [
+        "git: opcja globalna spoza listy: ${…}",
+        "git: podkomenda spoza listy: ${…}"
+      ]
+    },
+    "server/src/herdr/audit.ts": {
+      "internal-file": [
+        "(bez nazwy)",
+        "blad",
+        "brak",
+        "inne",
+        "inne",
+        "inne",
+        "zapis"
+      ]
+    },
+    "server/src/herdr/background/cli-shapes.ts": {
+      "registry-description": [
+        "`Skill` puszczony w tle: wejście `{skill, args}`, wynik z `agentId` i `commandName`, bez opisu",
+        "dopisek `<note>` meldunku o zatrzymaniu agenta: postój (jego własna praca w tle jeszcze leci) albo koniec",
+        "identyfikator przebiegu workflow w wyniku startu — klucz katalogu przebiegu; wznowienie go powtarza",
+        "jawne zatrzymanie (`TaskStop`): wynik `{message: \"Successfully stopped task: …\", task_id}`",
+        "kod wyjścia komendy w streszczeniu: `exit code N`",
+        "kto i czym wykonuje zadanie: model i streszczenie w wyniku, podtyp i warunek monitora w wywołaniu",
+        "meldunek o końcu albo zdarzeniu zadania: tekst w znacznikach, ten sam w kilku wpisach naraz",
+        "meldunek o końcu obserwacji artefaktu: rodzaj zadania, wariant „nie ma takiego artefaktu” i adres w zdarzeniu",
+        "narzędzia, po których może powstać zadanie w tle (razem z `Skill` i `Monitor`)",
+        "narzędzie `Monitor`: rodzaj poznajemy po nazwie, termin po polu wywołania",
+        "nazwa narzędzia CLI: zna ją też parser ekranu, wiersz aktywności i dane demo",
+        "nieznana",
+        "opis zadania: z wyniku startu (`description`, `workflowName`) albo z wywołania narzędzia",
+        "parametr o tej nazwie mają też żądania do herdr (`drivers/herdr`)",
+        "początek `<summary>` mówi, jakiego rodzaju zadanie się melduje (rodzaj notki)",
+        "pole wpisu `user` z wynikiem narzędzia; jego kształt rozróżnia start, zatrzymanie i odbiór wyniku",
+        "start monitora: wynik `Monitor` z `taskId`, terminem `timeoutMs` i znacznikiem `persistent`",
+        "start zadania: `agentId` → subagent, `taskId` z `taskType` → workflow, `backgroundTaskId` → komenda",
+        "statusy, po których zadanie na pewno nie żyje — w `<status>` meldunku i w `TaskOutput`",
+        "streszczenie sieroty: po wznowieniu procesu CLI przyznaje, że nie wie, co stało się z zadaniem",
+        "słowo pospolite: pole o tej nazwie mają też inne wpisy i inne moduły",
+        "słowo pospolite: to samo słowo jest wartością dopisku meldunku agenta (`notification.ts`)",
+        "słowo „agent” stoi w nazwach i tekstach całego serwera",
+        "to samo słowo jest nazwą narzędzia `Monitor`",
+        "to samo słowo jest nazwą slash-komendy `/background` (`commands/registry.ts`)",
+        "to samo słowo jest polem journala przebiegu (`workflow-run.ts`)",
+        "wartość `origin.kind` wpisu, którą CLI znakuje notkę o zadaniu w tle (bramka notki)",
+        "wpisy niosące meldunek poza wpisem `user` z gołym napisem: kolejka promptów i załącznik",
+        "wynik odebrany przez `TaskOutput`: `{retrieval_status, task: {task_id, status}}`, bez meldunku",
+        "wynik publikacji artefaktu (`Artifact`): adres strony, tytuł i znacznik nowej, ponownej albo z typu",
+        "wynik z `agentId`, który niesie już koniec: fork skilla bez `background: true` albo status końcowy",
+        "wznowienie subagenta: wynik `SendMessage` w kształcie `{message, pin, resumedAgentId, success: true}`",
+        "załącznik kolejki z promptem człowieka wchłoniętym w trwającą turę: tryb i pochodzenie"
+      ]
+    },
+    "server/src/herdr/background/main-scan.ts": {
+      "server-log": [
+        "plik krótszy niż początek okna"
+      ]
+    },
+    "server/src/herdr/commands/discover.ts": {
+      "registry-description": [
+        "błąd"
+      ]
+    },
+    "server/src/herdr/commands/registry.ts": {
+      "registry-description": [
+        "(tekst w nim to wynik komendy, nie wiadomość człowieka)",
+        "CLI), a w nim zastrzeżenie `isMeta`, `<command-name>` wpisem `user` i pusty wynik wpisem",
+        "`/plugin install x@y` bez dialogu; wpisy `user`",
+        "`/settings`); wpisy `system/local_command`",
+        "`/usage-credits`; prefiks `/usa` i inna wielkość liter (`/Usage`) też; Esc; bez wpisu w pliku",
+        "`<command-name>` wpisem `user`, wynik wpisem `system/local_command`",
+        "bez dialogu; wpisy `system/local_command`, wynik z SGR; `cwd` panelu w herdr bez zmiany",
+        "bez panelu („Enabled plan mode”); wpisy `user`: zastrzeżenie `isMeta`, `<command-name>`, wynik",
+        "bez panelu („Nothing to recap yet” przy pustej rozmowie);",
+        "bez panelu z argumentem i bez niego: `/rename x` wypisuje „Session",
+        "bez panelu; NOWY plik rozmowy (nowy `sessionId` w herdr i w rejestrze",
+        "bez panelu; wpisy `system/local_command` (wynik z SGR) i wpis `isMeta` z Markdownem",
+        "daje wynik „Login interrupted”; wpisy `user`",
+        "dialog open`, panel zamknięty Esc, bez wpisu w pliku rozmowy",
+        "editing”; wpisy `system/local_command`; herdr widzi `blocked`",
+        "goły `/goal` otwiera panel: rejestr CLI `waiting` z `waitingFor:",
+        "niezmierzone: żadna komenda pomiaru nie pisała na stderr; znacznik zostaje z ostrożności Raroga",
+        "nieznana",
+        "panel Settings, zakładka Status; rejestr CLI `waiting` („dialog open”), Esc; bez wpisu w pliku",
+        "panel Settings, zakładka Usage: pełna nazwa wykonuje `/usage`, nie",
+        "pełna nazwa otwiera panel Memory, Esc daje wynik „Cancelled memory",
+        "prefiks `/perm` z Enterem otwiera ten panel",
+        "renamed to: x”, goły `/rename` generuje nazwę z rozmowy (przy pustej: „Could not generate a name”); wpisy",
+        "z argumentem `klucz=wartość` ustawia bez dialogu (też przez alias"
+      ]
+    },
+    "server/src/herdr/dialogs/hook/contract.ts": {
+      "internal-file": [
+        "blad",
+        "klucz",
+        "sesja",
+        "straznik",
+        "sufit",
+        "zrzut"
+      ]
+    },
+    "server/src/herdr/dialogs/layer1/proof.ts": {
+      "internal-file": [
+        "brak",
+        "stoi"
+      ]
+    },
+    "server/src/herdr/dialogs/layer1/records.ts": {
+      "internal-file": [
+        "rekord kanału: zła sesja albo klucz"
+      ]
+    },
+    "server/src/herdr/dialogs/layer1/sign.ts": {
+      "server-error-500": [
+        "pola pliku odpowiedzi poza kontraktem podpisu",
+        "sekret kanału zgód to ${…} bajtów jako hex małymi literami"
+      ]
+    },
+    "server/src/herdr/dialogs/refusals.ts": {
+      "internal-file": [
+        "(ekranu nie udało się przeczytać)",
+        "--- ekran ---",
+        "brak",
+        "brak",
+        "brak",
+        "brak",
+        "brak",
+        "nieznany"
+      ]
+    },
+    "server/src/herdr/dialogs/screen/signatures.ts": {
+      "registry-description": [
+        "cały słownik stopek zmierzono jednym cyklem `shift+tab`, ale zrzut zapisano tylko dla `auto`",
+        "dzisiejsze CLI tej stopki nie rysuje; sygnatura została dla starszych wersji",
+        "jak `modeFooterBypass` — zmierzone w cyklu `shift+tab`, bez zapisanego zrzutu",
+        "jak `modeFooterBypass` — zmierzone w cyklu `shift+tab`, bez zapisanego zrzutu",
+        "panel z otwartym dialogiem nie rysuje stopki trybu; zmierzony zrzut mamy tylko dla `auto`"
+      ]
+    },
+    "server/src/herdr/dialogs/shadow/alive-log.ts": {
+      "internal-file": [
+        "zmiana"
+      ]
+    },
+    "server/src/herdr/dialogs/shadow/alive.ts": {
+      "internal-file": [
+        "zmiana"
+      ]
+    },
+    "server/src/herdr/dialogs/shadow/channel.ts": {
+      "internal-file": [
+        "blad",
+        "sufit",
+        "zapis"
+      ]
+    },
+    "server/src/herdr/dialogs/shadow/evidence.ts": {
+      "internal-file": [
+        "brak",
+        "brak",
+        "brak",
+        "brak",
+        "brak",
+        "stoi",
+        "stoi",
+        "stoi"
+      ]
+    },
+    "server/src/herdr/dialogs/shadow/files.ts": {
+      "internal-file": [
+        "plik cienia: zła sesja albo klucz",
+        "rekord cyklu: zła sesja albo klucz",
+        "znacznik odwołania: zła sesja albo klucz"
+      ]
+    },
+    "server/src/herdr/launcher.ts": {
+      "startup-invariant": [
+        "herdr launcher: lista `RAROG_CLAUDE_ENV_CLEAR` nie może być pusta.",
+        "herdr launcher: „${…}\" nie jest nazwą zmiennej środowiskowej."
+      ]
+    },
+    "server/src/herdr/provenance.ts": {
+      "server-log": [
+        "Identyfikator terminala spoza wzorca 16 hex.",
+        "Klucz projektu spoza wzorca 16 hex.",
+        "Ślad etykiety taba spoza wzorca 8 hex."
+      ]
+    },
+    "server/src/herdr/supervisor.ts": {
+      "startup-invariant": [
+        "herdr: brak transportu — podaj `transport` i `client` albo żaden z nich."
+      ]
+    },
+    "server/src/herdr/uploads.ts": {
+      "to-agent": [
+        "(załącznik)",
+        "plik"
+      ]
+    },
+    "server/src/iroh/listener.ts": {
+      "server-log": [
+        "acceptNext oddało null",
+        "acceptNext rzuciło: ${…}"
+      ]
+    },
+    "server/src/iroh/module-probe.ts": {
+      "server-log": [
+        "ładowanie modułu: ${…}"
+      ]
+    },
+    "server/src/notify/apns-payload.ts": {
+      "relay-placeholder": [
+        "Agent skończył",
+        "Wynik czeka w Rarogu"
+      ]
+    },
+    "server/src/notify/push-crypto.ts": {
+      "server-error-500": [
+        "push-crypto: kid spoza 8 znaków hex",
+        "push-crypto: klucz push nie jest 32 bajtami base64url",
+        "push-crypto: nonce nie ma 12 bajtów"
+      ]
+    },
+    "server/src/permissions.ts": {
+      "to-agent": [
+        "Zgoda wygasła (sesja przerwana lub zamknięta)."
+      ]
+    },
+    "server/src/risk.ts": {
+      "registry-description": [
+        "dostęp do kluczy i tokenów",
+        "kasowanie plików / nadpisywanie urządzeń blokowych",
+        "publikacja na produkcję — skutek widoczny poza maszyną",
+        "utrata commitów lokalnie albo na zdalnym repo",
+        "wyjście poza uprawnienia użytkownika",
+        "wykonanie niezweryfikowanego kodu z sieci"
+      ]
+    },
+    "server/src/sessions/manager.ts": {
+      "server-error-500": [
+        "Tryb demo bez załadowanych scenariuszy — użyj createManager()."
+      ]
+    },
+    "server/src/sessions/ring-buffer.ts": {
+      "server-error-500": [
+        "RingBuffer: pojemność musi być dodatnią liczbą całkowitą, jest ${…}"
+      ]
+    },
+    "server/src/version.ts": {
+      "server-log": [
+        "${…}: pole \"version\" brakuje albo ma zły zapis"
+      ]
+    },
+    "shared/src/protocol.ts": {
+      "zod-message": [
+        "Rozwidlenie wymaga podania sesji do wznowienia (`resumeFrom`).",
+        "Ultracode startuje z effortem xhigh: pomiń effort albo podaj xhigh.",
+        "ultracode w ciele startu tylko jako true; brak pola = bez flagi."
+      ]
+    },
+    "shared/src/protocol/attachments.ts": {
+      "zod-message": [
+        "Nazwa pliku jest pusta, za długa albo ma separator ścieżki lub znak sterujący.",
+        "Obrazek musi być data URL image/png albo image/jpeg (base64).",
+        "Plik musi być data URL z zawartością base64.",
+        "Plik przekracza limit rozmiaru."
+      ]
+    },
+    "shared/src/protocol/model.ts": {
+      "zod-message": [
+        "Nieprawidłowy identyfikator modelu.",
+        "Podaj model, effort albo ultracode."
+      ]
+    },
+    "shared/src/protocol/terminal.ts": {
+      "zod-message": [
+        "Panel w popupie nie ma slotu — nie podawaj `slot` przy roli `lazygit` ani `popup`."
+      ]
+    },
+    "shared/src/relay.ts": {
+      "relay-placeholder": [
+        "Nowe powiadomienie"
+      ],
+      "relay-schema": [
+        "devicePass wyłącznie (i zawsze) przy liveactivity"
+      ]
+    },
+    "shared/src/rest.ts": {
+      "zod-message": [
+        "Notatka jest za długa.",
+        "Odpowiedź jest za długa.",
+        "Wiadomość jest za długa.",
+        "numer fazy większy niż liczba faz",
+        "relay: postać kanoniczna `irohRelayUrl`",
+        "segment na każdą fazę planu",
+        "skończonych więcej niż agentów",
+        "stan faz tylko przy planie faz, po jednym na segment"
+      ]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  // Osobny projekt jak `relay/`: nie należy do `tsc -b` korzenia. Typy środowiska to `@cloudflare/workers-types`
+  // (bez `@types/node`). Kontrakt (`../shared/src/relay-auth.ts`) i moduły wspólne (`../relay/src/`) wchodzą
+  // przez importy względne, a testy czytają pliki przez `import.meta.glob` i `?raw` Vite (`test/env.d.ts`).
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "types": ["@cloudflare/workers-types"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "test"]
+}

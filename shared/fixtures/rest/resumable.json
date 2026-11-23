@@ -1,0 +1,41 @@
+{
+  "sessions": [
+    {
+      "engineSessionId": "demo-engine-willow-0",
+      "cwd": "/Users/demo/Projects/willow",
+      "mtime": "2026-10-04T09:56:00.000Z",
+      "firstPrompt": "Dopisz zapis notatek przy wyjściu z edytora.",
+      "title": "zapis notatek",
+      "gitBranch": "main",
+      "liveInHerdr": true,
+      "sessionId": "demo-willow"
+    },
+    {
+      "engineSessionId": "demo-engine-willow-1",
+      "cwd": "/Users/demo/Projects/willow",
+      "mtime": "2026-10-04T09:25:00.000Z",
+      "firstPrompt": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+      "title": "Przenieś parser CSV do osobnego modułu i dopisz testy na puste kolumny.",
+      "gitBranch": "feat/csv-parser",
+      "liveInHerdr": false
+    },
+    {
+      "engineSessionId": "demo-engine-willow-2",
+      "cwd": "/Users/demo/Projects/willow",
+      "mtime": "2026-10-04T06:00:00.000Z",
+      "firstPrompt": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+      "title": "Znajdź, dlaczego lista gubi ostatni element po odświeżeniu.",
+      "gitBranch": "fix/lista-ostatni",
+      "liveInHerdr": false
+    },
+    {
+      "engineSessionId": "demo-engine-willow-3",
+      "cwd": "/Users/demo/Projects/willow",
+      "mtime": "2026-10-03T08:00:00.000Z",
+      "firstPrompt": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+      "title": "Zrób przegląd zależności i wypisz te bez wydania od roku.",
+      "gitBranch": "main",
+      "liveInHerdr": false
+    }
+  ]
+}

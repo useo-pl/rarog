@@ -1,0 +1,4 @@
+{
+  "toolName": "Bash",
+  "command": "T=/tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T; L=(${(f)\"$(find $T -maxdepth 1 \\( -name 'rarog-uikit.*' -o -name 'rarog-ui.*' -o -name 'rarog-demo.*' -o -name 'rarog-xcres.*' -o -name 'xcres-out.*' -o -name 'xcres-pre.*' -o -name 'glass-*' -o -name 'uifail.*' -o -name 'split.*' \\) -mmin +2)\"}); L+=(${(f)\"$(ls -d /tmp/claude-uid/rarog-preE1.* /tmp/claude-uid/msg.txt /tmp/claude-uid/split.* /private/tmp/claude-uid/-Users-jkowals-Projects-USEO-rarog/00000000-0000-4000-9000-000000000001/scratchpad/* 2>/dev/null)\"}); rm -r -- $L; echo rc=$?"
+}

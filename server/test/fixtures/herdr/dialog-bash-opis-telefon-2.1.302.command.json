@@ -1,0 +1,5 @@
+{
+  "toolName": "Bash",
+  "command": "rm -rf /tmp/claude-uid/rarog-pomiar-auto.oBvHOx/q3w/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "description": "Usuń nieistniejący katalog pomiarowy o bardzo długiej nazwie, żeby zmierzyć szerokość zawijania opisu i komendy w dialogu zgody przy wąskim panelu telefonu"
+}

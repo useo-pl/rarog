@@ -1,0 +1,13 @@
+{
+  "stale": true,
+  "source": "cli",
+  "fetchedAt": "2026-10-04T09:58:00.000Z",
+  "fiveHour": {
+    "percent": 41,
+    "resetsAt": "2026-10-04T13:20:00.000Z"
+  },
+  "weekly": {
+    "percent": 63,
+    "resetsAt": "2026-10-09T15:00:00.000Z"
+  }
+}

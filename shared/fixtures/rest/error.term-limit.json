@@ -1,0 +1,10 @@
+{
+  "error": "term-limit",
+  "message": "Limit of 4 terminals per project. Close one.",
+  "messageRef": {
+    "code": "term.project-limit",
+    "args": [
+      "4"
+    ]
+  }
+}

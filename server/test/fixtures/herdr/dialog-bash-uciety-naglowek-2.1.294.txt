@@ -1,0 +1,48 @@
+ │ bash -c '
+ │ ROOT=/Users/jkowals/Projects/USEO/rarog
+ │ source "$ROOT/scripts/xcode-toolchain.sh"
+ │ DEVELOPER_DIR="$(rarog_xcode_developer_dir)"; export
+ │ DEVELOPER_DIR
+ │ xcrun swift test --package-path
+ │ "$ROOT/native/Rarog/Packages/RarogUI" --filter
+ │ "PendingMediaTests|PendingRowsTests|MediaRowsTests|SendCopy
+ │ Tests|TranscriptRowsTests" 2>&1 | grep -E "✘|Test run
+ │ with|error:" | tail -5'
+ │ bash -c '
+ │ set -uo pipefail
+ │ ROOT=/Users/jkowals/Projects/USEO/rarog
+ │ source "$ROOT/scripts/xcode-toolchain.sh"
+ │ DEVELOPER_DIR="$(rarog_xcode_developer_dir)"; export
+ │ DEVELOPER_DIR
+ │ LOCK=/tmp/rarog-ios-check.lock
+ │ until (umask 077 && mkdir "$LOCK") 2>/dev/null; do echo
+ │ "czekam na blokadę"; sleep 15; done
+ │ (umask 077 && echo $$ >"$LOCK/pid" && echo "$ROOT"
+ │ >"$LOCK/owner")
+ │ UDID=""
+ │ cleanup() { if [[ -n "$UDID" ]]; then xcrun simctl shutdown
+ │ "$UDID" 2>/dev/null || true; xcrun simctl delete "$UDID"
+ │ || true; fi; rm -f "$LOCK/pid" "$LOCK/owner"; rmdir "$LOCK"
+ │ 2>/dev/null || true; }
+ │ trap cleanup EXIT
+ │ UDID="$(xcrun simctl create rarog-merge "iPhone 17 Pro")"
+ │ LOG=$(mktemp "${TMPDIR:-/tmp}/rarog-merge.XXXXXX")
+ │ xcrun xcodebuild test -project
+ │ "$ROOT/native/Rarog/Rarog.xcodeproj" -scheme Rarog
+ │ "${RAROG_XCODE_PACKAGE_ARGS[@]}" -destination "id=$UDID"
+ │ -only-testing:RarogUIKitTests/PendingMediaRowTests >"$LOG"
+ │ 2>&1
+ │ echo "rc=$?"; grep -E "Test Case
+ │ .*(passed|failed)|^/.*error:|error: -\[|\*\* TEST" "$LOG" |
+ │ sort -u; rm -f -- "$LOG"'
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ This shell -c script runs rm and could not be checked
+ ⚠ Claude Code will automatically deny this request in 1:58,
+ to avoid blocking progress on an unattended session
+
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

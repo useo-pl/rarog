@@ -1,0 +1,37 @@
+  wywołaniem. Po jego
+  wyniku zakończ turę
+  słowem: gotowe. Krótką
+  wiadomość, która
+  przyjdzie w trakcie,
+  potraktuj jako część
+  pomiaru i odpowiedz na
+  nią jednym słowem: ok.
+
+  Pomiar: pojedyncze
+  wywołanie na pierwszym
+  planie · 6s
+  ⎿  $ echo pomiar-start;
+     sleep 40; echo
+     pomiar-koniec (6s · 2
+     lines)
+     (ctrl+b to run in
+     background)
+
+✢ Roosting… (10s)
+  Advisor Tool (experim…
+ History 100/100 · ↑ 16 mo
+  — zwykłe, na
+  pierwszym planie, bez
+  run_in_background. Nie
+  używaj żadnych
+  narzędzi poza tym
+  jednym wywołaniem. Po
+  jego wyniku zakończ
+  turę słowem: gotowe.
+  Krótką wiadomość,
+  która przyjdzie w
+  trakcie, potraktuj
+  jako część pomiaru i
+  odpowiedz na nią
+  jednym słowem: ok.
+──────────────────────────

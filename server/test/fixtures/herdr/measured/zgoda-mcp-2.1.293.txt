@@ -1,0 +1,28 @@
+  środowiska mówi wprost: do plików tymczasowych zawsze
+  $TMPDIR, nigdy /tmp bezpośrednio, nawet z zgodą na bypass w
+  promptu. Jeśli chcesz plik tymczasowy, zrobię touch
+  "$TMPDIR/pomiar-dialogow.txt" w sandboksie. Daj znać, czy mam
+  to puszczyć.
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Nie używaj żadnych narzędzi poza
+  mcp__catalog__catalog_get_project_tree_layout. Wywołaj je
+  raz bez argumentów. Nie pisz nic poza tym wywołaniem.
+
+  Calling catalog…
+
+───────────────────────────────────────────────────────────────
+ Tool use
+ catalog — Get Project Tree Layout Tool: (MCP)
+
+ About the catalog — Get Project Tree Layout Tool:
+ │ Get project tree layout (groups, folders, notes) with
+ │ pagination and depth control. Use only when you need…
+ (ctrl+o to expand description)
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

@@ -1,0 +1,23 @@
+{
+  "files": [
+    {
+      "path": "src/notes.ts",
+      "status": "M",
+      "linesAdded": 2,
+      "linesDeleted": 2
+    },
+    {
+      "path": "src/notes.test.ts",
+      "status": "A",
+      "linesAdded": 9,
+      "linesDeleted": 0
+    },
+    {
+      "path": "src/notes-legacy.ts",
+      "status": "D",
+      "linesAdded": 0,
+      "linesDeleted": 4
+    }
+  ],
+  "truncated": false
+}

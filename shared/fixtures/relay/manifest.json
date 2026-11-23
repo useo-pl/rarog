@@ -1,0 +1,150 @@
+{
+  "_comment": [
+    "Kontrakt przekaźnika push /v1/* (relay/README.md). Każdy plik: żądanie, opcjonalna odpowiedź atrapy Apple",
+    "(apns) z oczekiwanym żądaniem do Apple bez nagłówka authorization (apnsRequest), oczekiwana odpowiedź przekaźnika.",
+    "Brak apns = przekaźnik NIE woła Apple. Czytają je testy relay/ (relay/test/fixtures.test.ts) i testy nadajnika",
+    "serwera (server/test/relay-fixtures-producenci.test.ts). Klucze w env to wartości TESTOWE (tekst w base64 mówi to wprost); klucz APNs generuje test.",
+    "Każde żądanie POST niesie nagłówki wymagane przez przekaźnik (Content-Type: application/json i",
+    "X-Rarog-Relay-Client); przypadek z polem header w manifeście ma ten nagłówek zły z założenia."
+  ],
+  "now": "2026-11-02T10:00:00.000Z",
+  "env": {
+    "APNS_TEAM_ID": "TEAMID0001",
+    "APNS_KEY_ID": "KEYID00001",
+    "APNS_ENVIRONMENTS": "development,production",
+    "ALERT_POLICY": "v2",
+    "PASS_KEYS": "{\"k1\":\"VEVTVC1PTkxZIHJlbGF5IGZpeHR1cmUga2V5IGsxLCBub3QgYSBzZWNyZXQ=\",\"k0\":\"VEVTVC1PTkxZIHJlbGF5IGZpeHR1cmUga2V5IGswLCByb3RhdGVkIG91dCE=\"}",
+    "PASS_KID": "k1",
+    "DEPLOY_SHA": "fixture"
+  },
+  "cases": {
+    "pass.alert.ok.json": {
+      "route": "pass",
+      "status": 200
+    },
+    "pass.liveactivity.ok.json": {
+      "route": "pass",
+      "status": 200
+    },
+    "pass.bad-request.json": {
+      "route": "pass",
+      "status": 400,
+      "error": "bad-request"
+    },
+    "pass.bad-request.content-type.json": {
+      "route": "pass",
+      "status": 400,
+      "error": "bad-request",
+      "header": "content-type"
+    },
+    "pass.topic-not-allowed.json": {
+      "route": "pass",
+      "status": 400,
+      "error": "topic-not-allowed"
+    },
+    "pass.pass-invalid.json": {
+      "route": "pass",
+      "status": 401,
+      "error": "pass-invalid"
+    },
+    "pass.token-rejected.json": {
+      "route": "pass",
+      "status": 422,
+      "error": "token-rejected"
+    },
+    "pass.token-rejected.unregistered.json": {
+      "route": "pass",
+      "status": 422,
+      "error": "token-rejected"
+    },
+    "pass.relay-limited.json": {
+      "route": "pass",
+      "status": 429,
+      "error": "relay-limited"
+    },
+    "pass.apns-error.json": {
+      "route": "pass",
+      "status": 502,
+      "error": "apns-error"
+    },
+    "pass.apns-unreachable.json": {
+      "route": "pass",
+      "status": 502,
+      "error": "apns-unreachable"
+    },
+    "pass.environment-unavailable.json": {
+      "route": "pass",
+      "status": 503,
+      "error": "environment-unavailable"
+    },
+    "push.ok.json": {
+      "route": "push",
+      "status": 200
+    },
+    "push.liveactivity.ok.json": {
+      "route": "push",
+      "status": 200
+    },
+    "push.apns-gone.json": {
+      "route": "push",
+      "status": 200
+    },
+    "push.renewed.old-kid.json": {
+      "route": "push",
+      "status": 200
+    },
+    "push.renewed.expiring.json": {
+      "route": "push",
+      "status": 200
+    },
+    "push.bad-request.json": {
+      "route": "push",
+      "status": 400,
+      "error": "bad-request"
+    },
+    "push.payload-rejected.json": {
+      "route": "push",
+      "status": 400,
+      "error": "payload-rejected"
+    },
+    "push.payload-rejected.v1.json": {
+      "route": "push",
+      "status": 400,
+      "error": "payload-rejected"
+    },
+    "push.pass-invalid.json": {
+      "route": "push",
+      "status": 401,
+      "error": "pass-invalid"
+    },
+    "push.relay-limited.json": {
+      "route": "push",
+      "status": 429,
+      "error": "relay-limited"
+    },
+    "push.apns-unreachable.json": {
+      "route": "push",
+      "status": 502,
+      "error": "apns-unreachable"
+    },
+    "push.environment-unavailable.json": {
+      "route": "push",
+      "status": 503,
+      "error": "environment-unavailable"
+    },
+    "health.ok.json": {
+      "route": "health",
+      "status": 200
+    },
+    "not-found.json": {
+      "route": "unknown",
+      "status": 404,
+      "error": "not-found"
+    },
+    "method-not-allowed.json": {
+      "route": "push",
+      "status": 405,
+      "error": "method-not-allowed"
+    }
+  }
+}

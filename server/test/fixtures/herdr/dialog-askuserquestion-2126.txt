@@ -1,0 +1,26 @@
+ ▐▛███▛█   Claude Code v2.1.246
+▝▜██████▀  Fable 5 with medium effort · Claude API
+  ▝▝ ▝▝    /private/tmp/claude-uid/pomiar-enter
+
+
+❯ Użyj narzędzia AskUserQuestion i zadaj mi DOKŁADNIE jedno
+  pytanie: "Czy kontynuować pomiar A?" z opcjami dokładnie w
+  tej kolejności: 1) "Nie, przerwij" 2) "Tak, kontynuuj" 3)
+  "Może później". Nie dodawaj preview. Po mojej odpowiedzi
+  napisz tylko którą opcję wybrałem i zakończ.
+───────────────────────────────────────────────────────────────
+ ☐ Pomiar A
+
+Czy kontynuować pomiar A?
+
+❯ 1. Nie, przerwij
+     Przerwij pomiar A.
+  2. Tak, kontynuuj
+     Kontynuuj pomiar A.
+  3. Może później
+     Odłóż decyzję na później.
+  4. Type something.
+───────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel

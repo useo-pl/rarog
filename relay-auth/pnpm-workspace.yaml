@@ -1,0 +1,9 @@
+# Osobny projekt pnpm, NIE pakiet workspace korzenia, tak jak `relay/`: `wrangler` z `workerd` i `esbuild` nie ma
+# trafiać do `pnpm install` każdego, kto stawia serwer. Rejestr wdraża tylko jego operator.
+#
+# Skrypty instalacyjne zależności wranglera: wyłączone. `wrangler deploy` pakuje kod programem z `@esbuild/<platforma>`
+# bez skryptu esbuild, a `workerd` (lokalny `wrangler dev`) nie jest potrzebny do testów. Wpisy są ODMOWĄ zapisaną
+# wprost (`.npmrc`: `ignore-scripts=true`).
+allowBuilds:
+  esbuild: false
+  workerd: false

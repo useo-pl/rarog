@@ -1,0 +1,12 @@
+# gitleaks fingerprints (file:rule:line) of known false positives.
+# bannerKey in the format 3 push-crypto vectors: an HKDF output derived from the TEST pushKey of those vectors, not
+# a secret. A synthetic stand-in would break the vectors both the server and the app check. The vectors are written
+# by server/test/notify-push-crypto.test.ts; server/test/gitleaksignore.test.ts keeps these lines in step with them.
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:45
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:64
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:84
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:103
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:122
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:140
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:158
+shared/fixtures/push-crypto/vectors.v3.json:generic-api-key:186

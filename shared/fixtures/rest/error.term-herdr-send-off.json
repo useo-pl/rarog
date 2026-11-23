@@ -1,0 +1,7 @@
+{
+  "error": "herdr-send-off",
+  "message": "The terminal on herdr requires RAROG_HERDR_SEND=1. The write channel to herdr is turned off.",
+  "messageRef": {
+    "code": "term.needs-send"
+  }
+}

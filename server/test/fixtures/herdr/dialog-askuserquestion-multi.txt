@@ -1,0 +1,25 @@
+ ▐▛███▛█   Claude Code v2.1.246
+▝▜██████▀  Fable 5 with medium effort · Claude API
+  ▝▝ ▝▝    /private/tmp/claude-uid/pomiar-multi
+
+
+❯ Zadaj mi przez AskUserQuestion jedno pytanie z multiSelect: true
+  („Które dodatki do lodów?") z opcjami: Posypka, Polewa, Bita
+  śmietana — każda z krótkim opisem.
+───────────────────────────────────────────────────────────────
+ ← ☒ Dodatki ✔ Submit →
+
+ Które dodatki do lodów?
+
+ ❯ 1. [✔] Posypka
+      Kolorowa
+   2. [✔] Polewa
+      Czekoladowa
+   3. [ ] Bita śmietana
+      Domowa
+   4. [ ] Type something
+      Submit
+ ───────────────────────────────────────────────────────────────
+   5. Chat about this
+
+ Enter to select · ↑/↓ to navigate · Esc to cancel

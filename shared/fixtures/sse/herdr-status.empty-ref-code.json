@@ -1,0 +1,11 @@
+{
+  "type": "herdr-status",
+  "available": true,
+  "agentCount": 14,
+  "readOnly": false,
+  "canLaunch": false,
+  "detail": "Rarog pane limit reached. Close a session and try again.",
+  "detailRef": {
+    "code": ""
+  }
+}

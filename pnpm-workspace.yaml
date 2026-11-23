@@ -1,0 +1,41 @@
+packages:
+  - shared
+  - server
+
+storeDir: .pnpm-store
+
+# --- @anthropic-ai/claude-agent-sdk: a THIN install ---
+#
+# Rarog imports EXACTLY ONE function from this package, `listSessions()`, the reader of the CLI's
+# session store files. Neither the native CLI binaries (optional dependencies, ~250 MB) nor the
+# peer dependencies (`@anthropic-ai/sdk`, `@modelcontextprotocol/sdk`: a whole HTTP stack in a
+# project built on bare `node:http`) are needed on this path: measured, `listSessions()` works
+# with a one-package install (4.6 MB).
+#
+# This is a requirement, not an optimisation: the default install pulls 107 transitive packages and 334 MB.
+# The `zod` peer requires `^4` and the server has 4.4.3.
+autoInstallPeers: false
+
+ignoredOptionalDependencies:
+  - '@anthropic-ai/claude-agent-sdk-*'
+
+# The SDK's peer dependencies stay UNMET on purpose: `query()` needs them, and Rarog does not
+# import it (Rarog is not a second agent engine). Without this rule `pnpm install` warns on every
+# run about a gap nobody means to fill. `zod` is NOT listed here, because it is met (the server
+# has 4.4.3, the peer wants ^4).
+peerDependencyRules:
+  ignoreMissing:
+    - '@anthropic-ai/sdk'
+    - '@modelcontextprotocol/sdk'
+
+minimumReleaseAgeExclude:
+  - '@anthropic-ai/claude-agent-sdk@0.3.247'
+
+# Permissions for install scripts. `.npmrc` has `ignore-scripts=true`, so this list is only a
+# DENIAL written out: `esbuild: false` silences pnpm's question about the one package that asks
+# for a script. No entry here is `true`, and none should be. The only native dependency,
+# `@number0/iroh`, has no install script: its N-API module comes prebuilt in the platform
+# package from `optionalDependencies` (`@number0/iroh-darwin-arm64`, `-linux-*`), so it is not
+# on this list.
+allowBuilds:
+  esbuild: false

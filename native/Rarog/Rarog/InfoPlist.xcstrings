@@ -1,0 +1,78 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCameraUsageDescription" : {
+      "comment" : "Zgoda iOS na aparat: zdanie w systemowym oknie prośby o dostęp, które iOS pokazuje przy pierwszym „Scan QR Code” na ekranie parowania (`pairing.scan`). Wartość en = ta sama w `Info.plist` apki (pilnuje `scripts/l10n-check.mjs`). Pełne zdania: kiedy aparat się włącza, co apka z nim robi, że obraz zostaje na urządzeniu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The camera turns on only when you tap “Scan QR Code” to pair with a server: the app reads the code from rarog pair or from a paired device. The image never leaves this device."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aparat włącza się tylko po stuknięciu „Skanuj kod QR” przy parowaniu z serwerem: apka czyta kod z rarog pair albo ze sparowanego urządzenia. Obraz nie opuszcza telefonu."
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Zgoda iOS na sieć lokalną: zdanie w systemowym oknie prośby o dostęp, które iOS pokazuje, gdy apka pierwszy raz łączy się przez iroh bezpośrednio z serwerem w tej samej sieci. Wartość en = ta sama w `Info.plist` apki (pilnuje `scripts/l10n-check.mjs`). Apka nie szuka innych urządzeń.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog connects directly to your server when it is on the same network. It does not look for other devices."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog łączy się bezpośrednio z Twoim serwerem, gdy jest w tej samej sieci. Nie szuka innych urządzeń."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Zgoda iOS na mikrofon: zdanie w systemowym oknie prośby o dostęp, które iOS pokazuje przy pierwszym dyktowaniu (przycisk mikrofonu przy polu wiadomości i w notatce, `composer.voiceMic`), po wyborze na ekranie „Dyktowanie” (`dictation.title`), albo przy pierwszej rozmowie z agentem głosowym. Wartość en = ta sama w `Info.plist` apki (pilnuje `scripts/l10n-check.mjs`). Pełne zdania: kiedy mikrofon się włącza i dokąd idzie dźwięk; dyktowanie bez nazwy dostawcy, bo zależy od wyboru (a build bez Soniox go nie ma); agent głosowy z nazwą OpenAI i nazwą wiersza Ustawień „Agent głosowy” (`voiceAgent.title`).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone turns on only when you tap the microphone button to dictate, or while you talk with the voice agent. Dictation audio goes only to the speech recognition you chose on the “Dictation” screen. Voice agent audio goes to OpenAI, and only after you turn on “Voice Agent” in Settings."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon włącza się tylko po stuknięciu ikony mikrofonu przy dyktowaniu albo w trakcie rozmowy z agentem głosowym. Dźwięk dyktowania idzie tylko do rozpoznawania mowy wybranego na ekranie „Dyktowanie”. Dźwięk rozmowy z agentem idzie do OpenAI i tylko po włączeniu „Agent głosowy” w Ustawieniach."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "comment" : "Zgoda iOS na rozpoznawanie mowy: zdanie w systemowym oknie, które iOS pokazuje przy pierwszym dyktowaniu z opcją „System Dictation” (`dictation.system.title`, cytowana dosłownie). Wartość en = ta sama w `Info.plist` apki (pilnuje `scripts/l10n-check.mjs`). Pełne zdania: kiedy działa, co robi, dokąd idzie dźwięk (na urządzeniu, gdy język ma model mowy; inaczej serwery Apple).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speech recognition runs only when you tap the microphone button with “System Dictation” chosen: your speech becomes text in the field. The audio stays on this device when your language has an on-device speech model; otherwise it goes to Apple's speech recognition servers."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozpoznawanie mowy działa tylko po stuknięciu ikony mikrofonu, gdy wybrane jest „Dyktowanie systemowe”: mowa zamienia się w tekst w polu. Dźwięk zostaje na tym urządzeniu, gdy Twój język ma model mowy na urządzeniu; w przeciwnym razie idzie do serwerów rozpoznawania mowy Apple."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

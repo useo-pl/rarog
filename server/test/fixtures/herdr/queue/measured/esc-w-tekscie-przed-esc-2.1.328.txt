@@ -1,0 +1,13 @@
+❯ To pomiar techniczny do repo rarog, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy w trakcie
+  odpowiedzi przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Nie używaj żadnych
+  narzędzi. Wypisz liczby od 1 do 600, każdą w osobnej linii, bez komentarza. Krótką wiadomość, która przyjdzie potem,
+  potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok.
+
+❯ pomiar B: ok
+  ⎿  Queued · ctrl+enter to send now
+
+✶ Mustering… (9s · ↓ 631 tokens · thinking with medium effort)
+                                                          Advisor Tool (experimental) is on and may use more tokens · /advisor
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Press up to edit queued messages
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

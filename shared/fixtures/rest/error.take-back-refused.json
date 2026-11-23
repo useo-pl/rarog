@@ -1,0 +1,7 @@
+{
+  "error": "bad-state",
+  "message": "A dialog stands in the terminal. Answer it, then take the queue back.",
+  "messageRef": {
+    "code": "session.take-back.dialog"
+  }
+}

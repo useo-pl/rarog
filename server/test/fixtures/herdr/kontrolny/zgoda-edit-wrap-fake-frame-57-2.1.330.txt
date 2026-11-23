@@ -1,0 +1,33 @@
+
+ ▐▛███▛█   Claude Code v2.1.330
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: zaw-edit-falszywe-57.
+
+  Thought for 1s, read 1 file
+
+⏺ Update(notes-falszywe-57.md)
+
+─────────────────────────────────────────────────────────
+ Edit file
+ notes-falszywe-57.md
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ 1  # Sample notes
+ 2  abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza
+    ╌╌╌╌╌╌╌╌╌╌╌╌
+ 3  abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza
+    Edit file
+ 4 -Status: draft
+ 4 +Status: final
+ 5  End.
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to make this edit to notes-falszywe-57.md?
+ ❯ 1. Yes
+   2. Yes, and switch to accept edits (auto-approve file
+      edits and common file commands) for this session
+      (shift+tab)
+   3. No
+
+ Esc to cancel · Tab to amend

@@ -1,0 +1,19 @@
+❯ Użyj wyłącznie narzędzia mcp__pomiar__echo_osobiscie, jedno wywołanie, z argumentem text równym e0-rui. Potem odpowiedz
+  jednym słowem: gotowe.
+
+  Calling pomiar… (ctrl+o to expand)
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Tool use
+ pomiar — Echo Osobiscie Tool: (MCP)
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ text: "e0-rui"
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ About the pomiar — Echo Osobiscie Tool:
+ │ Pomiar: oddaje podany tekst bez zmian (narzędzie wymagające człowieka).
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

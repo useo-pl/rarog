@@ -1,0 +1,30 @@
+
+ ▐▛███▛█   Claude Code v2.1.328
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: variable.
+
+  Build, run the intro screenshot test and export the PNGs
+  ⎿  $ xcrun xcodebuild build-for-testing -project Demo.xcodeproj -scheme Demo -destination 'platform=iOS
+     Simulator,id=00000000-0000-4000-8000-000000000001' -derivedDataPath .build/DerivedData > .build/demo-build.log
+     2>&1; echo rc=$?; rm -rf .build/results/demo.xcresult
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command
+ Build, run the intro screenshot test and export the PNGs
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ xcrun xcodebuild build-for-testing -project Demo.xcodeproj -scheme Demo -destination 'platform=iOS
+ │ Simulator,id=00000000-0000-4000-8000-000000000001' -derivedDataPath .build/DerivedData > .build/demo-build.log
+ │ 2>&1; echo rc=$?; rm -rf .build/results/demo.xcresult
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ A variable in this command can't be checked before it runs
+ Rule Bash(rm -rf *) from command line arguments overrides auto mode.
+ /permissions to let auto mode decide
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

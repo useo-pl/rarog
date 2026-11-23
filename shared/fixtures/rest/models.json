@@ -1,0 +1,57 @@
+{
+  "models": [
+    {
+      "value": "",
+      "label": "Account Default Model",
+      "labelRef": {
+        "code": "model.default-label"
+      },
+      "description": "No --model flag: exactly what you have set in Claude Code.",
+      "descriptionRef": {
+        "code": "model.default-description"
+      },
+      "effortLevels": []
+    },
+    {
+      "value": "fable",
+      "label": "Fable",
+      "effortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "ultracode": true
+    },
+    {
+      "value": "opus[1m]",
+      "label": "Opus",
+      "effortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "ultracode": true
+    },
+    {
+      "value": "sonnet",
+      "label": "Sonnet",
+      "effortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "ultracode": true
+    },
+    {
+      "value": "haiku",
+      "label": "Haiku",
+      "effortLevels": []
+    }
+  ]
+}

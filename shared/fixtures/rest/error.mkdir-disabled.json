@@ -1,0 +1,7 @@
+{
+  "error": "mkdir-disabled",
+  "message": "Creating directories is turned off on this server.",
+  "messageRef": {
+    "code": "rest.mkdir-disabled"
+  }
+}

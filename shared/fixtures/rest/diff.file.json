@@ -1,0 +1,5 @@
+{
+  "path": "src/notes.ts",
+  "patch": "diff --git a/src/notes.ts b/src/notes.ts\nindex 8f4c1d2..3ab97e5 100644\n--- a/src/notes.ts\n+++ b/src/notes.ts\n@@ -12,8 +12,12 @@ export interface Note {\n export async function saveNote(note: Note): Promise<void> {\n-  emitter.emit(\"note-saved\", note.id);\n-  await store.write(note);\n+  await store.write(note);\n+  emitter.emit(\"note-saved\", note.id);\n }\n",
+  "truncated": false
+}

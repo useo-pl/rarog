@@ -1,0 +1,49 @@
+  51 pomiar-linia-51
+  52 pomiar-linia-52
+  53 pomiar-linia-53
+  54 pomiar-linia-54
+  55 pomiar-linia-55
+  56 pomiar-linia-56
+  57 pomiar-linia-57
+  58 pomiar-linia-58
+  59 pomiar-linia-59
+  60 pomiar-linia-60
+  61 pomiar-linia-61
+  62 pomiar-linia-62
+  63 pomiar-linia-63
+  64 pomiar-linia-64
+  65 pomiar-linia-65
+  66 pomiar-linia-66
+  67 pomiar-linia-67
+  68 pomiar-linia-68
+  69 pomiar-linia-69
+  70 pomiar-linia-70
+  71 pomiar-linia-71
+  72 pomiar-linia-72
+  73 pomiar-linia-73
+  74 pomiar-linia-74
+  75 pomiar-linia-75
+  76 pomiar-linia-76
+  77 pomiar-linia-77
+  78 pomiar-linia-78
+  79 pomiar-linia-79
+  80 pomiar-linia-80
+  81 pomiar-linia-81
+  82 pomiar-linia-82
+  83 pomiar-linia-83
+  84 pomiar-linia-84
+  85 pomiar-linia-85
+  86 pomiar-linia-86
+  87 pomiar-linia-87
+  88 pomiar-linia-88
+  89 pomiar-linia-89
+  90 pomiar-linia-90
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to create pomiar-dlugi.txt?
+ ❯ 1. Yes
+   2. Yes, and switch to accept edits (auto-approve file
+      edits and common file commands) for this session
+      (shift+tab)
+   3. No
+
+ Esc to cancel · Tab to amend

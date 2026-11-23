@@ -1,0 +1,92 @@
+{
+  "type": "transcript-snapshot",
+  "sessionId": "herdr-w7-p14",
+  "messages": [
+    {
+      "seq": 4,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "[image]",
+          "ref": {
+            "code": "transcript.image-placeholder"
+          }
+        },
+        {
+          "type": "tool-call",
+          "toolName": "Bash",
+          "summary": "pnpm test shared/test",
+          "detail": "pnpm test shared/test/decode.test.ts shared/test/decode.test.ts shared/test/deco\n… (92 characters cut off)",
+          "inputKind": "shell",
+          "truncation": {
+            "cut": 92,
+            "footer": 26
+          }
+        }
+      ],
+      "at": "2026-10-03T08:00:59.000Z"
+    }
+  ],
+  "pendingPermissions": [
+    {
+      "permId": "toolu_61",
+      "sessionId": "herdr-w7-p14",
+      "toolName": "Bash",
+      "displayText": "pnpm test shared/test/decode.test.ts shared/test/decode.test.ts shared/test/deco\n… (92 characters cut off)",
+      "truncation": {
+        "cut": 92,
+        "footer": 26
+      },
+      "risk": "normal",
+      "cwd": "/Users/demo/Projects/xi",
+      "createdAt": "2026-10-03T08:01:00.000Z",
+      "subject": "tool",
+      "inputKind": "shell",
+      "canAllow": false
+    },
+    {
+      "permId": "toolu_62",
+      "sessionId": "herdr-w7-p14",
+      "toolName": "dialog",
+      "displayText": "Rarog couldn't confirm what this dialog is about. From here you can only deny it. Allow it in the terminal.",
+      "displayTextRef": {
+        "code": "dialogs.degraded-display"
+      },
+      "risk": "red",
+      "cwd": "/Users/demo/Projects/xi",
+      "createdAt": "2026-10-03T08:01:00.000Z",
+      "subject": "tool",
+      "canAllow": false
+    }
+  ],
+  "pendingQuestions": [
+    {
+      "qId": "screen:q:d990cd479f52",
+      "sessionId": "herdr-w7-p14",
+      "questions": [
+        {
+          "question": "The agent asked a question in the terminal.",
+          "questionRef": {
+            "code": "dialogs.fallback-question.question"
+          },
+          "header": "Wybór",
+          "multiSelect": false,
+          "options": [
+            {
+              "label": "A",
+              "role": "answer"
+            },
+            {
+              "label": "B",
+              "role": "answer"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-10-03T08:01:01.000Z",
+      "channel": "keys",
+      "customAnswer": false
+    }
+  ]
+}

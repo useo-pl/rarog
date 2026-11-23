@@ -1,0 +1,28 @@
+  ⎿  · Jaki smak lodow? (Wanilia / Czekolada / Truskawka)
+     · Jaki kubek? (Maly / Duzy)
+     · Co na wierzch? (Orzechy / Wiorki)
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem
+  AskUserQuestion. Zadaj dokładnie jedno pytanie WIELOKROTNEGO
+  wyboru (multiSelect: true): 'Ktore dodatki wlaczyc?' z
+  opcjami: Posypka, Polewa, Orzechy. Nie pisz nic poza tym
+  wywołaniem.
+───────────────────────────────────────────────────────────────
+←  ☐ Dodatki  ✔ Submit  →
+
+Ktore dodatki wlaczyc?
+
+❯ 1. [ ] Posypka
+  Posypka
+  2. [ ] Polewa
+  Polewa
+  3. [ ] Orzechy
+  Orzechy
+  4. [ ] Type something
+     Submit
+───────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel

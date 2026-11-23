@@ -1,0 +1,25 @@
+{
+  "headers": {
+    "apns-collapse-id": "PeaP6ptU8oVquA6YETDZg_nI8eWTL0Os",
+    "apns-expiration": "1791453600",
+    "apns-priority": "10",
+    "apns-push-type": "alert",
+    "apns-topic": "ai.rarog.app"
+  },
+  "payload": {
+    "aps": {
+      "alert": {
+        "title": "Rarog",
+        "body": "Nowe powiadomienie"
+      },
+      "mutable-content": 1,
+      "sound": "default"
+    },
+    "rarog": {
+      "v": 3,
+      "kid": "f849d673",
+      "n": "FRUVFRUVFRUVFRUV",
+      "c": "ALjxKYw7azxCb0lHOZDmjVmYf1TKyU7IqDkQOwPuWkduAcqSNtmMgy3gAVONx8NzHNa1ObakgwziVrR-LRz9N_sOv1EcETFCm4eMRi9AbDw_8Y8VOpUlvLZ-1cgMsPC5i3--vk6xqCMt1UgKGKAkwMagh_4CLDswYoTTk2i_5yaBjrgznDhtB4fDzcZbWR9NkNM7xU0ccoceGjZCsnUrZeJsjrDA3ROU4-iNLgdfbFDeEBdWbQmMfcT2jS_dM8J5Si19KMaBfcwIAewB4IRzDSDOH7xBpIaj3QkgHAClrcpV--iOtWVnH9BSrPyz3C7f_Ouj-OyYzTX16lKXYj8-2ImS6yOQXBsVfGq6kqpSrgf8fj5p5Uq3dJE50f5ry9kok73gMoXKNW47o3XuqyjxvXla2porrLuWocHbSAXVeaC37JSgnpdi3ZUROaGBjKNwAT74A4LewNU5Mdf6ABPrsVdQFrv5G2hmW3l_hutqbli6kpqiefInJYbJEtkMCuQhQ2jBh0CqEJG1IB5TAmWKiDtkQMZackc4oUGu4f6DnRpg3Ug-QkS7hnb_s8VpqL4R2HZrc4ZKSHluYlrTvfM3H_eYjG9b-V4HEbOJ4JtYansCEHUDzNvkc3BhypMPpYLsgWPULPgRYlVExsc_dGmFnxUfd2c4PhsWV2hCkLmXeEKtnlQyWTGvFqePh5hZfYin"
+    }
+  }
+}

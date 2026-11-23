@@ -1,0 +1,9 @@
+{
+  // Root solution file: `tsc -b` (pnpm run typecheck) builds every reference.
+  "files": [],
+  "references": [
+    { "path": "./shared" },
+    { "path": "./server" },
+    { "path": "./tsconfig.scripts.json" }
+  ]
+}

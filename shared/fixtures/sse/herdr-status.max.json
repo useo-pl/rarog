@@ -1,0 +1,14 @@
+{
+  "type": "herdr-status",
+  "available": false,
+  "agentCount": 14,
+  "readOnly": false,
+  "canLaunch": false,
+  "detail": "Timed out waiting for a herdr response (agent.list).",
+  "detailRef": {
+    "code": "herdr.response-timeout",
+    "args": [
+      "agent.list"
+    ]
+  }
+}

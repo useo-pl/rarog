@@ -1,0 +1,7 @@
+{
+  "error": "bad-state",
+  "message": "The voice agent didn't read the session's current result. Nothing was marked as seen.",
+  "messageRef": {
+    "code": "session.seen-result-changed"
+  }
+}

@@ -1,0 +1,6 @@
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Fable 5 ⚡medium 39% | 5h:--% | 136m | ~/project (main) ↑2
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← 1 agent
+
+  ⏺ main
+  ◯ general-purpose  Inspecting SAMPLE_INVOICES fixture in InvoiceListRow.test.tsx                                      2m 41s · ↓ 130.1k tokens

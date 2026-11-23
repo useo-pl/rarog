@@ -1,0 +1,50 @@
+{
+  "description": "Apple odpowiedział 410: dalej 200 przekaźnika z lustrem (serwer mapuje jak dziś: gone).",
+  "request": {
+    "method": "POST",
+    "path": "/v1/push",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "pass": "v1.k1.development.alert.c2a0b37a262809b4.1800525600.ganNxIFp2SYBpvH2PDB72jFbieaMaxsAXHdxunpxUNk",
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "headers": {
+        "apns-collapse-id": "cr1xyyYpSec1JgrezziXOaeaqcM43hwA",
+        "apns-expiration": "1791367800",
+        "apns-priority": "10",
+        "apns-push-type": "alert",
+        "apns-topic": "ai.rarog.app"
+      },
+      "payload": "{\"aps\":{\"alert\":{\"title\":\"Rarog\",\"body\":\"Nowe powiadomienie\"},\"mutable-content\":1,\"sound\":\"default\",\"badge\":2,\"thread-id\":\"cr1xyyYpSec1JgrezziXOaeaqcM43hwA\"},\"rarog\":{\"v\":3,\"kid\":\"f849d673\",\"n\":\"ERERERERERERERER\",\"c\":\"8ODalpoFwFDQmtsecIj3ftrVdFOiFjQcdNy_WRbX_ZGClxg8HHyGFFHQKQo_dVTPUSEgflOOBjQr2xsfafmzVXEwLi8dIe_iVZ9LUGo6eXPoVNgd3wREWY_VaUdMOk_QnyXMV6sgpIm1ipcPOidlIwEKKD4qQFO6lIMhGBhpzOz0Uz71hOqkFQZQjx97eb8HshLxmKtlo0xmfHNrySE1BA9uj7AKRL718vNM1uQKFIr3lRMroUc9GC2ieR5Pha4cnHJQlGR1xUnAg8L3EHKjPI4r9mSnHxbwvA_Wk8xvmmn9OUTX6RNtHx5Cyba2k61vQFPmyvoL6MfAmnOrzRW4uikV90fl5lye9hMY5ZkhQG4WCJhzyme9Be-6Lo4FAoH_yxf52isMxrzaCQvD-pKnSPp-wJnHeomwE3WANGEg99ircrypia5enBk8KkcRg5mQ6pBXI0DVyRYyfP_qHKIMt0_fV1epeJu8Q4bzDSsBan8-F4GYbrZYJ4HD-DRZKBDZs153vBu8hmLW1kTCq4FzU6GtYK48CWM2zT9k7sAfrt1DicsQrXBwuZabCUp76WhQ-tbd6Gs4I3Z8ih2JxcEgwBiOs3KykURAS-XqiM6X2oerBJ0A3njClrSfGDFoHmeG1l0qaEmZTC2ao0-_j_ob6IIE394lf--Vjem815rPu_6tbOj3PQiQrnRwX4aVvHkf\"}}"
+    }
+  },
+  "apns": {
+    "status": 410,
+    "body": "{\"reason\":\"Unregistered\",\"timestamp\":1793600000000}"
+  },
+  "apnsRequest": {
+    "url": "https://api.sandbox.push.apple.com/3/device/c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+    "headers": {
+      "apns-collapse-id": "cr1xyyYpSec1JgrezziXOaeaqcM43hwA",
+      "apns-expiration": "1791367800",
+      "apns-priority": "10",
+      "apns-push-type": "alert",
+      "apns-topic": "ai.rarog.app",
+      "content-type": "application/json"
+    },
+    "body": "{\"aps\":{\"alert\":{\"title\":\"Rarog\",\"body\":\"Nowe powiadomienie\"},\"mutable-content\":1,\"sound\":\"default\",\"badge\":2,\"thread-id\":\"cr1xyyYpSec1JgrezziXOaeaqcM43hwA\"},\"rarog\":{\"v\":3,\"kid\":\"f849d673\",\"n\":\"ERERERERERERERER\",\"c\":\"8ODalpoFwFDQmtsecIj3ftrVdFOiFjQcdNy_WRbX_ZGClxg8HHyGFFHQKQo_dVTPUSEgflOOBjQr2xsfafmzVXEwLi8dIe_iVZ9LUGo6eXPoVNgd3wREWY_VaUdMOk_QnyXMV6sgpIm1ipcPOidlIwEKKD4qQFO6lIMhGBhpzOz0Uz71hOqkFQZQjx97eb8HshLxmKtlo0xmfHNrySE1BA9uj7AKRL718vNM1uQKFIr3lRMroUc9GC2ieR5Pha4cnHJQlGR1xUnAg8L3EHKjPI4r9mSnHxbwvA_Wk8xvmmn9OUTX6RNtHx5Cyba2k61vQFPmyvoL6MfAmnOrzRW4uikV90fl5lye9hMY5ZkhQG4WCJhzyme9Be-6Lo4FAoH_yxf52isMxrzaCQvD-pKnSPp-wJnHeomwE3WANGEg99ircrypia5enBk8KkcRg5mQ6pBXI0DVyRYyfP_qHKIMt0_fV1epeJu8Q4bzDSsBan8-F4GYbrZYJ4HD-DRZKBDZs153vBu8hmLW1kTCq4FzU6GtYK48CWM2zT9k7sAfrt1DicsQrXBwuZabCUp76WhQ-tbd6Gs4I3Z8ih2JxcEgwBiOs3KykURAS-XqiM6X2oerBJ0A3njClrSfGDFoHmeG1l0qaEmZTC2ao0-_j_ob6IIE394lf--Vjem815rPu_6tbOj3PQiQrnRwX4aVvHkf\"}}"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "v": 1,
+      "apnsStatus": 410,
+      "reason": "Unregistered",
+      "timestamp": 1793600000000
+    }
+  }
+}

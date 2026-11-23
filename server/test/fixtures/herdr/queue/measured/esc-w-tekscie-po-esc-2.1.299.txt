@@ -1,0 +1,13 @@
+❯ To pomiar techniczny do repo pilot, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy w trakcie
+  odpowiedzi przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Nie używaj żadnych
+  narzędzi. Wypisz liczby od 1 do 600, każdą w osobnej linii, bez komentarza. Krótką wiadomość, która przyjdzie potem,
+  potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok.
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ pomiar B: ok
+
+✽ Thinking…
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

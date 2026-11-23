@@ -1,0 +1,33 @@
+{
+  "description": "Jawny baner v1 (tytuł i treść w aps.alert) pod polityką v2: odrzucony regułą alert, Apple nie dostaje nic. Serwer takiego ładunku nie składa: wpis bez deklaracji formatu 3 nie dostaje banera.",
+  "request": {
+    "method": "POST",
+    "path": "/v1/push",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "pass": "v1.k1.development.alert.c2a0b37a262809b4.1800525600.ganNxIFp2SYBpvH2PDB72jFbieaMaxsAXHdxunpxUNk",
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "headers": {
+        "apns-collapse-id": "cr1xyyYpSec1JgrezziXOaeaqcM43hwA",
+        "apns-expiration": "1791367800",
+        "apns-priority": "10",
+        "apns-push-type": "alert",
+        "apns-topic": "ai.rarog.app"
+      },
+      "payload": "{\"aps\":{\"alert\":{\"title\":\"⏳ Czeka na zgodę · willow\",\"body\":\"Edit — zapis notatek\"},\"badge\":2,\"sound\":\"default\",\"thread-id\":\"demo-willow\"},\"rarog\":{\"v\":1,\"kind\":\"permission\",\"sessionId\":\"demo-willow\"}}"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "v": 1,
+      "error": "payload-rejected",
+      "rule": "alert"
+    }
+  }
+}

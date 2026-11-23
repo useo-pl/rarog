@@ -1,0 +1,26 @@
+
+ ▐▛███▛█   Claude Code v2.1.258
+▝▜██████▀  Sonnet 5 with low effort · Claude API
+  ▝▝ ▝▝    ~/projekt
+
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem
+  AskUserQuestion. Zadaj dokładnie jedno pytanie jednokrotnego
+  wyboru: 'Jaki smak lodow?' z opcjami: Wanilia, Czekolada,
+  Truskawka. Nie pisz nic poza tym wywołaniem.
+───────────────────────────────────────────────────────────────
+ ☐ Smak lodow
+
+Jaki smak lodow?
+
+❯ 1. Wanilia
+     Wanilia
+  2. Czekolada
+     Czekolada
+  3. Truskawka
+     Truskawka
+  4. Type something.
+───────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel

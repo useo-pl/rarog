@@ -1,0 +1,25 @@
+# Rarog service in the systemd user manager (the counterpart of the macOS LaunchAgent).
+# The file comes from the template server/src/cli/templates/rarog.service through `rarog service install`; the next
+# install overwrites manual edits, and `rarog restart` does not touch a unit with drop-ins (rarog.service.d/).
+# The server environment is not here (no Environment=): `rarog serve` builds it from ~/.config/rarog through the
+# allow-list of the variable registry. The first ExecStart items are service.wrapper from config.json, then the node
+# that ran the installation, and bin/rarog.mjs serve. Without linger (loginctl enable-linger) the service lives only
+# as long as a login session.
+
+[Unit]
+Description=Rarog server (rarog serve)
+# No start limit: Restart=always restarts after every exit, like KeepAlive in launchd (the default of 5 starts
+# in 10 s would leave the unit failed for good).
+StartLimitIntervalSec=0
+
+[Service]
+WorkingDirectory=/home/rarog/repo z %%spacją$
+ExecStart="/home/rarog/bin/$wrap 50%%.sh" "rarog" "--only" "A,B" "--klucz=a \"b\"" "c\\d" "$$HOME" "--" "/home/rarog/.nvm/versions/node/v22.22.3/bin/node" "/home/rarog/repo z %%spacją$$/bin/rarog.mjs" "serve"
+Restart=always
+RestartSec=2
+# Server log in the data directory, appended; the installation creates the directory.
+StandardOutput=append:/home/rarog/dane 50%%/server.log
+StandardError=append:/home/rarog/dane 50%%/server.log
+
+[Install]
+WantedBy=default.target

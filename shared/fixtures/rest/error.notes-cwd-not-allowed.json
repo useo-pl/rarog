@@ -1,0 +1,7 @@
+{
+  "error": "cwd-not-allowed",
+  "message": "This directory isn't in the project list.",
+  "messageRef": {
+    "code": "rest.cwd-not-in-projects"
+  }
+}

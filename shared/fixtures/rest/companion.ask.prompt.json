@@ -1,0 +1,5 @@
+{
+  "answer": "The session does not say which key the deploy uses.",
+  "found": false,
+  "prompt": "Check the deploy key, the old one was [secret]."
+}

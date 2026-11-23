@@ -1,0 +1,14 @@
+{"_pomiar":"herdr","status":"idle"}
+{"_pomiar":"n4-json"}
+{"_pomiar":"hook","decyzja":"json-block","prompt":"PILOT-BLOCK-JSON n4-json: hook odpowiada JSON-em decision block"}
+{"type":"system","subtype":"informational","level":"warning","isMeta":false,"preventContinuation":true,"promptSubmitEnding":{"ending":{"kind":"blocked_by_hook","reason":"pomiar-blokady: prompt ze znacznikiem PILOT-BLOCK zatrzymany celowo.\nDruga linia powodu (scripts/measure-prompt-block.sh)."},"promptKept":false},"content":"UserPromptSubmit operation blocked by hook:\npomiar-blokady: prompt ze znacznikiem PILOT-BLOCK zatrzymany celowo.\nDruga linia powodu (scripts/measure-prompt-block.sh).\n\nOriginal prompt: PILOT-BLOCK-JSON n4-json: hook odpowiada JSON-em decision block","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","version":"2.1.303"}
+{"_pomiar":"herdr","status":"working"}
+{"_pomiar":"herdr","status":"done"}
+{"_pomiar":"n4-stop"}
+{"type":"user","timestamp":"2026-01-01T00:00:01.000Z","uuid":"00000000-0000-4000-8000-000000000003","promptId":"00000000-0000-4000-8000-000000000004","origin":{"kind":"human"},"message":{"role":"user","content":"PILOT-BLOCK-STOP n4-stop: hook odpowiada JSON-em continue false"}}
+{"_pomiar":"hook","decyzja":"json-stop","prompt":"PILOT-BLOCK-STOP n4-stop: hook odpowiada JSON-em continue false"}
+{"type":"user","timestamp":"2026-01-01T00:00:02.000Z","uuid":"00000000-0000-4000-8000-000000000005","promptId":"00000000-0000-4000-8000-000000000004","isMeta":true,"message":{"role":"user","content":"<tekst poza fixture>"}}
+{"type":"system","subtype":"informational","level":"warning","isMeta":false,"preventContinuation":true,"promptSubmitEnding":{"ending":{"kind":"stopped_by_hook","reason":"pomiar-blokady: prompt ze znacznikiem PILOT-BLOCK zatrzymany celowo.\nDruga linia powodu (scripts/measure-prompt-block.sh)."},"promptKept":true},"content":"Operation stopped by hook: pomiar-blokady: prompt ze znacznikiem PILOT-BLOCK zatrzymany celowo.\nDruga linia powodu (scripts/measure-prompt-block.sh).","timestamp":"2026-01-01T00:00:03.000Z","uuid":"00000000-0000-4000-8000-000000000006","version":"2.1.303"}
+{"_pomiar":"herdr","status":"working"}
+{"_pomiar":"herdr","status":"done"}
+{"_pomiar":"obserwacje","agentPromptWait.n4-json":"working","polePoBlokadzie.n4-json":"PILOT-BLOCK-JSON n4-json: hook odpowiada JSON-em decision block","agentPromptWait.n4-stop":"working","polePoBlokadzie.n4-stop":""}

@@ -1,0 +1,7 @@
+{
+  "error": "companion-openai-limit",
+  "message": "The OpenAI account limit is reached. Try again later.",
+  "messageRef": {
+    "code": "rest.companion-openai-limit"
+  }
+}

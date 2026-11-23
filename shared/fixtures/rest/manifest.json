@@ -1,0 +1,186 @@
+{
+  "ack.json": { "route": "POST /api/sessions/:id/seen", "status": 200, "schema": "okAck" },
+  "ack.unseen.json": { "route": "POST /api/sessions/:id/unseen", "status": 200, "schema": "okAck" },
+  "error.apns-test-throttled.json": { "route": "POST /api/push/apns", "status": 429, "schema": "errorBody" },
+  "diff.file.binary.json": {
+    "route": "GET /api/sessions/:id/diff/file?path=", "status": 200, "schema": "diffFilePatch"
+  },
+  "diff.file.json": {
+    "route": "GET /api/sessions/:id/diff/file?path=", "status": 200, "schema": "diffFilePatch"
+  },
+  "diff.file.truncated.json": {
+    "route": "GET /api/sessions/:id/diff/file?path=", "status": 200, "schema": "diffFilePatch"
+  },
+  "commands.json": { "route": "GET /api/sessions/:id/commands", "status": 200, "schema": "commandList" },
+  "commands.disk.json": { "route": "GET /api/sessions/:id/commands", "status": 200, "schema": "commandList" },
+  "models.json": { "route": "GET /api/models", "status": 200, "schema": "modelList" },
+  "diff.files.json": { "route": "GET /api/sessions/:id/diff/files", "status": 200, "schema": "diffFileList" },
+  "diff.files.truncated.json": {
+    "route": "GET /api/sessions/:id/diff/files", "status": 200, "schema": "diffFileList"
+  },
+  "error.device-required.json": { "route": "POST /api/pairings", "status": 403, "schema": "errorBody" },
+  "error.device-revoked.json": { "route": "GET /api/devices", "status": 401, "schema": "deviceRevokedBody" },
+  "error.device-unknown.json": { "route": "GET /api/devices", "status": 401, "schema": "errorBody" },
+  "error.pair-unknown.json": { "route": "POST /api/pair", "status": 404, "schema": "errorBody" },
+  "error.demo-review.json": { "route": "POST /api/pairings", "status": 403, "schema": "errorBody" },
+  "error.demo-review-full.json": { "route": "POST /api/pair", "status": 429, "schema": "errorBody" },
+  "devices.json": { "route": "GET /api/devices", "status": 200, "schema": "deviceList" },
+  "devices.me.json": { "route": "GET /api/devices/me", "status": 200, "schema": "deviceMe" },
+  "pair.json": { "route": "POST /api/pair", "status": 200, "schema": "pairResponse" },
+  "pair.iroh.json": { "route": "POST /api/pair", "status": 200, "schema": "pairResponse" },
+  "pairings.json": { "route": "POST /api/pairings", "status": 200, "schema": "pairingIssued" },
+  "error.client-id-conflict.json": {
+    "route": "POST /api/sessions/:id/messages", "status": 409, "schema": "errorBody"
+  },
+  "error.diff-bad-path.json": {
+    "route": "GET /api/sessions/:id/diff/file?path=", "status": 400, "schema": "errorBody"
+  },
+  "error.diff-file-not-found.json": {
+    "route": "GET /api/sessions/:id/diff/file?path=", "status": 404, "schema": "errorBody"
+  },
+  "error.diff-git-failed.json": {
+    "route": "GET /api/sessions/:id/diff/files", "status": 503, "schema": "errorBody"
+  },
+  "error.diff-session-not-found.json": {
+    "route": "GET /api/sessions/:id/diff/files", "status": 404, "schema": "errorBody"
+  },
+  "error.dir-exists.json": { "route": "POST /api/fs/mkdir", "status": 409, "schema": "errorBody" },
+  "error.interrupt-refused.json": {
+    "route": "POST /api/sessions/:id/interrupt", "status": 409, "schema": "errorBody"
+  },
+  "error.live-activity-unknown-device.json": {
+    "route": "POST /api/push/live-activity", "status": 409, "schema": "errorBody"
+  },
+  "error.mkdir-disabled.json": { "route": "POST /api/fs/mkdir", "status": 409, "schema": "errorBody" },
+  "error.not-found.json": { "route": "POST /api/sessions/:id/messages", "status": 404, "schema": "errorBody" },
+  "error.restart-refused.json": {
+    "route": "POST /api/sessions/:id/restart", "status": 409, "schema": "errorBody"
+  },
+  "error.take-back-refused.json": {
+    "route": "POST /api/sessions/:id/queue/take-back", "status": 409, "schema": "errorBody"
+  },
+  "error.resume-refused.json": {
+    "route": "POST /api/sessions/:id/resume", "status": 409, "schema": "errorBody"
+  },
+  "error.term-herdr-launch-off.json": { "route": "POST /api/term", "status": 409, "schema": "errorBody" },
+  "error.term-herdr-send-off.json": { "route": "POST /api/term", "status": 409, "schema": "errorBody" },
+  "error.term-limit.json": { "route": "POST /api/term", "status": 409, "schema": "errorBody" },
+  "error.ultracode-refused.json": { "route": "POST /api/sessions", "status": 400, "schema": "errorBody" },
+  "focus.json": { "route": "POST /api/sessions/:id/focus", "status": 202, "schema": "okAck" },
+  "fs.dir.can-create.json": { "route": "GET /api/fs?path=", "status": 200, "schema": "dirListing" },
+  "fs.dir.json": { "route": "GET /api/fs?path=", "status": 200, "schema": "dirListing" },
+  "fs.mkdir.json": { "route": "POST /api/fs/mkdir", "status": 200, "schema": "dirEntry" },
+  "fs.roots.json": { "route": "GET /api/fs", "status": 200, "schema": "dirListing" },
+  "notes.json": { "route": "GET /api/notes?cwd=", "status": 200, "schema": "notesDoc" },
+  "notes.empty.json": { "route": "GET /api/notes?cwd=", "status": 200, "schema": "notesDoc" },
+  "notes.saved.json": { "route": "PUT /api/notes", "status": 200, "schema": "notesSaved" },
+  "notes.conflict.json": { "route": "PUT /api/notes", "status": 409, "schema": "notesConflict" },
+  "error.decision-refused.json": {
+    "route": "POST /api/sessions/:id/answers/:qId", "status": 422, "schema": "decisionRefusedBody"
+  },
+  "model-accepted.json": { "route": "POST /api/sessions/:id/model", "status": 202, "schema": "sessionModelResponse" },
+  "error.notes-cwd-not-allowed.json": { "route": "GET /api/notes?cwd=", "status": 400, "schema": "errorBody" },
+  "mac.empty.json": { "route": "GET /api/mac", "status": 200, "schema": "macLoad" },
+  "mac.json": { "route": "GET /api/mac", "status": 200, "schema": "macLoad" },
+  "mac.partial.json": { "route": "GET /api/mac", "status": 200, "schema": "macLoad" },
+  "interrupt.json": {
+    "route": "POST /api/sessions/:id/interrupt", "status": 202, "schema": "interruptResponse"
+  },
+  "messages.accepted.json": {
+    "route": "POST /api/sessions/:id/messages", "status": 202, "schema": "messageAccepted"
+  },
+  "messages.plain.json": {
+    "route": "POST /api/sessions/:id/messages", "status": 202, "schema": "messageAccepted"
+  },
+  "messages.queued.json": {
+    "route": "POST /api/sessions/:id/messages", "status": 202, "schema": "messageAccepted"
+  },
+  "messages.replayed.json": {
+    "route": "POST /api/sessions/:id/messages", "status": 202, "schema": "messageAccepted"
+  },
+  "messages.replayed-queued.json": {
+    "route": "POST /api/sessions/:id/messages", "status": 202, "schema": "messageAccepted"
+  },
+  "queue.take-back.json": {
+    "route": "POST /api/sessions/:id/queue/take-back", "status": 200, "schema": "queueTakeBackResponse"
+  },
+  "queue.take-back.incomplete.json": {
+    "route": "POST /api/sessions/:id/queue/take-back", "status": 200, "schema": "queueTakeBackResponse"
+  },
+  "push.apns.status.json": {
+    "route": "POST /api/push/apns/status", "status": 200, "schema": "apnsStatusResponse"
+  },
+  "push.apns.status.degraded.json": {
+    "route": "POST /api/push/apns/status", "status": 200, "schema": "apnsStatusResponse"
+  },
+  "push.apns.status.registered.json": {
+    "route": "POST /api/push/apns/status", "status": 200, "schema": "apnsStatusResponse"
+  },
+  "push.apns.status.env-mismatch.json": {
+    "route": "POST /api/push/apns/status", "status": 200, "schema": "apnsStatusResponse"
+  },
+  "push.apns.status.pass-missing.json": {
+    "route": "POST /api/push/apns/status", "status": 200, "schema": "apnsStatusResponse"
+  },
+  "restart.json": { "route": "POST /api/sessions/:id/restart", "status": 202, "schema": "restartResponse" },
+  "resume.json": { "route": "POST /api/sessions/:id/resume", "status": 200, "schema": "resumeResponse" },
+  "resumable.json": { "route": "GET /api/resumable?cwd=", "status": 200, "schema": "resumableList" },
+  "resumable.recent.json": {
+    "route": "GET /api/resumable/recent?cwd=", "status": 200, "schema": "resumableList"
+  },
+  "term.history.json": {
+    "route": "GET /api/term/:id/history?lines=", "status": 200, "schema": "termHistoryResponse"
+  },
+  "term.list.json": { "route": "GET /api/term", "status": 200, "schema": "termListResponse" },
+  "term.open.json": { "route": "POST /api/term", "status": 200, "schema": "termOpenResponse" },
+  "usage.cli.json": { "route": "GET /api/usage", "status": 200, "schema": "planUsage" },
+  "usage.json": { "route": "GET /api/usage", "status": 200, "schema": "planUsage" },
+  "usage.stale.json": { "route": "GET /api/usage", "status": 200, "schema": "planUsage" },
+  "usage.details.json": { "route": "GET /api/usage/details", "status": 200, "schema": "planUsage" },
+  "usage.details.empty.json": { "route": "GET /api/usage/details", "status": 200, "schema": "planUsage" },
+  "version.json": { "route": "GET /api/version", "status": 200, "schema": "versionResponse" },
+  "version.iroh.json": { "route": "GET /api/version", "status": 200, "schema": "versionResponse" },
+  "version.companion-sessions.json": { "route": "GET /api/version", "status": 200, "schema": "versionResponse" },
+  "companion.ask.json": { "route": "POST /api/sessions/:id/companion/ask", "status": 200, "schema": "companionAsk" },
+  "companion.ask.prompt.json": {
+    "route": "POST /api/sessions/:id/companion/ask", "status": 200, "schema": "companionAsk"
+  },
+  "error.companion-disabled.json": {
+    "route": "POST /api/sessions/:id/companion/ask", "status": 503, "schema": "errorBody"
+  },
+  "error.companion-limit.json": {
+    "route": "POST /api/sessions/:id/companion/ask", "status": 429, "schema": "errorBody"
+  },
+  "companion.turns.json": {
+    "route": "GET /api/sessions/:id/companion/turns?count=", "status": 200, "schema": "companionTurns"
+  },
+  "error.companion-sessions-disabled.json": {
+    "route": "GET /api/sessions/:id/companion/turns?count=", "status": 503, "schema": "errorBody"
+  },
+  "companion.sessions.json": { "route": "GET /api/companion/sessions", "status": 200, "schema": "companionSessions" },
+  "error.conversation-changed.json": {
+    "route": "POST /api/sessions/:id/messages", "status": 409, "schema": "errorBody"
+  },
+  "error.seen-result-changed.json": {
+    "route": "POST /api/sessions/:id/seen", "status": 409, "schema": "errorBody"
+  },
+  "companion.token.json": { "route": "POST /api/companion/token", "status": 200, "schema": "companionToken" },
+  "error.companion-throttled.json": { "route": "POST /api/companion/token", "status": 429, "schema": "errorBody" },
+  "error.companion-openai-key.json": { "route": "POST /api/companion/token", "status": 503, "schema": "errorBody" },
+  "error.companion-openai-limit.json": {
+    "route": "POST /api/companion/token", "status": 429, "schema": "errorBody"
+  },
+  "error.companion-openai.json": { "route": "POST /api/companion/token", "status": 502, "schema": "errorBody" },
+  "companion.speech-token.json": {
+    "route": "POST /api/companion/speech-token", "status": 200, "schema": "companionSpeechToken"
+  },
+  "error.companion-speech-throttled.json": {
+    "route": "POST /api/companion/speech-token", "status": 429, "schema": "errorBody"
+  },
+  "error.companion-speech-unconfigured.json": {
+    "route": "POST /api/companion/speech-token", "status": 503, "schema": "errorBody"
+  },
+  "error.companion-speech-upstream.json": {
+    "route": "POST /api/companion/speech-token", "status": 502, "schema": "errorBody"
+  }
+}

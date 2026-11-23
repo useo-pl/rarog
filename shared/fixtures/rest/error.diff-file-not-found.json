@@ -1,0 +1,7 @@
+{
+  "error": "diff-file-not-found",
+  "message": "That file isn't in the list of changes. The list may have changed.",
+  "messageRef": {
+    "code": "rest.diff-file-not-found"
+  }
+}

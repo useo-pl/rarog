@@ -1,0 +1,33 @@
+
+ ▐▛███▛█   Claude Code v2.1.330
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: zaw-edit-sp-w-57.
+
+  Thought for 2s, read 1 file
+
+⏺ Update(notes-sp-w-57.md)
+
+─────────────────────────────────────────────────────────
+ Edit file
+ notes-sp-w-57.md
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ 1  # Sample notes
+ 2  abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza
+    bcdefghijk
+ 3  abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
+    bcdefghijklmnopqrstu
+ 4 -Status: draft
+ 4 +Status: final
+ 5  End of notes.
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to make this edit to notes-sp-w-57.md?
+ ❯ 1. Yes
+   2. Yes, and switch to accept edits (auto-approve file
+      edits and common file commands) for this session
+      (shift+tab)
+   3. No
+
+ Esc to cancel · Tab to amend

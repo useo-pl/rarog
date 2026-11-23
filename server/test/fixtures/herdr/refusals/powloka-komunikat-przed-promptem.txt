@@ -1,0 +1,12 @@
+rarog: 0.1.0
+at: 2026-10-27T11:16:58.189Z
+reason: mode-unknown
+toolName: brak
+sessionId: <sesja>
+hook: brak
+jsonl: brak
+--- ekran ---
+claude --session-id <sesja> --model 'opus[1m]' --effort xhigh
+direnv: loading ~/project/.envrc
+direnv: export +DEMO_MODE
+❯ claude --session-id <sesja> --model 'opus[1m]' --effort xhigh

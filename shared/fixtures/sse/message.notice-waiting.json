@@ -1,0 +1,20 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w1-p1",
+  "message": {
+    "seq": 21,
+    "role": "user",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "<task-notification>\n<task-id>agent_9b2c</task-id>\n<status>completed</status>\n<summary>Agent \"Szuka producentów ramek\" finished</summary>\n<note>This agent stopped with background work of its own still running. It may resume on its own when that work completes or reports, and the same task-id notifies again if it does; the result below may be interim.</note>\n</task-notification>\nRead the output file to retrieve the result."
+      }
+    ],
+    "at": "2026-10-03T08:00:54.000Z",
+    "notice": {
+      "kind": "agent",
+      "outcome": "waiting",
+      "name": "Szuka producentów ramek"
+    }
+  }
+}

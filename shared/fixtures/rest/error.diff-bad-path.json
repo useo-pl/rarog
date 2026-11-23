@@ -1,0 +1,7 @@
+{
+  "error": "bad-path",
+  "message": "Invalid file path.",
+  "messageRef": {
+    "code": "rest.diff-bad-path"
+  }
+}

@@ -1,0 +1,33 @@
+
+ ▐▛███▛█   Claude Code v2.1.321
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: brace-quote.
+
+  Deleting leftover temp files from this round
+  ⎿  $ T=/tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T; L=(${(f)"$(find $T -maxdepth 1 \( -name 'rarog-uikit.*' -o
+     -name 'rarog-ui.*' -o -name 'rarog-demo.*' -o -name 'rarog-xcres.*' -o -name 'xcres-out.*' -o -name 'xcres-pre.*'
+     -o -name 'glass-*' -o -name 'uifail.*' -o -name 'split.*' \) -mmin +2)"}…
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command
+ Delete leftover temp files from this round
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ T=/tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T; L=(${(f)"$(find $T -maxdepth 1 \( -name 'rarog-uikit.*' -o
+ │ -name 'rarog-ui.*' -o -name 'rarog-demo.*' -o -name 'rarog-xcres.*' -o -name 'xcres-out.*' -o -name 'xcres-pre.*'
+ │ -o -name 'glass-*' -o -name 'uifail.*' -o -name 'split.*' \) -mmin +2)"}); L+=(${(f)"$(ls -d
+ │ /tmp/claude-uid/rarog-preE1.* /tmp/claude-uid/msg.txt /tmp/claude-uid/split.*
+ │ /private/tmp/claude-uid/-Users-jkowals-Projects-USEO-rarog/00000000-0000-4000-9000-000000000001/scratchpad/*
+ │ 2>/dev/null)"}); rm -r -- $L; echo rc=$?
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ Dangerous rm operation not ruled out — the shell may read this command differently than it was parsed
+ Ask rule Bash(rm -r *) overrides auto mode for this command.
+ /permissions to let auto mode decide
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

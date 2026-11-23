@@ -1,0 +1,7 @@
+{
+  "error": "too-many-requests",
+  "message": "A test push was just sent. Wait a minute.",
+  "messageRef": {
+    "code": "rest.push-test-cooldown"
+  }
+}

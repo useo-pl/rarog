@@ -1,0 +1,9 @@
+# Osobny projekt pnpm, NIE pakiet workspace korzenia: `wrangler` z `workerd`
+# i `esbuild` nie ma trafiać do `pnpm install` każdego, kto stawia serwer. Przekaźnik wdraża tylko jego operator.
+#
+# Skrypty instalacyjne zależności wranglera: wyłączone. `wrangler deploy` pakuje kod binarką z `@esbuild/<platforma>`
+# bez skryptu esbuild, a `workerd` (lokalny `wrangler dev`) nie jest potrzebny — lokalnie i tak nie ma HTTP/2 do APNs.
+# Wpisy są ODMOWĄ zapisaną wprost (`.npmrc`: `ignore-scripts=true`).
+allowBuilds:
+  esbuild: false
+  workerd: false

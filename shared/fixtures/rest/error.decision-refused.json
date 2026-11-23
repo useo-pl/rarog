@@ -1,0 +1,8 @@
+{
+  "error": "refused",
+  "message": "Make multiple selections in the terminal. Rarog sends only one digit.",
+  "messageRef": {
+    "code": "dialogs.refuse.multi-select"
+  },
+  "reason": "multi-select"
+}

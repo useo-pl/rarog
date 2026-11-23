@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/projekt/notes-zmiana-99.md",
+    "old_string": "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza draft",
+    "new_string": "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza final"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": [
+    {
+      "file_path": "/Users/u/projekt/notes-zmiana-99.md",
+      "content": "# Sample notes\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza draft\nEnd of notes.\n"
+    }
+  ]
+}

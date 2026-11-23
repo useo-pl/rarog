@@ -1,0 +1,25 @@
+{
+  // The fourth project of the solution file: TypeScript files that belong to NO package: the CLI
+  // tools in `scripts/` (for example `tsx scripts/hooks-config.ts`), the test configuration
+  // (`vitest.config.ts`) and the tests of the iroh relay on a VPS (`relay-vps/test/`).
+  //
+  // Without it NEITHER `tsc -b` NOR vitest would see them: `scripts/hooks-config.ts` imports
+  // from `server/src/herdr/`, so a type error would show only when the hook runs by hand.
+  //
+  // The `references` to `./server` and `./shared` are REQUIRED, not decoration: without them the
+  // import of `../server/src/herdr/hook-config.ts` gives 13× TS6307 ("is not listed within the
+  // file list of project"). Own `outDir`: two projects cannot write declarations to one place.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    "outDir": "./dist/types-scripts",
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*.ts", "vitest.config.ts", "relay-vps/test/**/*.ts"],
+  "references": [
+    { "path": "./shared" },
+    { "path": "./server" }
+  ]
+}

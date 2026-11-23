@@ -1,0 +1,7 @@
+{
+  "error": "device-unknown",
+  "message": "The server doesn't recognize this device. Pair it again.",
+  "messageRef": {
+    "code": "rest.device-unknown"
+  }
+}

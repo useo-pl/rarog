@@ -1,0 +1,32 @@
+
+ ▐▛███▛█   Claude Code v2.1.319
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+⏺ Auto mode lets Claude handle permission prompts automatically — Claude checks each tool call for risky
+  actions and prompt injection before executing. Actions Claude identifies as safe are executed, while actions
+  Claude identifies as risky are blocked and Claude may try a different approach. Ideal for long-running tasks.
+  Sessions are slightly more expensive. Claude can make mistakes that allow harmful commands to run, it's
+  recommended to only use in isolated environments. Shift+Tab to change mode.
+
+❯ ZESTAW-KONTROLNY-BASH: cytat-auto.
+
+  Pomiar zgody Bash: cytat
+  ⎿  $ [ "$(git branch --show-current)" = main ] && git branch -D rarog-proba-nieistniejaca 2>&1 | tail -1
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command
+ Pomiar zgody Bash: cytat
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ [ "$(git branch --show-current)" = main ] && git branch -D rarog-proba-nieistniejaca 2>&1 | tail -1
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Quoted text in this command can't be checked before it runs
+ Ask rule Bash(git branch -D *) overrides auto mode for this command.
+ /permissions to let auto mode decide
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

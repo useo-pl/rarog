@@ -1,0 +1,61 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w1-p2",
+  "message": {
+    "seq": 6,
+    "role": "assistant",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "Zaczynam od testów dekodera, potem producenci ramek."
+      },
+      {
+        "type": "tool-call",
+        "toolName": "Bash",
+        "summary": "pnpm test shared/test/decode.test.ts",
+        "detail": "pnpm test shared/test/decode.test.ts",
+        "inputKind": "shell"
+      },
+      {
+        "type": "tool-call",
+        "toolName": "Edit",
+        "summary": "/Users/demo/Projects/birch/src/decode.ts",
+        "detail": "-   return null;\n+   return { event, degradations };",
+        "detailKind": "diff",
+        "inputKind": "json"
+      },
+      {
+        "type": "tool-call",
+        "toolName": "Agent",
+        "summary": "Agent",
+        "detail": "{\n  \"description\": \"Przegląd fixtures\",\n  \"subagent_type\": \"Explore\",\n  \"prompt\": \"Sprawdź, czy każdy typ ramki ma wariant max.\"\n}",
+        "delegation": "agents",
+        "inputKind": "json"
+      },
+      {
+        "type": "tool-call",
+        "toolName": "Workflow",
+        "summary": "Workflow",
+        "detail": "{\n  \"name\": \"kontrakt-semantyczny\",\n  \"description\": \"Trzy fazy: przegląd, implementacja, weryfikacja\"\n}",
+        "delegation": "workflow",
+        "inputKind": "json"
+      },
+      {
+        "type": "tool-call",
+        "toolName": "Task",
+        "summary": "Task",
+        "detail": "{\n  \"description\": \"Starszy podagent\",\n  \"prompt\": \"Policz pola schematu.\"\n}",
+        "delegation": "agents",
+        "inputKind": "json"
+      },
+      {
+        "type": "tool-call",
+        "toolName": "ExitPlanMode",
+        "summary": "ExitPlanMode",
+        "detail": "ExitPlanMode",
+        "inputKind": "json"
+      }
+    ],
+    "at": "2026-10-03T07:30:20.000Z"
+  }
+}

@@ -1,0 +1,35 @@
+
+ ▐▛███▛█   Claude Code v2.1.330
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ ZESTAW-KONTROLNY-BASH: zaw-edit-n100-57.
+
+  Thought for 1s, read 1 file
+
+⏺ Update(notes-n100-57.md)
+
+─────────────────────────────────────────────────────────
+ Edit file
+ notes-n100-57.md
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+  97  ninety-seven
+  98  abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxy
+      zabcdefghijk
+  99  ninety-nine
+ 100 -Status: draft
+ 100 +Status: final
+ 101  abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxy
+      zabcdefghijk
+ 102  one hundred two
+ 103  one hundred three
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to make this edit to notes-n100-57.md?
+ ❯ 1. Yes
+   2. Yes, and switch to accept edits (auto-approve file
+      edits and common file commands) for this session
+      (shift+tab)
+   3. No
+
+ Esc to cancel · Tab to amend

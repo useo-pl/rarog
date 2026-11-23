@@ -1,0 +1,25 @@
+{
+  "description": "Ciało poprawne, ale Content-Type inny niż application/json (tu: text/plain, jak prosty POST z przeglądarki bez preflightu). Także: brak X-Rarog-Relay-Client. Przekaźnik nie czyta ciała, nie liczy limitu i nie woła Apple. Serwer takiego żądania nie składa (header w manifeście).",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "C0FFEE00C0FFEE00C0FFEE00C0FFEE00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "type": "alert",
+      "topic": "ai.rarog.app"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "v": 1,
+      "error": "bad-request"
+    }
+  }
+}

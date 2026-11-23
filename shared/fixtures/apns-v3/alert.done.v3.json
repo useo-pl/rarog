@@ -1,0 +1,20 @@
+{
+  "headers": {
+    "apns-collapse-id": "kVJRaFYs2FJ7O8YFN4asZCA4ztdsLyDC",
+    "apns-expiration": "1791370800",
+    "apns-priority": "5",
+    "apns-push-type": "alert",
+    "apns-topic": "ai.rarog.app"
+  },
+  "payload": {
+    "aps": {
+      "badge": 0
+    },
+    "rarog": {
+      "v": 3,
+      "kid": "f849d673",
+      "n": "EhISEhISEhISEhIS",
+      "c": "EVvJWct-scc7i94RokmRccJX48MEzN7TFArpLo9rUu84vYdQY5HMxjGZat8kSAzjVzfEYzEkEv5fCfINhIo2SQChGg7X8_vNgRD1e-i80sHnG4jOy-ays0m-J2AiHReRU704jswJfXGRm7PHiUmKbwZmjiJeFLXR8URrUhBZKlZFEQzFxlzsQ_bGMjoBcWmJapmEpGLA2dVn8zYrmMGG_ysvYw0kpPbv48KtIW13MxU0Epm6QzTuu6m8wyR9DqafZym-tbT8HMYuc_PQYd6bagcsxP3UVwlbl8BsZzhfEazapbIuZRGpBM7ySE_mLN9nk1RR1qCMMWdvTkEqPZgfqQco-IoRB4W-aewadbnNPtU"
+    }
+  }
+}

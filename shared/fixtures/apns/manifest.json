@@ -1,0 +1,9 @@
+{
+  "live-activity.end.json": { "pushType": "liveactivity", "event": "end" },
+  "live-activity.update.chime.json": { "pushType": "liveactivity", "event": "update" },
+  "live-activity.update.chime.loc-keys.json": { "pushType": "liveactivity", "event": "update", "locKeys": true },
+  "live-activity.update.codex.json": { "pushType": "liveactivity", "event": "update" },
+  "live-activity.update.json": { "pushType": "liveactivity", "event": "update" },
+  "live-activity.update.waiting-agent.json": { "pushType": "liveactivity", "event": "update" },
+  "live-activity.update.workflow.json": { "pushType": "liveactivity", "event": "update" }
+}

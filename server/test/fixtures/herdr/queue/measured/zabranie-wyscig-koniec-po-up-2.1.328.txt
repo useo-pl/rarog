@@ -1,0 +1,17 @@
+⏺ <tekst poza fixture>
+
+⏺ <tekst poza fixture>
+
+✻ Cooked for 8s · done
+  1:56 PM
+
+❯ pomiar B: ok
+
+⏺ <tekst poza fixture>
+
+✻ Sautéed for 1s · done
+  1:56 PM
+  Advisor Tool (experim…
+─── History 100/100 ──────
+❯ pomiar B: ok
+──────────────────────────

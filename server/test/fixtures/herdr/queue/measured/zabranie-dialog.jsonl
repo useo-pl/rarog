@@ -1,0 +1,9 @@
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"Nie używaj żadnych narzędzi poza Write. Utwórz narzędziem Write plik ~/Library/Caches/pomiar-zabranie.txt z jedną linią: pomiar. To plik testowy w katalogu cache; po wywołaniu zakończ turę jednym słowem: gotowe."}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:01.000Z","content":[{"type":"tool_use","name":"Write","id":"toolu_01"}]}
+{"_pomiar":"up"}
+{"_pomiar":"down"}
+{"_pomiar":"ctrl-u"}
+{"_pomiar":"esc"}
+{"type":"user","timestamp":"2026-01-01T00:00:02.000Z","uuid":"00000000-0000-4000-8000-000000000004","promptId":"00000000-0000-4000-8000-000000000003","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01","is_error":true}]}}
+{"type":"user","timestamp":"2026-01-01T00:00:03.000Z","uuid":"00000000-0000-4000-8000-000000000005","promptId":"00000000-0000-4000-8000-000000000003","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}
+{"_pomiar":"obserwacje","ramkaPola":"26","ekranPrzed":"zapisano","ekranPo-up":"zapisano","statusPo-up":"blocked","ekranPo-down":"bez-zmian","statusPo-down":"blocked","ekranPo-ctrl-u":"bez-zmian","statusPo-ctrl-u":"blocked","statusPoEsc":"done","opsKolejki":"-","turaPrzerwana":"tak","plikZDialoguIstnieje":"nie"}

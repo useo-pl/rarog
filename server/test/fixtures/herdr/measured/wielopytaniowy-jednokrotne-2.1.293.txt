@@ -1,0 +1,28 @@
+
+⏺ User declined to answer questions
+  ⎿  · Jaki smak lodów? (Wanilia / Czekolada / Truskawka)
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem
+  AskUserQuestion. W JEDNYM wywołaniu zadaj trzy pytania
+  jednokrotnego wyboru: 'Jaki smak lodow?' (Wanilia,
+  Czekolada, Truskawka), 'Jaki kubek?' (Maly, Duzy), 'Co na
+  wierzch?' (Orzechy, Wiorki). Zadne z pytan nie ma
+  multiSelect. Nie pisz nic poza tym wywołaniem.
+───────────────────────────────────────────────────────────────
+←  ☐ Smak lodów  ☐ Kubek  ☐ Dodatek  ✔ Submit  →
+
+Jaki smak lodów?
+
+❯ 1. Wanilia
+     Wanilia
+  2. Czekolada
+     Czekolada
+  3. Truskawka
+     Truskawka
+  4. Type something.
+───────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

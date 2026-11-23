@@ -1,0 +1,20 @@
+❯ <tekst poza fixture>
+
+  Reading 2 files… (ctrl+o to expand)
+  ⎿  $ cat /tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T/s3c2-agentlist.97lHCO/kb3/zewn/b.txt
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command                                                                                                           1 of 2
+ Tip: auto mode handles these prompts for you — choose "switch to auto mode" below
+ Read file a.txt
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ │ cat /tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T/s3c2-agentlist.97lHCO/kb3/zewn/a.txt
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, allow reading from /private/tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T/s3c2-agentlist.97lHCO/kb3/zewn from this
+      project
+   3. Yes, and switch to auto mode · auto mode handles these prompts for you
+   4. No
+
+ Esc to cancel · Tab to amend

@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "protocolVersion": 3,
+  "serverStartId": "start-fixtures",
+  "voiceEnabled": false,
+  "termEnabled": false,
+  "tailnet": "demo.ts.net",
+  "hookSeenAgo": null,
+  "notesEnabled": true,
+  "companionEnabled": false,
+  "companionSpeech": false,
+  "apnsEnabled": false,
+  "capabilities": [
+    "device-auth",
+    "pair",
+    "pair-from-device",
+    "push-relay",
+    "push-e2e-v2",
+    "companion",
+    "companion-sessions"
+  ],
+  "system": "macos",
+  "iroh": {
+    "endpointId": "5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e",
+    "relay": "https://relay.example.net/"
+  }
+}

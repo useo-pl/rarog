@@ -1,0 +1,17 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "toolu_62",
+    "sessionId": "herdr-w7-p14",
+    "toolName": "dialog",
+    "displayText": "Rarog couldn't confirm what this dialog is about. From here you can only deny it. Allow it in the terminal.",
+    "displayTextRef": {
+      "code": "dialogs.degraded-display"
+    },
+    "risk": "red",
+    "cwd": "/Users/demo/Projects/xi",
+    "createdAt": "2026-10-03T08:01:00.000Z",
+    "subject": "tool",
+    "canAllow": false
+  }
+}

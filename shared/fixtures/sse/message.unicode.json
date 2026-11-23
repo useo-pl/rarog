@@ -1,0 +1,15 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w1-p2",
+  "message": {
+    "seq": 15,
+    "role": "assistant",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "Zażółć gęślą jaźń — złote ramki gotowe 🚀\u2028druga linia po U+2028."
+      }
+    ],
+    "at": "2026-10-03T08:00:47.000Z"
+  }
+}

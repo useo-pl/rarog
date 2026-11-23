@@ -1,0 +1,7 @@
+{
+  "error": "companion-openai",
+  "message": "OpenAI didn't give the voice agent a key. Check the model with rarog voice-agent status on the server.",
+  "messageRef": {
+    "code": "rest.companion-openai"
+  }
+}

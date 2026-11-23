@@ -1,0 +1,28 @@
+
+
+  Read 1 file
+
+⏺ Edit Notebook(pomiar.ipynb@c1)
+  ⎿  User rejected insert cell in pomiar.ipynb at cell c1
+
+      1 example
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Użyj narzędzia Skill i wywołaj skill o nazwie pomiar.
+
+⏺ Skill(pomiar)
+
+───────────────────────────────────────────────────────────────
+ Use skill "pomiar"?
+ Claude may use instructions, code, or files from this Skill.
+ Permission rule Skill requires confirmation for this tool.
+ /permissions to update rules
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and don't ask again for pomiar in
+      /Users/u/projekt
+   3. No
+
+ Esc to cancel · Tab to amend

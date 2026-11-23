@@ -1,0 +1,22 @@
+{
+  "type": "session-changed",
+  "session": {
+    "id": "herdr-w4-p9",
+    "cwd": "/Users/demo/Projects/fjord",
+    "title": "fjord",
+    "state": "waiting-input",
+    "stateSince": "2026-10-03T08:00:54.000Z",
+    "createdAt": "2026-10-03T08:00:54.000Z",
+    "lastActivityAt": "2026-10-03T08:00:54.000Z",
+    "paneId": "w4:p9",
+    "launchedByRarog": true,
+    "stale": false,
+    "herdrMode": "auto",
+    "outOfScope": false,
+    "label": "notatki",
+    "promptBlocked": {
+      "seq": 8,
+      "id": "7c1e5a93-2b4f-4d86-9e0a-3f6b8d2c4e17"
+    }
+  }
+}

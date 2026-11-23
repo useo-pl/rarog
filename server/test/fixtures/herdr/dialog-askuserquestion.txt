@@ -1,0 +1,15 @@
+⏺ Zanim pójdę dalej, potrzebuję decyzji.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Zapis pliku                                                                                  │
+│                                                                                              │
+│ Który wariant zapisu wybrać?                                                                 │
+│                                                                                              │
+│ ❯ 1. Zapis atomowy (tmp + rename)                                                            │
+│      Bezpieczniejszy, o jeden syscall więcej                                                 │
+│   2. Zapis w miejscu                                                                         │
+│      Szybszy, ryzyko uciętego pliku przy awarii                                              │
+│                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+  ↑/↓ to navigate · enter to select · esc to cancel

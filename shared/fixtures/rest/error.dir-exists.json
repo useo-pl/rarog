@@ -1,0 +1,7 @@
+{
+  "error": "dir-exists",
+  "message": "Something with that name already exists here.",
+  "messageRef": {
+    "code": "rest.dir-exists"
+  }
+}

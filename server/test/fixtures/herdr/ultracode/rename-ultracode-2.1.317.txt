@@ -1,0 +1,52 @@
+
+
+❯ /effort ultracode
+  ⎿  Ultracode on (this session only): dynamic workflows on every task. Effort stays xhigh.
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 15s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 15s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ ZESTAW-KONTROLNY-TURA: odpowiedz jednym słowem.
+
+  Thought for 1s
+
+⏺ ok
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ /rename pomiar-nazwy
+  ⎿  Session renamed to: pomiar-nazwy
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────── pomiar-nazwy ─
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle)

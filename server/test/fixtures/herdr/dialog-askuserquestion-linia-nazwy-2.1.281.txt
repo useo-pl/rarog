@@ -1,0 +1,28 @@
+  ▝▝ ▝▝    ~/projekt
+
+
+❯ /rename pomiar-nazwy
+  ⎿  Session renamed to: pomiar-nazwy
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem
+  AskUserQuestion. W JEDNYM wywołaniu zadaj dwa pytania
+  jednokrotnego wyboru: 'Jaki smak lodow?' (Wanilia,
+  Czekolada, Truskawka), 'Jaki kubek?' (Maly, Duzy). Nie pisz
+  nic poza tym wywołaniem.
+───────────────────────────────────────────────────────────────
+←  ☐ Smak  ☐ Kubek  ✔ Submit  →
+
+Jaki smak lodow?
+
+❯ 1. Wanilia
+     Wanilia
+  2. Czekolada
+     Czekolada
+  3. Truskawka
+     Truskawka
+  4. Type something.
+───────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel
+──────────────────────────────────────────────── pomiar-nazwy ─

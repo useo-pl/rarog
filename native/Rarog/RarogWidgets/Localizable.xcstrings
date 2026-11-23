@@ -1,0 +1,78 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "push.chime.body" : {
+      "comment" : "Push loc-key push.chime.body of an APNs alert (the placeholder banner or the Live Activity chime). iOS looks it up in the main catalog of this target, not in package resources. Same en and pl as the RarogContract server sentence catalog (checked by scripts/l10n-check.mjs).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The result is waiting in Rarog"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wynik czeka w Rarogu"
+          }
+        }
+      }
+    },
+    "push.chime.title" : {
+      "comment" : "Push loc-key push.chime.title of an APNs alert (the placeholder banner or the Live Activity chime). iOS looks it up in the main catalog of this target, not in package resources. Same en and pl as the RarogContract server sentence catalog (checked by scripts/l10n-check.mjs).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent finished"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent skończył"
+          }
+        }
+      }
+    },
+    "push.placeholder.body" : {
+      "comment" : "Push loc-key push.placeholder.body of an APNs alert (the placeholder banner or the Live Activity chime). iOS looks it up in the main catalog of this target, not in package resources. Same en and pl as the RarogContract server sentence catalog (checked by scripts/l10n-check.mjs).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New notification"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nowe powiadomienie"
+          }
+        }
+      }
+    },
+    "push.placeholder.title" : {
+      "comment" : "Push loc-key push.placeholder.title of an APNs alert (the placeholder banner or the Live Activity chime). iOS looks it up in the main catalog of this target, not in package resources. Same en and pl as the RarogContract server sentence catalog (checked by scripts/l10n-check.mjs).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

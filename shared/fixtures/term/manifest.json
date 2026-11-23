@@ -1,0 +1,11 @@
+{
+  "chunk-vectors.json": { "kind": "chunk-vectors" },
+  "client.in.json": { "kind": "client", "t": "in", "wireBytes": 51 },
+  "client.pa.json": { "kind": "client", "t": "pa", "wireBytes": 61 },
+  "client.rs.json": { "kind": "client", "t": "rs", "wireBytes": 25 },
+  "client.sc.json": { "kind": "client", "t": "sc", "wireBytes": 32 },
+  "server.err.json": { "kind": "server", "t": "err" },
+  "server.err.taken-over.json": { "kind": "server", "t": "err" },
+  "server.exit.json": { "kind": "server", "t": "exit" },
+  "server.hello.json": { "kind": "server", "t": "hello" }
+}

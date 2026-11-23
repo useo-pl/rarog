@@ -1,0 +1,73 @@
+{"type":"assistant","timestamp":"2026-10-16T12:26:43.540Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:30:25.032Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:32:49.525Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:33:05.763Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:33:44.093Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:33:47.002Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:35:22.151Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:35:23.720Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:35:45.444Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:36:58.797Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:37:49.961Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:38:16.206Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:39:19.257Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:39:37.613Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_010","name":"Bash","input":{"run_in_background":true,"command":"<komenda poza fixture>","description":"opis 8 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T12:39:37.885Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_010"}]},"toolUseResult":{"backgroundTaskId":"brilfk7ns"}}
+{"type":"attachment","timestamp":"2026-10-16T12:40:01.674Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>brilfk7ns</task-id>\n<tool-use-id>toolu_010</tool-use-id>\n<output-file>/Users/u/projekt/tasks/brilfk7ns.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 8 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T12:40:52.680Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:41:15.821Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:41:23.264Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:42:00.011Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:42:00.769Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:42:33.566Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:43:20.054Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:43:48.975Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:44:19.645Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:45:23.713Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:45:34.745Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:46:26.365Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:46:32.553Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:46:55.987Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:47:53.302Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:48:17.761Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:49:05.543Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:49:37.128Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:49:57.240Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:50:20.800Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:50:31.422Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:50:52.242Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:51:25.507Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:53:09.871Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:53:10.030Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:53:40.350Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:53:49.727Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:55:18.655Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:55:18.832Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:55:39.421Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:57:11.418Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_015","name":"Bash","input":{"run_in_background":true,"command":"<komenda poza fixture>","description":"opis 12 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T12:57:13.809Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_015"}]},"toolUseResult":{"backgroundTaskId":"bckvwphjr"}}
+{"type":"assistant","timestamp":"2026-10-16T12:57:47.994Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"attachment","timestamp":"2026-10-16T12:57:36.953Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bckvwphjr</task-id>\n<tool-use-id>toolu_015</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bckvwphjr.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 12 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T12:58:15.941Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:58:58.722Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T12:59:03.218Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_016","name":"Bash","input":{"run_in_background":true,"timeout":600000,"command":"<komenda poza fixture>","description":"opis 13 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T12:59:03.760Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_016"}]},"toolUseResult":{"backgroundTaskId":"bbwans2h7"}}
+{"type":"attachment","timestamp":"2026-10-16T12:59:28.539Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bbwans2h7</task-id>\n<tool-use-id>toolu_016</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bbwans2h7.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 13 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T13:00:43.991Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:01:04.672Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:02:07.105Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_019","name":"Bash","input":{"run_in_background":true,"command":"<komenda poza fixture>","description":"opis 16 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T13:02:07.621Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_019"}]},"toolUseResult":{"backgroundTaskId":"bj662eysh"}}
+{"type":"assistant","timestamp":"2026-10-16T13:02:57.809Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_020","name":"Monitor","input":{"timeout_ms":1200000,"command":"<komenda poza fixture>","description":"opis 17 (treść poza fixture)"}}]}}
+{"type":"user","timestamp":"2026-10-16T13:02:58.204Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_020"}]},"toolUseResult":{"taskId":"bj83ayg4o","timeoutMs":1200000,"persistent":false}}
+{"type":"assistant","timestamp":"2026-10-16T13:03:42.812Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:06:53.641Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"attachment","timestamp":"2026-10-16T13:06:46.802Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bj662eysh</task-id>\n<tool-use-id>toolu_019</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bj662eysh.output</output-file>\n<status>completed</status>\n<summary>Background command \"opis 16 (treść poza fixture)\" completed (exit code 0)</summary>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"attachment","timestamp":"2026-10-16T13:06:49.199Z","isSidechain":true,"agentId":"ae010e8cf8754edd6","attachment":{"type":"queued_command","prompt":"<task-notification>\n<task-id>bj83ayg4o</task-id>\n<tool-use-id>toolu_020</tool-use-id>\n<output-file>/Users/u/projekt/tasks/bj83ayg4o.output</output-file>\n<status>completed</status>\n<summary>Monitor \"opis 17 (treść poza fixture)\" stream ended</summary>\n<event>zdarzenie meldunku 17 (treść poza fixture)</event>\n</task-notification>","commandMode":"task-notification","origin":{"kind":"task-notification"}}}
+{"type":"assistant","timestamp":"2026-10-16T13:07:38.470Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:08:46.102Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:09:07.276Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:10:15.660Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:10:47.640Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:11:27.285Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:11:58.311Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}
+{"type":"assistant","timestamp":"2026-10-16T13:11:58.786Z","isSidechain":true,"agentId":"ae010e8cf8754edd6"}

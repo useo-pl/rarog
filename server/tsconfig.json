@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // rootDir "." (not "./src"), so that `tsc -b` typechecks the tests in test/ too.
+    "rootDir": ".",
+    "outDir": "./dist/types",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "references": [{ "path": "../shared" }]
+}

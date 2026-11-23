@@ -1,0 +1,5 @@
+{
+  "core.noConnection": ["Brak połączenia z serwerem — spróbuj za chwilę.",""],
+  "core.unsupportedSession": ["Ta wersja apki nie obsługuje tej sesji — zaktualizuj apkę.",""],
+  "core.updateApp": ["Serwer jest nowszy niż ta wersja apki — zaktualizuj apkę.",""]
+}

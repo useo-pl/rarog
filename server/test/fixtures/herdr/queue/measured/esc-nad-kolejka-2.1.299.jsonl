@@ -1,0 +1,12 @@
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"To pomiar techniczny do repo pilot, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy w trakcie pracy przychodzi kolejny prompt. Ten prompt wpisuje za mnie skrypt scripts/measure-queue.sh. Proszę o jedno wywołanie narzędzia Bash z command: echo pomiar-start; sleep 45; echo pomiar-koniec — zwykłe, na pierwszym planie, bez run_in_background. Nie używaj żadnych narzędzi poza tym jednym wywołaniem. Po jego wyniku zakończ turę słowem: gotowe. Krótką wiadomość, która przyjdzie w trakcie, potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok."}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:01.000Z","content":[{"type":"tool_use","name":"Bash","id":"toolu_01"}]}
+{"_pomiar":"prompt-B-wyslany"}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-01-01T00:00:02.000Z","content":"pomiar B: ok"}
+{"_pomiar":"esc"}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2026-01-01T00:00:03.000Z"}
+{"type":"user","timestamp":"2026-01-01T00:00:04.000Z","uuid":"00000000-0000-4000-8000-000000000004","promptId":"00000000-0000-4000-8000-000000000005","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01","is_error":true}]}}
+{"type":"user","timestamp":"2026-01-01T00:00:05.000Z","uuid":"00000000-0000-4000-8000-000000000006","promptId":"00000000-0000-4000-8000-000000000005","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}
+{"type":"user","timestamp":"2026-01-01T00:00:06.000Z","uuid":"00000000-0000-4000-8000-000000000007","promptId":"00000000-0000-4000-8000-000000000005","origin":{"kind":"human"},"message":{"role":"user","content":"pomiar B: ok"}}
+{"type":"assistant","timestamp":"2026-01-01T00:00:07.000Z","content":[{"type":"text"}]}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:08.000Z"}
+{"_pomiar":"obserwacje","polePromptuZarazPoEsc":"","polePromptuPo20s":"","promptBPrzetworzonyPoEsc":"user"}

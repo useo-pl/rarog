@@ -1,0 +1,36 @@
+rarog: 0.1.0
+at: 2026-10-26T09:10:31.745Z
+reason: unreadable
+toolName: brak
+sessionId: <sesja>
+hook: brak
+jsonl: brak
+cliDialog: dialog
+reqId: screen:1:f:30db357025d1
+source: screen
+optionCount: 0
+dialogTitle: brak
+paneRows: 52
+--- ekran ---
+     over Remote Control. A message relayed from Slack, Teams or a project thread, or sent by a routine or another program,
+     can't request it.
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+   Settings  Status   Config   Usage   Stats
+
+   Version:           2.1.310
+   Session name:      /rename to add a name
+   Session ID:        00000000-0000-4000-9000-000000000001
+   Session kind:      interactive
+   Peer address:      uds:/tmp/cc-socks/10540.sock
+   cwd:               /Users/u/Projects/rarog
+   Login method:      Claude Plan account
+   Organization:      <email>'s Organization
+   Email:             <email>
+   Cloud sessions:    GitHub connected
+
+   Model:             haiku (claude-haiku-5-5)
+   MCP servers:       6 connected, 3 need auth, 1 disabled · /mcp
+   Setting sources:   User settings, Project local settings
+   Auto mode server:  Disabled
+
+   Esc to cancel

@@ -1,0 +1,52 @@
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie jednokrotnego wyboru: 'Jaki
+  smak lodow?' z opcjami: Wanilia, Czekolada, Truskawka. Nie pisz nic poza tym wywołaniem.
+
+⏺ Declined to answer Claude's questions:
+  ⎿  · Jaki smak lodów? (Wanilia / Czekolada / Truskawka)
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. W JEDNYM wywołaniu zadaj trzy pytania jednokrotnego
+  wyboru: 'Jaki smak lodow?' (Wanilia, Czekolada, Truskawka), 'Jaki kubek?' (Maly, Duzy), 'Co na wierzch?' (Orzechy, Wiorki).
+  Zadne z pytan nie ma multiSelect. Nie pisz nic poza tym wywołaniem.
+
+⏺ Declined to answer Claude's questions:
+  ⎿  · Jaki smak lodów? (Wanilia / Czekolada / Truskawka)
+     · Jaki kubek? (Mały / Duży)
+     · Co na wierzch? (Orzechy / Wiórki)
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie WIELOKROTNEGO wyboru
+  (multiSelect: true): 'Ktore dodatki wlaczyc?' z opcjami: Posypka, Polewa, Orzechy. Nie pisz nic poza tym wywołaniem.
+
+⏺ Declined to answer Claude's questions:
+  ⎿  · Które dodatki włączyć? (Posypka / Polewa / Orzechy)
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. W JEDNYM wywołaniu zadaj dwa pytania: 'Jaki smak lodow?'
+  (Wanilia, Czekolada, Truskawka) jednokrotne oraz 'Ktore dodatki wlaczyc?' (Posypka, Polewa, Orzechy) z multiSelect: true. Nie
+  pisz nic poza tym wywołaniem.
+
+⏺ Declined to answer Claude's questions:
+  ⎿  · Jaki smak lodów? (Wanilia / Czekolada / Truskawka)
+     · Które dodatki włączyć? (Posypka / Polewa / Orzechy)
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie jednokrotnego wyboru: 'Jaki
+  uklad listy?' z trzema opcjami, kazda z polem preview. Opcja 1: label 'Dwie kolumny obok siebie z podgladem
+  (Rekomendowane)', preview to trzy linie: '+--------+---------+', '| lista  | podglad |', '+--------+---------+'. Opcja 2:
+  label 'Jedna kolumna', preview to trzy linie: '+--------+', '| lista  |', '+--------+'. Opcja 3: label 'Bez listy', preview:
+  '(pusto)'. Nie pisz nic poza tym wywołaniem.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Układ
+
+Jaki układ listy?
+
+❯ 1. Dwie kolumny obok siebie     ┌──────────────────────────────────────────┐
+    z podglądem                   │ +--------+---------+                     │
+    (Rekomendowane)               │ | lista  | podglad |                     │
+  2. Jedna kolumna                │ +--------+---------+                     │
+  3. Bez listy                    └──────────────────────────────────────────┘
+
+                                  Notes: press n to add notes
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Chat about this
+
+Enter to select · ↑/↓ to navigate · n to add notes · Esc to cancel

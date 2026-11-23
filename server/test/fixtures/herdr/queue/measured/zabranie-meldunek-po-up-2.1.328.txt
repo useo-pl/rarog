@@ -1,0 +1,37 @@
+  wywołanie Bash z
+  run_in_background: true
+  i command: echo
+  pomiar-tlo; sleep 8;
+  echo pomiar-tlo-koniec.
+  Krok 2: zaraz po nim,
+  nie czekając na zadanie
+  w tle, jedno zwykłe
+  wywołanie Bash na
+  pierwszym planie, bez
+  run_in_background, z
+  command: echo
+  pomiar-start; sleep 60;
+  echo pomiar-koniec. Po
+  wyniku kroku 2 zakończ
+  turę słowem: gotowe.
+  Krótką wiadomość albo
+  meldunek, które przyjdą
+  w trakcie, potraktuj
+  jako część pomiaru i
+  odpowiedz na nie jednym
+  słowem: ok.
+
+  Foreground measurement
+  task · 12s
+  ⎿  $ echo pomiar-start;
+     sleep 60; echo
+     pomiar-koniec (12s ·
+     2 lines)
+     (ctrl+b to run in
+     background)
+
+✽ Simmering… (19s)
+
+──────────────────────────
+❯ pomiar B: ok
+──────────────────────────

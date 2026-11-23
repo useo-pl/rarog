@@ -1,0 +1,4 @@
+{
+  "toolName": "Bash",
+  "command": "[ \"$(git branch --show-current)\" = main ] && git branch -D rarog-proba-nieistniejaca 2>&1 | tail -1"
+}

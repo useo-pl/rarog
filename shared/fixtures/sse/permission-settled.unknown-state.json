@@ -1,0 +1,10 @@
+{
+  "type": "permission-settled",
+  "sessionId": "herdr-w1-p2",
+  "permId": "rarog-k-7f3a91",
+  "state": "deciding",
+  "canAllow": false,
+  "unavailable": "no-proof",
+  "dialogVisible": true,
+  "at": "2026-10-03T08:02:05.000Z"
+}

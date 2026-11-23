@@ -1,0 +1,8 @@
+{
+  "apiKey": "snx_temp_fixture_abababababababababababab",
+  "expiresAt": "2026-10-04T10:10:00.000Z",
+  "webSocketUri": "wss://tts-rt.eu.soniox.com/tts-websocket",
+  "model": "tts-rt-v2",
+  "voice": "Maya",
+  "sampleRate": 24000
+}

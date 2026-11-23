@@ -1,0 +1,14 @@
+rarog: 0.1.0
+at: 2026-10-26T20:54:02.400Z
+reason: mode-unknown
+toolName: brak
+sessionId: <sesja>
+hook: brak
+jsonl: brak
+--- ekran ---
+claude --session-id <sesja>
+000-0000-0000-0000-000000
+000000
+❯ claude --session-id <sesja>
+00000-0000-0000-0000-0000
+00000000

@@ -1,0 +1,7 @@
+{
+  "type": "hello",
+  "protocolVersion": 3,
+  "serverStartId": "0f7c2a9e-5b1d-4c3a-9e2f-6a8b1c4d7e90",
+  "minClientBuild": 12,
+  "heartbeatMs": 10000
+}

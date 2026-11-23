@@ -1,0 +1,28 @@
+ │ pomiar-linia-74 \
+ │ pomiar-linia-75 \
+ │ pomiar-linia-76 \
+ │ pomiar-linia-77 \
+ │ pomiar-linia-78 \
+ │ pomiar-linia-79 \
+ │ pomiar-linia-80 \
+ │ pomiar-linia-81 \
+ │ pomiar-linia-82 \
+ │ pomiar-linia-83 \
+ │ pomiar-linia-84 \
+ │ pomiar-linia-85 \
+ │ pomiar-linia-86 \
+ │ pomiar-linia-87 \
+ │ pomiar-linia-88 \
+ │ pomiar-linia-89 \
+ │ pomiar-linia-90 \
+ │ > ~/Library/Caches/pomiar-dialogow.txt
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Shell expansion syntax in paths requires manual approval
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and switch to auto mode · auto mode handles these
+      prompts for you
+   3. No
+
+ Esc to cancel · Tab to amend

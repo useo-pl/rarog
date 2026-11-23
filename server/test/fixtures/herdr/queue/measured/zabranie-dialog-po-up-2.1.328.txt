@@ -1,0 +1,39 @@
+❯ Nie używaj żadnych
+  narzędzi poza Write.
+  Utwórz narzędziem Write
+  plik ~/Library/Caches/
+  pomiar-zabranie.txt z
+  jedną linią: pomiar. To
+  plik testowy w
+  katalogu cache; po
+  wywołaniu zakończ turę
+  jednym słowem: gotowe.
+
+⏺ Write(…pomiar-zabranie.t
+       xt)
+
+──────────────────────────
+ Create file
+ …hes/pomiar-zabranie.txt
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+  1 pomiar
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to create
+ pomiar-zabranie.txt?
+   1. Yes
+   2. Yes, and switch to
+      accept edits
+      (auto-approve file
+      edits and common
+      file commands) for
+      this session; Yes,
+      and always allow
+      access to
+      /Users/u/Libr
+      ary/Caches for this
+      session
+      (shift+tab)
+ ❯ 3. No
+
+ Esc to cancel · Tab to
+ amend

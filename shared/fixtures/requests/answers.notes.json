@@ -1,0 +1,15 @@
+{
+  "answers" : [
+    [
+      "SQLite"
+    ],
+    [
+      "Jednostkowe",
+      "Integracyjne"
+    ]
+  ],
+  "notes" : [
+    "ale bez paska bocznego",
+    null
+  ]
+}

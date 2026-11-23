@@ -1,0 +1,50 @@
+{
+  "type": "sessions-snapshot",
+  "sessions": [
+    {
+      "id": "herdr-w8-p15",
+      "cwd": "/Users/demo/Projects/omicron",
+      "title": "omicron",
+      "state": "waiting-input",
+      "stateSince": "2026-10-03T10:00:00.000Z",
+      "createdAt": "2026-10-03T10:00:00.000Z",
+      "lastActivityAt": "2026-10-03T10:00:00.000Z",
+      "paneId": "w8:p15",
+      "launchedByRarog": true,
+      "markedUnseen": true,
+      "stale": false,
+      "herdrMode": "auto",
+      "outOfScope": false,
+      "label": "review notes"
+    },
+    {
+      "id": "herdr-w8-p16",
+      "cwd": "/Users/demo/Projects/sigma",
+      "title": "sigma",
+      "state": "waiting-input",
+      "stateSince": "2026-10-03T10:00:00.000Z",
+      "createdAt": "2026-10-03T10:00:00.000Z",
+      "lastActivityAt": "2026-10-03T10:00:00.000Z",
+      "paneId": "w8:p16",
+      "launchedByRarog": true,
+      "seen": true,
+      "seenBy": "voice-agent",
+      "stale": false,
+      "herdrMode": "auto",
+      "outOfScope": false,
+      "label": "release notes"
+    }
+  ],
+  "herdrStatus": {
+    "available": true,
+    "agentCount": 2,
+    "readOnly": false,
+    "canLaunch": false,
+    "version": "0.9.3",
+    "protocol": 22,
+    "detail": "Rarog pane limit reached. Close a session and try again.",
+    "detailRef": {
+      "code": "herdr.pane-cap"
+    }
+  }
+}

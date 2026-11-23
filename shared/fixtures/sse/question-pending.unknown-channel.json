@@ -1,0 +1,46 @@
+{
+  "type": "question-pending",
+  "request": {
+    "qId": "toolu_31",
+    "sessionId": "herdr-w2-p4",
+    "questions": [
+      {
+        "question": "Gdzie trzymamy złote ramki SSE?",
+        "header": "Fixtures",
+        "multiSelect": false,
+        "options": [
+          {
+            "label": "shared/fixtures/sse",
+            "description": "Wspólne dla serwera i każdego klienta.",
+            "role": "answer"
+          },
+          {
+            "label": "server/test/fixtures",
+            "description": "Obok testów serwera.",
+            "role": "answer"
+          }
+        ]
+      },
+      {
+        "question": "Które klienty mają przejść manifest?",
+        "header": "Klienci",
+        "multiSelect": true,
+        "options": [
+          {
+            "label": "PWA",
+            "description": "Dzisiejszy klient.",
+            "role": "answer"
+          },
+          {
+            "label": "Swift",
+            "description": "Przyszły klient natywny.",
+            "role": "answer"
+          }
+        ]
+      }
+    ],
+    "createdAt": "2026-10-03T08:00:50.000Z",
+    "channel": "voice",
+    "customAnswer": true
+  }
+}

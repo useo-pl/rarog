@@ -1,0 +1,28 @@
+{
+  "session_id": "00000000-0000-4000-9000-000000000140",
+  "transcript_path": "/Users/u/.claude/projects/-private-tmp-folders-xx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-T-m8p2b-VxlofU-r3-sesja/00000000-0000-4000-9000-000000000140.jsonl",
+  "cwd": "/private/tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T/m8p2b.VxlofU/r3/sesja",
+  "scratchpad_dir": "/private/tmp/claude-uid/-private-tmp-folders-xx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-T-m8p2b-VxlofU-r3-sesja/00000000-0000-4000-9000-000000000140/scratchpad",
+  "prompt_id": "00000000-0000-4000-9000-000000000141",
+  "permission_mode": "default",
+  "agent_id": "a15efadc8783024f0",
+  "agent_type": "general-purpose",
+  "effort": {
+    "level": "low"
+  },
+  "hook_event_name": "PermissionRequest",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "echo m8z-1 > m8z-1.txt",
+    "description": "Write m8z-1 into m8z-1.txt in the working directory"
+  },
+  "permission_suggestions": [
+    {
+      "type": "addDirectories",
+      "directories": [
+        "/private/tmp/folders/xx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/T/m8p2b.VxlofU/r3/sesja"
+      ],
+      "destination": "session"
+    }
+  ]
+}

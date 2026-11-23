@@ -1,0 +1,16 @@
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Odstęp  ☐ Dodatki  ☐ Kolor  ✔ Submit  →
+
+Na którą wartość ujednolicić odstęp pod nagłówkiem sekcji?
+
+❯ 1. 52 px — wartość `wide` (rekomendacja)
+     Największa z używanych
+  2. 40 px — wartość `default`
+     Środkowa
+  3. Nowa wartość pośrednia
+     Do ustalenia
+  4. Type something.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

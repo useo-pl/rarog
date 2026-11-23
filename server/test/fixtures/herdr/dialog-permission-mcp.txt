@@ -1,0 +1,28 @@
+
+  Called firecrawl
+
+⏺ Wynik: 1 URL — https://example.com/.
+
+✻ Baked for 8s · done 1:29 AM
+
+❯ Teraz wywolaj DOKLADNIE jedno narzedzie:
+  mcp__catalog__catalog_get_project_tree_layout (bez
+  parametrow). Nie uzywaj zadnego innego narzedzia.
+
+  Calling catalog…
+
+───────────────────────────────────────────────────────────────
+ Tool use
+
+   catalog — Get Project Tree Layout Tool: (MCP)
+
+   About the catalog — Get Project Tree Layout Tool:
+   │ Get project tree layout (groups, folders, notes) with
+   │ pagination and depth control. Use only when you need…
+   (ctrl+o to expand description)
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. No
+
+ Esc to cancel · Tab to amend

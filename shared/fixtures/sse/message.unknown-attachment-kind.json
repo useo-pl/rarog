@@ -1,0 +1,31 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w1-p2",
+  "message": {
+    "seq": 9,
+    "role": "user",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "Porównaj zrzut z raportem i popraw manifest."
+      }
+    ],
+    "at": "2026-10-03T08:00:46.000Z",
+    "attachments": [
+      {
+        "kind": "video",
+        "name": "",
+        "bytes": 67,
+        "mime": "image/png",
+        "file": "1790000000-0123456789abcdef.png"
+      },
+      {
+        "kind": "file",
+        "name": "raport-kontraktu.pdf",
+        "bytes": 9,
+        "mime": "application/pdf"
+      }
+    ],
+    "clientMessageId": "7e1c4a92-5b3d-4f08-a6e2-9c0d1b8f4a57"
+  }
+}

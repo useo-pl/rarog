@@ -1,0 +1,111 @@
+# Rejestr urządzeń relaya iroh Raroga: Worker `rarog-relay-auth`, kontrakt `/v1/*` w `shared/src/relay-auth.ts`.
+# Strażnik `test/config.test.ts` pilnuje tego pliku: nazw wiązań, klas Durable Objects, migracji, crona i zmiennych.
+# Opis wiązań i wartości do wpisania przed wdrożeniem: `relay-auth/README.md`.
+#
+# Jedno środowisko: PRODUKCJA `rarog-relay-auth` na `relay-auth.rarog.ai`.
+
+name = "rarog-relay-auth"
+# Konto Cloudflare: bez pola `account_id`, bo konto należy do tego, kto wdraża. Wrangler bierze je ze zmiennej
+# `CLOUDFLARE_ACCOUNT_ID`, ustawianej przy każdej komendzie, która rozmawia z Cloudflare (`relay-auth/README.md`).
+main = "src/worker.ts"
+# Ta sama data co przekaźnik push (`relay/wrangler.toml`): najnowsza obsługiwana przez `workerd` z wranglera 4.151.1.
+compatibility_date = "2026-10-12"
+
+# Tylko Custom Domain: bez *.workers.dev i bez adresów podglądu wersji.
+workers_dev = false
+preview_urls = false
+
+[[routes]]
+pattern = "relay-auth.rarog.ai"
+custom_domain = true
+
+# Logi wywołań (żądanie i odpowiedź z metadanymi) wyłączone, bo nie da się ich przefiltrować.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = false
+
+# Zmienne niesekretne (opis każdej: `relay-auth/README.md`, „Configuration”).
+# DEPLOY_SHA nadpisuje wdrożenie: `wrangler deploy --var DEPLOY_SHA:$(git rev-parse --short HEAD)`.
+# GATE_KIND = bramka wejścia do rejestru: `devicecheck` albo `apns`; pusta albo inna wartość = brak bramki
+# (`"gate":null` w `/v1/health`, rejestracja 503). Nazwa nie jest `GATE`, bo tę nosi wiązanie Durable Object.
+# ENFORCE = `1` egzekwuje odmowy w `/v1/access`; inna wartość = tryb cienia (`"enforce":false` w `/v1/health`).
+# APPLE_TEAM_ID = zespół Apple wydawcy apki (`iss` tokenu dostawcy DeviceCheck i APNs), ten sam co przekaźnika push.
+# Kwoty i hamulce: REGISTER_MONTHLY_QUOTA (nowe EndpointId apki na urządzenie w miesiącu, 1–3), REGISTER_DAILY_BRAKE
+# (rejestracje na dobę UTC per bramka), SPONSOR_QUOTA (nowe poręczenia apki w 30 dniach), SPONSORED_LIVE_MAX (żywe
+# poręczenia apki naraz). Zła wartość wyłącza trasy apki (`ok:false`).
+# QUOTA_GRACE_UNTIL i DIAG_UNTIL: sekundy epoki albo pusto. Do QUOTA_GRACE_UNTIL wyczerpane bity DeviceCheck nie
+# blokują rejestracji (po utracie rejestru); do DIAG_UNTIL linia decyzji haka niesie pełny EndpointId także przy
+# egzekwowaniu.
+# CLOCK_OFFSET (przesunięcie zegara do pomiarów na `workerd`) NIE stoi w tym pliku: produkcja chodzi zegarem
+# Cloudflare'a (strażnik w `test/config.test.ts`).
+[vars]
+DEPLOY_SHA = "dev"
+GATE_KIND = "devicecheck"
+ENFORCE = "0"
+APPLE_TEAM_ID = "97TDXJ84WH"
+REGISTER_MONTHLY_QUOTA = "3"
+REGISTER_DAILY_BRAKE = "200"
+SPONSOR_QUOTA = "3"
+SPONSORED_LIVE_MAX = "5"
+QUOTA_GRACE_UNTIL = ""
+DIAG_UNTIL = ""
+
+# Sekrety (`wrangler secret put <NAZWA>` ze stdin, uruchamia właściciel). Tu nazwy:
+# RELAY_HOOK_SECRET    bearer haka `POST /v1/access` (ten sam w adapterze relaya iroh)
+# ADMIN_SECRET         bearer tras `POST /v1/admin/*`
+# DEVICECHECK_KEY      PEM klucza DeviceCheck z portalu Apple (bramka `devicecheck`)
+# DEVICECHECK_KEY_ID   Key ID tego klucza
+# APNS_KEY             PEM klucza APNs z portalu Apple (bramka `apns`)
+# APNS_KEY_ID          Key ID tego klucza
+
+# Kanarek: cron co 6 h woła `scheduled` w `src/worker.ts`.
+[triggers]
+crons = ["0 */6 * * *"]
+
+# Durable Objects: wpis EndpointId, serializacja bramki, lista odmów. Klasy eksportuje `src/worker.ts`.
+[[durable_objects.bindings]]
+name = "ENDPOINT"
+class_name = "Endpoint"
+
+[[durable_objects.bindings]]
+name = "GATE"
+class_name = "Gate"
+
+[[durable_objects.bindings]]
+name = "ADMIN"
+class_name = "Admin"
+
+# Magazyn SQLite dla wszystkich trzech klas od pierwszej migracji.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Endpoint", "Gate", "Admin"]
+
+# Denial list mirror. The KV namespace `id` belongs to the operator's account: another account puts the id from
+# `wrangler kv namespace create` here (`relay-auth/README.md`, "Account values").
+[[kv_namespaces]]
+binding = "DENIED"
+id = "c2e39c6895624b529295523544a58e39"
+
+# Liczniki Rate Limiting. namespace_id unikalne w koncie: 8201–8202 nie pokrywają się z licznikami przekaźnika push
+# (8101–8103). Okno per lokalizacja Cloudflare, przybliżone: hamulec, nie sufit (przed Workerem hamuje też reguła WAF
+# strefy). Klucz per adres klienta z `clientBucket` (`src/wspolne.ts`), sprawdzany przed Durable Objects.
+# RL_APP: każda trasa `/v1/app/*`; awaria licznika przepuszcza (poza `register`).
+[[ratelimits]]
+name = "RL_APP"
+namespace_id = "8201"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+# RL_REGISTER: `/v1/app/register` (każda nowa rejestracja to wywołanie Apple); awaria licznika = 429.
+[[ratelimits]]
+name = "RL_REGISTER"
+namespace_id = "8202"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60

@@ -1,0 +1,133 @@
+{
+  "$comment": "Messages in the shape of the session stream -> the indexes of the messages that open a turn. Read by the server rule (isTurnStart in server/src/companion/turns.ts) and by the app's projection (RealtimeProjector.render in RarogUI). The texts are synthetic.",
+  "cases": [
+    {
+      "name": "a prompt and its answer",
+      "messages": [
+        { "seq": 1, "role": "user", "blocks": [{ "type": "text", "text": "prompt 1" }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "assistant", "blocks": [{ "type": "text", "text": "answer 1" }], "at": "2026-11-20T10:00:01.000Z" }
+      ],
+      "turnStarts": [0]
+    },
+    {
+      "name": "two prompts in a row open two turns",
+      "messages": [
+        { "seq": 1, "role": "user", "blocks": [{ "type": "text", "text": "prompt 1" }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "user", "blocks": [{ "type": "text", "text": "prompt 2" }], "at": "2026-11-20T10:00:01.000Z" }
+      ],
+      "turnStarts": [0, 1]
+    },
+    {
+      "name": "agent messages before the first prompt open no turn",
+      "messages": [
+        { "seq": 1, "role": "assistant", "blocks": [{ "type": "text", "text": "the end of an earlier turn" }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "user", "blocks": [{ "type": "text", "text": "prompt 2" }], "at": "2026-11-20T10:00:01.000Z" },
+        { "seq": 3, "role": "assistant", "blocks": [{ "type": "tool-call", "toolName": "Bash", "summary": "ls" }], "at": "2026-11-20T10:00:02.000Z" }
+      ],
+      "turnStarts": [1]
+    },
+    {
+      "name": "a background task notification opens no turn",
+      "messages": [
+        { "seq": 1, "role": "user", "blocks": [{ "type": "text", "text": "prompt 1" }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "assistant", "blocks": [{ "type": "text", "text": "started it" }], "at": "2026-11-20T10:00:01.000Z" },
+        {
+          "seq": 3, "role": "user", "blocks": [{ "type": "text", "text": "<task-notification>\n<summary>Background command finished</summary>\n</task-notification>" }],
+          "at": "2026-11-20T10:01:00.000Z", "notice": { "kind": "command", "outcome": "done" }
+        },
+        { "seq": 4, "role": "assistant", "blocks": [{ "type": "text", "text": "it finished" }], "at": "2026-11-20T10:01:01.000Z" }
+      ],
+      "turnStarts": [0]
+    },
+    {
+      "name": "a prompt blocked by a hook opens no turn, as a note and as a human message",
+      "messages": [
+        { "seq": 1, "role": "user", "blocks": [{ "type": "text", "text": "prompt 1" }], "at": "2026-11-20T10:00:00.000Z" },
+        {
+          "seq": 2, "role": "system",
+          "blocks": [{
+            "type": "text", "text": "A hook blocked the prompt.\npolicy says no\nPrompt: drop the cache",
+            "ref": { "code": "commands.prompt-blocked.reason-and-prompt", "args": ["policy says no", "drop the cache"] }
+          }],
+          "at": "2026-11-20T10:00:01.000Z", "promptBlocked": { "reason": "policy says no", "prompt": "drop the cache" }
+        },
+        {
+          "seq": 3, "role": "user", "blocks": [{ "type": "text", "text": "drop the cache" }],
+          "at": "2026-11-20T10:00:02.000Z", "promptBlocked": { "reason": "policy says no" }
+        }
+      ],
+      "turnStarts": [0]
+    },
+    {
+      "name": "a human message with only a server sentence opens no turn",
+      "messages": [
+        {
+          "seq": 1, "role": "user",
+          "blocks": [{ "type": "text", "text": "Session cleared.", "ref": { "code": "transcript.repoint-clear" } }],
+          "at": "2026-11-20T10:00:00.000Z"
+        },
+        { "seq": 2, "role": "assistant", "blocks": [{ "type": "text", "text": "ready" }], "at": "2026-11-20T10:00:01.000Z" }
+      ],
+      "turnStarts": []
+    },
+    {
+      "name": "a server sentence next to own text opens a turn",
+      "messages": [
+        {
+          "seq": 1, "role": "user",
+          "blocks": [
+            { "type": "text", "text": "Session cleared.", "ref": { "code": "transcript.repoint-clear" } },
+            { "type": "text", "text": "prompt 1" }
+          ],
+          "at": "2026-11-20T10:00:00.000Z"
+        }
+      ],
+      "turnStarts": [0]
+    },
+    {
+      "name": "a human message with only white space opens no turn",
+      "messages": [
+        { "seq": 1, "role": "user", "blocks": [{ "type": "text", "text": "  \n\t " }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "user", "blocks": [{ "type": "text", "text": "prompt 2" }], "at": "2026-11-20T10:00:01.000Z" }
+      ],
+      "turnStarts": [1]
+    },
+    {
+      "name": "a human message without text, image or attachment (an image pasted in the terminal) opens no turn",
+      "messages": [
+        { "seq": 1, "role": "user", "blocks": [{ "type": "text", "text": "prompt 1" }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "user", "blocks": [], "at": "2026-11-20T10:00:01.000Z" },
+        { "seq": 3, "role": "assistant", "blocks": [{ "type": "text", "text": "saw it" }], "at": "2026-11-20T10:00:02.000Z" }
+      ],
+      "turnStarts": [0]
+    },
+    {
+      "name": "an image block alone opens a turn",
+      "messages": [
+        { "seq": 1, "role": "user", "blocks": [{ "type": "image", "dataUrl": "data:image/png;base64,iVBORw0KGgo=" }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "assistant", "blocks": [{ "type": "text", "text": "saw the image" }], "at": "2026-11-20T10:00:01.000Z" }
+      ],
+      "turnStarts": [0]
+    },
+    {
+      "name": "an attachment alone opens a turn",
+      "messages": [
+        {
+          "seq": 1, "role": "user", "blocks": [],
+          "attachments": [{ "kind": "file", "name": "notes.txt", "bytes": 12, "mime": "text/plain" }],
+          "at": "2026-11-20T10:00:00.000Z"
+        },
+        { "seq": 2, "role": "assistant", "blocks": [{ "type": "text", "text": "read the file" }], "at": "2026-11-20T10:00:01.000Z" }
+      ],
+      "turnStarts": [0]
+    },
+    {
+      "name": "a system message opens no turn",
+      "messages": [
+        { "seq": 1, "role": "system", "blocks": [{ "type": "text", "text": "note" }], "at": "2026-11-20T10:00:00.000Z" },
+        { "seq": 2, "role": "user", "blocks": [{ "type": "text", "text": "prompt 2" }], "at": "2026-11-20T10:00:01.000Z" }
+      ],
+      "turnStarts": [1]
+    }
+  ]
+}

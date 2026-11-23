@@ -1,0 +1,42 @@
+{
+  "description": "Apple odrzucił token: 400 BadDeviceToken (zmyślony token albo token z innego środowiska).",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "production",
+      "type": "alert",
+      "topic": "ai.rarog.app"
+    }
+  },
+  "apns": {
+    "status": 400,
+    "body": "{\"reason\":\"BadDeviceToken\"}"
+  },
+  "apnsRequest": {
+    "url": "https://api.push.apple.com/3/device/c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+    "headers": {
+      "apns-push-type": "background",
+      "apns-priority": "5",
+      "apns-topic": "ai.rarog.app",
+      "apns-expiration": "0",
+      "content-type": "application/json"
+    },
+    "body": "{\"aps\":{\"content-available\":1}}"
+  },
+  "response": {
+    "status": 422,
+    "body": {
+      "v": 1,
+      "error": "token-rejected",
+      "apnsStatus": 400,
+      "reason": "BadDeviceToken"
+    }
+  }
+}

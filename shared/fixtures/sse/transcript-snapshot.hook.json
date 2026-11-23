@@ -1,0 +1,89 @@
+{
+  "type": "transcript-snapshot",
+  "sessionId": "herdr-w1-p2",
+  "messages": [],
+  "pendingPermissions": [
+    {
+      "permId": "rarog-k-2c8e04",
+      "sessionId": "herdr-w1-p2",
+      "toolName": "Bash",
+      "displayText": "pnpm test server/test/layer1-cycle.test.ts",
+      "inputKind": "shell",
+      "risk": "normal",
+      "cwd": "/Users/demo/Projects/birch",
+      "createdAt": "2026-10-03T08:02:00.000Z",
+      "canAllow": true,
+      "subject": "tool",
+      "channel": "hook",
+      "state": "pending",
+      "dialogVisible": true,
+      "fields": [
+        {
+          "name": "description",
+          "value": "Run the consent cycle tests"
+        },
+        {
+          "name": "timeout",
+          "value": "120000"
+        },
+        {
+          "name": "dangerouslyDisableSandbox",
+          "value": "true"
+        }
+      ],
+      "notes": [
+        "sandbox-disabled"
+      ]
+    },
+    {
+      "permId": "rarog-k-91d0b6",
+      "sessionId": "herdr-w1-p2",
+      "toolName": "Write",
+      "displayText": "{\n  \"file_path\": \"/Users/demo/Projects/birch/notes.md\",\n  \"content\": \"# Notes\\n\"\n}",
+      "inputKind": "json",
+      "risk": "normal",
+      "cwd": "/Users/demo/Projects/birch",
+      "createdAt": "2026-10-03T08:02:00.000Z",
+      "canAllow": false,
+      "subject": "tool",
+      "channel": "hook",
+      "state": "pending",
+      "unavailable": "terminal-only",
+      "dialogVisible": false,
+      "siblingsDenied": 2
+    },
+    {
+      "permId": "rarog-k-4d2a17",
+      "sessionId": "herdr-w1-p2",
+      "toolName": "Bash",
+      "displayText": "pnpm test server/test/layer1-cycle.test.ts",
+      "inputKind": "shell",
+      "risk": "normal",
+      "cwd": "/Users/demo/Projects/birch",
+      "createdAt": "2026-10-03T08:02:00.000Z",
+      "canAllow": true,
+      "subject": "tool",
+      "channel": "hook",
+      "state": "pending",
+      "dialogVisible": true,
+      "fields": [
+        {
+          "name": "description",
+          "value": "Run the consent cycle tests"
+        },
+        {
+          "name": "timeout",
+          "value": "120000"
+        }
+      ],
+      "always": [
+        {
+          "kind": "rule",
+          "value": "Bash(pnpm test:*)",
+          "destination": "localSettings"
+        }
+      ]
+    }
+  ],
+  "pendingQuestions": []
+}

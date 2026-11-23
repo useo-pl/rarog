@@ -1,0 +1,6 @@
+{"_pomiar":"n5-skill"}
+{"_pomiar":"hook","decyzja":"exit2","prompt":"/pomiar-blokady:pomiar PILOT-BLOCK n5-skill"}
+{"type":"system","subtype":"informational","level":"warning","isMeta":false,"preventContinuation":true,"promptSubmitEnding":{"ending":{"kind":"blocked_by_hook","reason":"pomiar-blokady: prompt ze znacznikiem PILOT-BLOCK zatrzymany celowo.\nDruga linia powodu (scripts/measure-prompt-block.sh)."},"promptKept":false},"content":"UserPromptSubmit operation blocked by hook:\n[\"node\" \"/tmp/pomiar-blokady/hook.mjs\"]: pomiar-blokady: prompt ze znacznikiem PILOT-BLOCK zatrzymany celowo.\nDruga linia powodu (scripts/measure-prompt-block.sh).\n\n\nOriginal prompt: /pomiar-blokady:pomiar PILOT-BLOCK n5-skill","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","version":"2.1.303"}
+{"_pomiar":"n5-lokalna"}
+{"type":"user","timestamp":"2026-01-01T00:00:01.000Z","uuid":"00000000-0000-4000-8000-000000000003","promptId":"00000000-0000-4000-8000-000000000004","isMeta":true,"message":{"role":"user","content":"<tekst poza fixture>"}}
+{"_pomiar":"obserwacje","n5-skill.blokada":"tak","n5-skill.wywolaniaHooka":"1","polePoBlokadzie.n5-skill":"","n5-lokalna.blokada":"nie","n5-lokalna.wywolaniaHooka":"0","polePoBlokadzie.n5-lokalna":""}

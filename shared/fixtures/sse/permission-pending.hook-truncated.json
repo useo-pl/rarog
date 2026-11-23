@@ -1,0 +1,21 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "rarog-k-5b7d22",
+    "sessionId": "herdr-w1-p2",
+    "toolName": "Write",
+    "displayText": "Rarog can't show this request in full, so you can't allow it from here. Answer it in the terminal.",
+    "displayTextRef": {
+      "code": "dialogs.consent.not-shown"
+    },
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/birch",
+    "createdAt": "2026-10-03T08:02:00.000Z",
+    "canAllow": false,
+    "subject": "tool",
+    "channel": "hook",
+    "state": "pending",
+    "unavailable": "truncated",
+    "dialogVisible": true
+  }
+}

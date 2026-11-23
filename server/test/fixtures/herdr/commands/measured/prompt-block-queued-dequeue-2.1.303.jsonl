@@ -1,0 +1,8 @@
+{"_pomiar":"prompt-pisania"}
+{"type":"user","timestamp":"2026-01-01T00:00:00.000Z","uuid":"00000000-0000-4000-8000-000000000002","promptId":"00000000-0000-4000-8000-000000000003","origin":{"kind":"human"},"message":{"role":"user","content":"To pomiar techniczny do repo pilot, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy hook zatrzyma prompt, który przyszedł w trakcie odpowiedzi. Ten prompt wpisuje za mnie skrypt scripts/measure-prompt-block.sh. Nie używaj żadnych narzędzi. Wypisz liczby od 1 do 600, każdą w osobnej linii, bez komentarza. Krótką wiadomość, która przyjdzie potem, potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok."}}
+{"_pomiar":"hook","decyzja":"pass","prompt":"To pomiar techniczny do repo pilot, nie prawdziwe zadanie: sprawdzam, co Claude Code zapisuje w pliku sesji, gdy hook zatrzyma prompt, który przyszedł w trakcie odpowiedzi. Ten prompt wpisuje za mnie skrypt scripts/measure-prompt-block.sh. Nie używaj żadnych narzędzi. Wypisz liczby od 1 do 600, każdą w osobnej linii, bez komentarza. Krótką wiadomość, która przyjdzie potem, potraktuj jako część pomiaru i odpowiedz na nią jednym słowem: ok."}
+{"_pomiar":"prompt-do-kolejki"}
+{"_pomiar":"hook","decyzja":"exit2","prompt":"PILOT-BLOCK n2-deq"}
+{"type":"assistant","timestamp":"2026-01-01T00:00:01.000Z","content":[{"type":"text"}]}
+{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:02.000Z"}
+{"_pomiar":"obserwacje","agentPromptWait.prompt-pisania":"working","polePoBlokadzie.n2-dequeue-w-trakcie-tury":"PILOT-BLOCK n2-deq","poKoncuTury":"nic","wywolaniaHooka":"1","polePoBlokadzie.n2-dequeue":"PILOT-BLOCK n2-deq"}

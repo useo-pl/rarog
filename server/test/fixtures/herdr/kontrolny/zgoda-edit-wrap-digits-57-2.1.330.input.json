@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/projekt/notes-cyfry-57.md",
+    "old_string": "Status: draft",
+    "new_string": "Status: final"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": [
+    {
+      "file_path": "/Users/u/projekt/notes-cyfry-57.md",
+      "content": "# Sample notes\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyza42 -xghijklmnopqrstu\nStatus: draft\nEnd of notes.\n"
+    }
+  ]
+}

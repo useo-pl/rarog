@@ -1,0 +1,7 @@
+{
+  "error": "companion-speech-upstream",
+  "message": "Soniox didn't give the voice agent a key. Try again in a moment.",
+  "messageRef": {
+    "code": "rest.companion-speech-upstream"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "type": "git-status",
+  "sessionId": "herdr-w1-p1",
+  "branch": "feat/kontrakt-semantyczny",
+  "dirtyCount": 3,
+  "files": [
+    "shared/src/decode.ts",
+    "docs/img/karta-unsupported.png",
+    "docs/spec.md"
+  ],
+  "ahead": 2,
+  "behind": 0,
+  "fileKinds": {
+    "added": 1,
+    "modified": 2,
+    "deleted": 0
+  },
+  "lastCommit": {
+    "hash": "dd51c2c1",
+    "subject": "feat(web): karta unsupported",
+    "at": "2026-10-03T07:10:00.000Z"
+  },
+  "fileDetails": [
+    {
+      "path": "shared/src/decode.ts",
+      "kind": "modified",
+      "linesAdded": "42",
+      "linesDeleted": 7
+    },
+    {
+      "path": "docs/img/karta-unsupported.png",
+      "kind": "modified",
+      "binary": true
+    },
+    {
+      "path": "docs/spec.md",
+      "kind": "added"
+    }
+  ]
+}

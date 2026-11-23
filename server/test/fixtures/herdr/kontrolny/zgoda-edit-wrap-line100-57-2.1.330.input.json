@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/projekt/notes-n100-57.md",
+    "old_string": "Status: draft",
+    "new_string": "Status: final"
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": [
+    {
+      "file_path": "/Users/u/projekt/notes-n100-57.md",
+      "content": "Filler line 1.\nFiller line 2.\nFiller line 3.\nFiller line 4.\nFiller line 5.\nFiller line 6.\nFiller line 7.\nFiller line 8.\nFiller line 9.\nFiller line 10.\nFiller line 11.\nFiller line 12.\nFiller line 13.\nFiller line 14.\nFiller line 15.\nFiller line 16.\nFiller line 17.\nFiller line 18.\nFiller line 19.\nFiller line 20.\nFiller line 21.\nFiller line 22.\nFiller line 23.\nFiller line 24.\nFiller line 25.\nFiller line 26.\nFiller line 27.\nFiller line 28.\nFiller line 29.\nFiller line 30.\nFiller line 31.\nFiller line 32.\nFiller line 33.\nFiller line 34.\nFiller line 35.\nFiller line 36.\nFiller line 37.\nFiller line 38.\nFiller line 39.\nFiller line 40.\nFiller line 41.\nFiller line 42.\nFiller line 43.\nFiller line 44.\nFiller line 45.\nFiller line 46.\nFiller line 47.\nFiller line 48.\nFiller line 49.\nFiller line 50.\nFiller line 51.\nFiller line 52.\nFiller line 53.\nFiller line 54.\nFiller line 55.\nFiller line 56.\nFiller line 57.\nFiller line 58.\nFiller line 59.\nFiller line 60.\nFiller line 61.\nFiller line 62.\nFiller line 63.\nFiller line 64.\nFiller line 65.\nFiller line 66.\nFiller line 67.\nFiller line 68.\nFiller line 69.\nFiller line 70.\nFiller line 71.\nFiller line 72.\nFiller line 73.\nFiller line 74.\nFiller line 75.\nFiller line 76.\nFiller line 77.\nFiller line 78.\nFiller line 79.\nFiller line 80.\nFiller line 81.\nFiller line 82.\nFiller line 83.\nFiller line 84.\nFiller line 85.\nFiller line 86.\nFiller line 87.\nFiller line 88.\nFiller line 89.\nFiller line 90.\nFiller line 91.\nFiller line 92.\nFiller line 93.\nFiller line 94.\nFiller line 95.\nFiller line 96.\nninety-seven\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk\nninety-nine\nStatus: draft\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk\none hundred two\none hundred three\n"
+    }
+  ]
+}

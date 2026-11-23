@@ -1,0 +1,19 @@
+❯ pomiar W: wklejka
+  z telefonu, linia 2
+  linia 3 z 12
+  linia 4 z 12
+  linia 5 z 12
+  linia 6 z 12
+  linia 7 z 12
+  linia 8 z 12
+  linia 9 z 12
+  linia 10 z 12
+  linia 11 z 12
+  odpowiedz slowem: ok
+  ctrl+enter to send now
+
+✽ Beaming… (11s)
+  Advisor Tool (experim…
+──────────────────────────
+❯ Press up to edit queued…
+──────────────────────────

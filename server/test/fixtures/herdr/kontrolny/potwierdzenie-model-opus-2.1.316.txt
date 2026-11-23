@@ -1,0 +1,39 @@
+
+
+❯ ZESTAW-KONTROLNY-FORMULARZ: zadaj jedno pytanie.
+
+  Thought for 1s
+
+⏺ User answered Claude's questions:
+  ⎿  · Który wariant zestawu kontrolnego zapisać? → Pierwszy
+
+  Thought for 1s
+
+⏺ gotowe
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ /model
+  ⎿  Kept model as Sonnet 5.5
+
+❯ /effort
+  ⎿  Set effort level to high (saved as your default for new sessions): Comprehensive implementation with extensive
+     testing and documentation
+
+❯ /effort low
+  ⎿  Set effort level to low (saved as your default for new sessions): Quick, straightforward implementation with
+     minimal overhead
+
+❯ /model fable
+  ⎿  Kept model as Sonnet 5.5
+
+❯ /model opus[1m]
+  ⎿  Kept model as Sonnet 5.5
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+   Switch model?
+   Your next response will be slower and use more tokens
+
+   This conversation is cached for the current model. Switching to Opus 5.5 means the full history gets re-read.
+
+   ❯ 1. Yes, switch to Opus 5.5
+     2. No, go back

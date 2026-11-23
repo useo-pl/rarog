@@ -1,0 +1,8 @@
+❯ pomiar B: ok
+  ctrl+enter to send now
+
+✽ Simmering… (17s)
+
+──────────────────────────
+❯ Press up to edit queued…
+──────────────────────────

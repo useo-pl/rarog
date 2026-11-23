@@ -1,0 +1,7 @@
+{
+  "error": "bad-state",
+  "message": "The session is in a state that doesn't allow this action.",
+  "messageRef": {
+    "code": "rest.bad-state"
+  }
+}

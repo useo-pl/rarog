@@ -1,0 +1,67 @@
+{
+  "type": "transcript-snapshot",
+  "sessionId": "demo-willow",
+  "messages": [
+    {
+      "seq": 1,
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Popraw zapis notatek — po restarcie gubi ostatnią zmianę. Dopisz test."
+        }
+      ],
+      "at": "2026-10-03T08:48:00.000Z"
+    },
+    {
+      "seq": 2,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "## Diagnoza\n\nZapis leci do pliku po rozgłoszeniu zmiany, więc restart w tym oknie gubi ostatnią notatkę.\n\n- zapis jest asynchroniczny,\n- UI dostaje potwierdzenie od razu,\n- brak testu na kolejność."
+        }
+      ],
+      "at": "2026-10-03T08:49:00.000Z"
+    },
+    {
+      "seq": 3,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Zmieniam kolejność i domykam zapis przed powiadomieniem:\n\n```ts\nexport async function saveNote(note: Note): Promise<void> {\n  await store.write(note);\n  emitter.emit(\"note-saved\", note.id);\n}\n```\n\nTeraz uruchomię testy jednostkowe modułu notatek."
+        }
+      ],
+      "at": "2026-10-03T08:54:00.000Z"
+    },
+    {
+      "seq": 4,
+      "role": "assistant",
+      "blocks": [
+        {
+          "type": "tool-call",
+          "toolName": "Edit",
+          "summary": "src/notes.ts",
+          "detail": "--- src/notes.ts\n+++ src/notes.ts\n@@\n-  emitter.emit(\"note-saved\", note.id);\n-  await store.write(note);\n+  await store.write(note);\n+  emitter.emit(\"note-saved\", note.id);",
+          "inputKind": "json"
+        }
+      ],
+      "at": "2026-10-03T08:55:00.000Z"
+    }
+  ],
+  "pendingPermissions": [
+    {
+      "permId": "demo-perm-willow",
+      "sessionId": "demo-willow",
+      "toolName": "Bash",
+      "displayText": "npm test -- --run src/notes.test.ts",
+      "risk": "normal",
+      "cwd": "/Users/demo/Projects/willow",
+      "createdAt": "2026-10-03T08:56:00.000Z",
+      "subject": "tool",
+      "inputKind": "shell"
+    }
+  ],
+  "pendingQuestions": []
+}

@@ -1,0 +1,42 @@
+{
+  "type": "question-pending",
+  "request": {
+    "qId": "screen:q:28d06a163246",
+    "sessionId": "herdr-w6-p13",
+    "questions": [
+      {
+        "question": "Review your answers\n● Na którą wartość ujednolicić odstęp pod\nnagłówkiem sekcji?\n→ 52 px — wartość `wide`\n(Rekomendacja)\n● Które dodatki włączyć?\n→ Posypka\n→ Polewa\nReady to submit your answers?",
+        "header": "",
+        "multiSelect": false,
+        "options": [
+          {
+            "label": "Submit answers",
+            "role": "answer"
+          },
+          {
+            "label": "Cancel",
+            "role": "answer"
+          }
+        ],
+        "review": [
+          {
+            "question": "Na którą wartość ujednolicić odstęp pod nagłówkiem sekcji?",
+            "answers": [
+              "52 px — wartość `wide` (Rekomendacja)"
+            ]
+          },
+          {
+            "question": "Które dodatki włączyć?",
+            "answers": [
+              "Posypka",
+              "Polewa"
+            ]
+          }
+        ]
+      }
+    ],
+    "createdAt": "2026-10-03T08:00:58.000Z",
+    "channel": "keys",
+    "customAnswer": false
+  }
+}

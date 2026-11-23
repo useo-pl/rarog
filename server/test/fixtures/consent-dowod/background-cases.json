@@ -1,0 +1,291 @@
+[
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8u-1",
+    "klucz": "00000000-0000-4000-9000-000000000030-6b2e18f227775509dce10b0c376dd82a",
+    "agentId": "a524304cac783fdd8",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000003",
+      "runInBackground": "tak(napis)",
+      "ms": -1596,
+      "msTimestamp": -1663,
+      "przedHookiem": "tak",
+      "toolUseMs": -1596
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 67,
+      "toolUseMsTimestamp": -71,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 31754
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny"
+    },
+    "koniec": {
+      "jest": "tak",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 33055,
+      "poWyniku": 1301
+    },
+    "hook": "background-hidden-1.hook.json",
+    "transkrypt": "background-hidden-1.subagent.jsonl",
+    "metaPlik": "background-hidden-1.meta.json",
+    "transkryptGlowny": "background-hidden-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8u-2",
+    "klucz": "00000000-0000-4000-9000-000000000054-54bb6b2ec0b2bd077583f047612e1682",
+    "agentId": "a701a4c2722d5807a",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000005",
+      "runInBackground": "tak(napis)",
+      "ms": -1791,
+      "msTimestamp": -1882,
+      "przedHookiem": "tak",
+      "toolUseMs": -1791
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 84,
+      "toolUseMsTimestamp": -69,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 30662
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny"
+    },
+    "koniec": {
+      "jest": "tak",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 31854,
+      "poWyniku": 1192
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8u-3",
+    "klucz": "00000000-0000-4000-9000-000000000055-b641ec12851a289632acf91ed37a5924",
+    "agentId": "ae1b566ce03a3142a",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000006",
+      "runInBackground": "tak(napis)",
+      "ms": -1959,
+      "msTimestamp": -2024,
+      "przedHookiem": "tak",
+      "toolUseMs": -1959
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 63,
+      "toolUseMsTimestamp": -69,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 30698
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny"
+    },
+    "koniec": {
+      "jest": "tak",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 31842,
+      "poWyniku": 1144
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8u-4",
+    "klucz": "00000000-0000-4000-9000-000000000056-21b42d14d355ab4d49af089e3c48fb0f",
+    "agentId": "afb2e3516f332b36f",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000007",
+      "runInBackground": "tak(napis)",
+      "ms": -2005,
+      "msTimestamp": -2048,
+      "przedHookiem": "tak",
+      "toolUseMs": -2005
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 33,
+      "toolUseMsTimestamp": -139,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 30512
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny"
+    },
+    "koniec": {
+      "jest": "tak",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 31654,
+      "poWyniku": 1142
+    }
+  },
+  {
+    "rodzaj": "tlo",
+    "nazwa": "m8u-5",
+    "klucz": "00000000-0000-4000-9000-000000000057-8136a56853c3bbc4d0d035b15bca5c23",
+    "agentId": "a51247d3ffcc30fe5",
+    "start": {
+      "jest": "tak",
+      "status": "async_launched",
+      "background": null,
+      "toolUseId": "toolu_000000000000000000000008",
+      "runInBackground": "tak(napis)",
+      "ms": -1754,
+      "msTimestamp": -1824,
+      "przedHookiem": "tak",
+      "toolUseMs": -1754
+    },
+    "subagent": {
+      "plik": "tak",
+      "kandydaci": 1,
+      "toolUseMs": 62,
+      "toolUseMsTimestamp": -77,
+      "isSidechain": true,
+      "agentIdNaToolUse": "rowny",
+      "promptIdUserPrzed": "rowny",
+      "rozstrzygniecie": "hook/accept",
+      "wynikMs": 30717
+    },
+    "meta": {
+      "jest": "tak",
+      "klucze": "agentType+description+finished+isBuiltIn+launchedWithDefaults+pickedEffortModel+requestNonInteractive+requestShape+spawnDepth+toolUseId",
+      "agentType": "general-purpose",
+      "spawnDepth": 1,
+      "toolUseId": "rowny"
+    },
+    "koniec": {
+      "jest": "tak",
+      "status": "completed",
+      "wpisy": [
+        "queue-operation/enqueue",
+        "api-request-blob:text",
+        "user"
+      ],
+      "ms": 32095,
+      "poWyniku": 1378
+    }
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8o-1",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000002",
+    "okno": {
+      "wPliku": [
+        "attachment/hook_permission_decision/PermissionRequest@31075"
+      ],
+      "glowny": [
+        "attachment/total_tokens_reminder@16",
+        "assistant:text@16",
+        "tools-used@16",
+        "system/stop_hook_summary@16",
+        "system/turn_duration@16"
+      ],
+      "poDecyzjiPrzedWynikiem": 1,
+      "wynikMs": 31075,
+      "rozstrzygniecie": "hook/accept"
+    },
+    "hook": "background-foreign-hook-1.hook.json",
+    "transkrypt": "background-foreign-hook-1.subagent.jsonl",
+    "metaPlik": "background-foreign-hook-1.meta.json",
+    "transkryptGlowny": "background-foreign-hook-1.glowny.jsonl"
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8o-2",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000009",
+    "okno": {
+      "wPliku": [
+        "attachment/hook_permission_decision/PermissionRequest@30219"
+      ],
+      "glowny": [],
+      "poDecyzjiPrzedWynikiem": 1,
+      "wynikMs": 30219,
+      "rozstrzygniecie": "hook/accept"
+    }
+  },
+  {
+    "rodzaj": "okno",
+    "nazwa": "m8o-3",
+    "plik": "subagent",
+    "toolUseId": "toolu_000000000000000000000010",
+    "okno": {
+      "wPliku": [
+        "attachment/hook_permission_decision/PermissionRequest@30249"
+      ],
+      "glowny": [],
+      "poDecyzjiPrzedWynikiem": 1,
+      "wynikMs": 30249,
+      "rozstrzygniecie": "hook/accept"
+    }
+  }
+]

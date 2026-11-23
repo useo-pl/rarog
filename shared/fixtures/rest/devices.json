@@ -1,0 +1,22 @@
+{
+  "devices": [
+    {
+      "id": "03030303030303030303030303030303",
+      "label": "iPhone·Rarog",
+      "createdAt": "2026-10-04T10:00:00.000Z",
+      "lastSeenAt": "2026-10-04T10:02:00.000Z",
+      "creator": "admin",
+      "build": "1700",
+      "current": true
+    },
+    {
+      "id": "08080808080808080808080808080808",
+      "label": "iPad·Rarog",
+      "createdAt": "2026-10-04T10:01:00.000Z",
+      "lastSeenAt": null,
+      "creator": "03030303030303030303030303030303",
+      "build": "1700",
+      "current": false
+    }
+  ]
+}

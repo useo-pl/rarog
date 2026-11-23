@@ -1,0 +1,13 @@
+{
+  "type": "state",
+  "sessionId": "demo-willow",
+  "state": "limit-reached",
+  "since": "2026-10-03T09:00:21.400Z",
+  "detail": "resetAt=2026-10-03T11:00:21.400Z",
+  "detailRef": {
+    "code": "state.limit-reached",
+    "args": [
+      "2026-10-03T11:00:21.400Z"
+    ]
+  }
+}

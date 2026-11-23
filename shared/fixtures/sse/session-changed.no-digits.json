@@ -1,0 +1,27 @@
+{
+  "type": "session-changed",
+  "session": {
+    "id": "herdr-w2-p5",
+    "cwd": "/Users/demo/Projects/ember",
+    "title": "ember",
+    "state": "waiting-permission",
+    "stateSince": "2026-10-03T08:00:51.000Z",
+    "createdAt": "2026-10-03T08:00:50.000Z",
+    "lastActivityAt": "2026-10-03T08:00:51.000Z",
+    "turnSince": "2026-10-03T08:00:50.000Z",
+    "paneId": "w2:p5",
+    "launchedByRarog": true,
+    "stale": false,
+    "herdrMode": "auto",
+    "herdrDialogReason": "mismatch",
+    "herdrDialogScreen": "Bash command\n  rm -rf ./build\nDo you want to proceed?",
+    "cliDialog": "permission",
+    "outOfScope": false,
+    "label": "sprzątanie",
+    "waitingFor": {
+      "kind": "permission",
+      "tool": "Bash",
+      "subject": "tool"
+    }
+  }
+}

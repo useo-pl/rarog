@@ -1,0 +1,35 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "rarog-k-2c8e04",
+    "sessionId": "herdr-w1-p2",
+    "toolName": "Bash",
+    "displayText": "pnpm test server/test/layer1-cycle.test.ts",
+    "inputKind": "shell",
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/birch",
+    "createdAt": "2026-10-03T08:02:00.000Z",
+    "canAllow": true,
+    "subject": "tool",
+    "channel": "hook",
+    "state": "pending",
+    "dialogVisible": true,
+    "fields": [
+      {
+        "name": "description",
+        "value": "Run the consent cycle tests"
+      },
+      {
+        "name": "timeout",
+        "value": "120000"
+      },
+      {
+        "name": "dangerouslyDisableSandbox",
+        "value": "true"
+      }
+    ],
+    "notes": [
+      "network-open"
+    ]
+  }
+}

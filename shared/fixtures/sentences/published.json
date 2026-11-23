@@ -1,0 +1,3722 @@
+{
+  "format": 1,
+  "sentences": [
+    {
+      "code": "commands.alias-use-canonical",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "canonical",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} is an alias of /{canonical}. Type /{canonical} instead.",
+      "retired": null
+    },
+    {
+      "code": "commands.bare-slash",
+      "args": [],
+      "en": "A bare slash would run the CLI's first suggestion. Type a command name.",
+      "retired": null
+    },
+    {
+      "code": "commands.bypass-outside-yolo",
+      "args": [],
+      "en": "The pane is running in bypass permissions mode. Sending from Rarog is allowed only in directories under RAROG_YOLO_ROOTS.",
+      "retired": null
+    },
+    {
+      "code": "commands.command-mismatch",
+      "args": [],
+      "en": "the driver and the manager recognize the command differently, so sending is on hold",
+      "retired": null
+    },
+    {
+      "code": "commands.completes-to-blocked",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "names",
+          "kind": "text"
+        },
+        {
+          "name": "count",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "The command {token} doesn't go through Rarog. The CLI would complete it to {names}, which Rarog doesn't let through. Run it in the terminal.",
+        "other": "The command {token} doesn't go through Rarog. The CLI would complete it to {names}, none of which Rarog lets through. Run it in the terminal."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.completes-to-blocked.claude-only",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "names",
+          "kind": "text"
+        },
+        {
+          "name": "count",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "The command {token} doesn't go through Rarog. The CLI would complete it to {names}, which Rarog doesn't let through. Describe what you need in a plain message.",
+        "other": "The command {token} doesn't go through Rarog. The CLI would complete it to {names}, none of which Rarog lets through. Describe what you need in a plain message."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.empty",
+      "args": [],
+      "en": "The message is empty. There's nothing to send.",
+      "retired": null
+    },
+    {
+      "code": "commands.exit-word",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "“{command}” would end the Claude Code session. End the session with the button in Rarog or in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.hint.end-session-button",
+      "args": [],
+      "en": "end the session with the button in Rarog or in the terminal",
+      "retired": null
+    },
+    {
+      "code": "commands.hint.rarog-blocks-skill",
+      "args": [],
+      "en": "Rarog doesn't let it through",
+      "retired": null
+    },
+    {
+      "code": "commands.hint.run-in-terminal",
+      "args": [],
+      "en": "run it in the terminal",
+      "retired": null
+    },
+    {
+      "code": "commands.hint.run-skill-in-terminal",
+      "args": [],
+      "en": "run it in the terminal",
+      "retired": null
+    },
+    {
+      "code": "commands.hint.use-model-button",
+      "args": [],
+      "en": "use the model button in Rarog",
+      "retired": null
+    },
+    {
+      "code": "commands.hint.write-plain-message",
+      "args": [],
+      "en": "describe what you need in a plain message",
+      "retired": null
+    },
+    {
+      "code": "commands.incomplete-name",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "names",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} doesn't go through Rarog (Rarog doesn't complete names). Type the full name: {names}.",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-blocked",
+      "args": [],
+      "en": "⚠ herdr rejected the interrupt. The agent is waiting for a decision in the terminal. The turn was not interrupted.",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-done",
+      "args": [],
+      "en": "Turn interrupted from Rarog. The pane accepted Esc.",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-failed.mac",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ Couldn't interrupt the turn: {reason}. Open the pane in herdr on the Mac and press Esc there.",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-failed.mac.code",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "⚠ Couldn't interrupt the turn. Open the pane in herdr on the Mac and press Esc there. Reason: {reason}",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-failed.vps",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ Couldn't interrupt the turn: {reason}. Open the pane in herdr on the VPS and press Esc there.",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-failed.vps.code",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "⚠ Couldn't interrupt the turn. Open the pane in herdr on the VPS and press Esc there. Reason: {reason}",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-panel-gone",
+      "args": [],
+      "en": "⚠ The pane disappeared from herdr, so nothing could accept the interrupt. The turn was not interrupted.",
+      "retired": null
+    },
+    {
+      "code": "commands.interrupt-read-only",
+      "args": [],
+      "en": "⚠ herdr is read-only. The turn wasn't interrupted.",
+      "retired": null
+    },
+    {
+      "code": "commands.mcp-prompt",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} is an MCP prompt. Run MCP prompts in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.mcp-prompt.marked",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} (MCP) is an MCP prompt. Run MCP prompts in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-busy",
+      "args": [
+        {
+          "name": "presses",
+          "kind": "plural"
+        },
+        {
+          "name": "mode",
+          "kind": "text"
+        },
+        {
+          "name": "target",
+          "kind": "text"
+        }
+      ],
+      "en": {
+        "one": "⚠ The pane started a turn or stopped on a decision. After {presses} shift+tab press, it's in {mode} mode. Finish with shift+tab in the terminal (target: {target}).",
+        "other": "⚠ The pane started a turn or stopped on a decision. After {presses} shift+tab presses, it's in {mode} mode. Finish with shift+tab in the terminal (target: {target})."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-busy.mode-unknown",
+      "args": [
+        {
+          "name": "presses",
+          "kind": "plural"
+        },
+        {
+          "name": "target",
+          "kind": "text"
+        }
+      ],
+      "en": {
+        "one": "⚠ The pane started a turn or stopped on a decision. After {presses} shift+tab press, it's in an unknown mode. Finish with shift+tab in the terminal (target: {target}).",
+        "other": "⚠ The pane started a turn or stopped on a decision. After {presses} shift+tab presses, it's in an unknown mode. Finish with shift+tab in the terminal (target: {target})."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-done",
+      "args": [
+        {
+          "name": "target",
+          "kind": "text"
+        },
+        {
+          "name": "presses",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "✓ The pane switched to {target} mode ({presses} shift+tab press from Rarog).",
+        "other": "✓ The pane switched to {target} mode ({presses} shift+tab presses from Rarog)."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-exhausted",
+      "args": [
+        {
+          "name": "target",
+          "kind": "text"
+        },
+        {
+          "name": "presses",
+          "kind": "plural"
+        },
+        {
+          "name": "mode",
+          "kind": "text"
+        }
+      ],
+      "en": {
+        "one": "⚠ Cycled through all the modes without reaching “{target}”. After {presses} shift+tab press, the pane is in {mode} mode. Check in the terminal whether this pane has that mode.",
+        "other": "⚠ Cycled through all the modes without reaching “{target}”. After {presses} shift+tab presses, the pane is in {mode} mode. Check in the terminal whether this pane has that mode."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-exhausted.mode-unknown",
+      "args": [
+        {
+          "name": "target",
+          "kind": "text"
+        },
+        {
+          "name": "presses",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "⚠ Cycled through all the modes without reaching “{target}”. After {presses} shift+tab press, the pane is in an unknown mode. Check in the terminal whether this pane has that mode.",
+        "other": "⚠ Cycled through all the modes without reaching “{target}”. After {presses} shift+tab presses, the pane is in an unknown mode. Check in the terminal whether this pane has that mode."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-key-lost",
+      "args": [
+        {
+          "name": "presses",
+          "kind": "plural"
+        },
+        {
+          "name": "mode",
+          "kind": "text"
+        },
+        {
+          "name": "target",
+          "kind": "text"
+        }
+      ],
+      "en": {
+        "one": "⚠ The key didn't reach the pane. After {presses} shift+tab press, it's in {mode} mode. Finish with shift+tab in the terminal (target: {target}).",
+        "other": "⚠ The key didn't reach the pane. After {presses} shift+tab presses, it's in {mode} mode. Finish with shift+tab in the terminal (target: {target})."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-key-lost.mode-unknown",
+      "args": [
+        {
+          "name": "presses",
+          "kind": "plural"
+        },
+        {
+          "name": "target",
+          "kind": "text"
+        }
+      ],
+      "en": {
+        "one": "⚠ The key didn't reach the pane. After {presses} shift+tab press, it's in an unknown mode. Finish with shift+tab in the terminal (target: {target}).",
+        "other": "⚠ The key didn't reach the pane. After {presses} shift+tab presses, it's in an unknown mode. Finish with shift+tab in the terminal (target: {target})."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-keys",
+      "args": [],
+      "en": "The mode switch path sends only [\"shift+tab\"].",
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-no-footer",
+      "args": [
+        {
+          "name": "presses",
+          "kind": "plural"
+        },
+        {
+          "name": "mode",
+          "kind": "text"
+        },
+        {
+          "name": "target",
+          "kind": "text"
+        }
+      ],
+      "en": {
+        "one": "⚠ The mode footer isn't visible. After {presses} shift+tab press, the pane is in {mode} mode. Finish with shift+tab in the terminal (target: {target}).",
+        "other": "⚠ The mode footer isn't visible. After {presses} shift+tab presses, the pane is in {mode} mode. Finish with shift+tab in the terminal (target: {target})."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.mode-cycle-no-footer.mode-unknown",
+      "args": [
+        {
+          "name": "presses",
+          "kind": "plural"
+        },
+        {
+          "name": "target",
+          "kind": "text"
+        }
+      ],
+      "en": {
+        "one": "⚠ The mode footer isn't visible. After {presses} shift+tab press, the pane is in an unknown mode. Finish with shift+tab in the terminal (target: {target}).",
+        "other": "⚠ The mode footer isn't visible. After {presses} shift+tab presses, the pane is in an unknown mode. Finish with shift+tab in the terminal (target: {target})."
+      },
+      "retired": null
+    },
+    {
+      "code": "commands.namespaced",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "names",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} doesn't go through Rarog (Rarog doesn't complete bare plugin names). Type {names} instead.",
+      "retired": null
+    },
+    {
+      "code": "commands.not-in-catalog",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "“{token}” isn't a name from the Rarog catalog, and the CLI would run a command with that name if one existed (a skill or a plugin command). Start the message differently or run the command in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.not-internal",
+      "args": [],
+      "en": "This isn't a command that Rarog can send through its internal path.",
+      "retired": null
+    },
+    {
+      "code": "commands.panel-send-failed",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ Couldn't send to the pane: {reason}",
+      "retired": null
+    },
+    {
+      "code": "commands.panel-send-failed.code",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "⚠ Couldn't send to the pane: {reason}",
+      "retired": null
+    },
+    {
+      "code": "commands.path-completes",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "“{token}” is a path, but the CLI would complete it to a command. Add a slash: {token}/.",
+      "retired": null
+    },
+    {
+      "code": "commands.prefix-blocked",
+      "args": [
+        {
+          "name": "prefix",
+          "kind": "text"
+        }
+      ],
+      "en": "The prefix “{prefix}” is blocked. Reword the message.",
+      "retired": null
+    },
+    {
+      "code": "commands.prompt-blocked",
+      "args": [],
+      "en": "⚠ A hook blocked the prompt. It wasn't sent.",
+      "retired": null
+    },
+    {
+      "code": "commands.prompt-blocked.prompt",
+      "args": [
+        {
+          "name": "prompt",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ A hook blocked the prompt. It wasn't sent.\nPrompt: {prompt}",
+      "retired": null
+    },
+    {
+      "code": "commands.prompt-blocked.reason",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ A hook blocked the prompt. It wasn't sent.\n{reason}",
+      "retired": null
+    },
+    {
+      "code": "commands.prompt-blocked.reason-and-prompt",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        },
+        {
+          "name": "prompt",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ A hook blocked the prompt. It wasn't sent.\n{reason}\nPrompt: {prompt}",
+      "retired": null
+    },
+    {
+      "code": "commands.quiet-command",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "ⓘ {command} didn't start a turn. The command's output, if any, is visible only in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.redirect-blocked",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "word",
+          "kind": "text"
+        },
+        {
+          "name": "target",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} {word} redirects to /{target}, which Rarog doesn't let through. Run it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.refused-alias",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "canonical",
+          "kind": "text"
+        },
+        {
+          "name": "hint",
+          "kind": "code"
+        }
+      ],
+      "en": "The command {token} is an alias of /{canonical}, which Rarog doesn't let through: {hint}.",
+      "retired": null
+    },
+    {
+      "code": "commands.refused-claude-skill",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} is a skill that only Claude invokes: describe what you need in a plain message.",
+      "retired": null
+    },
+    {
+      "code": "commands.refused-hidden-skill",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "hint",
+          "kind": "code"
+        }
+      ],
+      "en": "The command {token} is a skill hidden in settings (user-invocable: false or skillOverrides: off): {hint}.",
+      "retired": null
+    },
+    {
+      "code": "commands.refused-known.end-session",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} doesn't go through Rarog: end the session with the button in Rarog or in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.refused-known.run-in-terminal",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} doesn't go through Rarog: run it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.refused-known.use-model-button",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} doesn't go through Rarog: use the model button in Rarog.",
+      "retired": null
+    },
+    {
+      "code": "commands.refused-synced-skill",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "hint",
+          "kind": "code"
+        }
+      ],
+      "en": "The command {token} is a skill from claude.ai, which Rarog doesn't let through: {hint}.",
+      "retired": null
+    },
+    {
+      "code": "commands.send-blocked",
+      "args": [],
+      "en": "⚠ herdr rejected the send. The agent is waiting for a decision in the terminal. The message was not sent.",
+      "retired": null
+    },
+    {
+      "code": "commands.send-failed",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ The message was not sent: {reason}",
+      "retired": null
+    },
+    {
+      "code": "commands.send-held.cli-dialog",
+      "args": [],
+      "en": "⚠ A Claude Code dialog is open in the pane and waiting for an answer. The message was not sent. Answer on the card or at the desk, then send again.",
+      "retired": null
+    },
+    {
+      "code": "commands.send-held.consent-dialog",
+      "args": [],
+      "en": "⚠ A Claude Code permission dialog is waiting for an answer in the terminal. The message was not sent. Dismiss the dialog (Esc) or answer at the desk, then send again.",
+      "retired": null
+    },
+    {
+      "code": "commands.send-held.form",
+      "args": [],
+      "en": "⚠ A question form from the agent is open in the pane. The message was not sent. Answer on the question card or at the desk, then send again.",
+      "retired": null
+    },
+    {
+      "code": "commands.send-read-only",
+      "args": [],
+      "en": "herdr is read-only. The message wasn't sent.",
+      "retired": null
+    },
+    {
+      "code": "commands.send-refused",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "⚠ The message was not sent: {reason}",
+      "retired": null
+    },
+    {
+      "code": "commands.send-session-changed",
+      "args": [],
+      "en": "⚠ The pane switched to another conversation before Rarog could send this message. It was not sent.",
+      "retired": null
+    },
+    {
+      "code": "commands.send-stalled",
+      "args": [],
+      "en": "⚠ The message got stuck in the pane's input field and was not sent. Send it again or finish in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.too-large",
+      "args": [
+        {
+          "name": "bytes",
+          "kind": "int"
+        },
+        {
+          "name": "limitKb",
+          "kind": "int"
+        }
+      ],
+      "en": "The message is {bytes} B, and the limit for sending to the pane is {limitKb} KB.",
+      "retired": null
+    },
+    {
+      "code": "commands.unknown",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        }
+      ],
+      "en": "Rarog doesn't know the command {token}. Check the name or run it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "commands.use-joined",
+      "args": [
+        {
+          "name": "token",
+          "kind": "text"
+        },
+        {
+          "name": "name",
+          "kind": "text"
+        }
+      ],
+      "en": "The command {token} doesn't go through Rarog. Type /{name} instead.",
+      "retired": null
+    },
+    {
+      "code": "demo.launch-throttled",
+      "args": [],
+      "en": "Too fast. The demo throttles session creation too.",
+      "retired": null
+    },
+    {
+      "code": "demo.pane-cap",
+      "args": [],
+      "en": "Rarog pane limit reached (demo).",
+      "retired": null
+    },
+    {
+      "code": "demo.pane-not-found",
+      "args": [],
+      "en": "That pane doesn't exist.",
+      "retired": null
+    },
+    {
+      "code": "demo.review-device-limit",
+      "args": [],
+      "en": "Too many devices are paired with the demo. Try again later.",
+      "retired": null
+    },
+    {
+      "code": "demo.review-refused",
+      "args": [],
+      "en": "This isn't available in the demo.",
+      "retired": null
+    },
+    {
+      "code": "demo.seed-backend-restarted",
+      "args": [],
+      "en": "interrupted — backend restarted",
+      "retired": null
+    },
+    {
+      "code": "demo.unauthorized",
+      "args": [],
+      "en": "Demo: the server rejects the device key.",
+      "retired": null
+    },
+    {
+      "code": "demo.would-send",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "Demo: Rarog would send `{command}` to the pane.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.consent.allow-always",
+      "args": [],
+      "en": "On this card, “don't ask again” can only be chosen in the terminal. Allow once or answer in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.consent.card-changed",
+      "args": [],
+      "en": "The card changed before your decision reached Rarog. Look at it again and decide on what it shows now.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.consent.not-shown",
+      "args": [],
+      "en": "Rarog can't show this request in full, so you can't allow it from here. Answer it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.consent.release-taken",
+      "args": [],
+      "en": "The hook has already taken the answer, so it can't be safely withdrawn. The transcript will show the result.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.consent.too-late",
+      "args": [],
+      "en": "It's too late to hand this request back to the terminal: the hook has already finished waiting.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.degraded-display",
+      "args": [],
+      "en": "Rarog couldn't confirm what this dialog is about. From here you can only deny it. Allow it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.degraded-unreadable",
+      "args": [],
+      "en": "Rarog can't see this dialog's options on the pane's screen. If the Claude Code view in the terminal is scrolled up, scroll it to the bottom. The card refreshes on its own. From here you can only deny it.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.fallback-question.confirm",
+      "args": [],
+      "en": "The pane is waiting for confirmation in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.fallback-question.question",
+      "args": [],
+      "en": "The agent asked a question in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.fallback-question.tool",
+      "args": [],
+      "en": "The pane is waiting for permission to use a tool.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.form-submit-abort",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "⚠ The confirmation (Enter) was not sent: {reason}. Answer on a new card or in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.form-submit-gone",
+      "args": [],
+      "en": "⚠ The dialog changed right after the digit was sent, so the confirmation (Enter) was not sent. Check in the pane whether the answer went through before answering again.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.form-submit-keys",
+      "args": [],
+      "en": "The form confirmation path sends only [\"enter\"].",
+      "retired": null
+    },
+    {
+      "code": "dialogs.hook-answer-partial",
+      "args": [
+        {
+          "name": "question",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ The hook didn't receive the answer (timeout, or the decision was made at the desk). Only the answer to the question “{question}” was sent, as a digit. The rest will come back as separate cards, tab by tab.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.key-not-allowed",
+      "args": [
+        {
+          "name": "key",
+          "kind": "text"
+        },
+        {
+          "name": "allowed",
+          "kind": "text"
+        }
+      ],
+      "en": "The key “{key}” isn't allowed (allowed: {allowed}).",
+      "retired": null
+    },
+    {
+      "code": "dialogs.keys-empty",
+      "args": [],
+      "en": "The key list is empty. There's nothing to send.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.multi-select",
+      "args": [],
+      "en": "⚠ Make multiple selections in the terminal. Rarog sends exactly one digit.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.no-answer-on-screen",
+      "args": [],
+      "en": "⚠ There's no answer to the question open in the terminal. Choose an option and send again.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.no-digit",
+      "args": [],
+      "en": "⚠ Couldn't tell which dialog option matches this decision. Confirm it in the terminal. Rarog sent no key.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.note-no-channel",
+      "args": [],
+      "en": "⚠ Only the hook channel carries a note, and this card answers with a digit. Rarog did not send the answer. Send without the note or answer in the terminal (the n key adds a note).",
+      "retired": null
+    },
+    {
+      "code": "dialogs.note-not-allowed",
+      "args": [],
+      "en": "⚠ A note applies to one chosen option from the list. Rarog did not send the answer. Choose an option or remove the note.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.note-not-delivered",
+      "args": [
+        {
+          "name": "notes",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ The hook didn't receive the answer with the note (timeout, or the decision was made at the desk). Rarog did not send the digit, because it would lose the note. Answer in the terminal: select the option and add the note with the n key. Your note: “{notes}”",
+      "retired": null
+    },
+    {
+      "code": "dialogs.note-write-failed",
+      "args": [],
+      "en": "⚠ Couldn't save the answer with the note for the hook. Rarog did not send the answer (a digit would lose the note). Try again or answer in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.pause-escape",
+      "args": [],
+      "en": "⚠ The pane shows “Session paused”. Rarog doesn't send Esc to it, because the effect hasn't been verified. Choose an option in the terminal. Rarog sent no key.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.consent-dialog",
+      "args": [],
+      "en": "The pane asks for permission to scan the environment. Answer in the terminal, or press Esc to deny. Messages sent from here wait until the dialog closes.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.form-submit",
+      "args": [],
+      "en": "Sent the digit but not the confirmation. Check the pane.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.in-flight",
+      "args": [],
+      "en": "A decision from another device is in progress. Wait a moment.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.mismatch",
+      "args": [],
+      "en": "Rarog couldn't confirm that the card matches the dialog in the terminal. Check it there.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.multi-select",
+      "args": [],
+      "en": "Make multiple selections in the terminal. Rarog sends only one digit.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.no-digit",
+      "args": [],
+      "en": "Couldn't match this decision to an option. Allow it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.no-jsonl",
+      "args": [],
+      "en": "Rarog doesn't know what this dialog says. Allow it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.screen-changed",
+      "args": [],
+      "en": "The pane now shows a different dialog. Decide on the new card.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.send-failed",
+      "args": [],
+      "en": "Nothing reached the pane. Check herdr and try again.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.stale-card",
+      "args": [],
+      "en": "The dialog changed in the meantime. Tap again on the new card.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.terminal-only",
+      "args": [],
+      "en": "This option changes permissions permanently. Choose it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.refuse.unreadable",
+      "args": [],
+      "en": "Couldn't read the dialog from the pane. Allow it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.screen-changed",
+      "args": [],
+      "en": "⚠ The pane now shows a different dialog than this card. Rarog sent no key. Decide again on the new card or in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.stale-decision",
+      "args": [],
+      "en": "⚠ The answer didn't go through: the dialog in the terminal changed in the meantime. Tap again on the new card. Rarog sent no key.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.submit-abort.not-a-form",
+      "args": [],
+      "en": "the screen no longer shows a question form",
+      "retired": null
+    },
+    {
+      "code": "dialogs.submit-abort.notes-editing",
+      "args": [],
+      "en": "the form is in note-editing mode (the digit may have been typed as text; check the field)",
+      "retired": null
+    },
+    {
+      "code": "dialogs.submit-abort.option-unconfirmed",
+      "args": [],
+      "en": "the highlight isn't clearly on the chosen option",
+      "retired": null
+    },
+    {
+      "code": "dialogs.submit-abort.question-changed",
+      "args": [],
+      "en": "the form now shows a different question than the card",
+      "retired": null
+    },
+    {
+      "code": "dialogs.terminal-dialog",
+      "args": [],
+      "en": "⚠ You resolve this CLI dialog in the terminal. Rarog shows it on a card but doesn't choose an option in it. Rarog sent no key.",
+      "retired": null
+    },
+    {
+      "code": "dialogs.terminal-only",
+      "args": [],
+      "en": "⚠ This option permanently changes the pane's permissions. Choose it in the terminal. Rarog sent no key.",
+      "retired": null
+    },
+    {
+      "code": "herdr.agent-gone",
+      "args": [
+        {
+          "name": "key",
+          "kind": "text"
+        }
+      ],
+      "en": "Agent {key} no longer exists in herdr.",
+      "retired": null
+    },
+    {
+      "code": "herdr.agent-name-failed",
+      "args": [],
+      "en": "herdr: couldn't name the agent.",
+      "retired": null
+    },
+    {
+      "code": "herdr.agent-vanished",
+      "args": [],
+      "en": "The `claude` agent disappeared right after starting.",
+      "retired": null
+    },
+    {
+      "code": "herdr.agent-vanished.screen",
+      "args": [
+        {
+          "name": "screen",
+          "kind": "text"
+        }
+      ],
+      "en": "The `claude` agent disappeared right after starting: {screen}",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-effort",
+      "args": [],
+      "en": "`--effort` has a value outside the list of levels.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-empty",
+      "args": [],
+      "en": "The `claude` argument list is empty. At least `--session-id` is missing.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-fork-without-resume",
+      "args": [],
+      "en": "`--fork-session` without `--resume` has nothing to fork.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-missing-position",
+      "args": [
+        {
+          "name": "position",
+          "kind": "int"
+        }
+      ],
+      "en": "There's no argument at position {position}.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-model-shape",
+      "args": [],
+      "en": "`--model` isn't shaped like a model ID.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-no-value.quoted",
+      "args": [
+        {
+          "name": "flag",
+          "kind": "text"
+        }
+      ],
+      "en": "The flag “{flag}” has no value.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-not-allowed.by-length",
+      "args": [
+        {
+          "name": "position",
+          "kind": "int"
+        },
+        {
+          "name": "length",
+          "kind": "int"
+        }
+      ],
+      "en": "The argument at position {position} (of length {length}) isn't an allowed `claude` flag.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-not-allowed.quoted",
+      "args": [
+        {
+          "name": "position",
+          "kind": "int"
+        },
+        {
+          "name": "flag",
+          "kind": "text"
+        }
+      ],
+      "en": "The argument at position {position} (“{flag}”) isn't an allowed `claude` flag.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-permission-mode",
+      "args": [],
+      "en": "`--permission-mode` has a value outside the list of modes.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-repeated.quoted",
+      "args": [
+        {
+          "name": "flag",
+          "kind": "text"
+        },
+        {
+          "name": "position",
+          "kind": "int"
+        }
+      ],
+      "en": "The argument “{flag}” is repeated (position {position}).",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-resume-same",
+      "args": [],
+      "en": "`--resume` points to the same session as `--session-id`.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-resume-shape",
+      "args": [],
+      "en": "`--resume` isn't shaped like a session ID.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-session-id-shape",
+      "args": [],
+      "en": "`--session-id` isn't shaped like a session ID.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-ultracode-effort",
+      "args": [],
+      "en": "Ultracode starts at the `xhigh` level, so any other `--effort` conflicts with it.",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-value-charset.quoted",
+      "args": [
+        {
+          "name": "flag",
+          "kind": "text"
+        }
+      ],
+      "en": "The value of the flag “{flag}” has characters outside the allowed set (arguments go to the pane's shell).",
+      "retired": null
+    },
+    {
+      "code": "herdr.argv-value-like-flag.quoted",
+      "args": [
+        {
+          "name": "flag",
+          "kind": "text"
+        }
+      ],
+      "en": "The value of the flag “{flag}” looks like a flag.",
+      "retired": null
+    },
+    {
+      "code": "herdr.client-closed",
+      "args": [],
+      "en": "The herdr client was closed.",
+      "retired": null
+    },
+    {
+      "code": "herdr.closed-without-response",
+      "args": [],
+      "en": "herdr closed the connection without responding.",
+      "retired": null
+    },
+    {
+      "code": "herdr.connect-timeout",
+      "args": [],
+      "en": "Timed out connecting to herdr (2 s).",
+      "retired": null
+    },
+    {
+      "code": "herdr.frame-too-long",
+      "args": [
+        {
+          "name": "max",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "A herdr frame is longer than {max} character with no line ending. Protocol error.",
+        "other": "A herdr frame is longer than {max} characters with no line ending. Protocol error."
+      },
+      "retired": null
+    },
+    {
+      "code": "herdr.label-control-char",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "The label for `{method}` contains a control character.",
+      "retired": null
+    },
+    {
+      "code": "herdr.label-empty",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "The label for `{method}` is empty.",
+      "retired": null
+    },
+    {
+      "code": "herdr.launch-off-panels",
+      "args": [],
+      "en": "Creating panes from Rarog is turned off (RAROG_HERDR_LAUNCH=0).",
+      "retired": null
+    },
+    {
+      "code": "herdr.launch-timeout",
+      "args": [
+        {
+          "name": "seconds",
+          "kind": "int"
+        }
+      ],
+      "en": "The agent didn't report ready within {seconds} s. The pane is still running; check it in herdr.",
+      "retired": null
+    },
+    {
+      "code": "herdr.launch-timeout.screen",
+      "args": [
+        {
+          "name": "seconds",
+          "kind": "int"
+        },
+        {
+          "name": "screen",
+          "kind": "text"
+        }
+      ],
+      "en": "The agent didn't report ready within {seconds} s. The pane is still running; check it in herdr. Screen: {screen}",
+      "retired": null
+    },
+    {
+      "code": "herdr.method-not-allowed",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "The method {method} isn't on the Rarog allow list.",
+      "retired": null
+    },
+    {
+      "code": "herdr.pane-cap",
+      "args": [],
+      "en": "Rarog pane limit reached. Close a session and try again.",
+      "retired": null
+    },
+    {
+      "code": "herdr.pane-id-missing",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "No pane ID for `{method}`.",
+      "retired": null
+    },
+    {
+      "code": "herdr.protocol-missing",
+      "args": [],
+      "en": "herdr didn't provide a protocol number.",
+      "retired": null
+    },
+    {
+      "code": "herdr.protocol-too-old",
+      "args": [
+        {
+          "name": "protocol",
+          "kind": "text"
+        },
+        {
+          "name": "oldest",
+          "kind": "text"
+        }
+      ],
+      "en": "herdr protocol {protocol} is older than the tested {oldest}",
+      "retired": null
+    },
+    {
+      "code": "herdr.protocol-too-old.disabled",
+      "args": [
+        {
+          "name": "protocol",
+          "kind": "text"
+        },
+        {
+          "name": "oldest",
+          "kind": "text"
+        }
+      ],
+      "en": "herdr protocol {protocol} is older than the tested {oldest}. Integration is turned off.",
+      "retired": null
+    },
+    {
+      "code": "herdr.protocol-unknown",
+      "args": [
+        {
+          "name": "protocol",
+          "kind": "text"
+        },
+        {
+          "name": "tested",
+          "kind": "text"
+        }
+      ],
+      "en": "herdr protocol {protocol} is unknown (tested: {tested}), read-only",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-bad-shape",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "The `{method}` response has an unknown shape.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-foreign-id",
+      "args": [
+        {
+          "name": "expected",
+          "kind": "text"
+        }
+      ],
+      "en": "A herdr response with an unexpected ID (expected {expected}). Protocol error.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-no-agents",
+      "args": [],
+      "en": "The `agent.list` response has no list of agents.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-no-ids",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "The `{method}` response has no tab or pane ID.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-no-pane-rows",
+      "args": [
+        {
+          "name": "pane",
+          "kind": "text"
+        }
+      ],
+      "en": "The `pane.list` response has no rows for pane {pane}.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-no-panes",
+      "args": [],
+      "en": "The `pane.list` response has no list of panes.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-no-result",
+      "args": [],
+      "en": "A herdr response with neither a `result` nor an `error` field.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-no-workspaces",
+      "args": [],
+      "en": "The `workspace.list` response has no list of workspaces.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-not-json",
+      "args": [],
+      "en": "herdr replied with something that isn't JSON.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-not-object",
+      "args": [],
+      "en": "herdr replied with a value that isn't an object.",
+      "retired": null
+    },
+    {
+      "code": "herdr.response-timeout",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "Timed out waiting for a herdr response ({method}).",
+      "retired": null
+    },
+    {
+      "code": "herdr.send-off",
+      "args": [],
+      "en": "write channel turned off (RAROG_HERDR_SEND=0)",
+      "retired": null
+    },
+    {
+      "code": "herdr.session-id-mismatch",
+      "args": [],
+      "en": "herdr reported a different session than the one passed in `--session-id`, so Rarog doesn't know the transcript file.",
+      "retired": null
+    },
+    {
+      "code": "herdr.socket-error",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "herdr socket error: {reason}",
+      "retired": null
+    },
+    {
+      "code": "herdr.socket-error.unknown",
+      "args": [],
+      "en": "herdr socket error: unknown",
+      "retired": null
+    },
+    {
+      "code": "herdr.socket-open-failed",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "Couldn't open the herdr socket: {reason}",
+      "retired": null
+    },
+    {
+      "code": "herdr.stream-closed",
+      "args": [],
+      "en": "herdr closed the stream",
+      "retired": null
+    },
+    {
+      "code": "herdr.stream-connect-timeout",
+      "args": [],
+      "en": "timed out connecting",
+      "retired": null
+    },
+    {
+      "code": "herdr.stream-open-failed",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "couldn't open the socket: {reason}",
+      "retired": null
+    },
+    {
+      "code": "herdr.stream-socket-error",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "socket error: {reason}",
+      "retired": null
+    },
+    {
+      "code": "herdr.stream-socket-error.unknown",
+      "args": [],
+      "en": "socket error: unknown",
+      "retired": null
+    },
+    {
+      "code": "herdr.subscribe-foreign-frame",
+      "args": [],
+      "en": "herdr didn't confirm the subscription (unexpected first frame)",
+      "retired": null
+    },
+    {
+      "code": "herdr.subscribe-refused",
+      "args": [
+        {
+          "name": "code",
+          "kind": "text"
+        }
+      ],
+      "en": "herdr refused the subscription: {code}",
+      "retired": null
+    },
+    {
+      "code": "herdr.subscribe-timeout",
+      "args": [],
+      "en": "herdr didn't confirm the subscription within 5 s",
+      "retired": null
+    },
+    {
+      "code": "herdr.subscription-broken",
+      "args": [
+        {
+          "name": "code",
+          "kind": "text"
+        }
+      ],
+      "en": "herdr dropped the subscription: {code}",
+      "retired": null
+    },
+    {
+      "code": "herdr.tab-id-missing",
+      "args": [
+        {
+          "name": "method",
+          "kind": "text"
+        }
+      ],
+      "en": "No tab ID for `{method}`.",
+      "retired": null
+    },
+    {
+      "code": "herdr.tab-unknown",
+      "args": [],
+      "en": "The tab address of this pane is unknown.",
+      "retired": null
+    },
+    {
+      "code": "model.busy",
+      "args": [],
+      "en": "The agent is working or waiting for a decision. Change the model when it finishes its turn.",
+      "retired": null
+    },
+    {
+      "code": "model.change-composer-unknown",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ “{command}” wasn't sent. Couldn't read the prompt field in the pane. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "model.change-confirmed",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "✓ The pane confirmed “{command}”. Note: Claude Code saved the change in the account settings.",
+      "retired": null
+    },
+    {
+      "code": "model.change-empty",
+      "args": [],
+      "en": "Specify a model, effort, or ultracode.",
+      "retired": null
+    },
+    {
+      "code": "model.change-foreign-dialog",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ “{command}” was sent, but the dialog on the pane's screen wasn't recognized. Rarog sent no digit. Finish in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "model.change-inline",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "✓ The pane accepted “{command}” without a dialog. Note: Claude Code saved the change in the account settings.",
+      "retired": null
+    },
+    {
+      "code": "model.change-no-dialog",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "“{command}” was sent to the pane. The pane didn't ask for confirmation. If it asks in a moment, confirm in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "model.change-unsent-prompt.mac",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ “{command}” wasn't sent. There's unsent text in the prompt field on the Mac. Send it or clear it, then try again.",
+      "retired": null
+    },
+    {
+      "code": "model.change-unsent-prompt.vps",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ “{command}” wasn't sent. There's unsent text in the prompt field on the VPS. Send it or clear it, then try again.",
+      "retired": null
+    },
+    {
+      "code": "model.change-warning",
+      "args": [],
+      "en": "The change goes to the pane as the “/model” command, and Claude Code saves it in the account settings: new sessions, including those started in the terminal, will use this model from now on. Rarog won't restore the previous value.",
+      "retired": null
+    },
+    {
+      "code": "model.default-description",
+      "args": [],
+      "en": "No --model flag: exactly what you have set in Claude Code.",
+      "retired": null
+    },
+    {
+      "code": "model.default-label",
+      "args": [],
+      "en": "Account Default Model",
+      "retired": null
+    },
+    {
+      "code": "model.herdr-set-at-start",
+      "args": [],
+      "en": "The model is set when the session is created.",
+      "retired": null
+    },
+    {
+      "code": "model.not-in-list",
+      "args": [
+        {
+          "name": "model",
+          "kind": "text"
+        }
+      ],
+      "en": "Model {model} isn't in the list of available models.",
+      "retired": null
+    },
+    {
+      "code": "model.resume-without-ultracode",
+      "args": [
+        {
+          "name": "minVersion",
+          "kind": "text"
+        }
+      ],
+      "en": "The session came back without ultracode. On resume, Claude Code restores it only at the xhigh level and from version {minVersion}. You can turn it on in the “Model and Effort” sheet.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-cli-too-old",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        },
+        {
+          "name": "minVersion",
+          "kind": "text"
+        }
+      ],
+      "en": "Claude Code {version} can't switch ultracode. Version {minVersion} or later is required.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-cli-unknown",
+      "args": [
+        {
+          "name": "minVersion",
+          "kind": "text"
+        }
+      ],
+      "en": "The Claude Code version is unknown, and ultracode requires version {minVersion} or later.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-effort",
+      "args": [],
+      "en": "Ultracode starts at the xhigh effort level. Choose xhigh or leave the level unset.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-note",
+      "args": [],
+      "en": "Ultracode applies only to this session: Claude plans a workflow for every task, so each turn costs more tokens and gets you to the plan limit sooner. To turn it off, choose “No” in the same “Model and Effort” sheet.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-off",
+      "args": [],
+      "en": "✓ The pane turned off ultracode for this session.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-on",
+      "args": [],
+      "en": "✓ The pane turned on ultracode for this session: Claude plans a workflow for every task.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-refused",
+      "args": [],
+      "en": "⚠ Claude Code refused ultracode: dynamic workflows are turned off for this session (a setting in /config). Ultracode is unchanged.",
+      "retired": null
+    },
+    {
+      "code": "model.ultracode-unseen",
+      "args": [
+        {
+          "name": "command",
+          "kind": "text"
+        }
+      ],
+      "en": "“{command}” was sent to the pane, but the result wasn't visible. The next turn will confirm the state.",
+      "retired": null
+    },
+    {
+      "code": "model.unavailable",
+      "args": [],
+      "en": "This model isn't available on this account.",
+      "retired": null
+    },
+    {
+      "code": "push.body.detail",
+      "args": [
+        {
+          "name": "detail",
+          "kind": "text"
+        }
+      ],
+      "en": "{detail}",
+      "retired": null
+    },
+    {
+      "code": "push.body.detail-and-label",
+      "args": [
+        {
+          "name": "detail",
+          "kind": "text"
+        },
+        {
+          "name": "label",
+          "kind": "text"
+        }
+      ],
+      "en": "{detail} — {label}",
+      "retired": null
+    },
+    {
+      "code": "push.body.detail-and-session-number",
+      "args": [
+        {
+          "name": "detail",
+          "kind": "text"
+        },
+        {
+          "name": "n",
+          "kind": "int"
+        }
+      ],
+      "en": "{detail} — session {n}",
+      "retired": null
+    },
+    {
+      "code": "push.body.fallback.blocked",
+      "args": [],
+      "en": "A dialog is open in the terminal. Open to see it.",
+      "retired": null
+    },
+    {
+      "code": "push.body.fallback.done",
+      "args": [],
+      "en": "The result is waiting for you.",
+      "retired": null
+    },
+    {
+      "code": "push.body.fallback.error",
+      "args": [],
+      "en": "The turn failed. Open to see why.",
+      "retired": null
+    },
+    {
+      "code": "push.body.fallback.limit",
+      "args": [],
+      "en": "Open to see when to try again.",
+      "retired": null
+    },
+    {
+      "code": "push.body.fallback.permission",
+      "args": [],
+      "en": "Open to decide.",
+      "retired": null
+    },
+    {
+      "code": "push.body.fallback.question",
+      "args": [],
+      "en": "The agent asked a question. Answer in Rarog.",
+      "retired": null
+    },
+    {
+      "code": "push.body.label",
+      "args": [
+        {
+          "name": "label",
+          "kind": "text"
+        }
+      ],
+      "en": "{label}",
+      "retired": null
+    },
+    {
+      "code": "push.canary-body.fail",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "Claude Code {version}: failed, Allow button only with the dialog on screen.",
+      "retired": null
+    },
+    {
+      "code": "push.canary-body.pass",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "Claude Code {version}: passed.",
+      "retired": null
+    },
+    {
+      "code": "push.canary-body.unmeasured",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "Claude Code {version}: not measured, Allow button only with the dialog on screen.",
+      "retired": null
+    },
+    {
+      "code": "push.canary-body.unmeasured-package",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "Claude Code {version}: not measured, Allow button also without the dialog on screen (package measurement).",
+      "retired": null
+    },
+    {
+      "code": "push.canary-title",
+      "args": [],
+      "en": "🐤 Consent canary",
+      "retired": null
+    },
+    {
+      "code": "push.chime.body",
+      "args": [],
+      "en": "The result is waiting in Rarog",
+      "retired": null
+    },
+    {
+      "code": "push.chime.title",
+      "args": [],
+      "en": "Agent finished",
+      "retired": null
+    },
+    {
+      "code": "push.paired-body.mac",
+      "args": [
+        {
+          "name": "label",
+          "kind": "text"
+        }
+      ],
+      "en": "{label}. If this wasn't you, revoke it on the Mac: rarog devices",
+      "retired": null
+    },
+    {
+      "code": "push.paired-body.vps",
+      "args": [
+        {
+          "name": "label",
+          "kind": "text"
+        }
+      ],
+      "en": "{label}. If this wasn't you, revoke it on the VPS: rarog devices",
+      "retired": null
+    },
+    {
+      "code": "push.paired-title",
+      "args": [],
+      "en": "🔐 New device paired",
+      "retired": null
+    },
+    {
+      "code": "push.placeholder.body",
+      "args": [],
+      "en": "New notification",
+      "retired": null
+    },
+    {
+      "code": "push.placeholder.title",
+      "args": [],
+      "en": "Rarog",
+      "retired": null
+    },
+    {
+      "code": "push.test-body",
+      "args": [],
+      "en": "Tapping this opens Rarog. Notifications from sessions take you straight to the session.",
+      "retired": null
+    },
+    {
+      "code": "push.test-title",
+      "args": [],
+      "en": "🔔 Notifications are working",
+      "retired": null
+    },
+    {
+      "code": "push.title.blocked",
+      "args": [
+        {
+          "name": "project",
+          "kind": "text"
+        }
+      ],
+      "en": "⛔ Waiting in the terminal · {project}",
+      "retired": null
+    },
+    {
+      "code": "push.title.done",
+      "args": [
+        {
+          "name": "project",
+          "kind": "text"
+        }
+      ],
+      "en": "✅ Done · {project}",
+      "retired": null
+    },
+    {
+      "code": "push.title.error",
+      "args": [
+        {
+          "name": "project",
+          "kind": "text"
+        }
+      ],
+      "en": "❌ Error · {project}",
+      "retired": null
+    },
+    {
+      "code": "push.title.limit",
+      "args": [
+        {
+          "name": "project",
+          "kind": "text"
+        }
+      ],
+      "en": "✋ Plan limit · {project}",
+      "retired": null
+    },
+    {
+      "code": "push.title.permission",
+      "args": [
+        {
+          "name": "project",
+          "kind": "text"
+        }
+      ],
+      "en": "⏳ Waiting for permission · {project}",
+      "retired": null
+    },
+    {
+      "code": "push.title.question",
+      "args": [
+        {
+          "name": "project",
+          "kind": "text"
+        }
+      ],
+      "en": "❓ Question · {project}",
+      "retired": null
+    },
+    {
+      "code": "push.version-body.both",
+      "args": [
+        {
+          "name": "cliFrom",
+          "kind": "text"
+        },
+        {
+          "name": "cliTo",
+          "kind": "text"
+        },
+        {
+          "name": "herdrFrom",
+          "kind": "text"
+        },
+        {
+          "name": "herdrTo",
+          "kind": "text"
+        }
+      ],
+      "en": "Claude Code {cliFrom} → {cliTo}, herdr {herdrFrom} → {herdrTo}",
+      "retired": null
+    },
+    {
+      "code": "push.version-body.claude-code",
+      "args": [
+        {
+          "name": "from",
+          "kind": "text"
+        },
+        {
+          "name": "to",
+          "kind": "text"
+        }
+      ],
+      "en": "Claude Code {from} → {to}",
+      "retired": null
+    },
+    {
+      "code": "push.version-body.herdr",
+      "args": [
+        {
+          "name": "from",
+          "kind": "text"
+        },
+        {
+          "name": "to",
+          "kind": "text"
+        }
+      ],
+      "en": "herdr {from} → {to}",
+      "retired": null
+    },
+    {
+      "code": "push.version-title",
+      "args": [],
+      "en": "🔄 Version changed",
+      "retired": null
+    },
+    {
+      "code": "push.weekly-limit-body",
+      "args": [
+        {
+          "name": "reset",
+          "kind": "instant"
+        }
+      ],
+      "en": "Resets {reset}.",
+      "retired": null
+    },
+    {
+      "code": "push.weekly-limit-title",
+      "args": [
+        {
+          "name": "percent",
+          "kind": "int"
+        }
+      ],
+      "en": "⚠️ Weekly limit at {percent}%",
+      "retired": null
+    },
+    {
+      "code": "rest.apns-device-unknown",
+      "args": [],
+      "en": "This device isn't registered. Register the device token first, then the activity.",
+      "retired": null
+    },
+    {
+      "code": "rest.apns-topic-mismatch",
+      "args": [],
+      "en": "This app has a different identifier than the one the server handles, so notifications won't reach it.",
+      "retired": null
+    },
+    {
+      "code": "rest.auth-rate-limited",
+      "args": [],
+      "en": "Too many failed attempts. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "rest.bad-json",
+      "args": [],
+      "en": "The request body isn't valid JSON.",
+      "retired": null
+    },
+    {
+      "code": "rest.bad-origin",
+      "args": [],
+      "en": "Request from a disallowed origin.",
+      "retired": null
+    },
+    {
+      "code": "rest.bad-request",
+      "args": [],
+      "en": "Request rejected.",
+      "retired": null
+    },
+    {
+      "code": "rest.bad-state",
+      "args": [],
+      "en": "The session is in a state that doesn't allow this action.",
+      "retired": null
+    },
+    {
+      "code": "rest.body-contract",
+      "args": [],
+      "en": "The request body doesn't match the expected format.",
+      "retired": null
+    },
+    {
+      "code": "rest.body-unreadable",
+      "args": [],
+      "en": "Couldn't read the request.",
+      "retired": null
+    },
+    {
+      "code": "rest.client-log-failed",
+      "args": [],
+      "en": "Couldn't save the log.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-busy",
+      "args": [],
+      "en": "The voice agent is already checking this session. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-claude-only",
+      "args": [],
+      "en": "The voice agent works only with Claude Code sessions in the allowed projects.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-cli",
+      "args": [],
+      "en": "Claude Code on the server didn't answer. Check that it's installed and signed in to the subscription.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-disabled",
+      "args": [],
+      "en": "The voice agent is turned off on the server (RAROG_COMPANION).",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-limit",
+      "args": [],
+      "en": "The Claude plan limit is used up, so the voice agent can't check the session now.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-openai",
+      "args": [],
+      "en": "OpenAI didn't give the voice agent a key. Check the model with rarog voice-agent status on the server.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-openai-key",
+      "args": [],
+      "en": "OpenAI rejected the server's key. Set a new one with rarog voice-agent set-key on the server.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-openai-key-missing",
+      "args": [],
+      "en": "The voice agent has no OpenAI key on the server. Set it with rarog voice-agent set-key.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-openai-limit",
+      "args": [],
+      "en": "The OpenAI account limit is reached. Try again later.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-sessions-disabled",
+      "args": [],
+      "en": "The voice agent's mode across sessions is turned off on the server (RAROG_COMPANION_SESSIONS).",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-throttled",
+      "args": [],
+      "en": "Too soon. Wait a moment and start the conversation again.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-timeout",
+      "args": [],
+      "en": "Checking the session took too long. Try again.",
+      "retired": null
+    },
+    {
+      "code": "rest.companion-turns-count",
+      "args": [],
+      "en": "The voice agent reads 1 to 3 turns of a session (count).",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-empty",
+      "args": [],
+      "en": "Enter the path to a project directory.",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-hidden",
+      "args": [],
+      "en": "Hidden directories (those starting with a dot) aren't allowed.",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-not-absolute",
+      "args": [],
+      "en": "Enter the full directory path, starting with “/” or “~/”.",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-not-found",
+      "args": [],
+      "en": "That directory doesn't exist.",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-not-in-projects",
+      "args": [],
+      "en": "This directory isn't in the project list.",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-outside-roots",
+      "args": [],
+      "en": "This directory is outside the allowed projects.",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-outside-roots.listed",
+      "args": [
+        {
+          "name": "roots",
+          "kind": "text"
+        }
+      ],
+      "en": "This directory is outside the allowed projects ({roots}).",
+      "retired": null
+    },
+    {
+      "code": "rest.cwd-symlink-escape",
+      "args": [],
+      "en": "This directory leads through a symlink outside the allowed projects.",
+      "retired": null
+    },
+    {
+      "code": "rest.decision-conflict",
+      "args": [],
+      "en": "This was already decided on another device.",
+      "retired": null
+    },
+    {
+      "code": "rest.decision-expired",
+      "args": [],
+      "en": "The request expired. Resume the session.",
+      "retired": null
+    },
+    {
+      "code": "rest.device-key-missing",
+      "args": [],
+      "en": "No device key. Pair this device with the server.",
+      "retired": null
+    },
+    {
+      "code": "rest.device-required",
+      "args": [],
+      "en": "This action requires the key of a paired device.",
+      "retired": null
+    },
+    {
+      "code": "rest.device-revoked",
+      "args": [],
+      "en": "This device was revoked. Pair it with the server again.",
+      "retired": null
+    },
+    {
+      "code": "rest.device-unknown",
+      "args": [],
+      "en": "The server doesn't recognize this device. Pair it again.",
+      "retired": null
+    },
+    {
+      "code": "rest.diff-bad-path",
+      "args": [],
+      "en": "Invalid file path.",
+      "retired": null
+    },
+    {
+      "code": "rest.diff-file-not-found",
+      "args": [],
+      "en": "That file isn't in the list of changes. The list may have changed.",
+      "retired": null
+    },
+    {
+      "code": "rest.diff-git-failed",
+      "args": [],
+      "en": "Git didn't respond. Try again.",
+      "retired": null
+    },
+    {
+      "code": "rest.endpoint-not-found",
+      "args": [],
+      "en": "That endpoint doesn't exist.",
+      "retired": null
+    },
+    {
+      "code": "rest.image-not-found",
+      "args": [],
+      "en": "That photo doesn't exist.",
+      "retired": null
+    },
+    {
+      "code": "rest.internal",
+      "args": [],
+      "en": "Server error.",
+      "retired": null
+    },
+    {
+      "code": "rest.login-retired",
+      "args": [],
+      "en": "Token sign-in no longer exists. Pair the device (rarog pair).",
+      "retired": null
+    },
+    {
+      "code": "rest.method-not-allowed",
+      "args": [],
+      "en": "Method not allowed.",
+      "retired": null
+    },
+    {
+      "code": "rest.notes-conflict",
+      "args": [],
+      "en": "The notes changed on another device.",
+      "retired": null
+    },
+    {
+      "code": "rest.notes-cwd-not-allowed",
+      "args": [],
+      "en": "That directory doesn't exist. Notes are attached to an existing project.",
+      "retired": null
+    },
+    {
+      "code": "rest.notes-disabled",
+      "args": [],
+      "en": "Notes are turned off (RAROG_NOTES).",
+      "retired": null
+    },
+    {
+      "code": "rest.notes-save-failed",
+      "args": [],
+      "en": "Couldn't save the notes.",
+      "retired": null
+    },
+    {
+      "code": "rest.pair-code-invalid",
+      "args": [],
+      "en": "The pairing code isn't valid. Generate a new one and try again.",
+      "retired": null
+    },
+    {
+      "code": "rest.pair-rate-limited",
+      "args": [],
+      "en": "Too many failed pairing attempts. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "rest.pair-save-failed",
+      "args": [],
+      "en": "Couldn't save the pairing. Generate a new code and try again.",
+      "retired": null
+    },
+    {
+      "code": "rest.pair-version-unknown",
+      "args": [],
+      "en": "Unknown pairing version. Update the app or the server.",
+      "retired": null
+    },
+    {
+      "code": "rest.payload-too-large",
+      "args": [
+        {
+          "name": "limit",
+          "kind": "text"
+        }
+      ],
+      "en": "The request exceeds the limit of {limit}.",
+      "retired": null
+    },
+    {
+      "code": "rest.push-test-cooldown",
+      "args": [],
+      "en": "A test push was just sent. Wait a minute.",
+      "retired": null
+    },
+    {
+      "code": "rest.session-busy",
+      "args": [],
+      "en": "The session is busy right now.",
+      "retired": null
+    },
+    {
+      "code": "rest.session-closed",
+      "args": [],
+      "en": "This session is already closed.",
+      "retired": null
+    },
+    {
+      "code": "rest.session-not-found",
+      "args": [],
+      "en": "That session doesn't exist.",
+      "retired": null
+    },
+    {
+      "code": "rest.too-many-requests",
+      "args": [],
+      "en": "Too many requests. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "rest.usage-unavailable.mac",
+      "args": [],
+      "en": "Plan usage isn't available. No Claude Code session on the Mac has left a status line with limits.",
+      "retired": null
+    },
+    {
+      "code": "rest.usage-unavailable.vps",
+      "args": [],
+      "en": "Plan usage isn't available. No Claude Code session on the VPS has left a status line with limits.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-disabled.mac",
+      "args": [],
+      "en": "Dictation is turned off. The Mac has no Soniox key.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-disabled.vps",
+      "args": [],
+      "en": "Dictation is turned off. The VPS has no Soniox key.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-foreign-region.mac",
+      "args": [],
+      "en": "Dictation is turned off. The Soniox key is from outside the EU region. Fix SONIOX_API_HOST on the Mac.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-foreign-region.vps",
+      "args": [],
+      "en": "Dictation is turned off. The Soniox key is from outside the EU region. Fix SONIOX_API_HOST on the VPS.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-key-rejected.mac",
+      "args": [],
+      "en": "Soniox rejected the key from the Mac. Check SONIOX_API_KEY in the server environment.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-key-rejected.vps",
+      "args": [],
+      "en": "Soniox rejected the key from the VPS. Check SONIOX_API_KEY in the server environment.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-throttled",
+      "args": [],
+      "en": "Too soon. Wait a moment and tap the microphone again.",
+      "retired": null
+    },
+    {
+      "code": "rest.voice-upstream",
+      "args": [],
+      "en": "Soniox didn't respond. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "restart.background-task-running",
+      "args": [],
+      "en": "A background task is running. A restart would interrupt it.",
+      "retired": null
+    },
+    {
+      "code": "restart.busy",
+      "args": [],
+      "en": "The session is working or waiting for a decision. You can restart it once it stops.",
+      "retired": null
+    },
+    {
+      "code": "restart.codex",
+      "args": [],
+      "en": "Restart the Codex pane in herdr. Rarog shows its state but doesn't manage it.",
+      "retired": null
+    },
+    {
+      "code": "restart.composer-unknown",
+      "args": [],
+      "en": "Couldn't read the prompt field in the pane. Restart the session in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "restart.done",
+      "args": [],
+      "en": "Session restarted.",
+      "retired": null
+    },
+    {
+      "code": "restart.done.version",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "Session restarted on Claude Code {version}.",
+      "retired": null
+    },
+    {
+      "code": "restart.exit-asked",
+      "args": [],
+      "en": "Restart canceled: Claude Code asked a question on exit (background work?). The session keeps running.",
+      "retired": null
+    },
+    {
+      "code": "restart.exit-note",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "⚠ {reason}",
+      "retired": null
+    },
+    {
+      "code": "restart.exit-timeout",
+      "args": [],
+      "en": "Restart canceled: Claude Code didn't exit after /exit. Check the pane in herdr.",
+      "retired": null
+    },
+    {
+      "code": "restart.exit-unconfirmed",
+      "args": [],
+      "en": "The pane closed Claude Code, but the end of the process wasn't confirmed. Resume the conversation in a moment.",
+      "retired": null
+    },
+    {
+      "code": "restart.exiting",
+      "args": [],
+      "en": "Exiting the session…",
+      "retired": null
+    },
+    {
+      "code": "restart.exiting.version",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "Exiting the session on Claude Code {version}…",
+      "retired": null
+    },
+    {
+      "code": "restart.failed",
+      "args": [],
+      "en": "Couldn't restart",
+      "retired": null
+    },
+    {
+      "code": "restart.failed.code",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "Couldn't restart: {reason}",
+      "retired": null
+    },
+    {
+      "code": "restart.failed.panel-gone",
+      "args": [],
+      "en": "Couldn't restart: the pane disappeared before it was ready",
+      "retired": null
+    },
+    {
+      "code": "restart.failed.reason",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "Couldn't restart: {reason}",
+      "retired": null
+    },
+    {
+      "code": "restart.in-progress",
+      "args": [],
+      "en": "This session is restarting right now.",
+      "retired": null
+    },
+    {
+      "code": "restart.launching",
+      "args": [],
+      "en": "Restarting…",
+      "retired": null
+    },
+    {
+      "code": "restart.launching.version",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "Restarting on Claude Code {version}…",
+      "retired": null
+    },
+    {
+      "code": "restart.mode-unknown",
+      "args": [],
+      "en": "Couldn't read the permission mode in the pane. Starting in the default mode could give the session more freedom.",
+      "retired": null
+    },
+    {
+      "code": "restart.multiple-writers",
+      "args": [],
+      "en": "More than one Claude Code process is driving this conversation. Restart it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "restart.no-panel",
+      "args": [],
+      "en": "This session has no live pane. To continue the conversation, use the “Resume” button.",
+      "retired": null
+    },
+    {
+      "code": "restart.no-update",
+      "args": [],
+      "en": "The session is already running the installed version of Claude Code.",
+      "retired": null
+    },
+    {
+      "code": "restart.panel-changed",
+      "args": [],
+      "en": "The pane now holds a different Claude Code session. Refresh the view and try again.",
+      "retired": null
+    },
+    {
+      "code": "restart.resend-stale",
+      "args": [],
+      "en": "This prompt is no longer waiting to be sent again.",
+      "retired": null
+    },
+    {
+      "code": "restart.single-writer-unverified",
+      "args": [],
+      "en": "Couldn't confirm that exactly one process is driving this conversation. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "restart.unsent-prompt.mac",
+      "args": [],
+      "en": "There's unsent text in the prompt field on the Mac. Send it or clear it, then try again.",
+      "retired": null
+    },
+    {
+      "code": "restart.unsent-prompt.vps",
+      "args": [],
+      "en": "There's unsent text in the prompt field on the VPS. Send it or clear it, then try again.",
+      "retired": null
+    },
+    {
+      "code": "restart.unsupported",
+      "args": [],
+      "en": "This pane doesn't support restarting from Rarog.",
+      "retired": null
+    },
+    {
+      "code": "restart.update-not-applied",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ The session restarted, but the process is still on Claude Code {version}. Check which `claude` the pane's shell finds.",
+      "retired": null
+    },
+    {
+      "code": "restart.update-version-unverified",
+      "args": [
+        {
+          "name": "version",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ The session restarted, but I couldn't read its Claude Code version (before the restart: {version}). Check which `claude` the pane's shell finds.",
+      "retired": null
+    },
+    {
+      "code": "restart.waiting-agent",
+      "args": [],
+      "en": "A subagent with its own task is waiting in the background. A restart would interrupt it.",
+      "retired": null
+    },
+    {
+      "code": "session.answer-multi-select",
+      "args": [],
+      "en": "Make multiple selections in the terminal. Rarog sends a single answer.",
+      "retired": null
+    },
+    {
+      "code": "session.answer-note-needs-option",
+      "args": [],
+      "en": "A note applies to a chosen option. Choose one option from the list or remove the note.",
+      "retired": null
+    },
+    {
+      "code": "session.answer-note-not-allowed",
+      "args": [],
+      "en": "This question doesn't accept a note from the app. Add it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "session.answer-note-too-long",
+      "args": [
+        {
+          "name": "max",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "The note is too long. Keep it within {max} character.",
+        "other": "The note is too long. Keep it within {max} characters."
+      },
+      "retired": null
+    },
+    {
+      "code": "session.answer-notes-mismatch",
+      "args": [],
+      "en": "The notes don't match this card's questions.",
+      "retired": null
+    },
+    {
+      "code": "session.answer-notes-too-long",
+      "args": [],
+      "en": "The answers with notes are too long. Shorten a note.",
+      "retired": null
+    },
+    {
+      "code": "session.answer-own-text",
+      "args": [],
+      "en": "Type a custom answer in the terminal. Rarog sends the digit of one of the options.",
+      "retired": null
+    },
+    {
+      "code": "session.answer-too-long",
+      "args": [
+        {
+          "name": "max",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "The answer is too long. Keep it within {max} character.",
+        "other": "The answer is too long. Keep it within {max} characters."
+      },
+      "retired": null
+    },
+    {
+      "code": "session.bypass-outside-yolo-roots",
+      "args": [],
+      "en": "bypassPermissions mode is allowed only in directories under RAROG_YOLO_ROOTS.",
+      "retired": null
+    },
+    {
+      "code": "session.cli-dialog.input",
+      "args": [],
+      "en": "question or form",
+      "retired": null
+    },
+    {
+      "code": "session.cli-dialog.open",
+      "args": [],
+      "en": "open CLI dialog, e.g. /login or /model",
+      "retired": null
+    },
+    {
+      "code": "session.cli-dialog.other",
+      "args": [],
+      "en": "CLI dialog",
+      "retired": null
+    },
+    {
+      "code": "session.cli-dialog.permission",
+      "args": [],
+      "en": "tool permission",
+      "retired": null
+    },
+    {
+      "code": "session.cli-dialog.sandbox",
+      "args": [],
+      "en": "network permission",
+      "retired": null
+    },
+    {
+      "code": "session.client-id-conflict",
+      "args": [],
+      "en": "A message with this ID already arrived with different content. Nothing was sent.",
+      "retired": null
+    },
+    {
+      "code": "session.close-not-owned",
+      "args": [],
+      "en": "This session has no pane in herdr, so there's nothing to close.",
+      "retired": null
+    },
+    {
+      "code": "session.codex-close",
+      "args": [],
+      "en": "Close the Codex pane in herdr. Rarog shows its state but doesn't manage it.",
+      "retired": null
+    },
+    {
+      "code": "session.codex-git",
+      "args": [],
+      "en": "Rarog only observes the Codex pane. Manage git in this project from the terminal or from herdr.",
+      "retired": null
+    },
+    {
+      "code": "session.conversation-changed",
+      "args": [],
+      "en": "The session moved to another conversation after the voice agent read it. Nothing was sent.",
+      "retired": null
+    },
+    {
+      "code": "session.cwd-denied",
+      "args": [
+        {
+          "name": "cwd",
+          "kind": "text"
+        },
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "The directory {cwd} isn't allowed. {reason}",
+      "retired": null
+    },
+    {
+      "code": "session.cwd-denied.outside-roots",
+      "args": [
+        {
+          "name": "cwd",
+          "kind": "text"
+        },
+        {
+          "name": "roots",
+          "kind": "text"
+        }
+      ],
+      "en": "The directory {cwd} isn't allowed. This directory is outside the allowed projects ({roots}).",
+      "retired": null
+    },
+    {
+      "code": "session.cwd-outside-allow-list",
+      "args": [
+        {
+          "name": "cwd",
+          "kind": "text"
+        }
+      ],
+      "en": "The directory {cwd} isn't on the list of allowed projects.",
+      "retired": null
+    },
+    {
+      "code": "session.dialog-stands",
+      "args": [
+        {
+          "name": "dialog",
+          "kind": "code"
+        }
+      ],
+      "en": "Sending is on hold: a dialog is waiting in the terminal ({dialog}). Answer in the terminal or on the card, then send again.",
+      "retired": null
+    },
+    {
+      "code": "session.dialog-unrecognized",
+      "args": [],
+      "en": "Rarog didn't recognize this dialog. Allow it in the terminal. From here you can only deny it.",
+      "retired": null
+    },
+    {
+      "code": "session.double-writer",
+      "args": [],
+      "en": "This session is open in herdr. Switch to it instead of resuming.",
+      "retired": null
+    },
+    {
+      "code": "session.fallback-label",
+      "args": [
+        {
+          "name": "n",
+          "kind": "int"
+        }
+      ],
+      "en": "session {n}",
+      "retired": null
+    },
+    {
+      "code": "session.focus-no-panel",
+      "args": [],
+      "en": "This session has no pane in herdr, so there's nothing to show.",
+      "retired": null
+    },
+    {
+      "code": "session.herdr-read-only",
+      "args": [],
+      "en": "herdr is read-only. Nothing was sent.",
+      "retired": null
+    },
+    {
+      "code": "session.herdr-unavailable",
+      "args": [],
+      "en": "herdr is unavailable right now. Try again when it's back.",
+      "retired": null
+    },
+    {
+      "code": "session.launch-off",
+      "args": [],
+      "en": "Creating sessions from Rarog is turned off (RAROG_HERDR_LAUNCH=0).",
+      "retired": null
+    },
+    {
+      "code": "session.launch-throttled.mac",
+      "args": [],
+      "en": "Too many sessions too fast. Give the Mac a moment and try again.",
+      "retired": null
+    },
+    {
+      "code": "session.launch-throttled.vps",
+      "args": [],
+      "en": "Too many sessions too fast. Give the VPS a moment and try again.",
+      "retired": null
+    },
+    {
+      "code": "session.mode-busy",
+      "args": [],
+      "en": "The agent is working or waiting for a decision. Change the mode when it finishes its turn.",
+      "retired": null
+    },
+    {
+      "code": "session.mode-bypass",
+      "args": [],
+      "en": "The pane is in bypass mode. Switch it in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "session.mode-footer-unknown",
+      "args": [],
+      "en": "The mode footer isn't visible in this pane. A question or an overlay is probably covering it. Sending is on hold. Answer in the terminal, then send again.",
+      "retired": null
+    },
+    {
+      "code": "session.mode-no-channel",
+      "args": [],
+      "en": "The mode is set when the session is created. This pane has no channel for changing it.",
+      "retired": null
+    },
+    {
+      "code": "session.no-longer-accepting",
+      "args": [
+        {
+          "name": "id",
+          "kind": "text"
+        }
+      ],
+      "en": "Session {id} isn't accepting messages anymore.",
+      "retired": null
+    },
+    {
+      "code": "session.not-accepting-messages",
+      "args": [
+        {
+          "name": "id",
+          "kind": "text"
+        },
+        {
+          "name": "state",
+          "kind": "text"
+        }
+      ],
+      "en": "Session {id} isn't accepting messages right now (state: {state}).",
+      "retired": null
+    },
+    {
+      "code": "session.out-of-scope",
+      "args": [],
+      "en": "The pane is outside RAROG_HERDR_ROOTS. Rarog shows it but doesn't write to it.",
+      "retired": null
+    },
+    {
+      "code": "session.out-of-scope-diff",
+      "args": [],
+      "en": "The pane is outside RAROG_HERDR_ROOTS. Rarog shows its state but not the changes in its directory.",
+      "retired": null
+    },
+    {
+      "code": "session.prompt-lost",
+      "args": [],
+      "en": "The pane disappeared before this message could be sent. It wasn't delivered.",
+      "retired": null
+    },
+    {
+      "code": "session.prompt-not-taken.mac",
+      "args": [
+        {
+          "name": "prompt",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ The prompt “{prompt}” didn't reach the agent. The CLI didn't accept it, and the text is still in the field on the Mac. A hook is the most common cause.",
+      "retired": null
+    },
+    {
+      "code": "session.prompt-not-taken.vps",
+      "args": [
+        {
+          "name": "prompt",
+          "kind": "text"
+        }
+      ],
+      "en": "⚠ The prompt “{prompt}” didn't reach the agent. The CLI didn't accept it, and the text is still in the field on the VPS. A hook is the most common cause.",
+      "retired": null
+    },
+    {
+      "code": "session.prompt-unconfirmed.mac",
+      "args": [
+        {
+          "name": "prompt",
+          "kind": "text"
+        }
+      ],
+      "en": "Couldn't confirm that the agent received the prompt “{prompt}”. There's unsent text in the field on the Mac.",
+      "retired": null
+    },
+    {
+      "code": "session.prompt-unconfirmed.vps",
+      "args": [
+        {
+          "name": "prompt",
+          "kind": "text"
+        }
+      ],
+      "en": "Couldn't confirm that the agent received the prompt “{prompt}”. There's unsent text in the field on the VPS.",
+      "retired": null
+    },
+    {
+      "code": "session.prompt-unseen",
+      "args": [
+        {
+          "name": "prompt",
+          "kind": "text"
+        }
+      ],
+      "en": "Couldn't confirm that the agent received the prompt “{prompt}”. Rarog didn't paste it again. Check the terminal.",
+      "retired": null
+    },
+    {
+      "code": "session.resume-foreign-cwd",
+      "args": [],
+      "en": "This session belongs to a different directory. Resume it where it was created.",
+      "retired": null
+    },
+    {
+      "code": "session.resume-not-found",
+      "args": [],
+      "en": "Couldn't find this session's transcript in the CLI's storage.",
+      "retired": null
+    },
+    {
+      "code": "session.resume-unreadable",
+      "args": [],
+      "en": "This session's transcript is unreadable or no longer exists. Start a new session.",
+      "retired": null
+    },
+    {
+      "code": "session.resume-unverifiable",
+      "args": [],
+      "en": "Couldn't verify which directory this session belongs to, so the resume was rejected.",
+      "retired": null
+    },
+    {
+      "code": "session.seen-result-changed",
+      "args": [],
+      "en": "The voice agent didn't read the session's current result. Nothing was marked as seen.",
+      "retired": null
+    },
+    {
+      "code": "session.send-throttled",
+      "args": [],
+      "en": "Too fast. Give the pane a moment and send again.",
+      "retired": null
+    },
+    {
+      "code": "session.trust-prompt",
+      "args": [],
+      "en": "Claude Code hasn't trusted this folder yet, so the pane will ask whether you trust it. Answer on the card, or in the terminal when the card has no button.",
+      "retired": null
+    },
+    {
+      "code": "state.driver-error",
+      "args": [],
+      "en": "the engine finished with an error",
+      "retired": null
+    },
+    {
+      "code": "state.driver-error.reason",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "the engine finished with an error: {reason}",
+      "retired": null
+    },
+    {
+      "code": "state.driver-gone",
+      "args": [],
+      "en": "the engine stopped responding",
+      "retired": null
+    },
+    {
+      "code": "state.herdr-gone",
+      "args": [],
+      "en": "the pane disappeared from herdr",
+      "retired": null
+    },
+    {
+      "code": "state.herdr-hidden",
+      "args": [],
+      "en": "hidden in Rarog (the pane stays in herdr)",
+      "retired": null
+    },
+    {
+      "code": "state.herdr-launch-failed",
+      "args": [],
+      "en": "couldn't create the pane",
+      "retired": null
+    },
+    {
+      "code": "state.herdr-launch-failed.code",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "code"
+        }
+      ],
+      "en": "couldn't create the pane: {reason}",
+      "retired": null
+    },
+    {
+      "code": "state.herdr-launch-failed.reason",
+      "args": [
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "couldn't create the pane: {reason}",
+      "retired": null
+    },
+    {
+      "code": "state.herdr-launching",
+      "args": [],
+      "en": "creating the pane in herdr",
+      "retired": null
+    },
+    {
+      "code": "state.herdr-unknown",
+      "args": [],
+      "en": "pane state not known yet",
+      "retired": null
+    },
+    {
+      "code": "state.interrupted",
+      "args": [],
+      "en": "interrupted by the user",
+      "retired": null
+    },
+    {
+      "code": "state.limit-reached",
+      "args": [
+        {
+          "name": "reset",
+          "kind": "instant"
+        }
+      ],
+      "en": "Plan limit reached. Try again after {reset}.",
+      "retired": null
+    },
+    {
+      "code": "state.max-turns",
+      "args": [],
+      "en": "turn limit reached, resume the session",
+      "retired": null
+    },
+    {
+      "code": "term.attach-failed",
+      "args": [],
+      "en": "The terminal isn't starting. Open it again from the project list.",
+      "retired": null
+    },
+    {
+      "code": "term.attach-limit",
+      "args": [],
+      "en": "Open terminal limit reached. Close another terminal and try again.",
+      "retired": null
+    },
+    {
+      "code": "term.dir-unreadable",
+      "args": [],
+      "en": "Couldn't read the directory.",
+      "retired": null
+    },
+    {
+      "code": "term.disabled",
+      "args": [],
+      "en": "The terminal is turned off (RAROG_TERM).",
+      "retired": null
+    },
+    {
+      "code": "term.history-unreadable",
+      "args": [],
+      "en": "Couldn't read the terminal's history.",
+      "retired": null
+    },
+    {
+      "code": "term.label-conflict.mac",
+      "args": [],
+      "en": "This terminal's pane has conflicting labels in herdr. Check the tabs on the Mac and try again.",
+      "retired": null
+    },
+    {
+      "code": "term.label-conflict.vps",
+      "args": [],
+      "en": "This terminal's pane has conflicting labels in herdr. Check the tabs on the VPS and try again.",
+      "retired": null
+    },
+    {
+      "code": "term.lazygit-changed",
+      "args": [],
+      "en": "The lazygit pane changed while it was being checked. Try again.",
+      "retired": null
+    },
+    {
+      "code": "term.lazygit-close-failed",
+      "args": [],
+      "en": "Couldn't close the old lazygit pane. Try again.",
+      "retired": null
+    },
+    {
+      "code": "term.needs-launch",
+      "args": [],
+      "en": "The terminal on herdr requires RAROG_HERDR_LAUNCH=1. Creating panes is turned off.",
+      "retired": null
+    },
+    {
+      "code": "term.needs-send",
+      "args": [],
+      "en": "The terminal on herdr requires RAROG_HERDR_SEND=1. The write channel to herdr is turned off.",
+      "retired": null
+    },
+    {
+      "code": "term.not-found",
+      "args": [],
+      "en": "That terminal doesn't exist.",
+      "retired": null
+    },
+    {
+      "code": "term.not-starting.mac",
+      "args": [],
+      "en": "The terminal isn't starting. Check the pane in herdr on the Mac and try again.",
+      "retired": null
+    },
+    {
+      "code": "term.not-starting.vps",
+      "args": [],
+      "en": "The terminal isn't starting. Check the pane in herdr on the VPS and try again.",
+      "retired": null
+    },
+    {
+      "code": "term.open-limit",
+      "args": [
+        {
+          "name": "max",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "Limit of {max} open terminal. Close one.",
+        "other": "Limit of {max} open terminals. Close one."
+      },
+      "retired": null
+    },
+    {
+      "code": "term.project-limit",
+      "args": [
+        {
+          "name": "max",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "Limit of {max} terminal per project. Close one.",
+        "other": "Limit of {max} terminals per project. Close one."
+      },
+      "retired": null
+    },
+    {
+      "code": "term.recovering",
+      "args": [],
+      "en": "The terminal is recovering. Try again in a moment.",
+      "retired": null
+    },
+    {
+      "code": "term.shutting-down",
+      "args": [],
+      "en": "The terminal is shutting down.",
+      "retired": null
+    },
+    {
+      "code": "term.slot-out-of-range",
+      "args": [
+        {
+          "name": "max",
+          "kind": "int"
+        }
+      ],
+      "en": "Terminal number out of range 1–{max}.",
+      "retired": null
+    },
+    {
+      "code": "term.taken-over",
+      "args": [],
+      "en": "The terminal was taken over. Open it again.",
+      "retired": null
+    },
+    {
+      "code": "transcript.file-truncated",
+      "args": [],
+      "en": "The transcript file was truncated. History from before this point is only in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "transcript.gap",
+      "args": [],
+      "en": "Rarog skipped part of the transcript (too much growth at once). This part of the conversation is only in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "transcript.image-placeholder",
+      "args": [],
+      "en": "[image]",
+      "retired": null
+    },
+    {
+      "code": "transcript.no-transcript",
+      "args": [],
+      "en": "⚠ This session isn't producing a transcript. The pane probably started with an inherited `CLAUDE_CODE_CHILD_SESSION` variable or with `CLAUDE_CODE_SKIP_PROMPT_HISTORY` in its environment. Status and sending work, but the conversation content won't appear.",
+      "retired": null
+    },
+    {
+      "code": "transcript.repoint-clear",
+      "args": [],
+      "en": "`/clear` started a new engine session. The earlier conversation stays in the terminal.",
+      "retired": null
+    },
+    {
+      "code": "transcript.repoint-resume",
+      "args": [],
+      "en": "`/resume` switched the pane to an earlier session. Its history is below.",
+      "retired": null
+    },
+    {
+      "code": "transcript.snapshot-image-alt",
+      "args": [],
+      "en": "Earlier image. The full preview is available only in the pane on the computer.",
+      "retired": null
+    },
+    {
+      "code": "transcript.trimmed-mark",
+      "args": [],
+      "en": "[Rarog: message trimmed because it exceeded the transcript's memory limit]",
+      "retired": null
+    },
+    {
+      "code": "transcript.truncation-footer",
+      "args": [
+        {
+          "name": "cut",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "\n… ({cut} character cut off)",
+        "other": "\n… ({cut} characters cut off)"
+      },
+      "retired": null
+    },
+    {
+      "code": "uploads.bad-content",
+      "args": [
+        {
+          "name": "name",
+          "kind": "text"
+        }
+      ],
+      "en": "The attachment “{name}” has invalid content. Nothing was sent.",
+      "retired": null
+    },
+    {
+      "code": "uploads.dir-not-directory.file",
+      "args": [
+        {
+          "name": "dir",
+          "kind": "text"
+        }
+      ],
+      "en": "The path {dir} exists but is a file, not a directory, so Rarog can't save attachments there. Remove that entry from the project directory and send the attachment again.",
+      "retired": null
+    },
+    {
+      "code": "uploads.dir-not-directory.other",
+      "args": [
+        {
+          "name": "dir",
+          "kind": "text"
+        }
+      ],
+      "en": "The path {dir} exists but isn't a directory, so Rarog can't save attachments there. Remove that entry from the project directory and send the attachment again.",
+      "retired": null
+    },
+    {
+      "code": "uploads.dir-not-directory.symlink",
+      "args": [
+        {
+          "name": "dir",
+          "kind": "text"
+        }
+      ],
+      "en": "The path {dir} exists but is a symlink, not a directory, so Rarog can't save attachments there. Remove that entry from the project directory and send the attachment again.",
+      "retired": null
+    },
+    {
+      "code": "uploads.file-too-large",
+      "args": [],
+      "en": "The file exceeds the limit of 20 MB per file.",
+      "retired": null
+    },
+    {
+      "code": "uploads.image-too-large",
+      "args": [],
+      "en": "The photo is over 1.5 MB. Make it smaller before sending.",
+      "retired": null
+    },
+    {
+      "code": "uploads.mkdir-failed",
+      "args": [
+        {
+          "name": "dir",
+          "kind": "text"
+        },
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "Couldn't create the attachments directory ({dir}): {reason}",
+      "retired": null
+    },
+    {
+      "code": "uploads.module-missing",
+      "args": [],
+      "en": "Rarog has no attachments module, so the attachment wasn't saved.",
+      "retired": null
+    },
+    {
+      "code": "uploads.not-image",
+      "args": [],
+      "en": "The attachment isn't a PNG or JPEG image. Nothing was sent.",
+      "retired": null
+    },
+    {
+      "code": "uploads.too-many-files",
+      "args": [
+        {
+          "name": "max",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "At most {max} file per message.",
+        "other": "At most {max} files per message."
+      },
+      "retired": null
+    },
+    {
+      "code": "uploads.too-many-images",
+      "args": [
+        {
+          "name": "max",
+          "kind": "plural"
+        }
+      ],
+      "en": {
+        "one": "At most {max} photo per message.",
+        "other": "At most {max} photos per message."
+      },
+      "retired": null
+    },
+    {
+      "code": "uploads.write-failed",
+      "args": [
+        {
+          "name": "path",
+          "kind": "text"
+        },
+        {
+          "name": "reason",
+          "kind": "text"
+        }
+      ],
+      "en": "Couldn't save the attachment ({path}): {reason}",
+      "retired": null
+    }
+  ]
+}

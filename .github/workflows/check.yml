@@ -1,0 +1,233 @@
+# Repository CI: what it checks, what it does not, and the macOS-only tests: docs/publishing.md, "CI".
+# No secrets. Actions pinned to the release SHA (comment: tag and release date). Node is explicit in every job that
+# sets it up: `engines.node` is a range without an upper bound, so `node-version-file` would take the newest line.
+# Scope of a run: the job `checks` and `package` on Ubuntu run on every event. A public repository, a manual run and
+# a `v*` tag add the full server tests in parts (`tests`), `swift-contract` and `package` on macOS; the full server
+# tests on macOS (`macos-tests`) run in a public repository and on a manual run. A push to another branch does not start the
+# workflow: a branch with a pull request is checked through the `pull_request` event.
+# Which job runs on which event: server/test/ci-check-workflow.test.ts.
+name: check
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# A newer run of the same event on the same ref cancels the run in progress; a push does not cancel a manual run,
+# and a run on a tag runs to the end.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # An explicit `shell: bash` turns on `-o pipefail`: the exit code of a script before `| tee` is not lost.
+    shell: bash
+
+jobs:
+  checks:
+    name: Ubuntu, Node 22 (typecheck, copy catalogs, relay, relay-auth, ShellCheck, TOML)
+    # Every event. Node 22 is the lowest line of `engines.node`, which the development Mac does not have; the lines
+    # 24 and 26 are checked by the job `package`. The full server tests run in the job `tests`.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, 2026-07-20
+        with:
+          persist-credentials: false
+      # Node 22, pnpm from `packageManager` in package.json. No package manager cache: a run on a `v*` tag does not
+      # take files saved by a run of another branch (zizmor, `cache-poisoning`).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0, 2026-10-08
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0, 2026-09-05
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: pnpm install (relay)
+        id: relay-install
+        run: pnpm -C relay install --frozen-lockfile
+      - name: pnpm install (relay-auth)
+        id: relay-auth-install
+        run: pnpm -C relay-auth install --frozen-lockfile
+      - name: typecheck
+        run: pnpm run typecheck
+      # The steps after typecheck run also after a red step before them: one run shows every failure, and the job is
+      # red anyway. The push relay needs only its own install; the iroh relay registry also needs the push relay
+      # install (modules shared with `relay/src/`).
+      - name: app copy catalogs
+        if: ${{ !cancelled() }}
+        run: node scripts/l10n-check.mjs
+      - name: relay typecheck
+        if: ${{ !cancelled() && steps.relay-install.outcome == 'success' }}
+        run: pnpm -C relay run typecheck
+      - name: relay tests
+        if: ${{ !cancelled() && steps.relay-install.outcome == 'success' }}
+        run: pnpm -C relay test
+      - name: relay-auth typecheck
+        if: >-
+          ${{ !cancelled() && steps.relay-install.outcome == 'success'
+          && steps.relay-auth-install.outcome == 'success' }}
+        run: pnpm -C relay-auth run typecheck
+      - name: relay-auth tests
+        if: >-
+          ${{ !cancelled() && steps.relay-install.outcome == 'success'
+          && steps.relay-auth-install.outcome == 'success' }}
+        run: pnpm -C relay-auth test
+      # iroh relay on the VPS: files from `relay-vps/` only, as in `scripts/check.sh`; `nullglob`, because the
+      # directory may have no scripts and no TOML.
+      - name: ShellCheck
+        if: ${{ !cancelled() }}
+        run: |
+          shopt -s nullglob
+          shellcheck scripts/*.sh relay-vps/*.sh
+      - name: TOML (relay-vps)
+        if: ${{ !cancelled() }}
+        run: |
+          shopt -s nullglob
+          python3 -I scripts/lib/toml-check.py relay-vps/*.toml
+
+  tests:
+    name: Server tests, Ubuntu, Node 22, part ${{ matrix.part }}/${{ strategy.job-total }}
+    # Public repository: every event. Private repository: by hand and on `v*` tags. The whole suite takes about
+    # 100 minutes on a two-core runner, more than one job may take, so it runs in parts (`vitest --shard`).
+    if: >-
+      ${{ github.event.repository.private == false
+      || github.event_name == 'workflow_dispatch'
+      || startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    # The part count (the list `part`, one job per part) and the time limit of one part stand only here.
+    timeout-minutes: ${{ matrix.minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4, 5, 6]
+        minutes: [35]
+    env:
+      PART: ${{ matrix.part }}
+      PARTS: ${{ strategy.job-total }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, 2026-07-20
+        with:
+          # Full git history instead of the default one-commit clone, as in a local checkout.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0, 2026-10-08
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0, 2026-09-05
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      # The iroh relay registry tests (`relay-vps/test/`) import modules shared with `relay/src/`.
+      - name: pnpm install (relay)
+        run: pnpm -C relay install --frozen-lockfile
+      # Tests that start the `relay-auth` Worker locally skip themselves without its install.
+      - name: pnpm install (relay-auth)
+        run: pnpm -C relay-auth install --frozen-lockfile
+      - name: tests
+        run: pnpm test --shard="$PART/$PARTS" --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+      - name: test skips
+        if: ${{ !cancelled() }}
+        run: node scripts/lib/ci-summary.mjs "$RUNNER_TEMP/vitest.json" "Ubuntu, Node $(node --version), part $PART/$PARTS" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  macos-tests:
+    name: macOS, Node 22 (server tests)
+    # Public repository: every event; private repository: by hand only, because there a macOS minute counts ×10 and
+    # the macOS-only tests run on the development Mac.
+    if: ${{ github.event.repository.private == false || github.event_name == 'workflow_dispatch' }}
+    # Image `xcode-27` (a GitHub preview): macOS 27 and Xcode 27, the line that builds the app and the measurements in
+    # the repository.
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, 2026-07-20
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # The lowest line of `engines.node`; the lines 24 and 26 are checked by the job `package`.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0, 2026-10-08
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0, 2026-09-05
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: pnpm install (relay)
+        run: pnpm -C relay install --frozen-lockfile
+      - name: tests
+        run: pnpm test --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+      - name: test skips
+        if: ${{ !cancelled() }}
+        run: node scripts/lib/ci-summary.mjs "$RUNNER_TEMP/vitest.json" macOS | tee -a "$GITHUB_STEP_SUMMARY"
+
+  swift-contract:
+    name: macOS (swift-contract)
+    # The app's Swift decoder on the golden SSE frames (step `swift-contract` of scripts/check.sh). Public repository:
+    # every event; private repository: by hand and on `v*` tags. Its own job, so it runs also when the server tests
+    # are red. The package reads the committed fixtures, so the job needs neither Node, pnpm nor the git history.
+    if: >-
+      ${{ github.event.repository.private == false
+      || github.event_name == 'workflow_dispatch'
+      || startsWith(github.ref, 'refs/tags/v') }}
+    # Image `xcode-27`, as in `macos-tests`. `macos-latest` has only Xcode 26: there `swift test` of the RarogContract
+    # package does not recognise the test process and does not find the sentences in the copy catalog of the test
+    # target.
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, 2026-07-20
+        with:
+          persist-credentials: false
+      # No Xcode = failure.
+      - name: swift-contract
+        run: |
+          source scripts/xcode-toolchain.sh
+          xcode_dev="$(rarog_xcode_developer_dir)"
+          echo "Xcode: $xcode_dev ($(DEVELOPER_DIR="$xcode_dev" xcodebuild -version | tr '\n' ' '))"
+          RAROG_COPY_LANGUAGE=pl DEVELOPER_DIR="$xcode_dev" xcrun swift test --package-path native/Rarog/Packages/RarogContract
+
+  package:
+    name: Package from tarball (${{ matrix.os }}, Node ${{ matrix.node }})
+    # Ubuntu always, on three Node lines also in a private repository: about a minute per variant, and the npm and
+    # pnpm install differences between the lines show only here. macOS under the same conditions as the job
+    # `swift-contract` (private repository: by hand and on `v*` tags).
+    # The image `macos-latest` is enough: the job does not build the app.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: >-
+          ${{ fromJSON((github.event.repository.private == false
+          || github.event_name == 'workflow_dispatch'
+          || startsWith(github.ref, 'refs/tags/v'))
+          && '["ubuntu-latest", "macos-latest"]' || '["ubuntu-latest"]') }}
+        node: [22, 24, 26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, 2026-07-20
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0, 2026-10-08
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0, 2026-09-05
+      # The repository install gives the packer `tsc` and the SDK test `vitest`; the package takes nothing from it.
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: tarball
+        run: node scripts/package.mjs --out "$RUNNER_TEMP/paczka"
+      # Each variant in its own directory with a temporary HOME (scripts/package-smoke.sh): package count,
+      # `rarog --help`, the SDK from the npm registry with the package's code, `serve --check` and a demo server with
+      # `/health`.
+      - name: npm i -g
+        run: bash scripts/package-smoke.sh npm "$RUNNER_TEMP"/paczka/rarog-*.tgz
+      - name: pnpm add -g
+        if: ${{ !cancelled() }}
+        run: bash scripts/package-smoke.sh pnpm "$RUNNER_TEMP"/paczka/rarog-*.tgz

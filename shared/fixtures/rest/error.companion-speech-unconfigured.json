@@ -1,0 +1,7 @@
+{
+  "error": "companion-speech-unconfigured",
+  "message": "Soniox rejected the server's key. Check SONIOX_API_KEY in the server environment.",
+  "messageRef": {
+    "code": "rest.companion-speech-key-rejected"
+  }
+}

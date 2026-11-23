@@ -1,0 +1,16 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/projekt/notes-hunki-57.md",
+    "old_string": "Status: draft",
+    "new_string": "Status: final",
+    "replace_all": true
+  },
+  "cwd": "/Users/u/projekt",
+  "seeded": [
+    {
+      "file_path": "/Users/u/projekt/notes-hunki-57.md",
+      "content": "# Part one\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk\nStatus: draft\na\nb\nc\nd\ne\nf\ng\nh\ni\n# Part two\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk\nStatus: draft\nEnd.\n"
+    }
+  ]
+}

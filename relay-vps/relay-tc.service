@@ -1,0 +1,13 @@
+[Unit]
+Description=Sufit ruchu relaya: tc htb 100 Mbit/s z fq_codel (warunek startu iroh-relay)
+After=network-online.target
+Wants=network-online.target
+Before=iroh-relay.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/relay-vps/relay-tc.sh apply
+
+[Install]
+WantedBy=multi-user.target

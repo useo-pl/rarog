@@ -1,0 +1,7 @@
+{
+  "t": "err",
+  "msg": "Open terminal limit reached. Close another terminal and try again.",
+  "msgRef": {
+    "code": "term.attach-limit"
+  }
+}

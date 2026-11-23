@@ -1,0 +1,29 @@
+{
+  "headers": {
+    "apns-expiration": "1791367230",
+    "apns-priority": "10",
+    "apns-push-type": "liveactivity",
+    "apns-topic": "ai.rarog.app.push-type.liveactivity"
+  },
+  "payload": {
+    "aps": {
+      "timestamp": 1791367200,
+      "event": "update",
+      "content-state": {
+        "waiting": 0,
+        "working": 1,
+        "finished": 1,
+        "top": {
+          "sessionId": "demo-atlas"
+        },
+        "updatedEpoch": 1791367200
+      },
+      "alert": {
+        "title": "Agent skończył",
+        "body": "Wynik czeka w Rarogu",
+        "sound": "skonczyl.caf"
+      },
+      "stale-date": 1791368100
+    }
+  }
+}

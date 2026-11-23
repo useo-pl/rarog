@@ -1,0 +1,16 @@
+{
+  "path": "/Users/demo/Projects/rarog",
+  "parent": "/Users/demo/Projects",
+  "git": true,
+  "history": false,
+  "canCreate": true,
+  "entries": [
+    {
+      "name": "docs",
+      "path": "/Users/demo/Projects/rarog/docs",
+      "git": false,
+      "history": false
+    }
+  ],
+  "truncated": false
+}

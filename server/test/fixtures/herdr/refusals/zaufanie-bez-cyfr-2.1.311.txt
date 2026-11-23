@@ -1,0 +1,32 @@
+rarog: 0.1.0
+at: 2026-10-27T12:54:35.247Z
+reason: unreadable
+toolName: brak
+sessionId: <sesja>
+hook: brak
+jsonl: brak
+reqId: screen:1:f:30db357025d1
+source: screen
+optionCount: 0
+dialogTitle: brak
+paneRows: 52
+--- ekran ---
+claude --session-id <sesja> --model 'opus[1m]' --effort xhigh --permission-mode auto
+❯ claude --session-id <sesja> --model 'opus[1m]' --effort xhigh --permission-mode auto
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Accessing workspace:
+
+ ~/Projects/strona
+
+ Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open source project, or
+ work from your team). If not, take a moment to review what's in this folder first.
+
+ Claude Code'll be able to read, edit, and execute files here.
+
+ Security guide
+
+ ❯ No, exit
+   Yes, I trust this folder
+
+ Enter to confirm · Esc to cancel

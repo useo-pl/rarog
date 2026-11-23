@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "forbidden": [
+    { "literal": "acmepol", "category": "klient" },
+    { "literal": "zmyslonyogrod", "category": "klient" }
+  ],
+  "pseudonyms": { "acmepol": "alfa", "zmyslonyogrod": "gamma" }
+}

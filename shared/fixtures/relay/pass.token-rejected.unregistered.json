@@ -1,0 +1,43 @@
+{
+  "description": "Apple: 410 Unregistered z chwilą unieważnienia tokenu (timestamp w ms epoki, bez zmian).",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "type": "alert",
+      "topic": "ai.rarog.app"
+    }
+  },
+  "apns": {
+    "status": 410,
+    "body": "{\"reason\":\"Unregistered\",\"timestamp\":1793600000000}"
+  },
+  "apnsRequest": {
+    "url": "https://api.sandbox.push.apple.com/3/device/c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+    "headers": {
+      "apns-push-type": "background",
+      "apns-priority": "5",
+      "apns-topic": "ai.rarog.app",
+      "apns-expiration": "0",
+      "content-type": "application/json"
+    },
+    "body": "{\"aps\":{\"content-available\":1}}"
+  },
+  "response": {
+    "status": 422,
+    "body": {
+      "v": 1,
+      "error": "token-rejected",
+      "apnsStatus": 410,
+      "reason": "Unregistered",
+      "timestamp": 1793600000000
+    }
+  }
+}

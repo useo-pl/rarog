@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "warning": "The change goes to the pane as the “/model” command, and Claude Code saves it in the account settings: new sessions, including those started in the terminal, will use this model from now on. Rarog won't restore the previous value.",
+  "warningRef": {
+    "code": "model.change-warning"
+  }
+}

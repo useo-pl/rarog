@@ -1,0 +1,46 @@
+
+ ▐▛███▛█   Claude Code v2.1.328
+▝▜██████▀  Sonnet 5 with medium effort · Claude Plan
+ ▝▝   ▝▝   ~/projekt
+
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie jednokrotnego wyboru: 'Jaki
+  smak lodow?' z opcjami: Wanilia, Czekolada, Truskawka. Nie pisz nic poza tym wywołaniem.
+
+⏺ Declined to answer Claude's questions:
+  ⎿  · Jaki smak lodów? (Wanilia / Czekolada / Truskawka)
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. W JEDNYM wywołaniu zadaj trzy pytania jednokrotnego
+  wyboru: 'Jaki smak lodow?' (Wanilia, Czekolada, Truskawka), 'Jaki kubek?' (Maly, Duzy), 'Co na wierzch?' (Orzechy, Wiorki).
+  Zadne z pytan nie ma multiSelect. Nie pisz nic poza tym wywołaniem.
+
+⏺ Declined to answer Claude's questions:
+  ⎿  · Jaki smak lodów? (Wanilia / Czekolada / Truskawka)
+     · Jaki kubek? (Mały / Duży)
+     · Co na wierzch? (Orzechy / Wiórki)
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. Zadaj dokładnie jedno pytanie WIELOKROTNEGO wyboru
+  (multiSelect: true): 'Ktore dodatki wlaczyc?' z opcjami: Posypka, Polewa, Orzechy. Nie pisz nic poza tym wywołaniem.
+
+⏺ Declined to answer Claude's questions:
+  ⎿  · Które dodatki włączyć? (Posypka / Polewa / Orzechy)
+
+❯ Nie używaj żadnych narzędzi poza jednym wywołaniem AskUserQuestion. W JEDNYM wywołaniu zadaj dwa pytania: 'Jaki smak lodow?'
+  (Wanilia, Czekolada, Truskawka) jednokrotne oraz 'Ktore dodatki wlaczyc?' (Posypka, Polewa, Orzechy) z multiSelect: true. Nie
+  pisz nic poza tym wywołaniem.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Smak  ☐ Dodatki  ✔ Submit  →
+
+Jaki smak lodów?
+
+❯ 1. Wanilia
+     Wanilia
+  2. Czekolada
+     Czekolada
+  3. Truskawka
+     Truskawka
+  4. Type something.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

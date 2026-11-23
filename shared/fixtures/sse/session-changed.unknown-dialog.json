@@ -1,0 +1,20 @@
+{
+  "type": "session-changed",
+  "session": {
+    "id": "herdr-w1-p3",
+    "cwd": "/Users/demo/Projects/cedar",
+    "title": "cedar",
+    "state": "waiting-permission",
+    "stateSince": "2026-10-03T08:00:48.000Z",
+    "createdAt": "2026-10-03T08:00:48.000Z",
+    "lastActivityAt": "2026-10-03T08:00:48.000Z",
+    "paneId": "w1:p3",
+    "launchedByRarog": true,
+    "stale": false,
+    "herdrMode": "manual",
+    "herdrDialog": "mcp",
+    "herdrDialogScreen": "Do you trust the files in this folder?\n/Users/demo/Projects/cedar\n❯ 1. Yes, proceed\n  2. No, exit",
+    "outOfScope": false,
+    "label": "nowy projekt"
+  }
+}

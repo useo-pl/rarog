@@ -1,0 +1,25 @@
+{
+  "type": "permission-pending",
+  "request": {
+    "permId": "rarog-k-3e61f0",
+    "sessionId": "herdr-w1-p2",
+    "toolName": "Bash",
+    "displayText": "echo \u202egnp.exe",
+    "inputKind": "shell",
+    "risk": "normal",
+    "cwd": "/Users/demo/Projects/birch",
+    "createdAt": "2026-10-03T08:02:00.000Z",
+    "canAllow": false,
+    "subject": "tool",
+    "channel": "hook",
+    "state": "pending",
+    "unavailable": "hidden-chars",
+    "dialogVisible": true,
+    "fields": [
+      {
+        "name": "description",
+        "value": "Print a file name"
+      }
+    ]
+  }
+}

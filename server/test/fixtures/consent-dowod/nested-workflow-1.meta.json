@@ -1,0 +1,9 @@
+{
+  "agentType": "workflow-subagent",
+  "isBuiltIn": true,
+  "description": "pomiar",
+  "spawnDepth": 1,
+  "requestShape": "foreground",
+  "requestNonInteractive": false,
+  "pickedEffortModel": "claude-haiku-5-5"
+}

@@ -1,0 +1,36 @@
+  Jak to sprawdzić:
+
+  1. Uruchom ponownie aplikację notatek (ustawienia są w pliku app.json).
+  2. Odśwież widok.
+  3. Dodaj nową notatkę „Zakupy” w pierwszym folderze albo w widoku archiwum — wpis powinien pojawić się na liście z datą dodania, a po chwili
+     także w wyszukiwarce notatek.
+
+  Commit — zrobić jeden feat: zapis notatek na dysku (etap 1) na to, co jest w working tree?
+
+✻ Brewed for 1h 2m 19s
+
+※ recap: Dodajemy zapis notatek w aplikacji demo: etap 1 (zapis lokalny + lista ostatnich zmian) jest gotowy, po review i poprawkach, 2504 testy
+  zielone, widok zbudowany. Następny krok: zrestartuj aplikację i sprawdź zapisy, potem decyzja o commicie. (disable recaps in /config)
+
+❯ działa. teraz chcę, żeby notatki zostawały po zamknięciu okna.
+
+  Recalled 1 memory, wrote 1 memory
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Architektura
+
+Który sposób zapisu notatek wybrać?
+
+❯ 1. A. Plik lokalny, SQLite (Rekomendacja)
+     Wszystkie notatki w jednym pliku bazy obok aplikacji, zapis po każdej zmianie. Szybko i prosto, bez nowych usług; bez synchronizacji. Jak nie
+     wystarczy — B dołożymy na koniec.
+  2. B. Serwer z bazą danych (REST+SQL)
+     Notatki na serwerze, dostęp z każdego urządzenia. Duża zmiana: nowe zależności, konta i logowanie, kopie zapasowe i koszt utrzymania
+     instancji.
+  3. B z bazą w chmurze
+     Jak B, ale serwer to gotowa usługa chmurowa — mniej kodu po naszej stronie. Blisko wizji „notatki wszędzie”, ale zależność od dostawców +
+     wszystkie minusy B.
+  4. Type something.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel

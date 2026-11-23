@@ -1,0 +1,14 @@
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☒ Odstęp  ☒ Dodatki  ☐ Kolor  ✔ Submit  →
+
+Jaki kolor przycisku?
+
+❯ 1. Niebieski (Rekomendacja)
+     Jak dziś
+  2. Zielony
+     Nowy
+  3. Type something.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

@@ -1,0 +1,36 @@
+{
+  "cli": "2.1.318",
+  "method": "pomiar na żywym CLI: sesje claude w izolacji (własny HOME i katalog konfiguracji, atrapa API), argumenty startu jak u serwera (--effort ultracode, także przy wznowieniu --resume), komendy /effort ultracode i /effort ultracode off przez herdr agent prompt w bezczynności i w trakcie tury; zapisane same słowa CLI, każde stoi w wycinkach z listy fixtures",
+  "fixtures": [
+    "ultracode/start-flaga.jsonl",
+    "ultracode/pierwsza-tura-skill.jsonl",
+    "ultracode/komendy-w-bezczynnosci.jsonl",
+    "ultracode/off-w-turze.jsonl",
+    "ultracode/clear.jsonl",
+    "ultracode/niedostepne.jsonl",
+    "ultracode/wznowienie-z-flaga.jsonl",
+    "ultracode/wznowienie-bez-flagi.jsonl"
+  ],
+  "docs": {
+    "source": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+    "fetched": "2026-11-03",
+    "method": "sekcja „Adjust effort level”; zapisane same fakty, bez tekstu dokumentacji",
+    "commands": { "on": "/effort ultracode", "off": "/effort ultracode off" },
+    "flagValue": "ultracode",
+    "flagEffort": "xhigh",
+    "flagSince": "2.1.203",
+    "offFormSince": "2.1.284"
+  },
+  "observed": {
+    "commandArgs": { "on": "ultracode", "off": "ultracode off" },
+    "attachments": { "enter": "ultra_effort_enter", "exit": "ultra_effort_exit" },
+    "reminderTypes": ["full"],
+    "stdout": {
+      "on": "Ultracode on (this session only): dynamic workflows on every task. Effort stays xhigh.",
+      "off": "Ultracode off. Effort stays xhigh.",
+      "unavailable": "Ultracode needs dynamic workflows enabled (see /config). Valid options are: low, medium, high, xhigh, max, auto"
+    },
+    "attachmentOnlyInFirstTurn": true,
+    "commandInTurnWritesNothing": true
+  }
+}

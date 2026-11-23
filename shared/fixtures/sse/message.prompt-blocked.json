@@ -1,0 +1,24 @@
+{
+  "type": "message",
+  "sessionId": "herdr-w1-p1",
+  "message": {
+    "seq": 25,
+    "role": "system",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "⚠ A hook blocked the prompt. It wasn't sent.\nPrompts on this branch need a ticket number.\nAdd one and send the prompt again.",
+        "ref": {
+          "code": "commands.prompt-blocked.reason",
+          "args": [
+            "Prompts on this branch need a ticket number.\nAdd one and send the prompt again."
+          ]
+        }
+      }
+    ],
+    "at": "2026-10-03T08:00:54.000Z",
+    "promptBlocked": {
+      "reason": "Prompts on this branch need a ticket number.\nAdd one and send the prompt again."
+    }
+  }
+}

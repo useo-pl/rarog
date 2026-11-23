@@ -1,0 +1,51 @@
+
+ ▐▛███▛█   Claude Code v2.1.319
+▝▜██████▀  Sonnet 5.5 with low effort · API Usage Billing
+ ▝▝   ▝▝   ~/projekt
+
+▎ Auto mode is now Claude Code's default permission mode.
+▎ Auto mode lets Claude handle permission prompts automatically. Claude checks each tool call for risky actions and prompt
+▎ injection before executing, runs the ones it assesses as lower-risk, and blocks the rest.
+▎ https://code.claude.com/docs/en/permission-modes
+
+❯ ZESTAW-KONTROLNY-FORMULARZ: zadaj jedno pytanie.
+
+  Thought for 1s
+
+⏺ User answered Claude's questions:
+  ⎿  · Który wariant zestawu kontrolnego zapisać? → Pierwszy
+
+  Thought for 1s
+
+⏺ gotowe
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ /model
+  ⎿  Kept model as Sonnet 5.5
+
+❯ /effort
+  ⎿  Set effort level to high (saved as your default for new sessions): Comprehensive implementation with extensive testing and
+     documentation
+
+❯ /effort low
+  ⎿  Set effort level to low (saved as your default for new sessions): Quick, straightforward implementation with minimal
+     overhead
+
+
+
+
+
+
+
+
+
+
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔ ○ low · /effort ▔
+   Switch model?
+   Your next response will be slower and use more tokens
+
+   This conversation is cached for the current model. Switching to Fable 5.1 means the full history gets re-read.
+
+   ❯ 1. Yes, switch to Fable 5.1
+     2. No, go back

@@ -1,0 +1,51 @@
+❯ Wymień jednym wierszem, po przecinku, nazwy wszystkich narzędzi, które masz (także odroczonych). Nic więcej.
+
+⏺ Agent, Artifact, AskUserQuestion, Bash, Edit, ListAgents, Read, ReportFindings, ScheduleWakeup, SendFeedback, Skill,
+  ToolSearch, Workflow, Write, NotebookEdit, ArtifactComments, ArtifactData, CronCreate, CronDelete, CronList, DesignSync,
+  EndConversation, EnterPlanMode, EnterWorktree, ExitPlanMode, ExitWorktree, Monitor, PushNotification, RemoteTrigger,
+  SendMessage, SendToProject, SendToProjectContext, TaskStop, WebSearch, mcp__claude-in-chrome__browser_batch,
+  mcp__claude-in-chrome__computer, mcp__claude-in-chrome__file_upload, mcp__claude-in-chrome__find,
+  mcp__claude-in-chrome__form_input, mcp__claude-in-chrome__get_page_text, mcp__claude-in-chrome__gif_creator,
+  mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__list_connected_browsers, mcp__claude-in-chrome__navigate,
+  mcp__claude-in-chrome__read_console_messages, mcp__claude-in-chrome__read_network_requests, mcp__claude-in-chrome__read_page,
+  mcp__claude-in-chrome__resize_window, mcp__claude-in-chrome__select_browser, mcp__claude-in-chrome__switch_browser,
+  mcp__claude-in-chrome__tabs_close_mcp, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp,
+  mcp__claude-in-chrome__upload_image, mcp__claude_ai_Claude_Docs__batch, mcp__claude_ai_Claude_Docs__guide,
+  mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__create, mcp__claude_ai_Claude_Docs__delete,
+  mcp__claude_ai_Claude_Docs__export, mcp__claude_ai_Claude_Docs__query, mcp__claude_ai_Claude_Docs__read
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Uruchom raz agenta web-fetch (narzędzie Agent, subagent_type web-fetch) z poleceniem: pobierz narzędziem WebFetch dokładnie
+  URL https://example.com/sciezka/strona?q=pomiar&lang=pl#sekcja-2 z promptem 'Summarize this page in one sentence.'. Nic
+  więcej.
+
+⏺ Fetch(https://example.com/sciezka/strona?q=pomiar&lang=pl#sekcja-2)
+  ⎿  Interrupted · What should Claude do instead?
+
+⏺ Wywołanie agenta web-fetch zostało przerwane. Nie wykonało się, więc strona nie została pobrana. Daj znać, czy mam spróbować
+  jeszcze raz, czy zrobić to inaczej.
+
+✻ <status pracy — gaszony przy zapisie>
+
+❯ Uruchom raz agenta web-fetch (narzędzie Agent, subagent_type web-fetch) z poleceniem: wywołaj WebFetch dla URL
+  https://example.com/ z parametrem prompt złożonym z TRZECH linii rozdzielonych znakiem nowej linii: 'Linia pierwsza: tytul
+  strony.', 'Linia druga: pierwszy akapit.', 'Linia trzecia: liczba linkow.'. Nic więcej.
+
+  Fetch(https://example.com/)
+  ⎿  Fetching…
+     (ctrl+b to run in background)
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Fetch · from the web-fetch agent
+ Claude wants to fetch content from example.com
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ url: https://example.com/
+ │ prompt: tytul strony.
+ │ pierwszy akapit.
+ │ liczba linkow.
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to allow Claude to fetch this content?
+ ❯ 1. Yes
+   2. Yes, and don't ask again for example.com
+   3. No, and tell Claude what to do differently (esc)

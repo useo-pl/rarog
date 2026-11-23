@@ -1,0 +1,7 @@
+{
+  "error": "bad-state",
+  "message": "The session moved to another conversation after the voice agent read it. Nothing was sent.",
+  "messageRef": {
+    "code": "session.conversation-changed"
+  }
+}

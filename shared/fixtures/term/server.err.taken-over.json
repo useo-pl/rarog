@@ -1,0 +1,7 @@
+{
+  "t": "err",
+  "msg": "The terminal was taken over. Open it again.",
+  "msgRef": {
+    "code": "term.taken-over"
+  }
+}

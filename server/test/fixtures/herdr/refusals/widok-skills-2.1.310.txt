@@ -1,0 +1,66 @@
+rarog: 0.1.0
+at: 2026-10-26T08:59:14.645Z
+reason: unreadable
+toolName: brak
+sessionId: <sesja>
+hook: brak
+jsonl: brak
+cliDialog: dialog
+reqId: screen:1:f:30db357025d1
+source: screen
+optionCount: 0
+dialogTitle: brak
+paneRows: 52
+--- ekran ---
+
+
+❯ /recap
+  ⎿  Nothing to recap yet — send a message first.
+
+❯ /rename pomiar-bb
+  ⎿  Session renamed to: pomiar-bb
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+   Skills
+   34 skills · enter/space to cycle, / to search, t to sort, Esc to close
+
+   ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+   │ ⌕ Search skills…                                                                                                      │
+   ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+   ❯ ✔ anthropic-skills:deep-research                      claude.ai sync · ~200 tok
+     ✔ built-in-browser                                    claude.ai sync · ~280 tok
+     ✔ chrome-browser                                      claude.ai sync · ~260 tok
+     ✔ computer-use                                        claude.ai sync · ~320 tok
+     ✔ docs                                                claude.ai sync · ~340 tok
+     ✔ docx                                                claude.ai sync · ~320 tok
+     ✔ google-workspace                                    claude.ai sync · ~330 tok
+     ✔ import-memory                                       claude.ai sync · ~60 tok
+     ✔ morning                                             claude.ai sync · ~120 tok
+     ✔ pdf                                                 claude.ai sync · ~150 tok
+     ✔ pptx                                                claude.ai sync · ~330 tok
+     ✔ skill-creator                                       claude.ai sync · ~120 tok
+     ✔ xlsx                                                claude.ai sync · ~320 tok
+     ✔ cowork-plugin-management:cowork-plugin-customizer   locked by plugin · plugin · ~110 tok
+     ✔ cowork-plugin-management:create-cowork-plugin       locked by plugin · plugin · ~130 tok
+     ✔ frontend-design:frontend-design                     locked by plugin · plugin · ~80 tok
+     ✔ demo:skill-08                                       locked by plugin · plugin · ~80 tok
+     ✔ demo:skill-09                                       locked by plugin · plugin · ~90 tok
+     ◯ api-client                                          user · ~150 tok
+     ✔ backup                                              user · ~100 tok
+     ◯ changelogs                                          user · ~130 tok
+     ◯ code-review-checklist-v2                            user · ~180 tok
+     ✔ debug                                               user · ~40 tok
+     ◯ deploy-pipeline                                     user · ~130 tok
+     ✔ explain                                             user · ~60 tok
+     ◯ fix-lint                                            user · ~80 tok
+     ◯ git-commit-help                                     user · ~100 tok
+     ✔ i18n-qa                                             user · ~30 tok
+     ✔ migration-helper                                    user · ~40 tok
+     ◯ perf-budget                                         user · ~120 tok
+     ✔ release-checks                                      user · ~40 tok
+     ◯ security                                            user · ~150 tok
+     ✔ test-writing-practices                              user · ~130 tok
+     ✔ ui-audit                                            user · ~120 tok
+
+   Plugin skills are managed via /plugin
+
+   /deep-research runs a workflow, not your claude.ai skill.

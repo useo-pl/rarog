@@ -1,0 +1,364 @@
+{
+  "id": "cli:agent:list",
+  "result": {
+    "agents": [
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "e3759b2c-2275-565c-8f49-4e2707bb0231"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/demo",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/demo",
+        "pane_id": "w9:p72",
+        "revision": 3,
+        "state_change_seq": 23,
+        "tab_id": "w9:t1H",
+        "terminal_id": "term_0000000000000000",
+        "terminal_title": "✳ refaktor",
+        "terminal_title_stripped": "refaktor",
+        "workspace_id": "w9"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "4436f802-9454-5dee-b7ff-850961449638"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/demo",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/demo",
+        "pane_id": "w9:p1Y",
+        "revision": 3,
+        "state_change_seq": 89,
+        "tab_id": "w9:tK",
+        "terminal_id": "term_0000000000000001",
+        "terminal_title": "✳ testy",
+        "terminal_title_stripped": "testy",
+        "workspace_id": "w9"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "7b80f9bd-8a51-592d-8b7b-4341ae2d05e6"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/demo",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/demo",
+        "pane_id": "w9:p5Q",
+        "revision": 3,
+        "state_change_seq": 26,
+        "tab_id": "w9:t1E",
+        "terminal_id": "term_0000000000000002",
+        "terminal_title": "✳ naprawa-buga",
+        "terminal_title_stripped": "naprawa-buga",
+        "workspace_id": "w9"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "1baac5b3-6240-541d-855a-61793309a294"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/birch",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/birch",
+        "pane_id": "wA:p2T",
+        "revision": 3,
+        "state_change_seq": 84,
+        "tab_id": "wA:tM",
+        "terminal_id": "term_0000000000000003",
+        "terminal_title": "✳ przeglad-zaleznosci",
+        "terminal_title_stripped": "przeglad-zaleznosci",
+        "workspace_id": "wA"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "61ebc8d9-1242-5675-b095-4992a2f76d29"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/cedar",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/cedar",
+        "pane_id": "wB:p5",
+        "revision": 3,
+        "state_change_seq": 25,
+        "tab_id": "wB:t3",
+        "terminal_id": "term_0000000000000004",
+        "terminal_title": "✳ import-danych",
+        "terminal_title_stripped": "import-danych",
+        "workspace_id": "wB"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "65ed641d-c2d9-5c70-89eb-392d7e5d0c83"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/dune",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/dune",
+        "pane_id": "wD:p18",
+        "revision": 3,
+        "state_change_seq": 83,
+        "tab_id": "wD:tA",
+        "terminal_id": "term_0000000000000005",
+        "terminal_title": "✳ migracja",
+        "terminal_title_stripped": "migracja",
+        "workspace_id": "wD"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "46452bd7-9b75-5f5b-8247-4ebb3d4f81c5"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/ember",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/ember",
+        "pane_id": "wE:p1",
+        "revision": 3,
+        "state_change_seq": 27,
+        "tab_id": "wE:t1",
+        "terminal_id": "term_0000000000000006",
+        "terminal_title": "✳ dokumentacja",
+        "terminal_title_stripped": "dokumentacja",
+        "workspace_id": "wE"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "d12874a8-85ff-5345-9a78-218fec7f3f1e"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/fjord",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/fjord",
+        "pane_id": "wF:p1",
+        "revision": 3,
+        "state_change_seq": 20,
+        "tab_id": "wF:t1",
+        "terminal_id": "term_0000000000000007",
+        "terminal_title": "✳ wydajnosc",
+        "terminal_title_stripped": "wydajnosc",
+        "workspace_id": "wF"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "0b7f11f8-3e8c-53d8-a03f-c37dcb3ec88a"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/fjord",
+        "focused": true,
+        "foreground_cwd": "/Users/u/Projects/fjord",
+        "pane_id": "wF:p1G",
+        "revision": 3,
+        "state_change_seq": 157,
+        "tab_id": "wF:t9",
+        "terminal_id": "term_0000000000000008",
+        "terminal_title": "✳ logi",
+        "terminal_title_stripped": "logi",
+        "workspace_id": "wF"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "e2e77514-0683-5dc7-98c7-6025e010d6bf"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Desktop/inne",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Desktop/inne",
+        "pane_id": "wG:p1",
+        "revision": 3,
+        "state_change_seq": 87,
+        "tab_id": "wG:t1",
+        "terminal_id": "term_0000000000000009",
+        "terminal_title": "✳ formularz",
+        "terminal_title_stripped": "formularz",
+        "workspace_id": "wG"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "72d231ed-ac10-5895-8181-6708ad419dd3"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Desktop/inne",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Desktop/inne",
+        "pane_id": "wG:p1W",
+        "revision": 3,
+        "state_change_seq": 82,
+        "tab_id": "wG:t9",
+        "terminal_id": "term_000000000000000a",
+        "terminal_title": "✳ eksport-csv",
+        "terminal_title_stripped": "eksport-csv",
+        "workspace_id": "wG"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "f95dd6af-920a-5f2e-955b-1c2348f8e9e7"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/grove",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/grove",
+        "pane_id": "wH:pD",
+        "revision": 3,
+        "state_change_seq": 31,
+        "tab_id": "wH:t4",
+        "terminal_id": "term_000000000000000b",
+        "terminal_title": "✳ audyt",
+        "terminal_title_stripped": "audyt",
+        "workspace_id": "wH"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "d71a03a2-d77b-5d4e-8d86-6e7118cd10f3"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/juniper",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/juniper",
+        "pane_id": "wJ:p1",
+        "revision": 3,
+        "state_change_seq": 85,
+        "tab_id": "wJ:t1",
+        "terminal_id": "term_000000000000000c",
+        "terminal_title": "✳ cache",
+        "terminal_title_stripped": "cache",
+        "workspace_id": "wJ"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "25146db2-7259-55f8-9b07-164f151220e9"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/juniper",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/juniper",
+        "pane_id": "wJ:pQ",
+        "revision": 3,
+        "state_change_seq": 88,
+        "tab_id": "wJ:t6",
+        "terminal_id": "term_000000000000000d",
+        "terminal_title": "✳ sesja-15",
+        "terminal_title_stripped": "sesja-15",
+        "workspace_id": "wJ"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "7a82470f-e1d5-5cee-8d50-8c5ef7ee3ea9"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/harbor",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/harbor",
+        "pane_id": "wN:p1",
+        "revision": 3,
+        "state_change_seq": 86,
+        "tab_id": "wN:t1",
+        "terminal_id": "term_000000000000000e",
+        "terminal_title": "✳ sesja-16",
+        "terminal_title_stripped": "sesja-16",
+        "workspace_id": "wN"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "eda2a824-7235-5f15-8347-b632074ab896"
+        },
+        "agent_status": "idle",
+        "cwd": "/Users/u/Projects/inlet",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/inlet",
+        "pane_id": "wP:p1",
+        "revision": 3,
+        "state_change_seq": 21,
+        "tab_id": "wP:t1",
+        "terminal_id": "term_000000000000000f",
+        "terminal_title": "✳ sesja-17",
+        "terminal_title_stripped": "sesja-17",
+        "workspace_id": "wP"
+      },
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "3290691d-6c93-5d64-a2a6-c520a9b64609"
+        },
+        "agent_status": "working",
+        "cwd": "/Users/u/Projects/rarog",
+        "focused": false,
+        "foreground_cwd": "/Users/u/Projects/rarog",
+        "pane_id": "wQ:p2",
+        "revision": 4,
+        "state_change_seq": 154,
+        "tab_id": "wQ:t2",
+        "terminal_id": "term_0000000000000010",
+        "terminal_title": "◐ sesja-18",
+        "terminal_title_stripped": "sesja-18",
+        "workspace_id": "wQ"
+      }
+    ]
+  }
+}

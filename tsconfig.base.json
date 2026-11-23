@@ -1,0 +1,30 @@
+{
+  // Shared base for every package. Packages override only `module`/`moduleResolution`
+  // (NodeNext) and the file list.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "verbatimModuleSyntax": true,
+    // The code is never emitted to JS for running (tsx runs it), so relative imports carry
+    // the .ts extension.
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    // Declarations only: tsx runs the code, and tsc -b serves only to typecheck and to
+    // generate .d.ts files for project references.
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "sourceMap": false
+  }
+}

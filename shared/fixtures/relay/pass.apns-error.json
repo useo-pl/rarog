@@ -1,0 +1,40 @@
+{
+  "description": "Każda inna odpowiedź Apple bez 200 (tu: klucz, 403 InvalidProviderToken; także 429 Apple, 5xx). Odpowiedź bez pól Apple: status i powód zostają w logu przekaźnika (apns_status, reason).",
+  "request": {
+    "method": "POST",
+    "path": "/v1/pass",
+    "headers": {
+      "content-type": "application/json",
+      "x-rarog-relay-client": "rarog-server/0.1.0"
+    },
+    "body": {
+      "v": 1,
+      "token": "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+      "environment": "development",
+      "type": "alert",
+      "topic": "ai.rarog.app"
+    }
+  },
+  "apns": {
+    "status": 403,
+    "body": "{\"reason\":\"InvalidProviderToken\"}"
+  },
+  "apnsRequest": {
+    "url": "https://api.sandbox.push.apple.com/3/device/c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00",
+    "headers": {
+      "apns-push-type": "background",
+      "apns-priority": "5",
+      "apns-topic": "ai.rarog.app",
+      "apns-expiration": "0",
+      "content-type": "application/json"
+    },
+    "body": "{\"aps\":{\"content-available\":1}}"
+  },
+  "response": {
+    "status": 502,
+    "body": {
+      "v": 1,
+      "error": "apns-error"
+    }
+  }
+}
