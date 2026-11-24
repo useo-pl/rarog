@@ -52,6 +52,9 @@ struct SentenceResponsesTranslationTests {
       "models.0.description": "Bez flagi --model: dokładnie to, co masz ustawione w Claude Code.",
     ]),
     SentenceTranslation("interruptResponse", InterruptResponse.self, "interrupt.json", ["session.label": "sesja 1"]),
+    SentenceTranslation("fileTooLargeBody", FileTooLargeBody.self, "error.file-too-large.json", [
+      "message": "Ten plik ma 51 MB. Serwer wysyła pliki do 50 MB (RAROG_FILES_MAX_MB).",
+    ]),
   ]
 
   @Test("lista = `sentenceResponses` (identyfikatory i pliki w tej samej kolejności)")

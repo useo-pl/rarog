@@ -44,6 +44,29 @@ struct ProjectTreePreferencesTests {
     #expect(many.allSatisfy(restarted.collapsedProjects.contains), "po ponownym uruchomieniu nic nie rozwija się samo")
   }
 
+  @Test("a pin survives a new navigation on the same preferences; setting the same state again saves nothing")
+  func pinSurvivesRestart() {
+    let prefs = MemoryPreferences()
+    let navigation = RarogNavigation(prefs: prefs)
+    #expect(navigation.pinnedProjects.cwds.isEmpty, "nothing is pinned without a record")
+    let pinned = navigation.setProjectPinned(willow + "/", pinned: true)
+    let repeated = navigation.setProjectPinned(willow, pinned: true)
+    #expect(pinned && !repeated)
+
+    let restarted = RarogNavigation(prefs: prefs)
+    #expect(restarted.pinnedProjects.contains(willow))
+    let unpinned = restarted.setProjectPinned(willow, pinned: false)
+    #expect(unpinned)
+    #expect(RarogNavigation(prefs: prefs).pinnedProjects.cwds.isEmpty)
+  }
+
+  @Test("a damaged pin record: nothing pinned")
+  func brokenPinPreferences() {
+    let prefs = MemoryPreferences()
+    prefs.set(Data("not json".utf8), forKey: NavigationPreferences.pinnedProjects)
+    #expect(RarogNavigation(prefs: prefs).pinnedProjects.cwds.isEmpty)
+  }
+
   @Test("uszkodzony wpis preferencji: wszystkie projekty rozwinięte")
   func brokenPreferences() {
     let prefs = MemoryPreferences()

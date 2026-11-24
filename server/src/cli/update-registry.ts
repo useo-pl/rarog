@@ -5,18 +5,20 @@
  * installation's or when the new version needs a newer Node. Then npm downloads the tarball of the highest version
  * above this one up to it into a temporary directory (npm's release age gate holds, also from the environment, and
  * never gives an older version; a gate that holds every version back is a warning that names the day npm lets the next
- * one in), `update-provenance.ts` checks that one file, and npm installs exactly that file with
- * `--ignore-scripts`. It finishes nothing: `update.ts` hands a new version to that version's own `rarog update
- * --finish`. After npm has replaced the package files this process only reads one file and starts a child, so it never
- * loads a module from the new files (no dynamic import).
+ * one in); a pre-release in that range is refused. With `--beta` the target is the higher of the dist-tags `beta` and
+ * `latest` (`update-channel.ts`), read with its `engines` and `deprecated` and downloaded as that exact version.
+ * `update-provenance.ts` checks that one file, and npm installs exactly that file with `--ignore-scripts`. It finishes
+ * nothing: `update.ts` hands a new version to that version's own `rarog update --finish`. After npm has replaced the
+ * package files this process only reads one file and starts a child, so it never loads a module from the new files
+ * (no dynamic import).
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  PACKAGE_INSTALL, RAROG_PACKAGE_NAME, isPackageName, npmBinDir, npmSelfUpdate, npmUpdateInstallArgs,
-  npmUpdatePackArgs, otherPackageFix, packageCommands, packageManagerOf,
+  PACKAGE_INSTALL, RAROG_PACKAGE_NAME, isPackageName, npmBinDir, npmSelfUpdate, npmUpdateExactPackArgs,
+  npmUpdateInstallArgs, npmUpdatePackArgs, otherPackageFix, packageCommands, packageManagerOf,
 } from '../install/repair.ts';
 import { NPM_AGE_GATE_CONFIG, firstNpmError, npmCliOf, npmEnv } from '../install/sdk.ts';
 import { readRegularFileSync } from '../safe-read.ts';
@@ -26,6 +28,8 @@ import type { CliIo } from './io.ts';
 import { SetupInterrupted } from './setup.ts';
 import type { Step } from './setup-context.ts';
 import type { SetupView } from './setup-screen.ts';
+import { channelTarget, gateExcludes, isPrerelease } from './update-channel.ts';
+import type { ChannelTarget } from './update-channel.ts';
 import type { InstalledPackage } from './update-lock.ts';
 import { packedTarball, verifyTarball } from './update-provenance.ts';
 
@@ -40,6 +44,16 @@ const VIEW_ARGS = ['view', `${RAROG_PACKAGE_NAME}@latest`, 'version', 'engines',
  * prints `<key>=<value>` per key when it gets more than one, `null` for a key that is not set).
  */
 const GATE_CONFIG_ARGS = ['config', 'get', 'min-release-age', 'before', '-g'] as const;
+
+/** {@link GATE_CONFIG_ARGS} of `--beta` with `min-release-age-exclude` (npm prints the list joined with commas). */
+const BETA_GATE_CONFIG_ARGS = ['config', 'get', 'min-release-age', 'before', 'min-release-age-exclude', '-g'] as const;
+
+/** `npm view` of the dist-tags: one object, tag → version (`rarog update --beta`). */
+const TAGS_ARGS = ['view', RAROG_PACKAGE_NAME, 'dist-tags', '--json'] as const;
+
+/** `npm view` of the exact target of `--beta`: its version, the Node it needs, and its deprecation when it has one. */
+const targetViewArgs = (version: string): readonly string[] =>
+  ['view', `${RAROG_PACKAGE_NAME}@${version}`, 'version', 'engines', 'deprecated', '--json'];
 
 /**
  * `npm view` with two fields, so one JSON object `{ time, versions }`: the publication time of every version ever
@@ -196,10 +210,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * `npm unpublish` removes a version from `versions` and keeps its `time`. `null` for another shape (`time` not an
  * object of strings, `versions` not an array of strings, a date that does not parse, a version of the range without a
  * time), for no version in the range, and for a publication in the future or a day already past, which the gate would
- * not have held back.
+ * not have held back. With `only` (the exact target of `--beta`) that version alone counts, not the range.
  */
 export function ageGateWait(
-  answer: unknown, gate: { readonly days: number; readonly above: string; readonly upTo: string; readonly now: number },
+  answer: unknown, gate: {
+    readonly days: number; readonly above: string; readonly upTo: string; readonly now: number; readonly only?: string;
+  },
 ): AgeGateWait | null {
   if (!isRecord(answer)) return null;
   const { time, versions } = answer;
@@ -208,7 +224,7 @@ export function ageGateWait(
   let earliest: { readonly version: string; readonly at: number } | null = null;
   for (const version of versions) {
     if (typeof version !== 'string') return null;
-    if (!inInstallRange(version, gate.above, gate.upTo)) continue;
+    if (gate.only === undefined ? !inInstallRange(version, gate.above, gate.upTo) : version !== gate.only) continue;
     const published = time[version];
     const at = typeof published === 'string' ? Date.parse(published) : Number.NaN;
     if (Number.isNaN(at)) return null;
@@ -320,6 +336,8 @@ export interface DownloadInput {
   readonly provenanceAuthority?: Buffer;
   /** Exit code of a refusal and of a failed step. */
   readonly refused: number;
+  /** `rarog update --beta`: the higher of the dist-tags `beta` and `latest`, as that exact version. */
+  readonly beta?: boolean;
   /** The step's header line in the log and with `--verbose` (`[1/6] Download`). */
   readonly stepHeader: string;
 }
@@ -340,6 +358,13 @@ function sameDir(a: string, b: string): boolean {
 function npmPrefixOf(root: string): string | null {
   const binDir = npmBinDir(root);
   return binDir === null ? null : path.dirname(binDir);
+}
+
+/** The version a run installs, the Node it needs (`engines`) and the `--beta` note of its step line. */
+interface Target {
+  readonly version: string;
+  readonly engines: unknown;
+  readonly note: string | null;
 }
 
 /**
@@ -429,62 +454,140 @@ export async function downloadStep(input: DownloadInput): Promise<DownloadOutcom
       fix: manual });
   }
 
-  const viewRun = await runNpm(npm, VIEW_ARGS, () => {});
-  if (viewRun.code !== 0) {
-    header(`Rarog update ${current}`);
-    return failed('registry check', 'view', viewRun, 'check the network, then rarog update');
-  }
-  let latest: string | null = null;
-  let engines: unknown;
-  try {
-    const parsed = JSON.parse(viewRun.stdout) as { version?: unknown; engines?: unknown } | null;
-    latest = typeof parsed?.version === 'string' && VERSION_RE.test(parsed.version) ? parsed.version : null;
-    engines = parsed?.engines;
-  } catch {
-    latest = null;
-  }
-  if (latest === null) {
-    header(`Rarog update ${current}`);
-    view.detail(`  npm view: ${viewRun.stdout.trim().slice(0, 300)}`);
-    return stop({ state: 'problem', summary: `npm gave no version of ${RAROG_PACKAGE_NAME}`,
-      fix: 'rarog update again later' });
-  }
-  view.detail(`  npm: ${RAROG_PACKAGE_NAME}@latest is ${latest}; this installation is ${current}`);
-  const order = compareVersions(latest, current);
-  if (latest === current || (order !== null && order <= 0)) {
-    header(`Rarog update ${current}`);
-    view.endStep({
-      title: TITLE, state: 'warn', skipped: true,
-      summary: latest === current ? `rarog ${current} is the latest` : `rarog ${current} is newer than ${latest} on npm`,
-    }, input.home);
-    return { kind: 'finish-here' };
-  }
-  header(`Rarog update ${current} → ${latest}`);
+  const beta = input.beta === true;
+  /** The command a fix runs again: the same channel. */
+  const again = beta ? 'rarog update --beta' : 'rarog update';
+  const network = `check the network, then ${again}`;
+  const noVersion = (run: NpmResult, summary: string): DownloadOutcome => {
+    view.detail(`  npm view: ${run.stdout.trim().slice(0, 300)}`);
+    return stop({ state: 'problem', summary, fix: `${again} again later` });
+  };
+
+  /** Without a flag: the newest release from `@latest`, installed through npm's range above this version. */
+  const readLatest = async (): Promise<Target | DownloadOutcome> => {
+    const viewRun = await runNpm(npm, VIEW_ARGS, () => {});
+    if (viewRun.code !== 0) {
+      header(`Rarog update ${current}`);
+      return failed('registry check', 'view', viewRun, network);
+    }
+    let latest: string | null = null;
+    let engines: unknown;
+    try {
+      const parsed = JSON.parse(viewRun.stdout) as { version?: unknown; engines?: unknown } | null;
+      latest = typeof parsed?.version === 'string' && VERSION_RE.test(parsed.version) ? parsed.version : null;
+      engines = parsed?.engines;
+    } catch {
+      latest = null;
+    }
+    if (latest === null) {
+      header(`Rarog update ${current}`);
+      return noVersion(viewRun, `npm gave no version of ${RAROG_PACKAGE_NAME}`);
+    }
+    view.detail(`  npm: ${RAROG_PACKAGE_NAME}@latest is ${latest}; this installation is ${current}`);
+    const order = compareVersions(latest, current);
+    if (latest === current || (order !== null && order <= 0)) {
+      header(`Rarog update ${current}`);
+      view.endStep({
+        title: TITLE, state: 'warn', skipped: true,
+        summary: latest === current ? `rarog ${current} is the latest` : `rarog ${current} is newer than ${latest} on npm`,
+      }, input.home);
+      return { kind: 'finish-here' };
+    }
+    header(`Rarog update ${current} → ${latest}`);
+    return { version: latest, engines, note: null };
+  };
+
+  /**
+   * `--beta`: the higher of the dist-tags `beta` and `latest`, then that exact version's `engines` and deprecation.
+   * A deprecated target is not installed: npm would install an exact version whatever its deprecation.
+   */
+  const readChannel = async (): Promise<Target | DownloadOutcome> => {
+    const tagsRun = await runNpm(npm, TAGS_ARGS, () => {});
+    if (tagsRun.code !== 0) {
+      header(`Rarog update ${current}`);
+      return failed('registry check', 'view', tagsRun, network);
+    }
+    let channel: ChannelTarget | null = null;
+    try {
+      channel = channelTarget(JSON.parse(tagsRun.stdout) as unknown);
+    } catch {
+      channel = null;
+    }
+    if (channel === null) {
+      header(`Rarog update ${current}`);
+      return noVersion(tagsRun, `npm gave no version of ${RAROG_PACKAGE_NAME}`);
+    }
+    const { target, note } = channel;
+    view.detail(`  npm: ${RAROG_PACKAGE_NAME}@latest is ${channel.latest}, @beta is ${channel.beta ?? 'none'}; this`
+      + ` installation is ${current}`);
+    const order = compareVersions(target, current);
+    if (order === null) {
+      header(`Rarog update ${current}`);
+      return stop({ state: 'problem', fix: manual,
+        summary: `rarog ${current} has no version order against ${target}` });
+    }
+    if (order <= 0) {
+      header(`Rarog update ${current}`);
+      const summary = order === 0 ? `rarog ${current} is the newest on npm`
+        : `rarog ${current} is newer than ${target} on npm`;
+      view.endStep({
+        title: TITLE, state: 'warn', skipped: note === null, summary: note === null ? summary : `${summary}; ${note}`,
+      }, input.home);
+      return { kind: 'finish-here' };
+    }
+    header(`Rarog update ${current} → ${target}`);
+    const targetRun = await runNpm(npm, targetViewArgs(target), () => {});
+    if (targetRun.code !== 0) return failed('registry check', 'view', targetRun, network);
+    let manifest: Record<string, unknown> | null = null;
+    try {
+      const parsed = JSON.parse(targetRun.stdout) as unknown;
+      manifest = isRecord(parsed) ? parsed : null;
+    } catch {
+      manifest = null;
+    }
+    if (manifest?.version !== target) {
+      return noVersion(targetRun, `npm gave no version ${target} of ${RAROG_PACKAGE_NAME}`);
+    }
+    if (typeof manifest.deprecated === 'string' && manifest.deprecated !== '') {
+      // The deprecation message is the publisher's text: neither the screen nor the log repeats it.
+      view.detail(`  npm: ${RAROG_PACKAGE_NAME}@${target} is deprecated`);
+      return stop({ state: 'warn', summary: `rarog ${target} is deprecated on npm, so ${current} stays` }, 0);
+    }
+    return { version: target, engines: manifest.engines, note };
+  };
+
+  const chosen = beta ? await readChannel() : await readLatest();
+  if ('kind' in chosen) return chosen;
+  const { version: target, engines, note } = chosen;
   const range = engines !== null && typeof engines === 'object' && 'node' in engines ? engines.node : undefined;
   if (typeof range === 'string') {
     const fits = nodeSatisfies(process.versions.node, range);
     if (fits === false) {
       return stop({
-        state: 'problem', summary: `rarog ${latest} needs Node ${range}; this is ${process.versions.node}`,
+        state: 'problem', summary: `rarog ${target} needs Node ${range}; this is ${process.versions.node}`,
         fix: `nvm install --lts, ${PACKAGE_INSTALL.npm}, then rarog setup`,
       });
     }
     if (fits === null) view.detail(`  engines.node ${range}: a form this check does not read, so the install goes on`);
   }
 
-  view.screen.progress(`downloading ${latest}…`);
-  const newest = latest;
+  view.screen.progress(`downloading ${target}…`);
   /**
-   * When npm's age gate lets a version above `above` in: `min-release-age` from npm's own config, the
-   * publication times from the registry; `null` = no date (`before` set, a failed call, another shape), and the text
-   * stays without one.
+   * When npm's age gate lets a version above `above` in (with `--beta`: the target alone): `min-release-age` from
+   * npm's own config, the publication times from the registry; `null` = no date (`before` set, with `--beta` this
+   * package in `min-release-age-exclude`, a failed call, another shape), and the text stays without one.
    */
   const gateWait = async (above: string): Promise<AgeGateWait | null> => {
-    const config = await runNpm(npm, GATE_CONFIG_ARGS, log);
+    const config = await runNpm(npm, beta ? BETA_GATE_CONFIG_ARGS : GATE_CONFIG_ARGS, log);
     if (config.interrupted) throw new SetupInterrupted('npm config was interrupted (Ctrl-C)');
     const days = config.code === 0 ? gateDaysOf(config.stdout) : null;
     if (days === null) {
       view.detail('  npm age gate: no date (min-release-age not read, or before is set)');
+      return null;
+    }
+    if (beta && gateExcludes(config.stdout, RAROG_PACKAGE_NAME)) {
+      // npm lets an excluded package in however young: what it held back is a dependency.
+      view.detail(`  npm age gate: no date (${RAROG_PACKAGE_NAME} is in min-release-age-exclude)`);
       return null;
     }
     const timeRun = await runNpm(npm, TIME_ARGS, () => {});
@@ -495,7 +598,7 @@ export async function downloadStep(input: DownloadInput): Promise<DownloadOutcom
     } catch {
       answer = null;
     }
-    const wait = ageGateWait(answer, { days, above, upTo: newest, now: Date.now() });
+    const wait = ageGateWait(answer, { days, above, upTo: target, now: Date.now(), ...(beta ? { only: target } : {}) });
     const why = timeRun.code === 0 ? 'no version to date' : firstNpmError(timeRun.stderr);
     view.detail(wait === null ? `  npm age gate: no date (npm view time: ${why})`
       : `  npm age gate: ${String(days)} days; ${wait.version} is in from ${wait.from}`);
@@ -505,14 +608,15 @@ export async function downloadStep(input: DownloadInput): Promise<DownloadOutcom
   const heldBack = async (detail: string): Promise<DownloadOutcome> => {
     view.detail(`  ${detail}`);
     const wait = await gateWait(current);
-    const summary = wait === null ? `rarog ${latest} not installed yet (npm age gate)` : ageGateText(wait);
+    const summary = wait === null ? `rarog ${target} not installed yet (npm age gate)` : ageGateText(wait);
     return stop({ state: 'warn', summary }, 0);
   };
   /** stderr of a call whose stdout is JSON for this process, to the run log. */
   const logStderr = (result: NpmResult): void => {
     for (const text of result.stderr.split('\n')) if (text.trim() !== '') log(`  npm: ${text.trimEnd()}`);
   };
-  const tooYoung = `npm found no version above ${current} old enough for its release age gate; ${current} stays`;
+  const tooYoung = beta ? `npm found ${target} not old enough for its release age gate; ${current} stays`
+    : `npm found no version above ${current} old enough for its release age gate; ${current} stays`;
   // The tarball and the audit project live in a directory of this run only, removed on every way out.
   const work = mkdtempSync(path.join(os.tmpdir(), 'rarog-update-'));
   try {
@@ -520,28 +624,34 @@ export async function downloadStep(input: DownloadInput): Promise<DownloadOutcom
     const auditDir = path.join(work, 'audit');
     mkdirSync(tarballDir);
     mkdirSync(auditDir);
-    const pack = await runNpm(npm, npmUpdatePackArgs(current, latest, tarballDir), () => {});
+    const packArgs = beta ? npmUpdateExactPackArgs(target, tarballDir) : npmUpdatePackArgs(current, target, tarballDir);
+    const pack = await runNpm(npm, packArgs, () => {});
     logStderr(pack);
     if (pack.code !== 0 && !pack.interrupted && NO_VERSION_OLD_ENOUGH.test(pack.stderr)) return await heldBack(tooYoung);
-    if (pack.code !== 0) return failed('download', 'pack', pack, 'check the network, then rarog update');
+    if (pack.code !== 0) return failed('download', 'pack', pack, network);
     const tarball = packedTarball(pack.stdout, tarballDir);
-    if (tarball === null || !inInstallRange(tarball.version, current, latest)) {
+    if (tarball === null || (beta ? tarball.version !== target : !inInstallRange(tarball.version, current, target))) {
       view.detail(`  npm pack: ${pack.stdout.trim().slice(0, 300)}`);
-      return stop({ state: 'problem', summary: `npm gave no tarball of ${RAROG_PACKAGE_NAME} above ${current}`,
-        fix: 'rarog update again later' });
+      return stop({ state: 'problem', fix: `${again} again later`, summary: tarball === null || !beta
+        ? `npm gave no tarball of ${RAROG_PACKAGE_NAME} ${beta ? target : `above ${current}`}`
+        : `npm gave ${tarball.version}, not ${target}` });
+    }
+    // Without --beta the range admits a pre-release of the latest's own version (npm's range rule), and the age gate
+    // can pick one; rarog update never installs a pre-release without the flag.
+    if (!beta && isPrerelease(tarball.version)) {
+      return stop({ state: 'problem', fix: 'rarog update --beta, or rarog update again later',
+        summary: `npm gave the pre-release ${tarball.version}; rarog update without --beta installs only releases` });
     }
     const check = await verifyTarball({
       npm: (args, cwd) => runNpm({ ...npm, cwd }, args, () => {}), tarball, auditDir, cwd: input.home, log,
       ...(input.provenanceAuthority === undefined ? {} : { authority: input.provenanceAuthority }),
     });
-    if (check.kind === 'npm-failed') {
-      return failed(check.what, check.command, check.result, 'check the network, then rarog update');
-    }
+    if (check.kind === 'npm-failed') return failed(check.what, check.command, check.result, network);
     if (check.kind === 'old-npm') {
       // The npm to update is the one this step runs, next to this node.
       const selfUpdate = npmSelfUpdate(npmCli) ?? `update the npm next to ${input.execPath} to 11.12 or newer`;
       return stop({ state: 'problem', summary: 'this npm does not list attestations (it needs npm 11.12 or newer)',
-        fix: `${selfUpdate}, then rarog update` });
+        fix: `${selfUpdate}, then ${again}` });
     }
     if (check.kind === 'refused') return stop({ state: 'problem', summary: check.summary, fix: check.fix });
     view.screen.progress(`installing ${tarball.version}…`);
@@ -550,21 +660,23 @@ export async function downloadStep(input: DownloadInput): Promise<DownloadOutcom
     if (install.code !== 0 && !install.interrupted && NO_VERSION_OLD_ENOUGH.test(install.stderr)) {
       return await heldBack(tooYoung);
     }
-    if (install.code !== 0) return failed('install', 'install', install, 'check the network, then rarog update');
+    if (install.code !== 0) return failed('install', 'install', install, network);
     const after = readInstalledVersion(root);
     if (after !== tarball.version) {
       return stop({ state: 'problem', fix: manual, summary: after === null
         ? `after npm there is no readable package.json in ${root}`
         : `after npm, ${root} has ${after}, not ${tarball.version}` });
     }
-    if (after !== latest) {
+    if (after !== target) {
       const wait = await gateWait(after);
-      const summary = wait === null ? `rarog ${after} installed, ${latest} not yet (npm age gate)`
+      const summary = wait === null ? `rarog ${after} installed, ${target} not yet (npm age gate)`
         : ageGateText(wait, after);
       view.endStep({ title: TITLE, state: 'warn', summary }, input.home);
     } else {
       // The finish runs in a new process with its own screen: a line counted here would never be shown.
-      view.endStep({ title: TITLE, state: 'ok', summary: `rarog ${latest} from npm`, changed: true }, input.home);
+      const summary = `rarog ${target} from npm`;
+      view.endStep(note === null ? { title: TITLE, state: 'ok', summary, changed: true }
+        : { title: TITLE, state: 'warn', summary: `${summary}; ${note}`, changed: true }, input.home);
     }
     return { kind: 'finish-new', installed: { version: after, root } };
   } finally {

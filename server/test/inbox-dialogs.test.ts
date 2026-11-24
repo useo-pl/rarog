@@ -1,11 +1,11 @@
 /**
  * The dialog requests a session waits on (`server/src/inbox/dialogs.ts`), folded from session stream events: the
  * request a decision card stands for follows the manager's pick of `waitingFor`, a card from the screen or the
- * transcript before a consent channel card, and a consent card only while it waits for a person; and it is given only
- * when the summary's `waitingFor` describes the folded card.
+ * transcript before a consent channel card, and a consent card only while it waits for a person; it is given only
+ * when the summary's `waitingFor` describes the folded card; and a consent card's revision follows its buttons.
  */
 import { describe, expect, it } from 'vitest';
-import type { PermissionRequest, ServerEvent, WaitingFor } from '@rarog/shared';
+import type { ConsentUnavailableReason, PermissionRequest, ServerEvent, WaitingFor } from '@rarog/shared';
 import { PendingDialogs } from '../src/inbox/dialogs.ts';
 
 const SESSION = 's1';
@@ -28,8 +28,11 @@ const resolved = (permId: string): ServerEvent => ({
   type: 'permission-resolved', sessionId: SESSION, permId, decision: 'allow', by: 'iPhone',
 });
 
-const settled = (permId: string, state: 'pending' | 'sent', canAllow = true): ServerEvent => ({
-  type: 'permission-settled', sessionId: SESSION, permId, state, canAllow, at: '2026-11-20T10:00:01.000Z',
+const settled = (
+  permId: string, state: 'pending' | 'sent', canAllow = true, unavailable?: ConsentUnavailableReason,
+): ServerEvent => ({
+  type: 'permission-settled', sessionId: SESSION, permId, state, canAllow, ...(unavailable === undefined ? {} : { unavailable }),
+  at: '2026-11-20T10:00:01.000Z',
 });
 
 function fold(...events: ServerEvent[]): PendingDialogs {
@@ -75,11 +78,53 @@ describe('inbox dialogs: the request only for the card the summary describes', (
     expect(dialogs.current(SESSION, 'permission', bash('pnpm build'))).toBe('h2');
   });
 
+  it('a consent card known only from a change gives no id, and keeps a card behind it from giving its own', () => {
+    // A card recovered at start and shown in a snapshot: its first event is a change, without tool or command.
+    const dialogs = fold(settled('h1', 'pending'), permission('h2', 'pending'));
+    expect(dialogs.current(SESSION, 'permission', PNPM_TEST)).toBeUndefined();
+    expect(dialogs.request(SESSION, 'permission', PNPM_TEST)).toBeUndefined();
+    dialogs.note(SESSION, settled('h1', 'sent'));
+    expect(dialogs.current(SESSION, 'permission', PNPM_TEST)).toBe('h2');
+    dialogs.note(SESSION, settled('h1', 'pending'));
+    dialogs.note(SESSION, resolved('h1'));
+    expect(dialogs.current(SESSION, 'permission', PNPM_TEST)).toBe('h2');
+  });
+
   it('a consent card without its allow button has no text in the summary, and gets it back with the button', () => {
     const dialogs = fold(permission('h1', 'pending'), settled('h1', 'pending', false));
     expect(dialogs.current(SESSION, 'permission', { kind: 'permission', tool: 'Bash', subject: 'tool' })).toBe('h1');
     expect(dialogs.current(SESSION, 'permission', PNPM_TEST)).toBeUndefined();
     dialogs.note(SESSION, settled('h1', 'pending'));
     expect(dialogs.current(SESSION, 'permission', PNPM_TEST)).toBe('h1');
+  });
+});
+
+describe('inbox dialogs: the revision of the request', () => {
+  const noText: WaitingFor = { kind: 'permission', tool: 'Bash', subject: 'tool' };
+
+  it('a consent card: its state, allow button and reason change it; the same values give the same one', () => {
+    const dialogs = fold(permission('h1', 'pending'));
+    const allowed = dialogs.request(SESSION, 'permission', PNPM_TEST);
+    expect(allowed?.id).toBe('h1');
+    expect(allowed?.revision).toBeDefined();
+    dialogs.note(SESSION, settled('h1', 'pending'));
+    expect(dialogs.request(SESSION, 'permission', PNPM_TEST)).toEqual(allowed);
+
+    dialogs.note(SESSION, settled('h1', 'pending', false, 'hook-dead'));
+    const dead = dialogs.request(SESSION, 'permission', noText)?.revision;
+    dialogs.note(SESSION, settled('h1', 'pending', false, 'no-proof'));
+    const unproved = dialogs.request(SESSION, 'permission', noText)?.revision;
+    expect(new Set([allowed?.revision, dead, unproved]).size).toBe(3);
+
+    dialogs.note(SESSION, settled('h1', 'pending'));
+    expect(dialogs.request(SESSION, 'permission', PNPM_TEST)).toEqual(allowed);
+  });
+
+  it('a card from the screen and a question do not change in place: no revision', () => {
+    expect(fold(permission('p1')).request(SESSION, 'permission', PNPM_TEST)).toEqual({ id: 'p1' });
+    const question: ServerEvent = {
+      type: 'question-pending', request: { qId: 'q1', sessionId: SESSION, questions: [], createdAt: '2026-11-20T10:00:00.000Z' },
+    };
+    expect(fold(question).request(SESSION, 'question', { kind: 'question' })).toEqual({ id: 'q1' });
   });
 });

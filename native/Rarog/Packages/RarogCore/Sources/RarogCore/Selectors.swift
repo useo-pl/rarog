@@ -99,6 +99,25 @@ public struct Capabilities: Sendable, Equatable {
   /// The voice agent speaks with a Soniox voice: the server gives speech keys. Missing field (older server) =
   /// the OpenAI voice.
   public let companionSpeech: Bool
+  /// The voice agent's mode across sessions: the server says `companionSessions` and lists the capability
+  /// `companion-sessions`. Either missing = off.
+  public let companionSessions: Bool
+  /// The server keeps an Inbox: the capability `inbox`. Missing = no Inbox.
+  public let inbox: Bool
+  /// The server serves session directories and files: the capability `files`. Missing = no file routes.
+  public let files: Bool
+  /// The server sends the file index of a session: the capability `file-index`. Missing = the search covers the
+  /// loaded listings only.
+  public let fileIndex: Bool
+
+  /// The capability name of the mode across sessions in `/api/version` `capabilities`.
+  public static let companionSessionsCapability = "companion-sessions"
+  /// The capability name of the Inbox in `/api/version` `capabilities`.
+  public static let inboxCapability = "inbox"
+  /// The capability name of the session file routes in `/api/version` `capabilities`.
+  public static let filesCapability = "files"
+  /// The capability name of the session file index in `/api/version` `capabilities`.
+  public static let fileIndexCapability = "file-index"
 
   public init(_ version: VersionInfo) {
     // Brak `voiceEnabled` = WŁĄCZONE (starszy serwer); brak pozostałych flag = wyłączone.
@@ -108,6 +127,11 @@ public struct Capabilities: Sendable, Equatable {
     apns = version.apnsEnabled ?? false
     companion = version.companionEnabled ?? false
     companionSpeech = version.companionSpeech ?? false
+    companionSessions =
+      version.companionSessions == true && version.capabilities.contains(Self.companionSessionsCapability)
+    inbox = version.capabilities.contains(Self.inboxCapability)
+    files = version.capabilities.contains(Self.filesCapability)
+    fileIndex = version.capabilities.contains(Self.fileIndexCapability)
   }
 }
 

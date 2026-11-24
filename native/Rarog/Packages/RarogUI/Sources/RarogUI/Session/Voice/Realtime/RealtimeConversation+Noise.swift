@@ -7,8 +7,9 @@ import Foundation
 // Rules:
 // - OpenAI filters the microphone before its VAD (`noise_reduction` `far_field`, `RealtimeInstructions.session`), and
 //   its VAD does not cancel responses (`interrupt_response: false`): the app decides the cut.
-// - `speech_started` while an answer plays or waits to play (a Soniox item not over, or audio in the queue): the
-//   playback volume drops to ``RealtimeBargeIn/duckedVolume`` and the window ``RealtimeBargeIn/window`` starts.
+// - `speech_started` while an answer plays or waits to play (a Soniox item or a tool's reading not over, or audio in
+//   the queue): the playback volume drops to ``RealtimeBargeIn/duckedVolume`` and the window
+//   ``RealtimeBargeIn/window`` starts.
 //   - `speech_stopped` within the window: the length of the speech by the VAD's own times decides
 //     (``RealtimeBargeIn/speechLength(startMs:endMs:)``). At least ``RealtimeBargeIn/minimumSpeech``: the barge-in
 //     now, as at the end of the window, and the utterance gets its answer.
@@ -17,11 +18,16 @@ import Foundation
 //     `voice-agent: noise ignored` in `client.log`.
 //   - The window ends with no `speech_stopped`: the barge-in (`bargeIn()`), with what played up to now as heard (the
 //     ducked part too), then the volume back.
+// - The host hears each window open, with the count of kept utterances at that moment
+//   (`Handlers.soundOverAnswer`): noise is dropped for the model, but a host whose tool needs the user's word may
+//   refuse to act on a word that a sound followed.
 // - Tool calls wait for the verdict: a call that comes within the window, and the work of a call that has not started
 //   yet (registered before its task, `run`), are held (all three tools, one rule; `ask_session` only reads, and loses
 //   at most the window). Noise runs them in order, as if no sound had come. The barge-in drops them with the
 //   responses it cuts: no result, nothing ordered. The end and the mute drop them too; after the mute their response
 //   goes on, so its other results still go.
+// - The end of a tool's reading waits for the verdict too (`RealtimeConversation+Reading.swift`): noise and the mute
+//   end it then, the barge-in cuts it, the end of the conversation drops it.
 // - After noise, tool results and their `response.create` wait until the noise's `committed` deleted its item, so the
 //   model never answers the noise. The wait is bounded by events, not a timer: the server sends that `committed`
 //   before any later `speech_started`, so the next counted speech ends the wait too; the mute ends it at once (a
@@ -65,7 +71,7 @@ extension RealtimeConversation {
   /// call that has not started yet (`run`).
   enum HeldTool {
     case call(response: String, callId: String, action: RealtimeToolAction?)
-    case work(response: String, callId: String, work: @MainActor () async -> String)
+    case work(response: String, callId: String, work: @MainActor () async -> RealtimeToolResult)
 
     var response: String {
       switch self {
@@ -83,7 +89,7 @@ extension RealtimeConversation {
   /// `speech_started`: the barge-in at once while nothing plays; over an answer that plays, the window first.
   func speechOverAnswer(startMs: Int?) {
     guard bargeInWindow == nil else { return }
-    guard !tts.items.isEmpty || playbackPending else {
+    guard !tts.items.isEmpty || !readings.active.isEmpty || playbackPending else {
       bargeIn()
       return
     }
@@ -99,6 +105,7 @@ extension RealtimeConversation {
       .map { .work(response: $0.response, callId: $0.callId, work: $0.work) }
     unstartedWork = []
     bargeInWindow = window
+    handlers.soundOverAnswer(utterances)
   }
 
   /// `speech_stopped` within the window: noise unless the VAD's times say speech, which cuts now. True when it was
@@ -116,6 +123,7 @@ extension RealtimeConversation {
     resultsAfterNoise = resultsAfterNoise ?? []
     handlers.diagnostic(.noiseIgnored)
     runHeld(held)
+    completeWaitingReadings()
     return true
   }
 

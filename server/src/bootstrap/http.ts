@@ -12,6 +12,7 @@ import type { RarogConfig } from '../config.ts';
 import type { DemoReviewConstants } from '../demo/content/types.ts';
 import type { DemoNotes } from '../demo/notes.ts';
 import { devicePairedNotifier } from '../device-effects.ts';
+import type { FileDownloads } from '../files/send-file.ts';
 import type { HealthProbes } from '../health.ts';
 import type { UploadImage } from '../herdr/uploads.ts';
 import type { MacStatsSampler } from '../mac-stats.ts';
@@ -58,6 +59,10 @@ export interface RouterAssembly {
    * Fixed host data of the demo (the tailnet of the content set and the demo server name), or `null` outside the demo.
    */
   readonly demoHost: DemoHost | null;
+  /** The Inbox card tracker (`bootstrap/inbox.ts`); `null` = `RAROG_INBOX=0`, the Inbox routes answer 503. */
+  readonly inbox: RouterDeps['inbox'] | null;
+  /** Session file downloads in flight: the same registry the unpair effects stop (`startDeviceSweep`). */
+  readonly fileDownloads: FileDownloads;
 }
 
 /** What the plain demo answers instead of reading the host: no demo mode reveals the machine that runs it. */
@@ -72,6 +77,7 @@ export function buildRouter(assembly: RouterAssembly): RequestHandler {
   const {
     config, manager, hub, serverStartId, startedAtMs, log, health, system, macStats, demoUsage, demoVoice, demoNotes,
     term, companion, notifier, presence, apns, loginLimiter, irohPair, devices, pairing, reviewConstants, demoHost,
+    inbox, fileDownloads,
   } = assembly;
   /*
    * Nazwa tailnetu dla nagłówka AGENCI. Czytana LENIWIE i z terminem
@@ -86,7 +92,7 @@ export function buildRouter(assembly: RouterAssembly): RequestHandler {
     : demoHost !== null ? () => Promise.resolve(demoHost.tailnet) : tailnetReader();
 
   return createRouter({
-    config, manager, hub, serverStartId, startedAtMs, logger: log, health, system,
+    config, manager, hub, serverStartId, startedAtMs, logger: log, health, system, fileDownloads,
     ...(tailnet === undefined ? {} : { tailnet }),
     mac: () => macStats.current(),
     ...(demoUsage === undefined ? {} : { usage: demoUsage }),
@@ -99,6 +105,7 @@ export function buildRouter(assembly: RouterAssembly): RequestHandler {
     // APNs) — bez kanału nie ma czego bramkować, a beacon staje się no-opem (patrz `RouterDeps`).
     ...(notifier !== null ? { presence } : {}),
     ...(apns !== undefined ? { apns } : {}),
+    ...(inbox === null || inbox === undefined ? {} : { inbox }),
     loginLimiter,
     iroh: irohPair,
     devices: {

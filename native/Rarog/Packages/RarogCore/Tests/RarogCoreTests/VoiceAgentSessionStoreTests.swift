@@ -49,8 +49,9 @@ private func companionStore() async -> (RarogStore, VoiceProbe) {
   return (store, probe)
 }
 
+/// A new login on the same store after a logout (also `StoreCompanionSessionsTests`).
 @MainActor
-private func relogin(_ store: RarogStore, _ probe: VoiceProbe) async {
+func relogin(_ store: RarogStore, _ probe: VoiceProbe) async {
   store.enterLoggedIn()
   await until("online") { store.state.global == .online }
   probe.base.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
@@ -254,6 +255,22 @@ struct VoiceAgentSessionStoreTests {
     #expect(asks.count == 1)
     #expect(asks.first?.sessionId == "s1" && asks.first?.body.question == "Which key?")
     #expect(UUID(uuidString: asks.first?.body.clientRequestId ?? "") != nil)
+  }
+
+  @Test("a session not opened since a start from the cache takes the question with a fresh list, not with a stale one",
+    arguments: [true, false])
+  func askAfterCacheStart(fresh: Bool) async throws {
+    let probe = VoiceProbe()
+    probe.set { $0.answer = .success(sampleAnswer()) }
+    let (store, _) = try await cachedStore(fresh: fresh, probe: probe)
+    defer { store.setScenePhase(.background) }
+    let outcome = await store.askCompanion(sessionId: "s1", question: "What changed?")
+    let asks = probe.probe.withLock { $0.asks.count }
+    if fresh {
+      #expect(outcome == .answer(sampleAnswer()) && asks == 1)
+    } else {
+      #expect(outcome == .refused(message: CoreCopy.noConnection) && asks == 0)
+    }
   }
 
   @Test("pytanie dłuższe niż sufit kontraktu jest przycięte, nie odrzucone")

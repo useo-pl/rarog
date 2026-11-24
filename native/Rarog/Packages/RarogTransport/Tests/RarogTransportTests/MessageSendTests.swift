@@ -186,6 +186,19 @@ struct MessageSendTests {
     #expect(harness.requests.isEmpty)
   }
 
+  @Test("the session gate hears whether the body carries `expectedConversation`")
+  func gateHearsConversation() async throws {
+    let harness = MockHarness(policy: ConversationOnly()) { _ in .json(202, #"{"ok":true}"#) }
+    let pair = MessageSender(source: .voiceAgent, expectedConversation: "Tjo8_3W")
+    try await harness.client.sendMessage(sessionId: "s1", MessageBody(text: "Run the tests", sender: pair))
+    let error = await #expect(throws: TransportError.self) {
+      try await harness.client.sendMessage(sessionId: "s1", MessageBody(text: "Run the tests"))
+    }
+    let refusal = MutationRefusal(gate: .unsupportedSession(id: "s1"), message: "Waits for the transcript.")
+    #expect(error == .refused(refusal))
+    #expect(harness.requests.count == 1)
+  }
+
   @Test("limit CAŁEJ wysyłki: po czasie .timedOut (nie .cancelled), szybko")
   func deadline() async {
     let started = ContinuousClock.now
@@ -236,6 +249,17 @@ struct MessageSendTests {
 private struct RefuseAll: MutationPolicy {
   func compatibilityRefusal() async -> PolicyRefusal? { PolicyRefusal("Zaktualizuj apkę.") }
   func sessionRefusal(sessionId: String, route: String) async -> PolicyRefusal? { nil }
+}
+
+/// Session gate that lets through only a message whose body carries `expectedConversation`.
+private struct ConversationOnly: MutationPolicy {
+  func compatibilityRefusal() async -> PolicyRefusal? { nil }
+  func sessionRefusal(sessionId: String, route: String) async -> PolicyRefusal? {
+    PolicyRefusal("Waits for the transcript.")
+  }
+  func sessionRefusal(sessionId: String, route: String, expectsConversation: Bool) async -> PolicyRefusal? {
+    expectsConversation && route == "messages" ? nil : PolicyRefusal("Waits for the transcript.")
+  }
 }
 
 private final class Seen: @unchecked Sendable {

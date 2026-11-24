@@ -32,6 +32,8 @@ import type {
 import type { MessageSource, QueueTakeBackResponse } from '@rarog/shared/rest';
 import type { DeviceDecision, ResolveResult } from '../permissions.ts';
 import type { CompanionEntry } from '../companion/catalog.ts';
+import type { FileDownloadAnswer } from '../files/session-download.ts';
+import type { FileListingAnswer, SessionFilesPort } from '../files/session-files.ts';
 import type { ConsentCardView } from '../herdr/dialogs/layer1/cards.ts';
 import type { ConsentDecision } from '../herdr/dialogs/layer1/contract.ts';
 import type { SeenPickUp } from './seen-marks.ts';
@@ -157,6 +159,12 @@ export interface ManagerApi {
    * — stan sesji przestawia się wcześniej, jeszcze przed jej rozstrzygnięciem.
    */
   interrupt(id: string): Promise<boolean>;
+  /**
+   * The prompt Claude Code handed back to its prompt field after the session's last delivered `escape`, or `null`
+   * (no session, no driver, a field that does not prove it). It settles within the driver's bounded field read; the
+   * route asks only after a delivered key.
+   */
+  returnedPrompt(id: string): Promise<string | null>;
   /**
    * The queue take-back: the prompts waiting in the CLI queue and in the driver's own queue leave both and come back
    * in the 200 body; the turn runs on. One take-back per `operationId`: a retry gets the first result, or joins it
@@ -291,9 +299,10 @@ export interface ManagerApi {
    *
    * `pickUp`: the voice agent across sessions picks up the result it read. Same receipt and effects plus `seenBy` on
    * the card; BadState (409, `session.seen-result-changed`) with no effect unless the session is in `waiting-input`
-   * with no decision card over it, at `pickUp.stateSince`, in the engine conversation `pickUp.conversation` accepts
-   * (`markSeen` in `seen-marks.ts`). Without `pickUp` on a result the voice agent picked up, `seenBy` goes (a human
-   * opened it) and herdr gets nothing. The route checks the flags and the scope before the call.
+   * with no decision card over it, in the engine conversation `pickUp.conversation` accepts, with no message in its
+   * memory newer than `pickUp.readMark` and the `stateSince` that mark names (`markSeen` in `seen-marks.ts`). Without
+   * `pickUp` on a result the voice agent picked up, `seenBy` goes (a human opened it) and herdr gets nothing. The
+   * route checks the flags and the scope before the call.
    */
   markSeen(id: string, pickUp?: SeenPickUp): void;
   /**
@@ -326,6 +335,22 @@ export interface ManagerApi {
    */
   diffFile(id: string, path: string): Promise<DiffFilePatch>;
   /**
+   * One directory of the session (`GET …/files?dir=`, `files/session-files.ts`): the gate of the file routes, the
+   * listing with `maxBytes` and git's `ignored` labels, or the refusal to send. NotFound for an unknown session.
+   */
+  listFiles(id: string, dir: string, maxBytes: number): Promise<FileListingAnswer>;
+  /**
+   * The port of the session file reads (`files/session-files.ts`): the session lookup and its configuration, the git
+   * runner, the demo data. The listing goes through it, and the file index route (`files/file-index.ts`) takes it.
+   */
+  filesPort(): SessionFilesPort;
+  /**
+   * One file of the session opened for sending (`GET …/files/raw?path=`, `files/session-download.ts`): the gate and
+   * the path rule of the listing, the limit `maxBytes` against the `fstat` of the open descriptor (413), or the demo
+   * bytes. The caller sends it and closes it. NotFound for an unknown session.
+   */
+  openFile(id: string, rel: string, maxBytes: number): Promise<FileDownloadAnswer>;
+  /**
    * Transkrypt sesji. Domyślnie to OTWARCIE transkryptu (hub przy wejściu klienta w strumień sesji): odświeża
    * wiersz gita, a bez świeżego odczytu (throttle, demo bez gita) ponawia ostatnią ramkę `git-status` strumieniem
    * sesji. `peek: true` czyta bez tego skutku — dla obserwatora, który transkryptu nie otwiera (kontrola demo
@@ -340,6 +365,12 @@ export interface ManagerApi {
   eventsSince(id: string, seq: number | null)
     : { tooOld: boolean; events: { seq: number | null; event: ServerEvent }[] };
   onEvent(cb: (scope: 'global' | string, seq: number | null, ev: ServerEvent) => void): void;
+  /**
+   * A new card replaced the card under this id (restart, "Resume"): the transcript the open streams of that id show
+   * is the old card's. The new card numbers on after the old one; the SSE hub sends each open stream a snapshot.
+   * Missing = the manager never replaces a card.
+   */
+  onTranscriptReset?(cb: (sessionId: string) => void): void;
   projects(): { path: string; name: string }[];
   /**
    * Stan integracji herdr do ramki `sessions-snapshot`.

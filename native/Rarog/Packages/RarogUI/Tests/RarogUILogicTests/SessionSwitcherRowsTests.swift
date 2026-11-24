@@ -4,110 +4,167 @@ import RarogCore
 @testable import RarogUI
 import Testing
 
-// The session switcher under Cmd+S: the snapshot of recently visited
-// sessions, the rows with their digit keys and the heading of the window. Owner: shortcuts.
+// The session switcher window: its rows are the tabs of the current project in the order of the bar (sessions from
+// the oldest, then terminals), read from the same list the bar draws, with the bar's digits. Owner: shortcuts.
+
+private let willow = "/Users/demo/Projects/willow"
+private let zsh = "00000000000000a1"
+private let lazygit = "00000000000000b2"
+
+private func entry(_ id: String, slot: Int, proc: String) -> TerminalListEntry {
+  Sample.decode(TerminalListEntry.self, #"""
+    {"id":"\#(id)","cwd":"\#(willow)","live":true,"slot":\#(slot),"proc":"\#(proc)","role":"shell"}
+    """#)
+}
+
+/// Project willow: sessions a (the oldest), b, c, terminals zsh (slot 1) and lazygit (slot 2); `extra` sessions on
+/// top, `terminals` instead of the two.
+@MainActor
+func switcherProject(
+  extra: [SessionSummary] = [], terminals: [TerminalListEntry]? = nil, sessionIds: [String] = ["a", "b", "c"]
+) -> AppState {
+  var state = AppState(clientBuild: 1)
+  for (index, id) in sessionIds.enumerated() {
+    let session = Sample.session(
+      id: id, title: "willow", label: "tab \(id)", createdAgo: TimeInterval(9000 - index * 100))
+    state.sessions[id] = session
+  }
+  for session in extra { state.sessions[session.id] = session }
+  state.sessionsLoaded = true
+  state.global = .online
+  state.compat = .ok
+  state.capabilities = Capabilities(
+    Sample.decode(VersionInfo.self, #"{"version":"1","protocolVersion":3,"serverStartId":"s","termEnabled":true}"#))
+  let list = terminals ?? [entry(lazygit, slot: 2, proc: "lazygit"), entry(zsh, slot: 1, proc: "zsh")]
+  _ = state.apply(.terminals(.loaded(list, at: Sample.now)), now: Sample.now)
+  return state
+}
 
 @MainActor
-@Suite("session switcher: snapshot, order and rows")
+@Suite("session switcher: rows are the tabs of the project")
 struct SessionSwitcherRowsTests {
-  /// A state with sessions `ids`, any state each.
-  private func state(_ ids: [String]) -> AppState {
-    var state = Sample.state(session: Sample.session(id: ids[0]))
-    for id in ids.dropFirst() { state.sessions[id] = Sample.session(id: id, state: "done") }
-    return state
-  }
-
-  /// The snapshot as the host builds it: navigation with these visits (oldest first), then the window's function.
-  private func snapshot(visits: [String], current: String?, state: AppState) -> [String] {
+  private func navigation(_ state: AppState, on tab: ProjectTabRef) -> RarogNavigation {
     let navigation = RarogNavigation(prefs: MemoryPreferences())
-    for id in visits { navigation.selectSession(id); navigation.noteSessionVisit(state) }
-    return SwitcherRows.snapshot(
-      current: current, recent: navigation.recentSessions(state, limit: SwitcherRows.limit + 1), state: state)
+    navigation.open(tab, state: state)
+    return navigation
   }
 
-  @Test("snapshot: the current session on top, then the visited ones newest first, any state")
-  func currentOnTop() {
-    let all = state(["a", "b", "cur"])
-    let order = snapshot(visits: ["a", "b", "cur"], current: "cur", state: all)
-    #expect(order == ["cur", "b", "a"])
+  private func rows(_ state: AppState, _ navigation: RarogNavigation) -> [SwitcherRow] {
+    SwitcherRows.rows(tabs: navigation.stripTabs(state), state: state)
   }
 
-  @Test("snapshot: the current session lower in the history goes on top without a duplicate")
-  func currentLower() {
-    let all = state(["a", "b", "cur"])
-    #expect(SwitcherRows.snapshot(current: "cur", recent: ["b", "cur", "a"], state: all) == ["cur", "b", "a"])
+  /// The machine opened as a tap on the current tab opens it.
+  private func opened(_ state: AppState, _ navigation: RarogNavigation, keyboard: Bool = true) -> SwitcherMachine {
+    var machine = SwitcherMachine()
+    _ = machine.openByTap(
+      keyboard: keyboard, tabs: navigation.tabRefs(state), current: navigation.currentTab(state), at: 0)
+    return machine
   }
 
-  @Test("snapshot: a current session the app does not know is not a row; ten other rows instead")
-  func unknownCurrent() {
-    let ids = (0..<12).map { "s\($0)" }
-    let all = state(ids)
-    let order = snapshot(visits: ids, current: "ghost", state: all)
-    #expect(order.count == 10 && !order.contains("ghost"))
-    #expect(order.first == "s11" && order.last == "s2")
+  @Test("sessions a, b, c and terminals zsh, lazygit, current b: rows in the bar's order, b selected")
+  func barOrder() {
+    let state = switcherProject()
+    let nav = navigation(state, on: .session("b"))
+    let rows = rows(state, nav)
+    #expect(rows.map(\.tab) == [.session("a"), .session("b"), .session("c"), .terminal(zsh), .terminal(lazygit)])
+    #expect(rows.map(\.key) == ["a", "b", "c", "term.\(zsh)", "term.\(lazygit)"], "the bar's identities")
+    #expect(rows.map(\.isCurrent) == [false, true, false, false, false])
+    let machine = opened(state, nav)
+    #expect(machine.isOpen && machine.selected == .session("b") && machine.order == rows.map(\.tab))
   }
 
-  @Test("snapshot: eleven visited sessions give ten rows, the current one counted among them")
-  func limit() {
-    let ids = (0..<11).map { "s\($0)" }
-    let all = state(ids)
-    let order = snapshot(visits: ids, current: "s10", state: all)
-    #expect(order == ["s10", "s9", "s8", "s7", "s6", "s5", "s4", "s3", "s2", "s1"])
-    let older = snapshot(visits: ids, current: "s0", state: all)
-    #expect(older.count == 10 && older.first == "s0" && !older.contains("s1"), "the oldest visit falls out, not cur")
+  @Test("a terminal row: the tab label, a quiet line, the terminal's sentence; a session row as on the list")
+  func terminalRow() throws {
+    let state = switcherProject()
+    let rows = rows(state, navigation(state, on: .terminal(zsh)))
+    let terminal = try #require(rows.first { $0.tab == .terminal(zsh) })
+    #expect(terminal.content == .terminal(
+      label: "zsh", detail: "\(UICopy.terminalSlotName(1)), \(UICopy.terminalRunning)",
+      spoken: UICopy.terminalTabSpoken(entry(zsh, slot: 1, proc: "zsh"), current: true)))
+    #expect(terminal.spoken(now: Sample.now).hasSuffix(", \(UICopy.switcherHere)"), "the current tab")
+    #expect(rows.first?.session?.status.tone == .working, "a session row keeps its state")
   }
 
-  @Test("snapshot: a deleted session leaves room for the next older one")
-  func deletedSession() {
-    var all = state((0..<12).map { "s\($0)" })
-    let navigation = RarogNavigation(prefs: MemoryPreferences())
-    for id in all.sessions.keys.sorted(by: { Int($0.dropFirst())! < Int($1.dropFirst())! }) {
-      navigation.selectSession(id)
-      navigation.noteSessionVisit(all)
+  @Test("current terminal zsh, also with an agent inside: zsh selected; the agent has no row of its own")
+  func currentTerminal() {
+    let state = switcherProject()
+    #expect(opened(state, navigation(state, on: .terminal(zsh))).selected == .terminal(zsh))
+
+    let agent = Sample.session(
+      id: "agent", title: "willow", label: "claude", extra: #""termId":"\#(zsh)""#, createdAgo: 50)
+    let hosted = switcherProject(extra: [agent])
+    let nav = RarogNavigation(prefs: MemoryPreferences())
+    nav.selectSession("agent")
+    #expect(nav.currentTab(hosted) == .terminal(zsh), "the agent's entry stands on its terminal's tab")
+    let machine = opened(hosted, nav)
+    #expect(machine.selected == .terminal(zsh))
+    #expect(!machine.order.contains(.session("agent")))
+  }
+
+  @Test("a project with one tab: one row, the current one")
+  func oneTab() {
+    let state = switcherProject(terminals: [], sessionIds: ["solo"])
+    let nav = navigation(state, on: .session("solo"))
+    let rows = rows(state, nav)
+    #expect(rows.map(\.tab) == [.session("solo")] && rows[0].isCurrent, "the invite is no row")
+    #expect(opened(state, nav).selected == .session("solo"))
+  }
+
+  @Test("12 tabs, the eleventh current: 12 rows, the eleventh selected; digits 1–8 and 9 on the last, as on the bar")
+  func twelveTabs() {
+    let ids = (1...10).map { "s\($0)" }
+    let state = switcherProject(sessionIds: ids)
+    let nav = navigation(state, on: .terminal(zsh))
+    let rows = rows(state, nav)
+    #expect(rows.count == 12 && rows[10].tab == .terminal(zsh))
+    #expect(opened(state, nav).selected == .terminal(zsh))
+    let digits = ShortcutMenu.tabDigits(rows.map(\.tab), hardwareKeyboard: true)
+    let keys = rows.map { SwitcherRows.digitKey(for: $0.tab, digits: digits, keyboard: true) }
+    #expect(keys == (1...8).map { .digit($0) } + [.blank, .blank, .blank, .digit(9)])
+    #expect(SwitcherRows.digitKey(for: rows[0].tab, digits: digits, keyboard: false) == .none, "without the keyboard")
+    #expect(nav.tabRefs(state) == rows.map(\.tab), "the window and the bar have one list")
+  }
+
+  @Test("the invite and a terminal being opened are no rows; a tap on the opening tab opens no window")
+  func noTargetNoRow() {
+    let bare = switcherProject(terminals: [])
+    let onSession = navigation(bare, on: .session("a"))
+    #expect(onSession.stripTabs(bare).contains { $0.kind == .invite(enabled: true) })
+    #expect(rows(bare, onSession).map(\.tab) == [.session("a"), .session("b"), .session("c")])
+    #expect(onSession.stripTabs(bare).first { $0.current }?.tap == .switcher)
+
+    let state = switcherProject()
+    let opening = RarogNavigation(prefs: MemoryPreferences())
+    opening.openTerminal(.next, in: willow, state: state)
+    let current = opening.stripTabs(state).first { $0.current }
+    #expect(current?.target == nil && current?.tap == ProjectTabModel.Tap.none, "the opening tab: no window")
+    #expect(!rows(state, opening).contains { $0.isCurrent }, "the opening terminal is no row")
+    var machine = SwitcherMachine()
+    #expect(machine.openByTap(keyboard: true, tabs: opening.tabRefs(state), current: opening.currentTab(state), at: 0)
+      == [])
+    #expect(!machine.isOpen, "no current tab: the window stays shut")
+  }
+
+  @Test("digit keys: the tab for a digit is the bar's, 9 is the last tab also with eight or fewer")
+  func digitTargets() {
+    let five: [ProjectTabRef] = ["a", "b", "c", "d", "e"].map { .session($0) }
+    #expect(SwitcherRows.tab(forDigit: 3, in: five) == .session("c"))
+    #expect(SwitcherRows.tab(forDigit: 9, in: five) == .session("e"))
+    #expect(SwitcherRows.tab(forDigit: 7, in: five) == nil)
+    #expect(SwitcherRows.tab(forDigit: 0, in: five) == nil, "no row 0")
+    let twelve: [ProjectTabRef] = (1...12).map { .session("s\($0)") }
+    #expect(SwitcherRows.tab(forDigit: 8, in: twelve) == .session("s8"))
+    #expect(SwitcherRows.tab(forDigit: 9, in: twelve) == .session("s12"))
+    let digits = ShortcutMenu.tabDigits(twelve, hardwareKeyboard: true)
+    for digit in 1...9 {
+      #expect(digits[SwitcherRows.tab(forDigit: digit, in: twelve)!] == digit, "the digit drawn on that tab")
     }
-    all.sessions["s10"] = nil
-    let order = SwitcherRows.snapshot(
-      current: nil, recent: navigation.recentSessions(all, limit: SwitcherRows.limit + 1), state: all)
-    #expect(order == ["s11", "s9", "s8", "s7", "s6", "s5", "s4", "s3", "s2", "s1"])
   }
 
-  @Test("snapshot: nothing visited and nothing on screen — an empty window")
-  func empty() {
-    #expect(SwitcherRows.snapshot(current: nil, recent: [], state: AppState(clientBuild: 1)).isEmpty)
-  }
-
-  @Test("digit keys: row N shows N for rows 0–9, a blank of the same width after them, nothing without the keyboard")
-  func digitKeys() {
-    #expect((0..<10).map { SwitcherRows.digitKey(at: $0, keyboard: true) } == (0..<10).map { .digit($0) })
-    #expect(SwitcherRows.digitKey(at: 10, keyboard: true) == .blank, "past nine: the room stays, the dots in a column")
-    #expect(SwitcherRows.digitKey(at: 0, keyboard: false) == .none, "a window without the keyboard: rows as before")
-    #expect(SwitcherRows.digitKey(at: 12, keyboard: false) == .none)
-    #expect(SwitcherRows.limit <= 10, "every row of the window has its digit")
-  }
-
-  @Test("rows: the order from the snapshot, the content live; a removed session is gone")
-  func rows() {
-    var state = Sample.state(session: Sample.session(id: "tu", title: "rarog", label: "przełącznik", state: "running"))
-    state.sessions["zgoda"] = Sample.session(id: "zgoda", title: "willow", label: "zapis", state: "waiting-permission")
-    state.sessions["cicha"] = Sample.session(id: "cicha", title: "willow", label: "zapis", state: "done")
-    let order = ["tu", "zgoda", "cicha", "usunieta"]
-    let before = SwitcherRows.rows(order: order, state: state, current: "tu")
-    #expect(before.map(\.id) == ["tu", "zgoda", "cicha"])
-    #expect(before.map(\.isCurrent) == [true, false, false])
-    #expect(before[1].row.status.tone == .waiting && before[1].row.status.text == UICopy.stateLabel(.waitingPermission))
-    // Two sessions with the same title get a number, like on the list.
-    #expect(before[1].row.ordinal != nil && before[2].row.ordinal != nil && before[0].row.ordinal == nil)
-
-    state.sessions["zgoda"] = Sample.session(id: "zgoda", title: "willow", label: "zapis", state: "running")
-    let after = SwitcherRows.rows(order: order, state: state, current: "tu")
-    #expect(after.map(\.id) == ["tu", "zgoda", "cicha"])
-    #expect(after[1].row.status.tone == .working, "the word and the dot are live")
-  }
-
-  @Test("heading: Ostatnie · N")
+  @Test("heading: Zakładki projektu · N, the footer's digits 1–9")
   func heading() {
-    #expect(UICopy.switcherHeading(6) == "Ostatnie · 6")
-    #expect(UICopy.switcherHints.map(\.key) == ["↑↓", "↩", "0–9", "esc"])
+    #expect(UICopy.switcherHeading(6) == "Zakładki projektu · 6")
+    #expect(UICopy.switcherHints.map(\.key) == ["↑↓", "↩", "1–9", "esc"])
     #expect(UICopy.switcherHints.map(\.action) == ["wybierz", "przejdź", "skocz", "zamknij"])
   }
 }

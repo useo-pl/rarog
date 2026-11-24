@@ -29,10 +29,15 @@ import type {
 } from '@rarog/shared';
 import type { QueueTakeBackResponse } from '@rarog/shared/rest';
 import type { CompanionEntry } from '../src/companion/catalog.ts';
+import { NOT_FOUND } from '../src/files/refusals.ts';
+import type { FileDownloadAnswer } from '../src/files/session-download.ts';
+import { demoFileEntries } from '../src/demo/files.ts';
+import type { FileListingAnswer, SessionFilesPort } from '../src/files/session-files.ts';
 import type {
   CreateSessionOptions, ManagerApi, RestartOptions, SendMessageAck, SendMessageOptions,
 } from '../src/sessions/manager-api.ts';
 import type { ResolveOutcome, ResolveResult } from '../src/permissions.ts';
+import { Session } from '../src/sessions/session.ts';
 import { type ForeignText, foreign } from '@rarog/shared/sentences';
 
 /** Skrót zapisu w testach: sam kod wyniku albo pełny wynik z powodem odmowy. */
@@ -308,6 +313,14 @@ export class FakeManager implements ManagerApi {
     return Promise.resolve(true);
   }
 
+  /** Result of `returnedPrompt()`, set by the test. */
+  returnedPromptResult: string | null = null;
+
+  returnedPrompt(id: string): Promise<string | null> {
+    this.record('returnedPrompt', id);
+    return Promise.resolve(this.returnedPromptResult);
+  }
+
   /** Result of `takeBackQueue()`, set by the test. */
   takeBackResult: QueueTakeBackResponse = { items: [] };
 
@@ -347,6 +360,59 @@ export class FakeManager implements ManagerApi {
     return { path, patch: this.diffFilePatch, truncated: false };
   }
 
+  /** The answer of `listFiles()`, set by the test. */
+  listFilesResult: FileListingAnswer = {
+    ok: true, value: { dir: '', entries: [], truncated: false, maxBytes: 1024 * 1024 },
+  };
+  /** Set: `listFiles()` answers only once it settles (a test unpairs the device meanwhile). */
+  listFilesWait: Promise<void> | undefined;
+
+  async listFiles(id: string, dir: string, maxBytes: number): Promise<FileListingAnswer> {
+    this.requireSession(id);
+    this.record('listFiles', id, dir, maxBytes);
+    await this.listFilesWait;
+    return this.listFilesResult;
+  }
+
+  /**
+   * The port of the file reads: a demo port over the fake's sessions (an unknown id throws its 404) and the demo data;
+   * git is never asked. A test puts its own port here.
+   */
+  filesPortValue: SessionFilesPort | undefined;
+
+  filesPort(): SessionFilesPort {
+    this.record('filesPort');
+    return this.filesPortValue ?? {
+      require: (id) => {
+        const summary = this.requireSession(id);
+        return new Session({
+          id: summary.id, cwd: summary.cwd, title: summary.title, state: summary.state,
+          stateSince: summary.lastActivityAt, createdAt: summary.createdAt, lastActivityAt: summary.lastActivityAt,
+        });
+      },
+      config: { demo: true },
+      run: () => Promise.reject(new Error('the fake manager runs no git')),
+      demoEntries: demoFileEntries,
+    };
+  }
+
+  /**
+   * The answer of `openFile()`, set by the test: by default 404 `not-found`; a test that sends real bytes puts the
+   * download module over its own directory here.
+   */
+  openFileAnswer: (id: string, rel: string, maxBytes: number) => Promise<FileDownloadAnswer> =
+    () => Promise.resolve({ ok: false, refusal: NOT_FOUND });
+  /** Set: `openFile()` answers only once it settles (a test unpairs the device meanwhile). */
+  openFileWait: Promise<void> | undefined;
+
+  async openFile(id: string, rel: string, maxBytes: number): Promise<FileDownloadAnswer> {
+    this.requireSession(id);
+    this.record('openFile', id, rel, maxBytes);
+    const answer = await this.openFileAnswer(id, rel, maxBytes);
+    await this.openFileWait;
+    return answer;
+  }
+
   async close(id: string, opts: { closePanel?: boolean } = {}): Promise<void> {
     this.requireSession(id);
     this.record('close', id, opts);
@@ -364,13 +430,14 @@ export class FakeManager implements ManagerApi {
     return { sessionId: id };
   }
 
-  transcript(id: string): {
+  transcript(id: string, opts?: { peek?: boolean }): {
     messages: TranscriptMessage[];
     pendingPermissions: PermissionRequest[];
     pendingQuestions: QuestionRequest[];
     activity?: Activity;
   } {
-    this.record('transcript', id);
+    if (opts === undefined) this.record('transcript', id);
+    else this.record('transcript', id, opts);
     return this.transcriptResult;
   }
 
@@ -381,6 +448,17 @@ export class FakeManager implements ManagerApi {
 
   onEvent(cb: (scope: 'global' | string, seq: number | null, ev: ServerEvent) => void): void {
     this.listeners.push(cb);
+  }
+
+  private readonly resetListeners: ((sessionId: string) => void)[] = [];
+
+  onTranscriptReset(cb: (sessionId: string) => void): void {
+    this.resetListeners.push(cb);
+  }
+
+  /** Simulates a new card under an existing id (restart, "Resume"). */
+  resetTranscript(sessionId: string): void {
+    for (const cb of this.resetListeners) cb(sessionId);
   }
 
   projects(): { path: string; name: string }[] {
@@ -409,6 +487,9 @@ export class FakeManager implements ManagerApi {
   /** The newest message of each session in memory (`lastMessage` of the voice agent's entry), set by the test. */
   readonly lastMessages = new Map<string, TranscriptMessage>();
 
+  /** The read mark of each session's memory (`Session.readMark`), set by the test; default `memory.0`. */
+  readonly readMarks = new Map<string, string>();
+
   /**
    * As the manager: a Codex session and a pane out of scope are `null`, an unknown session is NotFound. The directory
    * outside the work area is not checked here: tests of that case go through the real gate.
@@ -416,7 +497,10 @@ export class FakeManager implements ManagerApi {
   companionTarget(id: string): CompanionEntry | null {
     const session = this.requireSession(id);
     if (session.engine === 'codex' || session.outOfScope === true) return null;
-    return { cwd: session.cwd, agentSessionId: this.conversations.get(id), lastMessage: this.lastMessages.get(id) };
+    return {
+      cwd: session.cwd, agentSessionId: this.conversations.get(id), lastMessage: this.lastMessages.get(id),
+      readMark: this.readMarks.get(id) ?? 'memory.0',
+    };
   }
 
   onConversationChange(cb: (sessionId: string, agentSessionId: string) => void): () => void {

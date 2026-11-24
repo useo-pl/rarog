@@ -32,7 +32,7 @@ struct ProjectTreeRowsTests {
   @Test("nagłówki jak karta PROJEKTY, agenci bez członu projektu; bez etykiety — `#abcd` jak zakładka")
   func rows() throws {
     let rows = state().projectTreeRows(
-      collapsed: CollapsedProjects(), openCwd: willow, jumpCwd: nil, calendar: Sample.calendar)
+      collapsed: CollapsedProjects(), openCwd: willow, jumpCwd: nil)
     #expect(rows.map(\.id) == [
       .project("/Users/demo/Projects/rarog"), .session("p1"),
       .project(willow), .session("v-ask"), .session("v-done"), .session("abcdef12"),
@@ -54,7 +54,7 @@ struct ProjectTreeRowsTests {
   func collapsedHeader() throws {
     var memory = CollapsedProjects()
     memory.set([willow], collapsed: true)
-    let rows = state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+    let rows = state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil)
     #expect(rows.map(\.id).contains(.session("v-ask")))
     #expect(!rows.map(\.id).contains(.session("v-done")) && !rows.map(\.id).contains(.session("abcdef12")))
     guard case let .header(notes)? = rows.first(where: { $0.id == .project(willow) }) else {
@@ -64,9 +64,24 @@ struct ProjectTreeRowsTests {
     #expect(notes.spokenValue == "zwinięty, widać 1 z 3")
     #expect(notes.toggleLabel == "Rozwiń projekt willow")
     let open = state().projectTreeRows(
-      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil)
     guard case let .header(expanded)? = open.first(where: { $0.id == .project(willow) }) else { return }
     #expect(expanded.spokenValue == "rozwinięty" && expanded.toggleLabel == "Zwiń projekt willow")
+  }
+
+  @Test("a pinned project's header: on top, pinned, and the reader hears it along with the collapse state")
+  func pinnedHeader() throws {
+    let navigation = RarogNavigation(prefs: MemoryPreferences())
+    navigation.setProjectPinned(willow, pinned: true)
+    navigation.setProjectsCollapsed([willow], collapsed: true)
+    let rows = navigation.treeRows(state(), openCwd: nil, jumpCwd: nil)
+    #expect(rows.first?.id == .project(willow), "the pinned project stands first")
+    let pinned = try #require(rows.header(willow))
+    #expect(pinned.pinned)
+    #expect(pinned.spokenValue.contains(UICopy.treePinnedValue))
+    #expect(pinned.spokenValue.contains(UICopy.treeCollapsedValue(shown: 1, total: 3)), "still says the collapse")
+    let other = try #require(rows.header("/Users/demo/Projects/rarog"))
+    #expect(!other.pinned && !other.spokenValue.contains(UICopy.treePinnedValue))
   }
 
   @Test("projekt z samej historii CLI bez nagłówka na liście, a w pigułkach okna nowej sesji jest")
@@ -76,7 +91,7 @@ struct ProjectTreeRowsTests {
     state.apply(.catalog(.recentProjectsLoaded(recent.projects, at: Sample.now)), now: Sample.now)
     var memory = CollapsedProjects()
     memory.set(["/Users/demo/Projects/nowy"], collapsed: true)
-    let rows = state.projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+    let rows = state.projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil)
     #expect(rows.header("/Users/demo/Projects/nowy") == nil)
     #expect(rows.allSatisfy { row in
       if case let .header(header) = row { return header.row.agents > 0 }
@@ -94,7 +109,7 @@ struct ProjectTreeRowsTests {
     var state = state()
     let recent = Sample.decode(RecentProjectList.self, #"{"projects":[{"cwd":"/Users/demo/Projects/nowy","mtime":"\#(Sample.iso(30))"}]}"#)
     state.apply(.catalog(.recentProjectsLoaded(recent.projects, at: Sample.now)), now: Sample.now)
-    let rows = state.projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+    let rows = state.projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil)
     #expect(try #require(rows.header(willow)).tap == .toggle(collapse: false), "zwinięty — rozwija")
     #expect(try #require(rows.header("/Users/demo/Projects/rarog")).tap == .toggle(collapse: true), "rozwinięty — zwija")
     #expect(rows.header("/Users/demo/Projects/nowy") == nil, "K10: bez sesji nie ma nagłówka")
@@ -118,7 +133,7 @@ struct ProjectTreeRowsTests {
     state.sessionsLoaded = true
     _ = state.apply(.turnControl(.unreadMarked(sessionId: "held")), now: Sample.now)
     let rows = state.projectTreeRows(
-      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil)
     let fresh = Dictionary(uniqueKeysWithValues: rows.compactMap { row -> (String, Bool)? in
       guard case let .session(model) = row else { return nil }
       return (model.id, model.freshResult)
@@ -126,8 +141,9 @@ struct ProjectTreeRowsTests {
     #expect(fresh == ["fresh": true, "marked": false, "held": false, "read": false, "stale": false])
     #expect(state.sessionRows.first { $0.id == "fresh" }?.freshResult == true)
     // The session switcher keeps a still dot: the request is about the list.
-    let switcher = SwitcherRows.rows(order: ["fresh"], state: state, current: nil)
-    #expect(switcher.first?.row.freshResult == false)
+    let tabs = state.projectTabModels(cwd: "/Users/demo/Projects/willow", current: .session("fresh"))
+    let switcher = SwitcherRows.rows(tabs: tabs, state: state)
+    #expect(switcher.first { $0.tab == .session("fresh") }?.session?.freshResult == false)
   }
 
   /// The note glyph under the pointer stands on the wash plate over the lit header (both on the column): amber and the
@@ -329,9 +345,9 @@ struct TreeAnchorSkipTests {
     var memory = CollapsedProjects()
     memory.set([willow], collapsed: true)
     for collapsed in [CollapsedProjects(), memory] {
-      let bare = state().projectTreeRows(collapsed: collapsed, openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+      let bare = state().projectTreeRows(collapsed: collapsed, openCwd: nil, jumpCwd: nil)
       let marked = state().projectTreeRows(
-        collapsed: collapsed, openCwd: willow, jumpCwd: rarog, calendar: Sample.calendar)
+        collapsed: collapsed, openCwd: willow, jumpCwd: rarog)
       #expect(bare.map(\.id) == marked.map(\.id))
     }
   }
@@ -351,7 +367,7 @@ struct ProjectTreeLayoutTests {
   /// Wiersze z prawdziwego drzewa: Rarog (gałąź `main`, 1 agent) nad willow (bez gałęzi, 3 agentów).
   private func parts() throws -> (meta: ProjectTreeRow, plain: ProjectTreeRow, agent: ProjectTreeRow) {
     let rows = state().projectTreeRows(
-      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil)
     let headers = rows.compactMap { row -> ProjectTreeHeaderModel? in
       if case let .header(header) = row { return header }
       return nil
@@ -374,7 +390,7 @@ struct ProjectTreeLayoutTests {
   @Test("prawdziwe drzewo: projekt z 1 agentem nad projektem z 3 — kreska od strzałki do ostatniego agenta")
   func realTree() {
     let rows = state().projectTreeRows(
-      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil)
     #expect(rows.map(\.id) == [
       .project("/Users/demo/Projects/rarog"), .session("p1"),
       .project(willow), .session("v-ask"), .session("v-done"), .session("abcdef12"),
@@ -393,7 +409,7 @@ struct ProjectTreeLayoutTests {
   @Test("active project: its header and agents are marked, the other project not; no project on screen — none")
   func activeProject() {
     let rows = state().projectTreeRows(
-      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+      collapsed: CollapsedProjects(), openCwd: nil, jumpCwd: nil)
     #expect(Layout.layout(rows, activeCwd: willow).map(\.active) == [false, false, true, true, true, true])
     #expect(Layout.layout(rows, activeCwd: "/Users/demo/Projects/rarog").map(\.active)
       == [true, true, false, false, false, false])
@@ -406,7 +422,7 @@ struct ProjectTreeLayoutTests {
   func collapsedWithVisibleAgent() {
     var memory = CollapsedProjects()
     memory.set([willow], collapsed: true)
-    let rows = state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil, calendar: Sample.calendar)
+    let rows = state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil)
     #expect(rows.map(\.id) == [
       .project("/Users/demo/Projects/rarog"), .session("p1"), .project(willow), .session("v-ask"),
     ])
@@ -437,10 +453,10 @@ struct ProjectTreeLayoutTests {
     var memory = CollapsedProjects()
     memory.set([willow], collapsed: true)
     let collapsed = Layout.layout(
-      state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil, calendar: Sample.calendar))
+      state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil))
     memory.set([willow], collapsed: false)
     let expanded = Layout.layout(
-      state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil, calendar: Sample.calendar))
+      state().projectTreeRows(collapsed: memory, openCwd: nil, jumpCwd: nil))
     #expect(collapsed.map(\.guide) == [.start, .end, .none, .none])
     #expect(expanded.map(\.guide) == [.start, .end, .start, .middle, .middle, .end])
     #expect(collapsed[2].gapAbove == expanded[2].gapAbove)
@@ -527,9 +543,8 @@ struct ProjectTreeTokensTests {
     }
   }
 
-  /// The active project's guide stands out from the others and stays decoration. The tab squares in its rows are
-  /// quieter than the line and the metadata, the digit still readable.
-  @Test("active guide brighter than the guide, below 3:1; tab square quieter than it, digit 3:1 to the metadata's")
+  /// The active project's guide stands out from the others and stays decoration.
+  @Test("active guide brighter than the guide, below 3:1")
   func activeGuideContrast() {
     for dark in [true, false] {
       func ink(_ pair: PaletteTokens.Pair) -> UInt32 { dark ? pair.dark : pair.light }
@@ -537,16 +552,6 @@ struct ProjectTreeTokensTests {
         let active = ratio(ink(PaletteTokens.treeGuideActive), ink(ground))
         #expect(active > ratio(ink(PaletteTokens.treeGuide), ink(ground)) + 0.5, "dark \(dark): \(active)")
         #expect(active < 3, "dark \(dark): a line, not a rule: \(active)")
-      }
-      for ground in [PaletteTokens.background, PaletteTokens.sidebar, PaletteTokens.surface2] {
-        let digit = ratio(ink(PaletteTokens.treeTabDigit), ink(ground))
-        #expect(digit >= 3, "dark \(dark): digit on \(ground) \(digit)")
-        #expect(digit < ratio(ink(PaletteTokens.treeHeaderMeta), ink(ground)), "dark \(dark): quieter than metadata")
-      }
-      for ground in [PaletteTokens.background, PaletteTokens.sidebar] {
-        let edge = ratio(ink(PaletteTokens.treeTabKeyEdge), ink(ground))
-        #expect(edge > ratio(ink(PaletteTokens.treeGuide), ink(ground)), "dark \(dark): the edge shows")
-        #expect(edge < ratio(ink(PaletteTokens.treeGuideActive), ink(ground)), "dark \(dark): quieter than the line")
       }
     }
   }

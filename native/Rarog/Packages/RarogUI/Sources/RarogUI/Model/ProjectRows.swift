@@ -95,12 +95,31 @@ public struct ProjectTabModel: Sendable, Equatable, Identifiable {
     if case .invite = kind { return "tabs.terminal-invite" }
     return "tab.\(id)"
   }
+
+  /// What a tap on the tab does (`HeaderTabsSlot`).
+  public enum Tap: Sendable, Equatable {
+    /// The current tab: the session switcher window with the tabs of the project.
+    case switcher
+    /// A sister tab: go there (`RarogNavigation.openTab`).
+    case open(ProjectTabRef)
+    /// The terminal invite: open slot 1 (dimmed, it says why).
+    case invite
+    /// Nothing: the current tab of a terminal being opened has no id yet, so it is no row of the window either.
+    case none
+  }
+
+  public var tap: Tap {
+    if current { return target == nil ? .none : .switcher }
+    if let target { return .open(target) }
+    if case .invite = kind { return .invite }
+    return .none
+  }
 }
 
 extension AppState {
   /// Wiersze sekcji PROJEKTY w kolejności rdzenia.
-  public func projectRows(openCwd: String?, jumpCwd: String?, calendar: Calendar = .current) -> [ProjectRowModel] {
-    let groups = projectGroups(calendar: calendar)
+  public func projectRows(openCwd: String?, jumpCwd: String?) -> [ProjectRowModel] {
+    let groups = projectGroups()
     let names = Dictionary(grouping: groups, by: \.name).mapValues(\.count)
     return groups.map { group in
       let git = group.git

@@ -30,6 +30,10 @@ final class SonioxSpeech {
     var keepalive: TimeInterval = 20
     /// How long a cancelled or failed stream may hold the slot while its `terminated` does not come.
     var drainLimit: TimeInterval = 3
+    /// How long the conversation waits for the first audio of a tool's reading once its stream started
+    /// (`RealtimeConversation+Reading.swift`). It also covers a new key and socket after a 401 before any audio, which
+    /// sends the stream again without a new start for the caller.
+    var firstAudioLimit: TimeInterval = 10
 
     static let production = Timing()
   }
@@ -99,6 +103,8 @@ final class SonioxSpeech {
 
   private var socket: (any VoiceSocket)?
   private var socketOpen = false
+  /// The socket is open (between a key renewal's close and the new socket's open it is not).
+  var isOpen: Bool { socketOpen }
   /// Socket attempt number: callbacks of a socket we no longer want see a different number.
   private var generation = 0
   /// Utterances in order; the head is the running one or the next to run.

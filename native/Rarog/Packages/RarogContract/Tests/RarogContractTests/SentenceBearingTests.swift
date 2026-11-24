@@ -26,6 +26,7 @@ struct SentenceBearingTests {
     SentenceResponse(id: "sessionModelResponse", type: SessionModelAccepted.self, file: "model-accepted.json"),
     SentenceResponse(id: "modelList", type: ModelList.self, file: "models.json"),
     SentenceResponse(id: "interruptResponse", type: InterruptResponse.self, file: "interrupt.json"),
+    SentenceResponse(id: "fileTooLargeBody", type: FileTooLargeBody.self, file: "error.file-too-large.json"),
   ]
 
   /// Renderer testowy: znany `ref` → `PL:<kod>`, brak `ref` → tekst z drutu.
@@ -34,7 +35,7 @@ struct SentenceBearingTests {
   @Test("lista ma siedem pozycji o różnych identyfikatorach, każdy w mapie dekoderów złotych odpowiedzi")
   func listShape() {
     let ids = Self.sentenceResponses.map(\.id)
-    #expect(ids.count == 7)
+    #expect(ids.count == 8)
     #expect(Set(ids).count == ids.count)
     #expect(Set(ids).subtracting(RestFixturesTests.decoders.keys).sorted() == [])
   }

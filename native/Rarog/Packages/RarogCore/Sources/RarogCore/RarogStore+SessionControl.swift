@@ -47,7 +47,8 @@ extension RarogStore {
     case let .success(reply):
       if let session = reply.session { dispatch(.turnControl(.interruptReplied(session))) }
       switch reply.delivered {
-      case nil, .yes?: return .delivered
+      // An empty field read is no hand-back: the app's field stays as it is.
+      case nil, .yes?: return .delivered(returnedPrompt: reply.returnedPrompt.flatMap { $0.isEmpty ? nil : $0 })
       case .no?: return .notDelivered
       case .pending?: return .unsure
       }

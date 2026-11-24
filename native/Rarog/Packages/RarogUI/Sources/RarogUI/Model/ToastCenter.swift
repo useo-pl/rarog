@@ -108,12 +108,16 @@ public final class ToastCenter {
   }
 
   /// Komunikat apki (np. „Powiadomienia włączone"), opcjonalnie z jedną akcją.
-  public func notice(_ text: String, action: ToastAction? = nil, perform: (@MainActor () -> Void)? = nil) {
+  /// `lifetime`: how long it stands when its action stops working after a fixed window (the Inbox's Undo);
+  /// `nil` = the usual hold.
+  public func notice(
+    _ text: String, action: ToastAction? = nil, lifetime: Duration? = nil, perform: (@MainActor () -> Void)? = nil
+  ) {
     let line = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !line.isEmpty else { return }
     show(
       sessionId: nil, kind: nil, place: nil, text: line, tone: nil, action: perform == nil ? nil : action,
-      style: .standard, hold: nil)
+      style: .standard, hold: lifetime)
     self.perform = perform
   }
 
@@ -201,16 +205,21 @@ public final class ToastCenter {
 /// wtedy milczy; dymek nie ginie przy zmianie ekranu, tylko zmienia osadzenie. Otwarte okno terminala Cmd+F/Cmd+G
 /// ma dymek u siebie, u dołu arkusza: arkusz przykrywa kolumnę, a dymek w niej
 /// (np. „Skopiowano do schowka." z tego okna) byłby pod nim; nakładka kolumny wtedy milczy.
+/// The phone's session panel sheet does the same: while it stands, the toast (a refused file preview, a signal of
+/// another session) stands at the bottom of the sheet, and the session screen and the column under it stay silent.
 public enum ToastPlacement: Sendable, Equatable {
   case sessionScreen
   case overlay
   case terminalWindow
+  case inspectorSheet
 
   /// Ta sama reguła co `DetailView`: ekran sesji stoi, gdy na trasie nie ma terminala, a wybrana sesja jest
   /// na liście i nie jest wpisem Codexa. Okno terminala nad kolumną wygrywa z oboma.
+  /// The panel sheet wins over both under it; only a phone opens it, so an iPad never gets this placement.
   @MainActor
   public static func resolve(navigation: RarogNavigation, state: AppState) -> ToastPlacement {
     if navigation.popup != nil { return .terminalWindow }
+    if navigation.inspectorSheetSession(state) != nil { return .inspectorSheet }
     guard navigation.terminalRoute(state) == nil, let id = navigation.selectedSessionId,
       let session = state.sessions[id], session.engine != .codex
     else { return .overlay }

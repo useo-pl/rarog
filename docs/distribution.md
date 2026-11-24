@@ -125,7 +125,7 @@ Both also run `strings` on the three executables and stop on the marker
 stops on a string that matches a product name the package must not carry; the pattern skips font glyph names such
 as `copilot`. Either
 mode can keep the `.xcarchive` in a given directory, for the privacy report Xcode builds from an archive. The app
-version (`MARKETING_VERSION`) is `1.0` in every build configuration; the build number stays the commit count.
+version (`MARKETING_VERSION`) is `1.1.0` in every build configuration; the build number stays the commit count.
 
 **Push environment.** A TestFlight package, like an App Store package, has no provisioning profile (TN3125), so the
 app reports `production`; a build with a profile takes its `aps-environment` (rule:
@@ -169,8 +169,9 @@ plain `rarog <command>` works after it. `rarog help` lists the commands:
   approval that reached the session since that moment, exit 1 when there is none, see `docs/dialogs.md`, "Channel cycle";
 - `setup [--tailscale] [--tailscale-only] [--iroh-relay <https url>] [--data-dir <dir>]`: the install, step by step
   (below);
-- `update [--data-dir …] [--verbose]` and `update --finish`: the newest version from the npm registry, then its
-  finish (SDK, hook copy, settings entries, restart, check), see `docs/server-config.md`, "`rarog update`";
+- `update [--beta] [--data-dir …] [--verbose]` and `update --finish`: the newest version from the npm registry
+  (with `--beta` the higher of the `beta` and `latest` tags), then its finish (SDK, hook copy, settings entries,
+  restart, check), see `docs/server-config.md`, "`rarog update`";
 - `dictation set-key|status`: the Soniox dictation key in the secrets file, see `docs/server-config.md`,
   "`rarog dictation`: the Soniox key";
 - `voice-agent set-key|set-model <model>|status`: the voice agent's OpenAI key in the secrets file (`set-key` then
@@ -640,9 +641,11 @@ rarog setup
 ```
 
 Setup in the package walks the same steps as in a clone: it downloads the SDK in step 8 and installs the service in
-step 9, both items of its plan screen. An update is `rarog update`: it installs the newest version from the registry
-with npm and finishes it (`docs/server-config.md`, "`rarog update`"). A rollback is the manager command with a version
-number (`npm i -g @rarog/server@0.1.0`), then `rarog update --finish`; an uninstall starts with
+step 9, both items of its plan screen. An update is `rarog update`: it installs the newest release from the registry
+with npm and finishes it (`docs/server-config.md`, "`rarog update`"). `rarog update --beta` installs the higher of the
+newest beta and the newest release (the npm dist-tags `beta` and `latest`); without the flag a beta is never
+installed, and an installed beta stays until a release above it appears. A rollback is the manager command with a
+version number (`npm i -g @rarog/server@0.1.0`), then `rarog update --finish`; an uninstall starts with
 `rarog service uninstall`. `rarog update` updates only the package `@rarog/server`, and only with npm. In an
 installation of another package with the `rarog` command it refuses without asking npm and names the uninstall of
 that package, then the install of `@rarog/server`, then `rarog service install` and `rarog update --finish`: npm
@@ -668,16 +671,28 @@ contributor's path: `pnpm install` in a checkout, and the server runs from TypeS
 The app knows the server version it ships with: `ServerRelease.version` in
 `native/Rarog/Packages/RarogCore/Sources/RarogCore/ServerRelease.swift`. It compares this value with `version` from
 `GET /api/version` by semver: `major.minor.patch`, then a pre-release (`1.0.0-rc.1`) is lower than the release, and
-`+…` is ignored. When the server is lower, the list footer shows a quiet row "Server update available". A tap opens
-the Usage sheet, whose machine section (Mac or VPS) names the update command (`ServerRelease.updateCommand(server:)`):
-`rarog update` for a server from version 0.1.1 on (only `major.minor.patch` is compared, so `0.1.1-local.…` counts),
-`npm i -g @rarog/server@latest && rarog update` below it, and no hint for an unreadable version. The refusal for an
-older protocol (`CoreCopy.updateServer`) always shows the full chain
-`npm i -g @rarog/server@latest && rarog update`. An equal or newer server, a missing field or an unreadable value (a
-`v` prefix,
-a leading zero in a number of the core or the pre-release, such as `1.01.0` or `1.0.0-rc.01`) show nothing. The
-app makes no request for this beyond the version probe it already sends, so a new server release shows up only after
-an app update. The next probe after `rarog restart` removes the row; a server switch and a logout remove it at once.
+`+…` is ignored. When the server is lower, the list footer shows the row "Server update available" in link ink. A
+tap opens the update steps (`ServerUpdateSheet`; a popover beside the detail, a sheet in the stack): both versions,
+where to run the command (Mac or VPS), the command on its own line with a copy button, and what it does. The Usage
+sheet's machine section names the same command. The command is `ServerRelease.updateCommand(server:release:)`, and
+it follows the channel of the app's own `ServerRelease.version`:
+
+- Stable app: `rarog update` for a server from version 0.1.1 on (only `major.minor.patch` is compared, so
+  `0.1.1-local.…` counts), `npm i -g @rarog/server@latest && rarog update` below it.
+- Beta app (`ServerRelease.version` is `X.Y.Z-beta.N`): `rarog update --beta` for a server from `1.1.0-beta.1` on
+  (the first version with the flag; the whole version is compared, so `1.1.0-beta.0` is below and
+  `1.1.0-beta.1.local.…` counts), `npm i -g @rarog/server@beta && rarog update --finish` below it. Below the
+  threshold npm installs the beta, because the older `rarog update` does not know `--beta`; the new package's
+  `rarog update --finish` then does the setup and the restart.
+
+The refusal for an older protocol (`CoreCopy.updateServer`) does not know the server version, so it always shows the
+full chain of the app's channel (`ServerRelease.unknownServerCommand`):
+`npm i -g @rarog/server@latest && rarog update` in a stable app,
+`npm i -g @rarog/server@beta && rarog update --finish` in a beta app. An equal or newer server, a missing field or
+an unreadable value (a `v` prefix, a leading zero in a number of the core or the pre-release, such as `1.01.0` or
+`1.0.0-rc.01`) show nothing. The app makes no request for this beyond the version probe it already sends, so a new
+server release shows up only after an app update. The next probe after `rarog restart` removes the row; a server
+switch and a logout remove it at once.
 With pnpm or a clone the update is the pnpm command above or `git pull` and `pnpm install` in the clone.
 
 A release that changes `version` in `package.json` changes `ServerRelease.version` in the same commit:

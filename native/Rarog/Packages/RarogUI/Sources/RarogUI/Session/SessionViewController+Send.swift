@@ -6,10 +6,14 @@ import UIKit
 
 // The message field and the send: one send operation of the field with attachments and a typed result
 // (`sendField`, `ComposerSendResult`) for ↑ and the voice conversation, recovery of text and attachments after a
-// refusal (`SendRecovery`), "Retry" and the cells of queue entries. Owner: send.
+// refusal (`MessageSendRecovery`, shared with the Inbox reply), "Retry" and the cells of queue entries.
+// Owner: send.
 extension SessionViewController {
   func buildComposer() {
-    composer.onSend = { [weak self] in _ = self?.sendField() }
+    composer.onSend = { [weak self] in
+      guard let self else { return }
+      self.turnChrome.fieldSend = self.sendField()
+    }
     composer.onEdit = { [weak self] in
       guard let self, self.transientHint else { return }
       self.transientHint = false
@@ -86,16 +90,21 @@ extension SessionViewController {
 
   // MARK: - Komórki wpisów kolejki
 
+  /// The render style of a queued entry. The density is part of the echo's style too, so the entry and its echo share
+  /// one render.
+  func pendingStyle() -> MarkdownRenderer.Style {
+    MarkdownRenderer.Style(
+      textColor: Palette.text, base: MarkdownRenderer.transcriptStyle, traits: traitCollection,
+      spacing: transcriptSpacing)
+  }
+
   /// Wpis w locie stoi tym samym renderem markdownu co jego przyszłe echo (wiadomość człowieka, `markdown.text`):
   /// interlinia, kod w linii i bloki kodu są identyczne, więc dymek nie skacze, gdy wpis zamienia się w echo.
   func pendingConfiguration(
     entry: UUID, voice: VoiceLabel?, text: String, inFlight: Bool = true, queued: Bool = false,
     replaysTakeBack: Bool = false, takingBack: Bool = false, turn: TurnMark = TurnMark()
   ) -> MessageContentConfiguration {
-    // The density is part of the echo's style too, so the entry and its echo share one render.
-    let style = MarkdownRenderer.Style(
-      textColor: Palette.text, base: MarkdownRenderer.transcriptStyle, traits: traitCollection,
-      spacing: transcriptSpacing)
+    let style = pendingStyle()
     // Wpis w kolejce CLI czeka nieraz minutami i też niesie pasmo poświaty, w fazie innych dymków w kolejce;
     // czytnik słyszy „w kolejce”. Wysokość ta sama co echa, więc przejście w wiadomość nie rusza transkryptu.
     // While the queue is being taken back the bubble says so to VoiceOver too, not only in the status row under it.
@@ -228,40 +237,18 @@ extension SessionViewController {
   private func handleSend(
     _ outcome: SendOutcome, raw: String, attachments: [ComposerAttachment], voiceAgent: VoiceAgentSendMark?
   ) {
-    let state = store.state
-    let result = UICopy.sendResult(outcome, session: state.sessions[sessionId])
     // A voice conversation says so in the status row (`+VoiceAgent`).
     if case .accepted = outcome { voiceAgentFieldSent(voiceAgent) }
-    if case let .notPersisted(reason) = outcome {
-      store.reportUnhandled("kolejka wysyłki: zapis na dysk nie powiódł się (\(reason.prefix(80)))")
-    }
-    // Ekran mógł zniknąć w trakcie żądania (inna sesja, wylogowanie po 401): tekst nie trafia do
-    // odłączonego pola, a wpis kolejki zostaje, dopóki tekst nie stanie tam, gdzie go widać.
-    switch SendRecovery.plan(outcome, screenAttached: isScreenAttached(state)) {
-    case let .restoreToField(discard):
+    let shown = MessageSendRecovery.recover(
+      outcome, raw: raw, attachments: attachments, sessionId: sessionId, screenAttached: isScreenAttached(store.state),
+      store: store, drafts: drafts
+    ) { raw, attachments in
       restore(raw)
-      // Nieudane załączniki na początku paska; dołożone w trakcie wysyłki nie giną.
       composer.restoreAttachments(attachments)
-      // Tekst wrócił do żywego pola — wpis w transkrypcie byłby drugą kopią tej samej wiadomości.
-      if let discard { store.discard(discard) }
-    case .keepEntry:
-      // Odmowa stoi w transkrypcie sesji z treścią i „Ponów"/„Odrzuć" (także po zabiciu apki);
-      // kolejka ma własne kopie plików.
-      AttachmentStaging.discard(attachments)
-      return
-    case .saveDraft:
-      // Półka i szkic same oddają treść ekranowi tej sesji otwartemu w międzyczasie (albo następnemu).
-      AttachmentShelf.shared.restore(attachments, for: sessionId)
-      drafts.save(raw, note: result.text, for: sessionId)
-      return
-    case .none:
-      // Accepted, not confirmed or stopped in the ring: the content lies in the outbox, the shelf does not need its
-      // files.
-      AttachmentStaging.discard(attachments)
     }
-    if let text = result.text {
+    if let shown {
       transientHint = composer.isEditable
-      composer.setHint(text, isError: result.isError)
+      composer.setHint(shown.text, isError: shown.isError)
     }
     if case .empty = outcome { composer.textView.becomeFirstResponder() }
   }

@@ -26,7 +26,6 @@ final class TreeListAnchorTests: XCTestCase {
     case newProjectAbove = "nowy projekt nad"
     case newBelow = "nowa pod"
     case closedAboveNewBelow = "zamknięta nad + nowa pod (ta sama liczba)"
-    case reorderedByDay = "przestawienie projektów po dobie (ta sama liczba)"
     case twoInOneTurn = "dwa snapshoty w jednej turze (A→B→C)"
     case tallerAboveSameIndex = "zamknięta nad i nowa w jej miejscu w dwóch liniach (ta sama liczba i indeks)"
 
@@ -42,7 +41,6 @@ final class TreeListAnchorTests: XCTestCase {
       case .newProjectAbove: try h.snapshot(base.adding("p6x-a", in: "p6x"))
       case .newBelow: try h.snapshot(base.adding("p9-c", in: "p9"))
       case .closedAboveNewBelow: try h.snapshot(base.removing(["p3-a"]).adding("p9-c", in: "p9"))
-      case .reorderedByDay: try h.snapshot(base.active("p9", at: "2026-10-08T10:00:00.000Z"))
       case .twoInOneTurn:
         try h.snapshot(base.adding("p6-e", in: "p6"))
         try h.snapshot(base.adding("p6-e", in: "p6").adding("p2-d", in: "p2"))
@@ -83,6 +81,36 @@ final class TreeListAnchorTests: XCTestCase {
     return try h.measure(
       "\(scenario.rawValue) f \(fraction)\(enabled ? "" : " bez kotwicy")", session: "p7-a"
     ) { try scenario.apply(h) }
+  }
+
+  /// Pinning a project from below the selected session (the header's menu, `ProjectTreeRows.pin`): the project moves
+  /// to the top, over the selected row. Without the anchor the row moves down by the project's rows; with it, the row
+  /// stays ≤ 1 pt in every sample. Unpinning puts the project back below, and the row stays again.
+  func testSelectedRowStaysOnPin() throws {
+    var failures: [String] = []
+    for fraction in [0.25, 0.75] as [CGFloat] {
+      var runs: [Bool: TreeAnchorRun] = [:]
+      for enabled in [true, false] {
+        let h = try TreeAnchorHarness(selected: "p7-a", enabled: enabled)
+        defer { h.close() }
+        let item = try XCTUnwrap(h.index(.session("p7-a")))
+        h.place(item: item, at: fraction)
+        XCTAssertTrue(h.wholeOnScreen(item), "p7-a whole on screen (f \(fraction))")
+        let suffix = enabled ? "" : " without anchor"
+        let pinned = try h.measure("pin p9 from below f \(fraction)\(suffix)", session: "p7-a") { h.pin("p9", true) }
+        XCTAssertEqual(h.ids().first, .project(TreeAnchorFixture.cwd("p9")), "the pinned project stands first")
+        runs[enabled] = pinned
+        guard enabled else { continue }
+        let unpinned = try h.measure("unpin p9 f \(fraction)", session: "p7-a") { h.pin("p9", false) }
+        for run in [pinned, unpinned] {
+          check(run, label: run.name)
+          if run.worst > 1 || abs(run.final) > 1 { failures.append(run.summary) }
+        }
+      }
+      let control = try XCTUnwrap(runs[false])
+      XCTAssertGreaterThan(control.worst, 1, "f \(fraction): without the anchor the row moves — \(control.summary)")
+    }
+    XCTAssertTrue(failures.isEmpty, "anchor ≤ 1 pt in every sample:\n" + failures.joined(separator: "\n"))
   }
 
   /// Dym na telefonie (393×852, lista w stosie, `besideDetail: false`): bez awarii i bez ruchu ponad bez-kotwicy.

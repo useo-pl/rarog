@@ -1229,17 +1229,21 @@ extension StorePairingTests {
     }
   }
 
-  @Test("wskaźnik nieczytelny przy starcie, dysk oddaje go przy parowaniu przez `k`: ta sama przestrzeń, po restarcie kolejka i szkice")
+  @Test("pointer unreadable at the start, returned by the disk at pairing through `k`: the same space, and its queue and list show on the same store")
   func pointerReadAtPairingKeepsSpace() async throws {
     let (server, store, space, drafts) = try await unreadableHangingSuccessor(nil)
+    let row = try JSONDecoder().decode(SessionSummary.self, from: Data(Frames.summary("s1").utf8))
+    let list = SnapshotCache(directory: server.spaces.directory(space).appending(path: ServerSpaces.list))
+    #expect(await list.save([row], at: Date()))
     try pointerReadable(server, true)
     store.offerPairing(pointerKeyLink)
     #expect(await store.confirmPairing() == .paired)
     #expect(server.pointer == ServerSpace(identity: .iroh(endpointId: GoldenPointers.endpointId), name: space.name))
-    // Kolejkę z dysku magazyn czyta przy starcie; sesja zaczęła bez danych na dysku, więc wraca po restarcie.
-    #expect(store.dataSpaceDirectory == server.spaces.directory(space) && server.wipes == 0)
-    for file in drafts { #expect(FileManager.default.fileExists(atPath: file.path), "\(file.lastPathComponent)") }
-    #expect(trashed(server).isEmpty, "kosz pusty")
+    #expect(server.wipes == 0)
+    // The start read the queue from the process's scratch directory; entering the space reads the space's own.
+    await until("queue and list of the space") { !store.state.outbox.isEmpty && store.state.sessions["s1"] != nil }
+    expectSameSpace(store, server, space, drafts)
+    #expect(store.state.listCache.staleSince != nil, "the list comes from the cache, stale until the first stream state")
     let restarted = server.store()
     await restarted.start()
     expectSameSpace(restarted, server, space, drafts)

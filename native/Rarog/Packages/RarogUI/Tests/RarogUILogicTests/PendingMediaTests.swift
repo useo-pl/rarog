@@ -33,6 +33,9 @@ struct PendingMediaTests {
   @Test("wiersze wpisu przez cały cykl: miniatury zamiast „Załączniki:”, podpis bez paska, 202 gasi pierścień")
   func lifecycleRows() throws {
     var state = Sample.state(session: Sample.session())
+    // The session screen's stream is open: without it the entry's deadline waits (`AppState.waitsForOpenStream`).
+    state.viewedSessionId = "s1"
+    state.sessionStream = .online
     let entry = OutboxEntry(
       sessionId: "s1", text: "zobacz",
       attachments: [

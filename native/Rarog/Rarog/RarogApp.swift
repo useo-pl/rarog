@@ -1,4 +1,5 @@
 import MetricKit
+import RarogActivity
 import RarogCore
 import RarogIroh
 import RarogTerminal
@@ -11,6 +12,8 @@ import SwiftUI
 /// zmiana sieci, raport awarii, powiadomienia (delegat apki, adres `rarog://`), praca w tle zbiorcza Live Activity
 /// (ActivityKit przez `LiveActivityController`) i renderer terminala (SwiftTerm z `RarogTerminal`). Ekrany mieszkają
 /// w `RarogUI`, stan i reguły w `RarogCore`. Scena i zmiana sieci idą najpierw do koordynatora, potem do magazynu.
+/// The scene then goes to the locked-phone monitor (`LockedPhoneMonitor`). The voice Live Activity
+/// (`VoiceActivityController`) follows the app's microphone under the locked-phone trial.
 @main
 struct RarogApp: App {
   /// Token APNs i powiadomienia: `AppDelegate` → `PushInbox` → magazyn.
@@ -18,8 +21,14 @@ struct RarogApp: App {
   @State private var store: RarogStore
   /// Jeden na proces: dzierżawa endpointu iroh i runtime tunelu bieżącej tożsamości serwera.
   @State private var tunnel: TunnelCoordinator
+  /// The locked-phone monitor: the server connection held for what records, and its `client.log` lines.
+  @State private var lockedPhone: LockedPhoneMonitor
+  /// The voice Live Activity of the locked-phone trial and the handler of its End button.
+  @State private var voiceActivity: VoiceActivityController
   @State private var network = NetworkMonitor()
   @State private var diagnostics: CrashDiagnostics
+  /// The MetricKit subscriber and the network monitor are on: the root's first `.task` ran.
+  @State private var launched = false
   /// Zaparkowane ekrany terminala: zejście z taba albo zamknięte okno Cmd+F/Cmd+G czeka do 2 min.
   @State private var terminalParking: TerminalScreenParking
   @Environment(\.scenePhase) private var scenePhase
@@ -55,6 +64,12 @@ struct RarogApp: App {
     store.attachDictation(AppEnvironment.dictation())
     // Agent głosowy: zgoda i głos na tym urządzeniu; klucz OpenAI i model ma serwer.
     store.attachVoiceAgent(AppEnvironment.voiceAgent())
+    // After the voice agent settings: the monitor reads the trial switch from them.
+    let lockedPhone = LockedPhoneMonitor.live(store: store) { [tunnel] on in tunnel.holdForVoice(on) }
+    // Also after the voice agent settings (the trial switch); ends the voice activities left from an earlier process.
+    let voiceActivity = VoiceActivityController.live(store: store)
+    voiceActivity.start()
+    EndVoiceActivityIntent.handler = { [voiceActivity] in await voiceActivity.endFromLiveActivity() }
     #if DEBUG
     // Testy UI przeciw demo: serwer demo nie ma kanału APNs, a baner „Włącz" i push próbny trzeba przeklikać.
     if ProcessInfo.processInfo.environment[AppEnvironment.testPushKey] == "1" { store.simulateApnsChannelForUITests() }
@@ -66,6 +81,8 @@ struct RarogApp: App {
     TextScaleScenes.start()
     _store = State(initialValue: store)
     _tunnel = State(initialValue: tunnel)
+    _lockedPhone = State(initialValue: lockedPhone)
+    _voiceActivity = State(initialValue: voiceActivity)
     _diagnostics = State(initialValue: CrashDiagnostics(store: store))
     _terminalParking = State(initialValue: TerminalScreenParking(store: store))
   }
@@ -82,11 +99,16 @@ struct RarogApp: App {
         // Parking ekranów terminala przy magazynie: bez niego każde zejście z terminala zamyka gniazdo.
         .environment(\.terminalScreenParking, terminalParking)
         .preferredColorScheme(testColorScheme)
+        // Runs again whenever the root comes back (a full-screen cover over it closes, a new `interfaceEpoch`): the
+        // process-wide parts start in the first run only, and `store.start()` takes effect once.
         .task {
-          MXMetricManager.shared.add(diagnostics)
-          network.start(log: { [store] line in store.trace(line, budget: .connectivity) }) { [tunnel, store] in
-            tunnel.networkChanged()
-            store.reconnectNow()
+          if !launched {
+            launched = true
+            MXMetricManager.shared.add(diagnostics)
+            network.start(log: { [store] line in store.trace(line, budget: .connectivity) }) { [tunnel, store] in
+              tunnel.networkChanged()
+              store.reconnectNow()
+            }
           }
           await store.start()
         }
@@ -107,6 +129,7 @@ struct RarogApp: App {
       let next = RarogCore.ScenePhase(phase)
       tunnel.scene(next)
       store.setScenePhase(next)
+      lockedPhone.scene(next)
     }
     .commands { RarogCommands(store: store) }
   }

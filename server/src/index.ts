@@ -35,6 +35,7 @@ import {
 } from './bootstrap/consent.ts';
 import { createAliveSessionsSignal } from './bootstrap/alive-sessions.ts';
 import type { AliveSessionsSignal } from './bootstrap/alive-sessions.ts';
+import { consentNoHookSources, consentSessionEntry } from './bootstrap/consent.ts';
 import type { ConsentLink } from './bootstrap/consent.ts';
 import { createDeviceAuth, startDeviceSweep } from './bootstrap/devices.ts';
 import { healthProbes } from './bootstrap/health.ts';
@@ -42,7 +43,7 @@ import { prepareHookFiles } from './bootstrap/hook-files.ts';
 import type { HerdrRuntime } from './bootstrap/herdr.ts';
 import { loadDemoHerdr } from './bootstrap/herdr.ts';
 import { buildRouter, configureHttpServer } from './bootstrap/http.ts';
-import { startInbox } from './bootstrap/inbox.ts';
+import { assembleInbox } from './bootstrap/inbox.ts';
 import { startServerIroh } from './bootstrap/iroh.ts';
 import { loadSdk, managerConfig } from './bootstrap/manager.ts';
 import { createPush } from './bootstrap/push.ts';
@@ -54,6 +55,7 @@ import { consentSubagentsOpen } from './herdr/dialogs/hook/contract.ts';
 import { CONSENT_EVIDENCE_SCAN_MAX_BYTES } from './herdr/dialogs/layer1/contract.ts';
 import { nodeConsentEvidenceIo } from './herdr/consent-evidence.ts';
 import { createSessionHookList } from './herdr/dialogs/layer1/hook-list/hook-list.ts';
+import { FileDownloads } from './files/send-file.ts';
 import { consentStep } from './herdr/consent-step.ts';
 import { createSubagentObservation } from './herdr/consent-subagent.ts';
 import { hookCommand } from './herdr/hook-commands.ts';
@@ -213,20 +215,17 @@ async function loadHerdr(
       topLoss: createConsentTopLoss(),
       sessionHooks: createSessionHookList({
         home: homedir(), accepted: [hookCommand(homedir())],
-        entry: async (engineSessionId) => {
-          const read = await cliVersionReader({ registryOnly: true });
-          if (read.registry === null || (read.unreadablePids ?? 0) > 0) return null;
-          if (read.unlistedSessions?.has(engineSessionId) === true) return null;
-          const entries = read.registry.get(engineSessionId);
-          const entry = entries?.length === 1 ? entries[0] : undefined;
-          return entry === undefined ? null
-            : { pid: entry.pid, ...(entry.startedAt === undefined ? {} : { startedAt: entry.startedAt }) };
-        },
+        entry: consentSessionEntry(cliVersionReader),
         onVerdict: (engineSessionId, verdict) => {
           log.info(`consent: session hooks ${engineSessionId} ${verdict.ok ? 'ok' : `no (${verdict.why})`}`);
         },
       }),
     };
+    // Consent without a hook (`drivers/herdr/consent-no-hook.ts`): traces, session facts, `ps` and `statusLine`.
+    const consentNoHook = cliVersionReader === null ? undefined : consentNoHookSources({
+      link: consentLink, dataDir: config.dataDir, home: homedir(), roots: config.herdrRoots,
+      entry: consentSessionEntry(cliVersionReader), proofGate: consentProofGate,
+    });
     const supervisor = herdr.createHerdrSupervisor({
       socketPath: config.herdrSocket,
       roots: config.herdrRoots,
@@ -353,6 +352,7 @@ async function loadHerdr(
         consentCardLive: (engineSessionId) => consentCardLive(consentLink, engineSessionId),
         // The reason of a consent card without the approve button: what the desk release of its call key kept.
         consentDeskRelease: (engineSessionId, key) => consentLink.cycle?.deskRelease(engineSessionId, key) ?? null,
+        ...(consentNoHook === undefined ? {} : { consentNoHook }),
         // Karta zgody z ekranu albo jsonl czeka na kartę kanału, póki rejestracja hooka sesji nie ma karty (z sufitem).
         consentCardAwaited: (engineSessionId) => consentCardAwaitedAt(consentLink, engineSessionId),
         // The measured "Yes" digit waits for no registration without a card, a subagent's too, of any age.
@@ -655,11 +655,14 @@ async function main(): Promise<void> {
   if (apns !== undefined) {
     manager.onEvent((scope) => { if (scope === 'global') apns.liveActivity.poke(); });
   }
-  // Inbox cards from the manager's events and their removals in `inbox.json` (`bootstrap/inbox.ts`); none in the demo.
-  const inbox = config.demo ? null : startInbox({
-    manager, ready: manager.ready, dataDir: config.dataDir, promptBlock: config.promptBlock,
-    log: (line) => { log.info(line); },
+  /*
+   * Inbox cards from the manager's events, their removals in `inbox.json` and the heads for the stream
+   * (`bootstrap/inbox.ts`), the demo over its own sessions; `null` with `RAROG_INBOX=0`.
+   */
+  const inboxParts = await assembleInbox({
+    config, manager, ready: manager.ready, log: (line) => { log.info(line); },
   });
+  const inbox = inboxParts?.inbox ?? null;
   // Nadzorca podpięty, seedy demo założone — dopiero wtedy wpuszczamy ruch HTTP.
   await manager.ready;
   apns?.liveActivity.poke();
@@ -670,6 +673,7 @@ async function main(): Promise<void> {
     : undefined;
   const hub = createSseHub({
     config, manager, serverStartId, log, demoNotes,
+    ...(inboxParts === null ? {} : { inbox: inboxParts.heads }),
     // The PR status reads GitHub only while a client is connected.
     ...(prStatus === null
       ? {}
@@ -689,9 +693,11 @@ async function main(): Promise<void> {
 
   const companion = assembleCompanion({ config, manager, log: (line) => { log.info(line); } }); // off in demo
 
+  // Session file downloads in flight by device: the router registers them, an unpair stops them.
+  const fileDownloads = new FileDownloads();
   // Skutki odpięcia urządzenia, pierwszy przebieg wygasania i przebieg co minutę (`bootstrap/devices.ts`).
   const deviceSweep = startDeviceSweep(devices, {
-    pairing, hub, term: term ?? undefined, companion, apns, log: (line) => { log.info(line); },
+    pairing, hub, term: term ?? undefined, companion, files: fileDownloads, apns, log: (line) => { log.info(line); },
   });
 
   // Sondy `/health` z `bootstrap/health.ts`; pole kanału zgód dokłada `main()`.
@@ -716,7 +722,7 @@ async function main(): Promise<void> {
   const router = buildRouter({
     config, manager, hub, serverStartId, startedAtMs, log, health, system, macStats, demoUsage, demoVoice, demoNotes,
     readUpload: herdr?.readUpload, term, companion, notifier, presence, apns, loginLimiter, irohPair, devices, pairing,
-    reviewConstants, demoHost,
+    reviewConstants, demoHost, inbox, fileDownloads,
   });
   // Sterowanie testów UI tylko w zwykłym demo: w trybie recenzji słuchacz `request` to sam router.
   const demoControl = config.demo && config.demoReview === null && herdr?.scenarioPanels !== undefined

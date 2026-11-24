@@ -5,7 +5,9 @@ import RarogTransport
 // The voice agent at a session: the OpenAI ephemeral key, the Soniox speech key and the question about the
 // session. Owner: voice agent. The conversation, audio and screen live in RarogUI (`Session/Voice/Realtime/`); a voice
 // send of the message field is the ordinary send of the field (`RarogStore+Send.swift`). The core gives three requests
-// with gates, the login rule and refusals typed by code.
+// with gates, the login rule and refusals typed by code. The mode across sessions adds two reads: the session catalog
+// and the last turns of one session (the rule that offers the mode: `Selectors+Companion.swift`), and the pick-up of
+// a result the agent read (`POST /api/sessions/<id>/seen` with `by`, `conversation` and `readMark`).
 //
 // Every result belongs to the login in which the request went out (`currentLogin`): logout, device unpairing
 // and a server switch in flight give `.loggedOut`, also on success (a key issued to the old credential does not
@@ -61,6 +63,66 @@ public enum CompanionAskOutcome: Sendable, Equatable {
   case loggedOut
   case cancelled
   /// 503 `companion-cli`, 504 `companion-timeout`, odpowiedź zamknięta bez treści, sieć.
+  case failed(code: String?, message: String?)
+}
+
+/// Result of reading the voice agent's session catalog (mode across sessions). RarogUI builds the text for the model.
+public enum CompanionSessionsOutcome: Sendable, Equatable {
+  case sessions([CompanionSessions.Row])
+  /// The mode is off or absent: 404 (older server, demo), 503 `companion-disabled` (the voice agent is off) or 503
+  /// `companion-sessions-disabled` (the mode across sessions is off). A 404 carries no sentence.
+  case disabled(message: String?)
+  /// 401, or logout, unpairing or a server change during the request.
+  case loggedOut
+  case cancelled
+  /// Network, timeout, other refusals, a reply outside the contract.
+  case failed(code: String?, message: String?)
+}
+
+/// Result of reading the last turns of one session (mode across sessions). The turns are kept whole: a later pick-up
+/// of the result sends `conversation` and `readMark` back to the server.
+public enum CompanionTurnsOutcome: Sendable, Equatable {
+  case turns(CompanionTurns)
+  /// 404: the session is not in the voice agent's catalog (gone, out of scope, a Codex session), with the server's
+  /// sentence. Every 404 lands here, also a server without the route: the error carries no sentence code to tell
+  /// them apart, so the caller asks only where ``AppState/companionSessionsOffered(sonioxAllowed:)`` holds.
+  case outsideCatalog(message: String?)
+  /// 503 `companion-disabled` or `companion-sessions-disabled`.
+  case disabled(message: String?)
+  case loggedOut
+  case cancelled
+  /// `count` outside 1…3 (refused before the request), network, timeout, other refusals, a reply outside the
+  /// contract.
+  case failed(code: String?, message: String?)
+}
+
+/// Result of the voice agent's pick-up of a session result it read (mode across sessions). It changes nothing in the
+/// app state: the server's session frame brings `seenBy`, and a refused pick-up leaves the session as it is.
+public enum CompanionPickUpOutcome: Sendable, Equatable {
+  case pickedUp
+  /// 409: the result is not the one read (a newer message or state, a dialog, another conversation, or a mark that
+  /// names no read).
+  case resultChanged
+  /// 404: the session is unknown or outside the voice agent's catalog.
+  case outsideCatalog
+  /// 503 `companion-disabled` or `companion-sessions-disabled`.
+  case disabled
+  /// The client gate (compatibility, the session gate) refused before the request went out.
+  case refused
+  /// 401, or logout, unpairing or a server change during the request.
+  case loggedOut
+  case cancelled
+  case timedOut
+  /// Network, other refusals, a reply outside the contract.
+  case failed
+}
+
+/// A failed read of the mode across sessions, before the route names its outcome.
+private enum CompanionReadFailure {
+  case notFound(message: String?)
+  case disabled(message: String?)
+  case loggedOut
+  case cancelled
   case failed(code: String?, message: String?)
 }
 
@@ -125,6 +187,127 @@ extension RarogStore {
     switch result {
     case let .success(answer): return .answer(answer)
     case let .failure(error): return companionAskOutcome(error, login: login)
+    }
+  }
+
+  /// `GET /api/companion/sessions`: the voice agent's session catalog. The caller reads it again before each tool of
+  /// the conversation; the server builds it from memory.
+  public func loadCompanionSessions() async -> CompanionSessionsOutcome {
+    guard state.auth == .loggedIn else { return .loggedOut }
+    let login = currentLogin
+    let result: Result<CompanionSessions, TransportError>
+    do throws(TransportError) {
+      result = .success(try await transport.companionSessions())
+    } catch {
+      result = .failure(error)
+    }
+    guard isCurrentLogin(login), state.auth == .loggedIn else { return .loggedOut }
+    if Task.isCancelled { return .cancelled }
+    switch result {
+    case let .success(catalog): return .sessions(catalog.sessions)
+    case let .failure(error):
+      switch companionReadFailure(error, login: login) {
+      // A 404 is an older server or demo: the mode is absent, and its sentence ("no such endpoint") says nothing.
+      case .notFound: return .disabled(message: nil)
+      case let .disabled(message): return .disabled(message: message)
+      case .loggedOut: return .loggedOut
+      case .cancelled: return .cancelled
+      case let .failed(code, message): return .failed(code: code, message: message)
+      }
+    }
+  }
+
+  /// `GET /api/sessions/<id>/companion/turns?count=<count>`: the last `count` (1…3) turns of the session's current
+  /// engine conversation.
+  public func loadCompanionTurns(sessionId: String, count: Int) async -> CompanionTurnsOutcome {
+    guard state.auth == .loggedIn else { return .loggedOut }
+    let login = currentLogin
+    let result: Result<CompanionTurns, TransportError>
+    do throws(TransportError) {
+      result = .success(try await transport.companionTurns(sessionId: sessionId, count: count))
+    } catch {
+      result = .failure(error)
+    }
+    guard isCurrentLogin(login), state.auth == .loggedIn else { return .loggedOut }
+    if Task.isCancelled { return .cancelled }
+    switch result {
+    case let .success(turns): return .turns(turns)
+    case let .failure(error):
+      switch companionReadFailure(error, login: login) {
+      case let .notFound(message): return .outsideCatalog(message: message)
+      case let .disabled(message): return .disabled(message: message)
+      case .loggedOut: return .loggedOut
+      case .cancelled: return .cancelled
+      case let .failed(code, message): return .failed(code: code, message: message)
+      }
+    }
+  }
+
+  /// `POST /api/sessions/<id>/seen` with the voice agent's pick-up: `by: voice-agent` and the `conversation` and
+  /// `readMark` of the turns read it picks up, as the server sent them. The person's receipt is
+  /// ``noteResultViewed(_:)``; this one writes nothing into the app state, also on success.
+  public func pickUpCompanionResult(sessionId: String, conversation: String, readMark: String) async
+    -> CompanionPickUpOutcome
+  {
+    guard state.auth == .loggedIn else { return .loggedOut }
+    let login = currentLogin
+    let pickUp = SeenPickUp(by: .voiceAgent, conversation: conversation, readMark: readMark)
+    let result: Result<Void, TransportError>
+    do throws(TransportError) {
+      try await transport.pickUpResult(sessionId: sessionId, pickUp)
+      result = .success(())
+    } catch {
+      result = .failure(error)
+    }
+    guard isCurrentLogin(login), state.auth == .loggedIn else { return .loggedOut }
+    if Task.isCancelled { return .cancelled }
+    switch result {
+    case .success: return .pickedUp
+    case let .failure(error): return companionPickUpOutcome(error, login: login)
+    }
+  }
+
+  private func companionPickUpOutcome(_ error: TransportError, login: Int) -> CompanionPickUpOutcome {
+    switch error {
+    case let .http(failure) where failure.status == 409: return .resultChanged
+    case let .http(failure) where failure.status == 404: return .outsideCatalog
+    case let .http(failure)
+    where failure.status == 503
+      && (failure.code == "companion-disabled" || failure.code == "companion-sessions-disabled"):
+      return .disabled
+    case .unauthorized:
+      handleUnauthorized(since: login)
+      return .loggedOut
+    case .cancelled: return .cancelled
+    case .refused: return .refused
+    case .timedOut: return .timedOut
+    case .http, .forbidden, .rateLimited, .offline, .invalidResponse: return .failed
+    }
+  }
+
+  /// A failed read of the mode across sessions by code; the caller names what a 404 means on its route. 401 logs out
+  /// the login the request went out in.
+  private func companionReadFailure(_ error: TransportError, login: Int) -> CompanionReadFailure {
+    switch error {
+    case let .http(failure) where failure.status == 404:
+      return .notFound(message: failure.message)
+    case let .http(failure)
+    where failure.status == 503
+      && (failure.code == "companion-disabled" || failure.code == "companion-sessions-disabled"):
+      return .disabled(message: failure.message)
+    case .unauthorized:
+      handleUnauthorized(since: login)
+      return .loggedOut
+    case .cancelled:
+      return .cancelled
+    case let .http(failure), let .forbidden(failure), let .rateLimited(failure):
+      return .failed(code: failure.code, message: failure.message)
+    case let .refused(refusal):
+      return .failed(code: nil, message: refusal.message)
+    case .timedOut:
+      return .failed(code: "timeout", message: nil)
+    case .offline, .invalidResponse:
+      return .failed(code: nil, message: nil)
     }
   }
 

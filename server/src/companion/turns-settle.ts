@@ -11,7 +11,7 @@ import type { CompanionTurnsReader, CompanionTurnsTarget } from './turns.ts';
 /** Reads of one request: the first one and two more for conversations that changed during the previous read. */
 export const TURNS_MAX_READS = 3;
 
-/** The session as the route takes it now: its target with `stateSince`, or the route's own refusal. */
+/** The session as the route takes it now: its target with `stateSince` and `readMark`, or the route's own refusal. */
 export type TurnsTake<R> = { readonly target: CompanionTurnsTarget } | { readonly refused: R };
 
 /**
@@ -26,7 +26,10 @@ export type SettledTurns<R> =
 /**
  * Takes the session, reads its turns and takes it again until the conversation holds still across a read. `finish`
  * runs synchronously right after the last take, with no `await` in between, so the route answers for the session as
- * it was taken. A body carries the token and `stateSince` of the target it was read for, never of a later take.
+ * it was taken. A body carries the token, `stateSince` and `readMark` of the target it was read for, taken before
+ * that read, never of a take after it: a message that reaches the session during the read gives the body an older
+ * mark. A body with no messages or with a trimmed message carries the mark that names no read instead (`NO_READ_MARK`
+ * in `turns.ts`).
  */
 export async function readSettledTurns<R>(
   reader: CompanionTurnsReader,

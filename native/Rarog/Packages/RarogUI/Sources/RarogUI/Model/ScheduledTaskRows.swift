@@ -59,7 +59,8 @@ public enum ScheduledTaskRows {
     visible(tasks, now: now).map(\.id)
   }
 
-  private static func visible(_ tasks: [SessionScheduledTask], now: Date) -> [SessionScheduledTask] {
+  /// Tasks not expired at `now`, a repeated id once (the first): the section rows and the session row mark.
+  static func visible(_ tasks: [SessionScheduledTask], now: Date) -> [SessionScheduledTask] {
     var seen: Set<String> = []
     return tasks.filter { task in
       guard seen.insert(task.id).inserted else { return false }
@@ -67,6 +68,11 @@ public enum ScheduledTaskRows {
       guard let expires = task.expiresAt.flatMap(ServerTime.parse) else { return true }
       return expires > now
     }
+  }
+
+  /// A time of a task in the device zone and region, as the section shows it.
+  static func clock(_ date: Date, timeZone: TimeZone, locale: Locale) -> String {
+    ServerTime.clock(date, timeZone: timeZone, locale: locale)
   }
 
   private struct Format {

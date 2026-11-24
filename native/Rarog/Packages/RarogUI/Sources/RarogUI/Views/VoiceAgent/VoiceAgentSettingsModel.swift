@@ -9,8 +9,9 @@ import RarogCore
 // `VoiceAgentSettingsPage.swift`, `VoiceAgentConsentPage.swift`; the list's row: `Views/Settings/SettingsSheet.swift`.
 //
 // Przełącznik: włączenie nie włącza, tylko otwiera stronę zgody; bez „Zgadzam się” przełącznik wraca do „wyłączone”.
-// Wyłączenie kasuje zgodę. A server that answered without the voice agent gets the setup steps instead of the switch;
-// the app never takes the OpenAI key, it only says where to get one and which server command saves it.
+// Wyłączenie kasuje zgodę. The switch of the conversation across sessions works the same way with the mode's own
+// consent (`VoiceAgentSettingsModel+Sessions.swift`). A server that answered without the voice agent gets the setup
+// steps instead of the switch; the app never takes the OpenAI key, it only says where to get one and which server command saves it.
 
 /// The Settings row of the voice agent and what its page shows. Only Settings uses the middle state: the session
 /// button, ⌥⌘V and `VoiceAgentWatch` follow `VoiceAgentAvailability.offered` alone.
@@ -61,6 +62,8 @@ final class VoiceAgentSettingsModel {
   @ObservationIgnored let settings: VoiceAgentSettings
   /// Strona zgody na ekranie (po przełączeniu na „włączone” bez zgody).
   var consentShown = false
+  /// The consent page of the conversation across sessions on screen (its switch turned on without that consent).
+  var sessionsConsentShown = false
 
   init(settings: VoiceAgentSettings) {
     self.settings = settings

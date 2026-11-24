@@ -40,19 +40,24 @@ extension UICopy {
     return word.isEmpty ? terminalTabFallback : String(word.prefix(12))
   }
 
+  /// The name of a terminal by its slot, "Terminal 2" (also the quiet line of a terminal row in the session switcher).
+  public static func terminalSlotName(_ slot: Int) -> String { L("terminal.tabSpoken.slot", slot) }
+  /// "running": the terminal's stream is attached.
+  public static var terminalRunning: String { L("terminal.tabSpoken.live") }
+
   /// Zdanie czytnika zakładki terminala: numer slotu, gdy znany, proces, „działa".
   public static func terminalTabSpoken(_ entry: TerminalListEntry?, current: Bool) -> String {
     guard let entry else { return current ? L("terminal.tabSpoken.invite") : terminalInviteSpoken }
     let name: String =
       switch (current, entry.slot > 0) {
-      case (true, true): L("terminal.tabSpoken.slot", entry.slot)
+      case (true, true): terminalSlotName(entry.slot)
       case (true, false): L("terminal.tabSpoken.invite")
       case (false, true): L("terminal.tabSpoken.goSlot", entry.slot)
       case (false, false): L("terminal.tabSpoken.go")
       }
     var parts = [name]
     if !entry.proc.isEmpty { parts.append(terminalTabLabel(entry)) }
-    if entry.live { parts.append(L("terminal.tabSpoken.live")) }
+    if entry.live { parts.append(terminalRunning) }
     return list(parts, .comma)
   }
 

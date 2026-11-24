@@ -1,13 +1,14 @@
 import UIKit
 import XCTest
 
-/// The session switcher under Cmd+S against the demo server: the window lists the recently visited
-/// sessions, newest first, stays after Cmd+S and survives a cold start of the app (the history lives in
-/// the device preferences). The hardware keyboard is faked (`RAROG_UI_TEST_HW_KEYBOARD`), so the window takes it the
-/// same way on every simulator. The simulator delivers neither Esc nor Return to a screen without a text field
+/// The session switcher window against the demo server: only a tap on the current tab opens it (the app has no
+/// keyboard shortcut for it). The window lists the tabs of the current project in the order of the tab bar and stays
+/// open. The tests read the order from the bar, not from fixed ids, so the demo's project content does not pin them.
+/// The hardware keyboard is faked (`RAROG_UI_TEST_HW_KEYBOARD`), so the window takes it the same way on every
+/// simulator. The simulator delivers neither Esc nor Return to a screen without a text field
 /// (`native/Rarog/docs/tests.md`, "Tests"): those keys are checked by `SessionSwitcherUIKitTests`.
 final class SwitcherUITests: XCTestCase {
-  /// Three sessions the demo always has, visited in this order.
+  /// Sessions the demo always has; demo-rarog shares its project with another session.
   private let visits = ["demo-willow", "demo-data-loader", "demo-rarog"]
   private let keyboard = ["RAROG_UI_TEST_HW_KEYBOARD": "1"]
 
@@ -15,53 +16,55 @@ final class SwitcherUITests: XCTestCase {
     continueAfterFailure = false
   }
 
-  /// Visit A, B, C; Cmd+S shows C, B, A with C (the current session) selected; the window stays; the keys move the
-  /// selection; a tap on A opens it.
-  /// After a cold start of the app (preferences kept) Cmd+S shows the same order, and Cmd+1 with the window open jumps
-  /// to row 1 (the window wins over the tab shortcut Cmd+1).
+  /// A tap on the current tab shows the project's tabs in the bar's order with the current one selected; the window
+  /// stays; the arrows move the selection, S, Shift+S, Cmd+S and Shift+Cmd+S do not; Cmd+digit of another tab with
+  /// the window open picks that row (the window wins over the tab shortcut); a tap on a row opens its tab.
   @MainActor
-  func testRecentOrderStaysAndSurvivesColdStart() throws {
+  func testRowsAreTheProjectTabs() throws {
     let port = try DemoServer.requirePort()
     let app = try launch(port: port, reset: true, environment: keyboard)
-    for id in visits { open(app, id) }
-    let (a, b, c) = (visits[0], visits[1], visits[2])
+    let home = visits[2]
+    open(app, home)
+    let bar = barTabs(app)
+    XCTAssertGreaterThanOrEqual(bar.count, 2, "the project of \(home) has another tab: \(bar)")
+    let current = try XCTUnwrap(bar.firstIndex(of: home))
+    let other = current == 0 ? 1 : 0
 
-    app.typeKey("s", modifierFlags: .command)
+    element(app, "tab.\(home)").tap()
     let window = element(app, "switcher.window")
-    XCTAssertTrue(window.waitForAppearance(timeout: 5), "Cmd+S opens the window")
-    XCTAssertEqual(Array(rows(app).prefix(3)), [c, b, a], "newest first, the current session on top")
-    XCTAssertTrue(rowSelected(app, c), "the selection starts on the current session")
+    XCTAssertTrue(window.waitForAppearance(timeout: 5), "a tap on the current tab opens the window")
+    XCTAssertEqual(rows(app), bar, "the rows are the tabs of the bar, in its order")
+    XCTAssertTrue(rowSelected(app, home), "the selection starts on the current tab")
     snapshot(app, "okno")
     settle(1.5)
-    XCTAssertTrue(window.exists, "the window stays after Cmd+S")
+    XCTAssertTrue(window.exists, "the window stays")
     // The window's keys reach it through its key commands (a real key press, not the UIKit test's chain walk).
+    let below = bar[(current + 1) % bar.count]
     app.typeKey(XCUIKeyboardKey.downArrow, modifierFlags: [])
-    XCTAssertTrue(rowSelected(app, b), "down arrow moves the selection")
+    XCTAssertTrue(rowSelected(app, below), "down arrow moves the selection")
     app.typeKey(XCUIKeyboardKey.upArrow, modifierFlags: [])
-    XCTAssertTrue(rowSelected(app, c), "up arrow moves it back")
-    app.typeKey("s", modifierFlags: [])
-    XCTAssertTrue(rowSelected(app, b), "plain S moves like the down arrow")
-    XCTAssertTrue(selected(app, c), "the screen under the window stays")
-    element(app, "switcher.row.\(a)").tap()
-    XCTAssertTrue(window.waitForDisappearance(timeout: 5))
-    XCTAssertTrue(selected(app, a), "a tap on a row opens it")
+    XCTAssertTrue(rowSelected(app, home), "up arrow moves it back")
+    // S is no key of the window, with or without Shift and Cmd; the arrow after them proves delivery.
+    for modifiers: XCUIElement.KeyModifierFlags in [[], .shift, .command, [.command, .shift]] {
+      app.typeKey("s", modifierFlags: modifiers)
+    }
+    settle(0.5)
+    XCTAssertTrue(window.exists, "the window stays after S")
+    XCTAssertTrue(rowSelected(app, home), "S, Shift+S, Cmd+S and Shift+Cmd+S do not move the selection")
+    app.typeKey(XCUIKeyboardKey.downArrow, modifierFlags: [])
+    XCTAssertTrue(rowSelected(app, below), "the window still holds the keyboard")
+    XCTAssertTrue(selected(app, home), "the screen under the window stays")
+    app.typeKey(String(other + 1), modifierFlags: .command)
+    XCTAssertTrue(window.waitForDisappearance(timeout: 5), "Cmd+digit picks the row and closes the window")
+    XCTAssertTrue(selected(app, bar[other]), "the jump to the row with that digit")
 
     settle(1)
-    app.typeKey("s", modifierFlags: .command)
+    element(app, "tab.\(bar[other])").tap()
     XCTAssertTrue(window.waitForAppearance(timeout: 5))
-    let before = rows(app)
-    XCTAssertEqual(Array(before.prefix(3)), [a, c, b], "the visit to A moved it on top")
-    closeOutside(app, window)
-    app.terminate()
-
-    let again = try launch(port: port, reset: false, environment: keyboard)
-    again.typeKey("s", modifierFlags: .command)
-    let restarted = element(again, "switcher.window")
-    XCTAssertTrue(restarted.waitForAppearance(timeout: 5), "Cmd+S after a cold start")
-    XCTAssertEqual(rows(again), before, "the same order after a cold start")
-    again.typeKey("1", modifierFlags: .command)
-    XCTAssertTrue(restarted.waitForDisappearance(timeout: 5), "Cmd+1 picks row 1 and closes the window")
-    XCTAssertTrue(selected(again, before[1]), "the jump to row 1, not the tab under Cmd+1")
+    XCTAssertEqual(rows(app), barTabs(app), "the same tabs from the other tab")
+    element(app, "switcher.row.\(home)").tap()
+    XCTAssertTrue(window.waitForDisappearance(timeout: 5))
+    XCTAssertTrue(selected(app, home), "a tap on a row opens its tab")
   }
 
   /// A tap on the current tab opens the window without a keyboard; a tap outside closes it without a jump, a tap on
@@ -70,9 +73,9 @@ final class SwitcherUITests: XCTestCase {
   func testTapOnCurrentTabOpensWindow() throws {
     let port = try DemoServer.requirePort()
     let app = try launch(port: port, reset: true, environment: ["RAROG_UI_TEST_NO_HW_KEYBOARD": "1"])
-    let (first, home) = (visits[0], visits[2])
-    open(app, first)
+    let home = visits[2]
     open(app, home)
+    let target = try XCTUnwrap(barTabs(app).first { $0 != home }, "another tab in the project of \(home)")
     let window = element(app, "switcher.window")
     element(app, "tab.\(home)").tap()
     XCTAssertTrue(window.waitForAppearance(timeout: 5), "a tap on the current tab opens the window")
@@ -83,12 +86,33 @@ final class SwitcherUITests: XCTestCase {
     settle(1)
     element(app, "tab.\(home)").tap()
     XCTAssertTrue(window.waitForAppearance(timeout: 5), "second opening")
-    element(app, "switcher.row.\(first)").tap()
+    element(app, "switcher.row.\(target)").tap()
     XCTAssertTrue(window.waitForDisappearance(timeout: 5))
-    XCTAssertTrue(selected(app, first), "a tap on a row jumps at once")
+    XCTAssertTrue(selected(app, target), "a tap on a row jumps at once")
   }
 
-  /// While a sheet is open Cmd+S is silent: no window, no jump. After the sheet closes the shortcut works again.
+  /// Cmd+S and Shift+Cmd+S on the session screen do nothing: no window, and nothing reaches the message field. The
+  /// letter typed after them proves the keys reach the app.
+  @MainActor
+  func testCommandSDoesNothing() throws {
+    let port = try DemoServer.requirePort()
+    let app = try launch(port: port, reset: true, environment: keyboard)
+    open(app, visits[2])
+    let field = app.textViews["composer.field"]
+    XCTAssertTrue(field.waitForAppearance(timeout: 10), "message field")
+    field.tap()
+    field.typeText("ab")
+    XCTAssertEqual(field.value as? String, "ab")
+    app.typeKey("s", modifierFlags: .command)
+    app.typeKey("s", modifierFlags: [.command, .shift])
+    settle(1.5)
+    XCTAssertFalse(element(app, "switcher.window").exists, "no window from Cmd+S")
+    XCTAssertEqual(field.value as? String, "ab", "Cmd+S types nothing into the field")
+    app.typeKey("c", modifierFlags: [])
+    XCTAssertTrue(wait(5) { field.value as? String == "abc" }, "the keys reach the field")
+  }
+
+  /// While a sheet is open the gate keeps the window shut; after the sheet closes a tap on the current tab opens it.
   @MainActor
   func testSilentUnderSheet() throws {
     let port = try DemoServer.requirePort()
@@ -100,14 +124,13 @@ final class SwitcherUITests: XCTestCase {
     newSession.tap()
     let sheet = element(app, "newSession.sheet")
     XCTAssertTrue(sheet.waitForAppearance(timeout: 10), "the New Session sheet")
-    app.typeKey("s", modifierFlags: .command)
-    settle(1.5)
+    settle(1)
     XCTAssertFalse(element(app, "switcher.window").exists, "no window under a sheet")
     element(app, "newSession.cancel").tap()
     XCTAssertTrue(sheet.waitForDisappearance(timeout: 10))
     XCTAssertTrue(selected(app, home), "no jump")
     settle(1)
-    app.typeKey("s", modifierFlags: .command)
+    element(app, "tab.\(home)").tap()
     let window = element(app, "switcher.window")
     XCTAssertTrue(window.waitForAppearance(timeout: 5), "the gate opens after the sheet closes")
     closeOutside(app, window)
@@ -164,7 +187,19 @@ final class SwitcherUITests: XCTestCase {
     }
   }
 
-  /// Session ids in the switcher window, from the top.
+  /// Tab ids on the project's tab bar (`tab.<id>`: a session id, `term.<id>` of a terminal), from the left.
+  @MainActor
+  private func barTabs(_ app: XCUIApplication) -> [String] {
+    let prefix = "tab."
+    let found = element(app, "tabs.bar").descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
+    var seen: Set<String> = []
+    return found.map { (id: String($0.identifier.dropFirst(prefix.count)), left: $0.frame.minX) }
+      .sorted { $0.left < $1.left }
+      .compactMap { seen.insert($0.id).inserted ? $0.id : nil }
+  }
+
+  /// Tab ids in the switcher window (`switcher.row.<id>`), from the top.
   @MainActor
   private func rows(_ app: XCUIApplication) -> [String] {
     let prefix = "switcher.row."

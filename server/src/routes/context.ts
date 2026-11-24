@@ -11,6 +11,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ServerSystem } from '@rarog/shared/rest';
 import type { LoginLimiter, Principal } from '../auth/index.ts';
 import type { RarogConfig } from '../config.ts';
+import type { FileIndexer } from '../files/file-index.ts';
+import type { FileDownloads } from '../files/send-file.ts';
 import type { HealthProbes } from '../health.ts';
 import type { NotesBackend } from '../notes/store.ts';
 import type { Presence } from '../notify/presence.ts';
@@ -56,6 +58,10 @@ export interface RouteContext {
   readonly interruptWaitMs: number;
   readonly apnsTestCooldown: TestCooldown;
   readonly loginLimiter: LoginLimiter;
+  /** Session file downloads in flight by device, stopped by the unpair effects. */
+  readonly fileDownloads: FileDownloads;
+  /** Walks of the session file index, one per session directory at a time. */
+  readonly fileIndex: FileIndexer;
 }
 
 /** One request after the gate: path without the trailing slash, its segments and the caller. */

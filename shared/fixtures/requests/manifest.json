@@ -9,6 +9,7 @@
   "companion.speech-token.json": { "route": "POST /api/companion/speech-token", "schema": "companionSpeechTokenBody" },
   "companion.token.json": { "route": "POST /api/companion/token", "schema": "companionTokenBody" },
   "fs.mkdir.json": { "route": "POST /api/fs/mkdir", "schema": "makeDirBody" },
+  "inbox.action.json": { "route": "POST /api/inbox/{id}/remove", "schema": "inboxActionBody" },
   "live-activity.end.json": { "route": "POST /api/push/live-activity/end", "schema": "liveActivityEndBody" },
   "live-activity.register.json": {
     "route": "POST /api/push/live-activity", "schema": "liveActivityRegisterBody"

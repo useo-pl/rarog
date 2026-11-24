@@ -131,6 +131,34 @@ public protocol RarogTransporting: Sendable {
   /// for every retry of one take-back.
   func takeBackQueue(sessionId: String, operationId: UUID) async throws(TransportError) -> QueueTakeBackResponse
 
+  // MARK: Voice agent across sessions (`RarogClient+Companion`)
+  /// `GET /api/companion/sessions` — the voice agent's session catalog.
+  func companionSessions() async throws(TransportError) -> CompanionSessions
+  /// `GET /api/sessions/<id>/companion/turns?count=1..3` — the last turns of the session's current engine
+  /// conversation; `count` outside the range is refused before the request.
+  func companionTurns(sessionId: String, count: Int) async throws(TransportError) -> CompanionTurns
+  /// `POST /api/sessions/<id>/seen` with the voice agent's pick-up of the result it read; 409 when the result changed.
+  func pickUpResult(sessionId: String, _ pickUp: SeenPickUp) async throws(TransportError)
+
+  // MARK: Inbox (`RarogClient+Inbox`)
+  /// `GET /api/inbox` — every visible card with its text, newest first.
+  func inboxCards() async throws(TransportError) -> InboxList
+  /// `GET /api/inbox/<id>` — the session's visible card; `card == nil` when it has none now.
+  func inboxCard(sessionId: String) async throws(TransportError) -> InboxCardResponse
+  /// `POST /api/inbox/<id>/remove` — 409 `inbox-card-changed` when the card's turn or version moved on.
+  func removeInboxCard(sessionId: String, _ body: InboxActionBody) async throws(TransportError) -> InboxActionResponse
+  /// `POST /api/inbox/<id>/restore` — the same body as the removal it takes back.
+  func restoreInboxCard(sessionId: String, _ body: InboxActionBody) async throws(TransportError) -> InboxActionResponse
+
+  // MARK: Session files (`RarogClient+Files`)
+  /// `GET /api/sessions/<id>/files?dir=` — one directory of the session; `dir` empty = the session directory.
+  func sessionFiles(sessionId: String, dir: String) async throws(TransportError) -> FileListing
+  /// `GET /api/sessions/<id>/files/raw?path=` — the file into a private copy that the caller owns; `maxBytes` comes
+  /// from the session's latest listing or its file index.
+  func fetchSessionFile(sessionId: String, path: String, maxBytes: Int) async throws(TransportError) -> SessionFileFetch
+  /// `GET /api/sessions/<id>/files/index` — every file of the session directory, files git ignores left out.
+  func sessionFileIndex(sessionId: String) async throws(TransportError) -> FileIndex
+
   // MARK: Trasa transportu
   /// Numer drogi, którą idą żądania: przełącznik transportu podaje numer bieżącej generacji (rośnie monotonicznie),
   /// więc wołający porównuje go przed żądaniem i po odpowiedzi, żeby wiedzieć, czy obie szły tą samą drogą.

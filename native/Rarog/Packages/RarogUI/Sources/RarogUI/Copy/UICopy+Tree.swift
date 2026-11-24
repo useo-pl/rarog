@@ -9,6 +9,10 @@ extension UICopy {
   public static var treeExpandAll: String { L("tree.expandAll") }
   public static var treeCollapseAll: String { L("tree.collapseAll") }
   public static var treeExpandedValue: String { L("tree.expandedValue") }
+  public static var treePin: String { L("tree.pin") }
+  public static var treeUnpin: String { L("tree.unpin") }
+  /// The header's reader value of a pinned project, before the collapse state.
+  public static var treePinnedValue: String { L("tree.pinnedValue") }
 
   /// Wartość nagłówka dla czytnika: ilu agentów widać mimo zwinięcia (praca, uwaga, otwarta sesja).
   public static func treeCollapsedValue(shown: Int, total: Int) -> String {

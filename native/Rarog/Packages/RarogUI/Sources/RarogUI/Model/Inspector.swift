@@ -67,6 +67,14 @@ public enum InspectorModel {
   }
 }
 
+/// Device preference keys of the Files section, beside the panel's own in `NavigationPreferences`.
+public enum InspectorFilesPreferences {
+  /// ``FileTreeMode`` raw value; anything else reads as Files.
+  public static let mode = "rarog.inspectorFilesMode"
+  /// The `.*` button of the file search is on.
+  public static let regex = "rarog.inspectorFilesRegex"
+}
+
 /// Wynik Cmd+I albo przycisku nagłówka.
 public enum InspectorToggle: Sendable, Equatable {
   case opened
@@ -99,11 +107,9 @@ public final class RarogInspector {
   public var anchors: [String: String] = [:]
   /// Rozwinięcia faz workflow per sesja (popover ma swoje, `BackgroundTasksPanel`).
   public var expansions: [String: WorkflowExpansion] = [:]
-  /// Zwinięte katalogi drzewa zmian per sesja (ścieżki, `ChangesDirectoryRow.path`); drzewo startuje rozwinięte.
-  public var collapsedDirs: [String: Set<String>] = [:]
-  /// Całe drzewo zmian zwinięte do nagłówka sekcji: preferencja urządzenia `rarog.inspectorChangesCollapsed`, jedna
-  /// dla wszystkich sesji. Zwinięte ręką zostaje zwinięte, rozwinięte — rozwinięte, także po zmianie sesji, nowej
-  /// ramce gita i ponownym uruchomieniu. Zwinięć katalogów (`collapsedDirs`) nie rusza.
+  /// The whole Files tree folded to its section header: the device preference `rarog.inspectorChangesCollapsed`, one
+  /// for all sessions. Folded by hand stays folded, unfolded stays unfolded, also after a session switch, a new git
+  /// frame and a relaunch. The directory toggles of the tree (`FileTreeStore`, per session) are apart from it.
   public private(set) var changesCollapsed: Bool
   /// Telefon: sesja, przy której stoi panel jako arkusz (`Model/InspectorSheet.swift`). Otwiera go tylko tap
   /// człowieka, zamyka gest, okno apki i zmiana ekranu (`RarogNavigation.detail`).
@@ -112,6 +118,15 @@ public final class RarogInspector {
   public private(set) var preferredWidth: Double
   /// Width during a drag of the divider, before it is saved.
   public private(set) var dragWidth: Double?
+  /// The Files / Changed only toggle of the Files section: the device preference `rarog.inspectorFilesMode`, one for
+  /// all sessions. A source without the toggle (the fallback tree) draws its tree and leaves the preference alone.
+  public private(set) var filesMode: FileTreeMode
+  /// The `.*` button of the file search: the device preference `rarog.inspectorFilesRegex`.
+  public private(set) var searchRegex: Bool
+  /// The text of the file search field per session, in process memory only.
+  private var searchTexts: [String: String] = [:]
+  /// Directories folded in the search result per session; they go with the query.
+  private var folds: [String: Set<FilePathKey>] = [:]
 
   @ObservationIgnored private let prefs: PreferenceStore
   /// Width shown when the current drag started; the drag's translation counts from it.
@@ -122,6 +137,43 @@ public final class RarogInspector {
     open = prefs.bool(forKey: NavigationPreferences.inspectorOpen)
     changesCollapsed = prefs.bool(forKey: NavigationPreferences.inspectorChangesCollapsed)
     preferredWidth = InspectorModel.preferredWidth(stored: prefs.object(forKey: NavigationPreferences.inspectorWidth))
+    filesMode = (prefs.object(forKey: InspectorFilesPreferences.mode) as? String).flatMap(FileTreeMode.init) ?? .all
+    searchRegex = prefs.bool(forKey: InspectorFilesPreferences.regex)
+  }
+
+  /// A new mode drops the folds of Changed only and of a result: they belong to the tree they were made in.
+  public func setFilesMode(_ value: FileTreeMode) {
+    guard value != filesMode else { return }
+    filesMode = value
+    if !folds.isEmpty { folds = [:] }
+    prefs.set(value.rawValue, forKey: InspectorFilesPreferences.mode)
+  }
+
+  public func setSearchRegex(_ value: Bool) {
+    guard value != searchRegex else { return }
+    searchRegex = value
+    prefs.set(value, forKey: InspectorFilesPreferences.regex)
+  }
+
+  public func searchText(for session: String) -> String { searchTexts[session] ?? "" }
+
+  /// The field's new text. A query that turns active or inactive drops the folds of the tree shown before: the folds
+  /// of Changed only hide no hit, and a result's do not outlive its query.
+  public func setSearchText(_ text: String, for session: String) {
+    let before = searchTexts[session, default: ""]
+    guard before != text else { return }
+    searchTexts[session] = text
+    let active = FileSearchQuery(text: text, regex: searchRegex).isActive
+    if active != FileSearchQuery(text: before, regex: searchRegex).isActive, folds[session] != nil {
+      folds[session] = nil
+    }
+  }
+
+  public func resultFolds(for session: String) -> Set<FilePathKey> { folds[session] ?? [] }
+
+  /// A tap on a directory of the search result (``FileSearch/toggledFolds(_:directory:)``).
+  public func toggleResultFold(_ directory: FileTreeDirectoryRow, in session: String) {
+    folds[session] = FileSearch.toggledFolds(folds[session] ?? [], directory: directory)
   }
 
   /// The panel's width in the measured column (pt): the live drag width, otherwise the preference, either narrowed

@@ -9,8 +9,9 @@ The public repository receives the **export view** of the source repository: the
 public, copied as they are. The classification (`publish.config.json`) and the rest of the private layer (agent
 instructions, decision log, plans, owner procedures, release tools) stay out. Guards keep hits from growing (the
 ratchet). Zero is enforced by the **publish gate**, a release tool that stays in the private layer: before a release
-it exports `HEAD` with `git archive` (the clean export) and runs the same scans on it, then `check.sh --strict` with
-the literals file on one copy and the tests without it, as public CI runs them, on another.
+it exports `HEAD` with `git archive` (the clean export) and runs the same scans on it. On one copy it runs
+`check.sh --strict --no-tests` and, with the literals file, the tests whose result depends on that file or on a git
+checkout; on another copy it runs all tests without the literals file, as public CI runs them.
 
 ## Private literals file
 
@@ -127,8 +128,9 @@ tree with the `.gitignore` rules per gitignore(5). A file name that is not UTF-8
 ## `check.sh --strict`
 
 ```bash
-pnpm run check                 # conditional steps may skip
-bash scripts/check.sh --strict # or RAROG_CHECK_STRICT=1 pnpm run check
+pnpm run check                            # conditional steps may skip
+bash scripts/check.sh --strict            # or RAROG_CHECK_STRICT=1 pnpm run check
+bash scripts/check.sh --strict --no-tests # every step except the vitest run
 ```
 
 Conditional steps need something the machine may lack: the private literals file, full Xcode (`swift-contract`),
@@ -141,8 +143,9 @@ token permissions, cache, action pinning. Any finding, or a workflow it cannot p
 Without `--strict` a skipped step prints `skipped`, the last line lists the skips, and a green run exits 0. With
 `--strict` a skip exits 3 with the step name; a missing literals file exits 3 at once, before the tests, and the
 tests get `RAROG_REQUIRE_PRIVATE_LITERALS=1`. A broken literals file or an unknown argument exits 2 in both modes.
-`RAROG_CHECK_TEST_REPORT=<file>` adds a vitest JSON report, from which the publish gate (top of this document) reads
-test counts per file.
+`--no-tests` leaves out the vitest run and keeps every other step; it is not a skip, so `--strict` accepts it. The
+publish gate (top of this document) uses it on the copy where it runs its own list of tests.
+`RAROG_CHECK_TEST_REPORT=<file>` adds a vitest JSON report with test counts per file.
 Tests: `server/test/scripts-check.test.ts` and `relay-vps/test/bramka.test.ts`.
 
 ## `.gitignore`
@@ -162,26 +165,33 @@ run time and dependency copies with their licenses (`THIRD-PARTY-NOTICES`), neve
 `server/test/package-build.test.ts` checks the contents.
 
 `.github/workflows/publish.yml` publishes the package. It runs only by hand (`workflow_dispatch`) with `version`
-(X.Y.Z), `name` (only `@rarog/server`; the `build` job refuses any other value) and `dry-run` (on by default).
-A dry run runs every job except `publish`, from a branch too (command at the end). It has no secrets: npm issues the
-registry token from GitHub's OIDC token (trusted publishing). Workflow-level permissions are empty; inputs reach
-scripts only through `env`; only `build` checks out, without persisted credentials; actions are pinned to release
-SHAs; the package manager cache is off.
+(X.Y.Z for a stable version, X.Y.Z-beta.N for a beta; the `build` job refuses any other form), `name` (only
+`@rarog/server`; the `build` job refuses any other value) and `dry-run` (on by default). A dry run runs every job
+except `publish`, from a branch too (command at the end). It has no secrets: npm issues the registry token from
+GitHub's OIDC token (trusted publishing). Workflow-level permissions are empty; inputs reach scripts only through
+`env`; only `build` checks out, without persisted credentials; actions are pinned to release SHAs; the package
+manager cache is off.
 
 1. **build** (`contents: read`) checks the inputs against `package.json` and, outside a dry run, that the run stands
    on tag `v<version>` and `repository.url` names the run's repository (npm rejects provenance from another one).
-   It runs the typecheck, builds the tarball with `node scripts/package.mjs` and audits it with
-   `scripts/package-audit.mjs` (below). It does not run the server tests: the release gate runs them on the same
-   export tree, and before the version is approved the tarball's sha256 is compared with the tested one. `check.yml`
-   runs them on the tag.
-2. **sbom** (no permissions, Ubuntu and macOS) installs the tarball without scripts and stores a CycloneDX SBOM per
-   platform, because the package of iroh (the QUIC library behind the server's iroh listener) ships its native module
-   as one package per platform. It fails when the SBOM lacks the package or lists the
-   Claude SDK. It needs npm 11: npm 10 installs the iroh packages of every OS.
-3. **publish** (outside a dry run; environment `npm`, whose tag and approval rules live in the repository settings;
-   only `id-token: write`) checks the tarball's sha256 and sends it with `npm stage publish` and an empty npm config.
-   The version lands staged: nobody can install it until the package owner approves it with `npm stage approve` and
-   2FA. The workflow approves nothing; npm adds provenance on an OIDC publish.
+   It decides the npm dist-tag once, from the version: `beta` for a beta, `latest` for a stable version, and shows
+   it in the job summary and as a job output. It runs the typecheck, builds the tarball with
+   `node scripts/package.mjs` and audits it with `scripts/package-audit.mjs` (below). It does not run the server
+   tests: the release gate runs them on the same export tree, and before the version is approved the staged tarball
+   is compared with this job's sha256 and, file by file, with a local build of that tree. `check.yml` runs the tests
+   on the tag.
+2. **sbom-ubuntu** and **sbom-macos** (no permissions, one set of steps) install the tarball without scripts and
+   store a CycloneDX SBOM per platform (artifacts `sbom-ubuntu-latest` and `sbom-macos-latest`), because the
+   package of iroh (the QUIC library behind the server's iroh listener) ships its native module as one package per
+   platform. Each fails when the SBOM lacks the package or lists the Claude SDK. They need npm 11: npm 10 installs
+   the iroh packages of every OS.
+3. **publish** (outside a dry run; environment `npm`, which admits only `v*` tags and has no required reviewer;
+   only `id-token: write`) starts after `build` and `sbom-ubuntu`. It does not wait for `sbom-macos`: a red macOS
+   SBOM marks the run red but does not stop the publication. It checks the tarball's sha256 and sends it with
+   `npm stage publish` and an empty npm config: with `--tag beta` for a beta, without `--tag` for a stable version,
+   so npm gives it `latest` and refuses a version lower than the current `latest`. The version lands staged: nobody
+   can install it until the package owner approves it with `npm stage approve` and 2FA. The workflow approves
+   nothing; npm adds provenance on an OIDC publish.
 
 The tarball audit (`node scripts/package-audit.mjs [--files-only] [--name] [--version] <tarball> <manifest>`)
 compares the tarball with the packer's build manifest: sha256, the `npm pack --dry-run --json` list, and each entry
@@ -196,6 +206,9 @@ Some tests check code that takes another branch elsewhere (launchd instead of sy
 `plutil`, `stat -f` and `launchctl`. Off macOS they skip explicitly: `skipIf(!IS_MAC)` with a title from
 `macOnly(…)` in `server/test/platform.ts`. Files with such tests in `server/test/`:
 
+- `file-index-repo.test.ts`: names git spells another way than the disk, in the file index (its other cases run
+  everywhere);
+- `files-sciezka.test.ts`: a directory swapped for a symlink during its read (its other cases run everywhere);
 - `git-konfiguracja-repo.test.ts`: git reads under the `sandbox-exec` profile (its other cases run everywhere);
 - `live-activity-plist-guard.test.ts`: Live Activity keys in `Info.plist`;
 - `privacy-manifest-guard.test.ts`: the privacy manifest;
@@ -205,11 +218,14 @@ Some tests check code that takes another branch elsewhere (launchd instead of sy
 - `rarog-setup.test.ts`: `rarog setup` on the macOS path;
 - `rarog-update-finish.test.ts`: `rarog update --finish` on launchd fakes (its Linux case runs everywhere);
 - `rarog-update.test.ts`: the finish part of `rarog update` on launchd fakes (its registry cases run everywhere);
+- `safe-read.test.ts`: the directory read by identity on the macOS disk (its Linux case runs only on Linux, the
+  rest everywhere);
 - `scripts-ios-check-demo.test.ts`: the iOS gate;
 - `scripts-ios-lib.test.ts`: the App Store Connect key;
 - `scripts-launchd.test.ts`: `restart.sh` with a `launchctl` fake;
 - `secret-input.test.ts`: the secret question of `bin/rarog.mjs` between two questions, in a pseudo-terminal
   (`script`);
+- `session-files-repo.test.ts`: a decomposed file name in the session's file list (its other cases run everywhere);
 - `setup-check.test.ts`: the closing check of `rarog setup`;
 - `setup-config.test.ts`: the `config.json` step of `rarog setup`;
 - `setup-herdr-agent.test.ts`: the herdr agent step of `rarog setup` and its doctor line, on `launchctl` fakes;
@@ -223,7 +239,8 @@ Some tests check code that takes another branch elsewhere (launchd instead of sy
   (`script`).
 
 Other skips also give the reason in the title: a missing tool (git, lsof, ShellCheck, `tomllib`, the iroh platform
-package), a present iroh platform package, a case-sensitive temporary directory, or an opt-in variable
+package), a present iroh platform package, a case-sensitive temporary directory, a system other than Linux, or an
+opt-in variable
 (`RAROG_TEST_HERDR=1`, `RAROG_TEST_IROH=1`, `RAROG_TEST_NETWORK=1`). The hook copy tests in
 `rarog-setup.test.ts` and the setup runs in `setup-transport.test.ts`, `setup-screen.test.ts` and
 `setup-pytania.test.ts` need a git checkout, because the copy takes only committed state.

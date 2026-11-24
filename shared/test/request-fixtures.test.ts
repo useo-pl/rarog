@@ -17,7 +17,7 @@ import {
   answersBodySchema, apnsRegisterBodySchema, apnsStatusBodySchema, apnsUnregisterBodySchema, companionAskBodySchema,
   companionSpeechTokenBodySchema, companionTokenBodySchema,
   liveActivityEndBodySchema, liveActivityRegisterBodySchema, messageBodySchema, pairBodySchema, restartBodySchema,
-  seenBodySchema, termOpenBodySchema,
+  inboxActionBodySchema, seenBodySchema, termOpenBodySchema,
 } from '../src/rest.ts';
 import {
   createSessionBodySchema, makeDirBodySchema, notesPutBodySchema, sessionModelBodySchema,
@@ -57,6 +57,8 @@ const SCHEMAS: Record<string, ZodType> = {
   messageBody: messageBodySchema,
   // A result viewed in the app (an empty body), and the voice agent's pick-up with the `stateSince` it read.
   seenBody: seenBodySchema,
+  // Remove or restore an Inbox card: the turn and the version of the card the device shows.
+  inboxActionBody: inboxActionBodySchema,
 };
 
 const entrySchema = z.strictObject({
@@ -85,6 +87,7 @@ describe('złote ciała żądań: manifest i pliki', () => {
       'POST /api/pair', 'POST /api/sessions', 'POST /api/sessions/{id}/model',
       'POST /api/sessions/{id}/companion/ask', 'POST /api/companion/token', 'POST /api/companion/speech-token',
       'POST /api/fs/mkdir', 'POST /api/sessions/{id}/messages', 'POST /api/sessions/{id}/seen',
+      'POST /api/inbox/{id}/remove',
     ]) {
       expect(routes.has(route), route).toBe(true);
     }

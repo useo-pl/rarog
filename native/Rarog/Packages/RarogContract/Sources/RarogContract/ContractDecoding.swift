@@ -166,6 +166,24 @@ struct ContractContainer<Key: CodingKey> {
     }
   }
 
+  /// Enum field of a list element that drops whole on an unknown value (Inbox heads and cards): `false` and a
+  /// recorded degradation for an unknown string; `null`, another type and a missing field reject as in `strict`.
+  func known<E: ContractEnum>(_ key: Key, as type: E.Type) throws -> Bool {
+    let raw: String = try required(key)
+    guard E.wire(raw) == nil else { return true }
+    degrade(key, raw: raw)
+    return false
+  }
+
+  /// Optional variant of ``known(_:as:)``: a missing field is known, `null` rejects.
+  func knownOptional<E: ContractEnum>(_ key: Key, as type: E.Type) throws -> Bool {
+    guard base.contains(key) else { return true }
+    if try base.decodeNil(forKey: key) {
+      throw contractViolation(codingPath + [key], "null in an optional field: the contract knows only a missing field")
+    }
+    return try known(key, as: type)
+  }
+
   /// Zapisuje degradację pola `key` z nieznanym łańcuchem `raw`.
   func degrade(_ key: Key, raw: String) {
     sink?.record(path: jsonPointer(codingPath + [key]), value: raw)

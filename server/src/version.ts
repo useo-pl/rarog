@@ -65,6 +65,40 @@ export const SERVER_CAPABILITIES: readonly string[] = [
 ];
 
 /**
+ * `inbox` — the server keeps an Inbox card per session: `GET /api/stream?inbox=1` adds the Inbox heads, and
+ * `GET /api/inbox`, `GET /api/inbox/:sessionId` and `POST /api/inbox/:sessionId/remove|restore` answer. A capability of
+ * the configuration, unlike the list above: absent with `RAROG_INBOX=0`, and then the app hides its Inbox.
+ */
+export const INBOX_CAPABILITY = 'inbox';
+
+/**
+ * `files` — the session file routes answer: `GET /api/sessions/:id/files?dir=` lists a directory of the session and
+ * `GET /api/sessions/:id/files/raw?path=` sends one file of it. A capability of the configuration, like the Inbox:
+ * absent while the routes are off, and then the app builds its file tree from the changes of `git-status` alone.
+ */
+export const FILES_CAPABILITY = 'files';
+
+/**
+ * `file-index` — `GET /api/sessions/:id/files/index` answers with the index of a session's files, which the app
+ * searches. Announced with {@link FILES_CAPABILITY} and under the same switch; an app that does not see it searches
+ * only the directories it has listed.
+ */
+export const FILE_INDEX_CAPABILITY = 'file-index';
+
+/**
+ * The capabilities announced now: {@link SERVER_CAPABILITIES}, plus {@link INBOX_CAPABILITY} when the Inbox is on and
+ * {@link FILES_CAPABILITY} with {@link FILE_INDEX_CAPABILITY} when the session file routes answer (missing `files` =
+ * they do not).
+ */
+export function serverCapabilities(features: { readonly inbox: boolean; readonly files?: boolean }): string[] {
+  return [
+    ...SERVER_CAPABILITIES,
+    ...(features.inbox ? [INBOX_CAPABILITY] : []),
+    ...(features.files === true ? [FILES_CAPABILITY, FILE_INDEX_CAPABILITY] : []),
+  ];
+}
+
+/**
  * System maszyny serwera dla `GET /api/version` (`system`): `darwin` → `macos`, `linux` → `linux`, każdy inny
  * `process.platform` → `other`. Z tego pola apka bierze słowo maszyny („Mac” albo „VPS”).
  *

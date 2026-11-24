@@ -116,18 +116,6 @@ struct NavigationTests {
     #expect(full[.session("s8")] == 8 && full[.session("s9")] == 9 && full.count == 9)
   }
 
-  /// For the active project a small square shows which tab belongs to the agent: the row's digit is the strip's
-  /// key, keyed by session.
-  @Test("tree tab digits: the strip's digits by session id; empty without a hardware keyboard or a project on screen")
-  func treeTabDigits() {
-    let state = twoProjects()
-    let navigation = RarogNavigation(prefs: MemoryPreferences())
-    #expect(navigation.treeTabDigits(state, hardwareKeyboard: true).isEmpty, "no project on screen")
-    navigation.detail = .session("v-new")
-    #expect(navigation.treeTabDigits(state, hardwareKeyboard: true) == ["v-old": 1, "v-new": 2])
-    #expect(navigation.treeTabDigits(state, hardwareKeyboard: false).isEmpty)
-  }
-
   @Test("Cmd+1…9 celuje w identyfikator z chwili rysowania: zamknięta zakładka i obcy projekt = brak działania")
   func digitsTargetDrawnId() {
     var state = twoProjects()
@@ -250,7 +238,7 @@ struct ProjectRowsTests {
       id: "p1", title: "rarog", label: "resync", state: "running",
       extra: #""branch":"feat/m1","ahead":3,"behind":0"#, activityAgo: 10)
     let rows = state.projectRows(
-      openCwd: "/Users/demo/Projects/rarog", jumpCwd: "/Users/demo/Projects/willow", calendar: Calendar.current)
+      openCwd: "/Users/demo/Projects/rarog", jumpCwd: "/Users/demo/Projects/willow")
     let byName = Dictionary(uniqueKeysWithValues: rows.map { ($0.name, $0) })
     let willow = byName["willow"]!
     #expect(willow.agents == 2 && willow.tone == .waiting && willow.jumpTarget && !willow.open)
@@ -361,8 +349,7 @@ struct ProjectRowsTests {
     navigation.detail = .session("launching")
     navigation.noteSessionVisit(state)
     #expect(navigation.sessionHistory.ids == ["v-old", "p1", "launching"], "a visit needs no known project directory")
-    #expect(navigation.recentSessions(state) == ["p1", "v-old"], "newest first, sessions the app does not know skipped")
-    #expect(navigation.recentSessions(state, limit: 1) == ["p1"])
+    #expect(navigation.lastVisitedSession(state) == "p1", "the newest visit the app knows, an unknown one skipped")
 
     let restarted = RarogNavigation(prefs: prefs)
     #expect(restarted.sessionHistory.ids == ["v-old", "p1", "launching"], "history read back from the preferences")

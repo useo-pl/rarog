@@ -46,7 +46,7 @@ struct ServerMachineCopyTests {
 
   @Test("zdania o pracy na maszynie: przerwanie, notatka bez kontaktu, zamknięcie terminala")
   func sessionSentences() {
-    let failed = InterruptPresentation.make(.notDelivered, prompt: "x", fieldEmpty: true, machine: .vps)
+    let failed = InterruptPresentation.make(.notDelivered, field: "", machine: .vps)
     #expect(failed?.line == "Nie udało się przerwać — panel nie przyjął Esc. Otwórz go w herdr na VPS-ie i naciśnij Esc tam.")
     #expect(failed?.spoken == failed?.line)
     #expect(UICopy.noteOffline(.vps) == "bez kontaktu z VPS-em — tekst czeka w apce")

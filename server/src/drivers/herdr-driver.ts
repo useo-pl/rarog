@@ -32,7 +32,7 @@ import type { MessageSource, ServerSystem } from '@rarog/shared/rest';
 import { say } from '@rarog/shared/sentences';
 import type { OwnText } from '@rarog/shared/sentences';
 import {
-  HERDR_BLOCKED_POLL_MS, HERDR_CONSENT_CARD_WAIT_MS, HERDR_PANE_ROWS_WAIT_MS, HERDR_PENDING_DEBOUNCE_MS,
+  HERDR_BLOCKED_POLL_MS, HERDR_CONSENT_CARD_WAIT_MS, HERDR_PENDING_DEBOUNCE_MS,
   HERDR_PENDING_RETRY_MS, HERDR_SCREEN_CACHE_MS, HERDR_STALL_SETTLE_MS, HERDR_TURN_WATCHDOG_MS,
 } from '../config.ts';
 import type {
@@ -84,6 +84,7 @@ import { PromptQueue, promptEntry } from './herdr/prompt-queue.ts';
 import type { PromptQueueDeps, PromptQueuePort, SendTicket } from './herdr/prompt-queue.ts';
 import { QueueTakeBack } from './herdr/queue-take-back.ts';
 import type { QueueTakeBackDeps, QueueTakeBackPort } from './herdr/queue-take-back.ts';
+import { ReturnedPrompt, type ReturnedPromptDeps } from './herdr/returned-prompt.ts';
 import { TurnGuard } from './herdr/turn-guard.ts';
 import type { TurnGuardPort } from './herdr/turn-guard.ts';
 import { FormReserve } from './herdr/form-reserve.ts';
@@ -92,18 +93,24 @@ import { CliReserve } from './herdr/cli-reserve.ts';
 import type { CliReservePort } from './herdr/cli-reserve.ts';
 import { CommandDialogSettle } from './herdr/command-dialog-settle.ts';
 import { ConsentChannel } from './herdr/consent-channel.ts';
+import { ConsentNoHook } from './herdr/consent-no-hook.ts';
+import type { ConsentNoHookSources } from './herdr/consent-no-hook.ts';
 import type { ConsentObserveRequest } from './herdr/consent-channel.ts';
 import { Layer2Cards, isLayer2Id, layer2HoldsKeys } from './herdr/layer2-card.ts';
 import type { Layer2CardPort } from './herdr/layer2-card.ts';
 import { Layer2Step } from './herdr/layer2-step.ts';
 import type { Layer2Key, Layer2StepEntry, Layer2StepPort } from './herdr/layer2-step.ts';
 import {
+  approveContext, auditRefusal, layer2KeyRefusal, refuseDecision, refuseNote, refuseSend, reportStaleDecision,
+} from './herdr/refusals.ts';
+import type { RefusalPort } from './herdr/refusals.ts';
+import {
   ANSWERED_HOOK_SHIELD_MS, CLI_WAITING_PROBES, DECIDED_SHIELD_MS,
   FORM_SUBMIT_CONFIRM_DELAY_MS, FORM_SUBMIT_GONE_MESSAGE, FORM_SUBMIT_KEY,
   HOOK_ANSWER_POLL_MS, HOOK_ANSWER_WAIT_MS, HOOK_PERMISSION_REQUEST_EVENT, MULTI_SELECT_MESSAGE,
   NOTE_NOT_ALLOWED_MESSAGE, NOTE_NO_CHANNEL_MESSAGE, NOTE_WRITE_FAILED_MESSAGE, NO_ANSWER_ON_SCREEN_MESSAGE,
   NO_DIGIT_MESSAGE, PAUSE_ESCAPE_MESSAGE, SCREEN_ANSWER_REARM_DELAYS_MS, SCREEN_CHANGED_MESSAGE, SCREEN_DIALOG_TOOL,
-  STALE_DECISION_MESSAGE, TERMINAL_DIALOG_MESSAGE, TERMINAL_ONLY_MESSAGE, affirmativeOption, alwaysOption,
+  TERMINAL_DIALOG_MESSAGE, TERMINAL_ONLY_MESSAGE, affirmativeOption, alwaysOption,
   admittedHook, applyMultiSelectOverride, blockCardRecord, confirmFormSubmit,
   decideCard, dialogShapeOf, measuredConsentHolds,
   evaluationReqId, fallbackSnippet, formSubmitAbortMessage, hookAnnotations, hookAnswerPartialMessage,
@@ -112,8 +119,8 @@ import {
   screenDialogCard, screenFormReqId, staleDumpProvesOther,
 } from '../herdr/dialogs/index.ts';
 import type {
-  ActiveReq, CardOrigin, DecideAction, DecideInput, DecidedShield, DecisionCard, DegradeDiagnosis, HookAnswerChannel,
-  HookAnswerTarget, PendingHookTool, RefusalDump, RefusalDumper,
+  ActiveReq, CardOrigin, DecideAction, DecideInput, DecidedShield, DecisionCard, HookAnswerChannel,
+  HookAnswerTarget, PendingHookTool, RefusalDumper,
 } from '../herdr/dialogs/index.ts';
 import type { JsonlMeta, PendingTool } from '../herdr/jsonl-pending.ts';
 import type {
@@ -122,9 +129,8 @@ import type {
 import { shadowAuditFields } from '../herdr/audit.ts';
 import { diagnosisFields, originFields } from './herdr/audit-fields.ts';
 import {
-  ASK_USER_QUESTION_TOOL, SANDBOX_NETWORK_TOOL, SESSION_PAUSED_DIALOG, blockVisible, canonicalLabel, exitDialogTasks,
-  matchKnownDialog, parseOptions, resolveOptions, routeDialog, routeHookOf, routeScreenOf, sameDialogIdentity,
-  sessionPausedDialog, standingConsentDialog,
+  ASK_USER_QUESTION_TOOL, SANDBOX_NETWORK_TOOL, SESSION_PAUSED_DIALOG, canonicalLabel, exitDialogTasks,
+  matchKnownDialog, parseOptions, resolveOptions, sameDialogIdentity, sessionPausedDialog, standingConsentDialog,
 } from '../herdr/dialogs/index.ts';
 import { SHADOW_DEADLINE_MS, registryEvidenceFromSignal, shadowCardEligible } from '../herdr/dialogs/index.ts';
 import type {
@@ -247,13 +253,6 @@ type AuditDetails = Pick<
   | 'notes' | 'command' | 'sender'
 > & AuditCaseShape;
 
-/** Kontekst karty bez decyzji dla dziennika: tożsamość i pochodzenie karty oraz kształt z oceny. */
-interface DegradeContext {
-  readonly reqId: string;
-  readonly origin: CardOrigin | undefined;
-  readonly diagnosis: DegradeDiagnosis;
-}
-
 /**
  * Czego dotyczy nieudana mutacja — rozróżnienie potrzebne WYŁĄCZNIE zdaniom o błędzie.
  * Wszystkie pozostałe skutki (`detached`, wejście w `blocked`, dziennik) są dla obu takie same.
@@ -294,7 +293,8 @@ export type OptionResolver = (
 export { CONSENT_SUBAGENT_OBSERVE_MS } from './herdr/consent-channel.ts';
 export type { ConsentObserveRequest } from './herdr/consent-channel.ts';
 
-export interface HerdrDriverDeps extends Pick<PromptQueueDeps, 'promptStore'>, Pick<QueueTakeBackDeps, 'takeBackPopWaitMs'> {
+export interface HerdrDriverDeps extends Pick<PromptQueueDeps, 'promptStore'>, Pick<QueueTakeBackDeps, 'takeBackPopWaitMs'>,
+  Pick<ReturnedPromptDeps, 'returnedPromptWaitMs' | 'fieldReadBeforeEscapeMs'> {
   client: HerdrClient;
   audit: HerdrAuditLog;
   /**
@@ -506,6 +506,8 @@ export interface HerdrDriverDeps extends Pick<PromptQueueDeps, 'promptStore'>, P
    * exception = no release known (`no-channel`).
    */
   consentDeskRelease?: (engineSessionId: string, key: string) => ConsentDeskRelease | null;
+  /** Sources of the consent-without-hook detector (`drivers/herdr/consent-no-hook.ts`); absent = no `no hook` line. */
+  consentNoHook?: ConsentNoHookSources;
   /** Sufit czekania na kartę kanału (testy skracają go; domyślnie {@link HERDR_CONSENT_CARD_WAIT_MS}). */
   consentCardWaitMs?: number;
   /** Ile czekamy na zużycie pliku odpowiedzi przez hook (testy skracają do zera). */
@@ -671,6 +673,7 @@ export class HerdrDriver implements SessionDriver {
   readonly #promptQueue: PromptQueue;
   /** Taking both prompt queues back for the app: `drivers/herdr/queue-take-back.ts`. */
   readonly #takeBack: QueueTakeBack;
+  readonly #returnedPrompt: ReturnedPrompt;
 
   #paneId: string;
   #mode: HerdrMode;
@@ -803,6 +806,10 @@ export class HerdrDriver implements SessionDriver {
   readonly #formReserve: FormReserve;
   /** The CLI registry fallback: `drivers/herdr/cli-reserve.ts`. */
   readonly #cliReserve: CliReserve;
+  /** Consent without a hook and cards without the approve button, in the log: `drivers/herdr/consent-no-hook.ts`. */
+  readonly #noHook: ConsentNoHook;
+  /** The port of the refusals and their audit funnel: `drivers/herdr/refusals.ts`. */
+  readonly #refusals: RefusalPort;
   /** The wait behind a command dialog the driver confirmed: `drivers/herdr/command-dialog-settle.ts`. */
   readonly #commandSettle: CommandDialogSettle;
   /** The layer 2 card with buttons (`docs/dialog-card.md`): `drivers/herdr/layer2-card.ts`. */
@@ -869,6 +876,7 @@ export class HerdrDriver implements SessionDriver {
     const reservePort = this.#reservePort();
     this.#formReserve = new FormReserve({ deps, scheduler: this.#scheduler }, reservePort);
     this.#cliReserve = new CliReserve({ inScope: this.#inScope, form: this.#formReserve }, reservePort);
+    this.#refusals = this.#refusalPort();
     this.#commandSettle = new CommandDialogSettle({ pollMs: deps.modelConfirmPollMs ?? MODEL_CONFIRM_POLL_MS }, {
       disposed: () => this.#disposed,
       readScreen: () => this.#deps.client.readScreen(this.#paneId, 'detection').then((s) => s.text, () => null),
@@ -902,6 +910,14 @@ export class HerdrDriver implements SessionDriver {
       deps, scheduler: this.#scheduler, key: this.#key, consentCardWaitMs: this.#consentCardWaitMs,
       follower: this.#follower, claude: this.#engine === 'claude' && this.#inScope, queue: this.#promptQueue,
     }, this.#takeBackPort());
+    this.#returnedPrompt = new ReturnedPrompt({ deps, scheduler: this.#scheduler, key: this.#key }, { paneId: () => this.#paneId });
+    this.#noHook = new ConsentNoHook({ deps, scheduler: this.#scheduler, inScope: this.#inScope, cwd: this.#cwd }, {
+      disposed: () => this.#disposed, agentSessionId: () => this.#agentSessionId, blockedNow: () => this.#blockedNow(),
+      blockedSeq: () => this.#blockedSeq, blockedAt: () => this.#blockedAt, answeredAt: () => this.#answeredAt,
+      cliWaiting: () => this.#cliReserve.cliWaiting, screenText: () => this.#screenText,
+      cliVersion: () => (this.#cliReserve.cliSignal?.kind === 'unknown' ? null : this.#cliReserve.cliSignal?.version ?? null),
+      permissionMode: () => (this.#mode === 'unknown' ? null : this.#mode),
+    });
     this.#promptQueue.restore(this.#engine === 'claude', () => ++this.#turnGuard.sendGeneration);
     if (this.#follower !== null) void this.#pumpFollower(this.#follower);
     this.#lastFollowAt = this.#scheduler.now();
@@ -1210,6 +1226,7 @@ export class HerdrDriver implements SessionDriver {
     }
     // Prompt doszedł do panelu — także zablokowany przez hook: odmowę niesie notka, nie ostrzeżenie wysyłki.
     onDelivered();
+    if (outcome === 'sent' && slash === null && !midTurn) this.#returnedPrompt.noteSent(finalText);
     this.#turnGuard.afterSubmit(outcome === 'blocked', slash, echo, generation, silent);
   }
 
@@ -1349,7 +1366,7 @@ export class HerdrDriver implements SessionDriver {
     const { client } = this.#deps;
     const sent = await this.#send(() => (key.via === 'keys'
       ? client.sendKeys(this.#paneId, key.keys) : client.sendDialogKey(this.#paneId, key.key)), {
-      ...entry, ...this.#approveContext(),
+      ...entry, ...approveContext(this.#refusals),
     });
     if (!sent) return false;
     this.#noteDecided(answered, seq, hookAt, pendingAt, shot);
@@ -1381,6 +1398,25 @@ export class HerdrDriver implements SessionDriver {
       syncBlockedPoll: () => { this.#syncBlockedPoll(); },
       clearActive: (reason) => { this.#clearActive(reason); },
       evaluate: () => this.#evaluate(),
+    };
+  }
+
+  /** Port of the refusals: the card, screen and registry state they read and the steps that stay here. */
+  #refusalPort(): RefusalPort {
+    return {
+      deps: this.#deps,
+      scheduler: this.#scheduler,
+      paneId: () => this.#paneId,
+      agentSessionId: () => this.#agentSessionId,
+      screenText: () => this.#screenText,
+      activeReq: () => this.#activeReq,
+      pending: () => this.#pending,
+      cliWaiting: () => this.#cliReserve.cliWaiting,
+      resolveOptions: (text, expected) => this.#resolveOptions(text, expected),
+      audit: (entry, at) => { this.#audit(entry, at); },
+      system: (text) => { this.#system(text); },
+      clearActive: (reason) => { this.#clearActive(reason); },
+      scheduleEvaluate: () => { this.#scheduleEvaluate(); },
     };
   }
 
@@ -1619,7 +1655,9 @@ export class HerdrDriver implements SessionDriver {
         if (pause.blocks) {
           this.#shadowKeySent(shadow, false);
           if (this.#disposed) return STALE;
-          return this.#refuseDecision(PAUSE_ESCAPE_MESSAGE, 'Esc na pauzie „Session paused”', 'terminal-only');
+          return refuseDecision(
+            this.#refusals, PAUSE_ESCAPE_MESSAGE, 'Esc na pauzie „Session paused”', 'terminal-only',
+          );
         }
         if (this.#disposed) {
           this.#shadowKeySent(shadow, false);
@@ -1657,7 +1695,7 @@ export class HerdrDriver implements SessionDriver {
         // poprzedniego wywołania. Sprzątamy wyłącznie po UDANEJ wysyłce — gdy `escape` nie
         // doszło, dialog stoi dalej i zrzut wciąż jest jego prawdziwym opisem. Wyjątek ten sam co po cyfrze:
         // zrzut `Bash` INNEGO dialogu, który czeka w kolejce za zamkniętym (`#clearHookAfterDecision`).
-        if (!ok) return this.#refuseSend();
+        if (!ok) return refuseSend(this.#refusals);
         const keptHookAt = this.#clearHookAfterDecision(this.#readHookFile(), resolvedText, denied);
         /*
          * Osłona po własnej decyzji także po `escape`. Karta BEZ przycisków jest
@@ -1705,9 +1743,9 @@ export class HerdrDriver implements SessionDriver {
     if (active.reqId !== reqId) {
       const sessionAddressed = active.screen === true
         && active.toolName.startsWith(`${SCREEN_DIALOG_TOOL}:`);
-      if (!sessionAddressed) return Promise.resolve(this.#reportStaleDecision());
+      if (!sessionAddressed) return Promise.resolve(reportStaleDecision(this.#refusals));
     }
-    const held = this.#layer2KeyRefusal();
+    const held = layer2KeyRefusal(this.#refusals);
     if (held !== null) return Promise.resolve(held);
     /*
      * Dialog z listy `TERMINAL_DIALOGS` nie ma opcji do zatwierdzenia z telefonu: każda jest
@@ -1715,7 +1753,7 @@ export class HerdrDriver implements SessionDriver {
      * etykiety, nie na flagę — przyszła opcja „Yes…” w takim dialogu nie ma prawa stać się celem tapnięcia.
      */
     if (active.terminalDialog !== undefined) {
-      return Promise.resolve(this.#refuseDecision(
+      return Promise.resolve(refuseDecision(this.#refusals,
         TERMINAL_DIALOG_MESSAGE, 'dialog z listy terminalowej', 'terminal-only',
       ));
     }
@@ -1735,7 +1773,7 @@ export class HerdrDriver implements SessionDriver {
     // Karta nie niesie przycisku „zawsze", a ta bramka zamyka go też dla starego
     // albo obcego klienta — „don't ask again for <host>" zostaje do wybrania przy biurku.
     if (decision === 'allow-always' && active.toolName === SANDBOX_NETWORK_TOOL) {
-      return Promise.resolve(this.#refuseDecision(
+      return Promise.resolve(refuseDecision(this.#refusals,
         TERMINAL_ONLY_MESSAGE, 'sieć sandboksa: tylko zgoda jednorazowa', 'terminal-only',
       ));
     }
@@ -1748,7 +1786,7 @@ export class HerdrDriver implements SessionDriver {
       ? alwaysOption(active.options)
       : affirmativeOption(active.options);
     if (option === null) {
-      return Promise.resolve(this.#refuseDecision(
+      return Promise.resolve(refuseDecision(this.#refusals,
         NO_DIGIT_MESSAGE,
         decision === 'allow-always'
           ? 'brak jednoznacznej opcji „nie pytaj więcej"'
@@ -1789,7 +1827,7 @@ export class HerdrDriver implements SessionDriver {
     if (isLayer2Id(reqId)) return this.#layer2Step.answer(reqId, answers);
     const active = this.#activeReq;
     if (active === null) return Promise.resolve(STALE);
-    if (active.reqId !== reqId) return Promise.resolve(this.#reportStaleDecision());
+    if (active.reqId !== reqId) return Promise.resolve(reportStaleDecision(this.#refusals));
     const target = active.hookAnswer;
     const complete = target !== undefined
       && answers.length === target.questions.length
@@ -1802,7 +1840,7 @@ export class HerdrDriver implements SessionDriver {
      */
     const noted = notes?.some((note) => note !== null && note.trim() !== '') === true;
     if (noted && (target === undefined || !complete || this.#deps.hookAnswers === undefined)) {
-      return Promise.resolve(this.#refuseNote(NOTE_NO_CHANNEL_MESSAGE));
+      return Promise.resolve(refuseNote(this.#refusals, NOTE_NO_CHANNEL_MESSAGE));
     }
     if (target !== undefined && complete && this.#deps.hookAnswers !== undefined) {
       return this.#answerViaHook(active, target, answers, noted ? notes : undefined);
@@ -1834,7 +1872,7 @@ export class HerdrDriver implements SessionDriver {
       groups: answers.map((group) => group.length),
     };
     if (index === -1) {
-      return Promise.resolve(this.#refuseDecision(
+      return Promise.resolve(refuseDecision(this.#refusals,
         NO_DIGIT_MESSAGE, 'pytania z ekranu nie ma na karcie', 'no-digit', shape,
       ));
     }
@@ -1847,7 +1885,7 @@ export class HerdrDriver implements SessionDriver {
      */
     if (active.multiSelect === true) {
       return Promise.resolve(
-        this.#refuseDecision(MULTI_SELECT_MESSAGE, 'wielokrotny wybór', 'multi-select', shape),
+        refuseDecision(this.#refusals, MULTI_SELECT_MESSAGE, 'wielokrotny wybór', 'multi-select', shape),
       );
     }
     /*
@@ -1856,14 +1894,14 @@ export class HerdrDriver implements SessionDriver {
      * „Wielokrotny wybór zrób w terminalu" przy formularzu bez żadnego checkboxa.
      */
     if (first.length === 0) {
-      return Promise.resolve(this.#refuseDecision(
+      return Promise.resolve(refuseDecision(this.#refusals,
         NO_ANSWER_ON_SCREEN_MESSAGE, 'brak odpowiedzi na pytanie z ekranu', 'no-digit', shape,
       ));
     }
     // Wielokrotny wybór wymagałby `space` + `enter`, czyli wyboru po POZYCJI.
     if (first.length !== 1) {
       return Promise.resolve(
-        this.#refuseDecision(MULTI_SELECT_MESSAGE, 'wielokrotny wybór', 'multi-select', shape),
+        refuseDecision(this.#refusals, MULTI_SELECT_MESSAGE, 'wielokrotny wybór', 'multi-select', shape),
       );
     }
     const label = canonicalLabel(first[0] ?? '');
@@ -1875,12 +1913,12 @@ export class HerdrDriver implements SessionDriver {
      */
     if (active.terminalOnlyLabels?.includes(label) === true) {
       return Promise.resolve(
-        this.#refuseDecision(TERMINAL_ONLY_MESSAGE, 'opcja tylko z terminala na karcie', 'terminal-only'),
+        refuseDecision(this.#refusals, TERMINAL_ONLY_MESSAGE, 'opcja tylko z terminala na karcie', 'terminal-only'),
       );
     }
     const option = active.options.find((candidate) => candidate.label === label);
     if (option === undefined) {
-      return Promise.resolve(this.#refuseDecision(
+      return Promise.resolve(refuseDecision(this.#refusals,
         NO_DIGIT_MESSAGE, 'etykiety nie ma na żywej liście opcji', 'no-digit', shape,
       ));
     }
@@ -1905,8 +1943,8 @@ export class HerdrDriver implements SessionDriver {
     if (policy.digitBlocked || option.terminalOnly === true) {
       // Karta dialogu z listy terminalowej: flagę ma KAŻDA opcja, a zdanie o uprawnieniach byłoby fałszem.
       return Promise.resolve(policy.why === 'terminal-dialog'
-        ? this.#refuseDecision(TERMINAL_DIALOG_MESSAGE, 'dialog z listy terminalowej', 'terminal-only')
-        : this.#refuseDecision(TERMINAL_ONLY_MESSAGE, 'opcja eskalująca uprawnienia', 'terminal-only'));
+        ? refuseDecision(this.#refusals, TERMINAL_DIALOG_MESSAGE, 'dialog z listy terminalowej', 'terminal-only')
+        : refuseDecision(this.#refusals, TERMINAL_ONLY_MESSAGE, 'opcja eskalująca uprawnienia', 'terminal-only'));
     }
     return this.#sendDigit(option, active);
   }
@@ -1936,7 +1974,7 @@ export class HerdrDriver implements SessionDriver {
     if (channel === undefined) {
       return notes === undefined
         ? this.#answerWithDigit(active, answers)
-        : this.#refuseNote(NOTE_NO_CHANNEL_MESSAGE);
+        : refuseNote(this.#refusals, NOTE_NO_CHANNEL_MESSAGE);
     }
     /*
      * Reguła „jedno tapnięcie nie zmienia trwale uprawnień” obowiązuje w KAŻDYM kanale: opcja eskalująca uprawnienia
@@ -1946,7 +1984,7 @@ export class HerdrDriver implements SessionDriver {
      */
     const escalating = answers.flat().some((raw) => target.blocked.includes(canonicalLabel(raw)));
     if (escalating) {
-      return this.#refuseDecision(
+      return refuseDecision(this.#refusals,
         TERMINAL_ONLY_MESSAGE, 'opcja eskalująca uprawnienia', 'terminal-only',
       );
     }
@@ -1965,7 +2003,7 @@ export class HerdrDriver implements SessionDriver {
      * wysyłamy ani bez niej, ani cyfrą — odmowa, karta zostaje.
      */
     const annotations = notes === undefined ? null : hookAnnotations(target, answers, notes);
-    if (notes !== undefined && annotations === null) return this.#refuseNote(NOTE_NOT_ALLOWED_MESSAGE);
+    if (notes !== undefined && annotations === null) return refuseNote(this.#refusals, NOTE_NOT_ALLOWED_MESSAGE);
     const noteCount = annotations === null ? 0 : Object.keys(annotations).length;
     /*
      * Zakaz fallbacku cyfrą wynika z ŻĄDANIA (niepuste notatki od człowieka), a nie z liczby
@@ -1973,7 +2011,7 @@ export class HerdrDriver implements SessionDriver {
      * i gubił notatkę po cichu. Notatki, której nie przypięto, nie ma prawa być w żądaniu.
      */
     const noted = notes !== undefined;
-    if (noted && noteCount === 0) return this.#refuseNote(NOTE_NOT_ALLOWED_MESSAGE);
+    if (noted && noteCount === 0) return refuseNote(this.#refusals, NOTE_NOT_ALLOWED_MESSAGE);
     let path: string | null;
     try {
       path = channel.write(this.#agentSessionId, target.key, map, noteCount > 0 ? annotations : null);
@@ -1987,7 +2025,7 @@ export class HerdrDriver implements SessionDriver {
      */
     if (path === null) {
       return noted
-        ? this.#refuseNote(NOTE_WRITE_FAILED_MESSAGE)
+        ? refuseNote(this.#refusals, NOTE_WRITE_FAILED_MESSAGE)
         : this.#answerWithDigit(active, answers);
     }
     // Numer blokady sprzed osłony — do przywrócenia, gdy odpowiedź z notatką nie dojdzie.
@@ -2080,8 +2118,10 @@ export class HerdrDriver implements SessionDriver {
        * notatki jej nie gasi i oceny nie ponawia. Notatka nie doszła tak samo, więc zdanie z jej treścią idzie
        * do transkryptu, a dziennik dostaje nazwę narzędzia karty, na którą przyszła odpowiedź.
        */
-      if (this.#activeReq !== null && this.#activeReq !== active) return this.#refuseNote(message, active.toolName);
-      return this.#refuseDecision(message, 'notatka: hook nie odebrał pliku odpowiedzi', 'send-failed');
+      if (this.#activeReq !== null && this.#activeReq !== active) {
+        return refuseNote(this.#refusals, message, active.toolName);
+      }
+      return refuseDecision(this.#refusals, message, 'notatka: hook nie odebrał pliku odpowiedzi', 'send-failed');
     }
     /*
      * Karta podmieniona w oknie czekania: nowy zrzut i nowy ekran wystawiły inną kartę, a odpowiedź
@@ -2093,7 +2133,7 @@ export class HerdrDriver implements SessionDriver {
      * nieaktualnej decyzji, bez cyfry, a nowa karta zostaje.
      */
     if (this.#activeReq === null) return STALE;
-    if (this.#activeReq !== active) return this.#reportStaleDecision();
+    if (this.#activeReq !== active) return reportStaleDecision(this.#refusals);
     /*
      * Cyfra dowozi TYLKO pytanie stojące na ekranie — i wcale nie musi to być pierwsze
      * pytanie karty (zakładkę przełącza się przy biurku bez mignięcia `agent_status`).
@@ -2121,241 +2161,6 @@ export class HerdrDriver implements SessionDriver {
   }
 
   /**
-   * Odmowa wysyłki cyfry: powiedz DLACZEGO i ODBUDUJ kartę.
-   *
-   * Karta gaśnie i ocena buduje ją od nowa z tego, co stoi TERAZ — decyzja nie wyszła, ale
-   * człowiek ma na czym pracować. To JEDYNA ścieżka odbudowy po odmowie
-   * decyzji: pending w managerze przeżywa `refused` (kontrakt `DecisionOutcome`), więc
-   * odbudowa nie musi już nadrabiać wpisu zjedzonego przez first-wins.
-   */
-  #refuseDecision(
-    message: OwnText, reason: string, audit: HerdrRefuseReason, shape?: AnswerShape,
-  ): DecisionOutcome {
-    this.#auditRefusal(audit, this.#activeReq?.toolName, 'refuse', shape);
-    this.#system(message);
-    this.#clearActive(reason);
-    this.#scheduleEvaluate();
-    return refused(audit);
-  }
-
-  /**
-   * Herdr odrzucił samo wywołanie — nic nie poszło do panelu.
-   *
-   * Karty NIE gasimy i oceny nie ponawiamy: dialog stoi dalej, a `#send` zdążył już
-   * powiedzieć człowiekowi, co się stało (blokada / panel zniknął / tryb tylko do odczytu).
-   * Wpis w dzienniku dokłada tę odmowę do licznika (`summarizeRefusals` w `herdr/audit.ts`) — bez niego
-   * najczęstsza awaria kanału nie miałaby w statystyce ani jednej linii.
-   */
-  #refuseSend(): DecisionOutcome {
-    this.#auditRefusal('send-failed', this.#activeReq?.toolName);
-    return refused('send-failed');
-  }
-
-  /**
-   * `allow` over a layer 2 card (`layer2HoldsKeys`, `docs/dialog-card.md`): `terminal-only` with the sentence of the
-   * terminal dialogs, the card stays; a choice goes only through the layer 2 step. `null` = another card or none.
-   */
-  #layer2KeyRefusal(): DecisionOutcome | null {
-    if (!layer2HoldsKeys(this.#activeReq)) return null;
-    this.#auditRefusal('terminal-only', this.#activeReq?.toolName);
-    this.#system(TERMINAL_DIALOG_MESSAGE);
-    return refused('terminal-only');
-  }
-
-  /**
-   * Odpowiedź z NOTATKĄ nie wyszła — nic nie poszło ani do panelu, ani do pliku.
-   *
-   * Karty NIE gasimy, jak przy `#refuseSend`: dialog stoi dalej, a człowiek ma na niej szkic
-   * z notatką (odmowa 422 zostawia kartę w stanie wyboru). Powód `send-failed` z zamkniętej
-   * listy znaczy dokładnie to: „nic nie doszło" — dokładniejsze zdanie idzie do transkryptu.
-   * `toolName` podaje wołający, gdy odpowiedź przyszła na inną kartę niż ta, która stoi.
-   */
-  #refuseNote(message: OwnText, toolName = this.#activeReq?.toolName): DecisionOutcome {
-    this.#auditRefusal('send-failed', toolName);
-    this.#system(message);
-    return refused('send-failed');
-  }
-
-  /**
-   * Wpis „decyzja NIE wyszła" — jedyna metoda dziennika bez ani jednego bajtu do panelu.
-   *
-   * Powód jest z zamkniętej listy, bo te wpisy mają się SUMOWAĆ (`summarizeRefusals` w `herdr/audit.ts`),
-   * a nie opisywać: zdanie dla człowieka i tak idzie do transkryptu osobno. Nazwa narzędzia
-   * jedzie z kartą — bez niej „18 odmów" nie mówi, czego dotyczyły.
-   */
-  #auditRefusal(
-    reason: HerdrRefuseReason,
-    toolName?: string,
-    method: 'refuse' | 'degrade' = 'refuse',
-    shape?: AnswerShape,
-    degrade?: DegradeContext,
-  ): void {
-    const at = this.#deps.now();
-    // The class from the CLI registry when it says `waiting`: the counter must tell WHICH dialogs
-    // Rarog cannot read, and the router verdict (`#routeFields`) uses it as input.
-    const cliDialog = this.#cliReserve.cliWaiting;
-    const hook = this.#readHookQuietly();
-    /*
-     * KSZTAŁT przypadku. Karta bez decyzji niesie go z oceny (`decideCard` liczy go z tego
-     * samego odczytu ekranu, z którego powstała karta, razem z podpowodem sprzed spadku na ścieżkę
-     * ekranową). Odmowa wysyłki — ze stojącej karty i z ostatniego odczytu ekranu, tego samego, który
-     * trafia do zrzutu odmowy.
-     */
-    const caseShape: AuditCaseShape = {
-      ...(degrade === undefined
-        ? {
-          ...originFields(this.#activeReq?.reqId ?? null, this.#activeReq?.origin),
-          ...diagnosisFields({ mismatchReason: null, ...dialogShapeOf(this.#screenText) }),
-        }
-        : { ...originFields(degrade.reqId, degrade.origin), ...diagnosisFields(degrade.diagnosis) }),
-      ...this.#routeFields(hook),
-    };
-    const entry: AuditDetails = {
-      method,
-      reason,
-      ...(toolName === undefined ? {} : { toolName }),
-      ...(shape === undefined ? {} : { shape }),
-      ...(cliDialog === null ? {} : { cliDialog }),
-      ...caseShape,
-    };
-    const dump = this.#refusalDump(reason, toolName, caseShape, cliDialog, hook, at);
-    const write = (rows: number | null): void => {
-      const withRows = rows === null ? {} : { paneRows: rows };
-      this.#audit({ ...entry, ...withRows }, at);
-      if (dump !== null) this.#writeDump({ ...dump, shape: { ...caseShape, ...withRows } });
-    };
-    /*
-     * Wiersze panelu z herdr WYŁĄCZNIE przy karcie bez decyzji: jeden `pane.list`, po nim
-     * wpis i zrzut. Karta nie czeka — wpis dochodzi do pliku z czasem oceny. Budżet czekania liczy
-     * DRIVER (`HERDR_PANE_ROWS_WAIT_MS`, łącznie z kolejką slotów gniazda): po nim wpis i zrzut idą
-     * bez wierszy, dokładnie raz, a spóźniony wynik przepada. Sufit gniazda zostaje zwykły — krótszy
-     * oznaczałby herdr jako niedostępny z powodu diagnostyki. Błąd odczytu
-     * albo brak metody = wpis bez wierszy, nigdy liczba zgadnięta z ekranu.
-     */
-    const client = this.#deps.client;
-    if (method !== 'degrade' || client.readPaneRows === undefined) {
-      write(null);
-      return;
-    }
-    let timer: TimerHandle | null = null;
-    let written = false;
-    const once = (rows: number | null): void => {
-      if (written) return;
-      written = true;
-      if (timer !== null) this.#scheduler.clearTimeout(timer);
-      write(rows);
-    };
-    timer = this.#scheduler.setTimeout(() => { once(null); }, this.#deps.paneRowsWaitMs ?? HERDR_PANE_ROWS_WAIT_MS);
-    void client.readPaneRows(this.#paneId).then((rows) => { once(rows); }, () => { once(null); });
-  }
-
-  /**
-   * Zrzut diagnostyczny do `<dataDir>/refusals/`
-   * („Refusal diagnostics” w `docs/dialogs.md`) — jedno wywołanie na jedną odmowę.
-   *
-   * Stoi w `#auditRefusal`, bo to JEDYNY lejek odmów w driverze: każdy powód, który wchodzi
-   * do statystyki, zostawia też ekran, z którego powstał. Ekran bierzemy z cache'u ostatniego
-   * odczytu (`#screenText`) — świeżego, bo ocena dialogu czyta go tuż przed decyzją.
-   *
-   * Treść zrzutu składamy OD RAZU (ekran, zrzut hooka i wpis jsonl z chwili odmowy), a zapisujemy
-   * po odczycie wierszy panelu (`#writeDump`) — w tym czasie kolejna ocena mogłaby podmienić cache.
-   *
-   * Ze zrzutu hooka jadą wyłącznie METADANE (zdarzenie, czas, narzędzie, a w kształcie przypadku
-   * identyfikatory tury i subagenta). `toolInput` NIE —
-   * on siedzi w `pending/` i nie ma powodu leżeć na dysku drugi raz.
-   */
-  #refusalDump(
-    reason: HerdrRefuseReason, toolName: string | undefined, shape: AuditCaseShape,
-    cliDialog: CliDialogClass | null, hook: PendingHookTool | null, at: number,
-  ): RefusalDump | null {
-    if (this.#deps.dumpRefusal === undefined) return null;
-    const pending = this.#pending;
-    return {
-      reason,
-      toolName,
-      ...(this.#deps.sessionId === undefined ? {} : { sessionId: this.#deps.sessionId }),
-      screen: this.#screenText,
-      hook: hook === null
-        ? null
-        : {
-          toolName: hook.toolName,
-          at: hook.at,
-          ...(hook.hookEventName === undefined ? {} : { hookEventName: hook.hookEventName }),
-        },
-      jsonl: pending === null ? null : { id: pending.id, toolName: pending.toolName },
-      shape,
-      ...(cliDialog === null ? {} : { cliDialog }),
-      at,
-    };
-  }
-
-  #writeDump(dump: RefusalDump): void {
-    try {
-      this.#deps.dumpRefusal?.(dump);
-    } catch {
-      // Diagnostyka nie ma prawa wywrócić obsługi odmowy — cisza, jak przy dzienniku.
-    }
-  }
-
-  /**
-   * Zrzut hooka tej sesji do dziennika; błąd czytnika znaczy „brak zrzutu”, nigdy wyjątek w obsłudze. Zrzut `Bash`
-   * starszy niż 10 minut liczy się tylko z dowodem z ostatniego odczytu ekranu (`admittedHook`),
-   * jak w ocenie: inaczej rozdzielacz widziałby zrzut, którego karta nie wzięła.
-   */
-  #readHookQuietly(): PendingHookTool | null {
-    try {
-      const raw = this.#deps.readPendingHook?.(this.#agentSessionId) ?? null;
-      return admittedHook(raw, this.#screenText, (text, expected) => this.#resolveOptions(text, expected));
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Pola dziennika z rozdzielacza warstw i pełnego bloku (`approve`, `degrade`, `refuse`): werdykt
-   * `routeDialog` z klasy rejestru CLI, zrzutu hooka i ostatniego odczytu ekranu (`#screenText`, ten sam,
-   * który trafia do zrzutu odmowy) oraz `blockVisible` z tego odczytu. Wyłącznie dziennik — karta, przyciski
-   * i klawisze od tych pól nie zależą. Wyjątek parsera daje wpis bez tych pól, nigdy wstrzymaną wysyłkę.
-   */
-  #routeFields(hook: PendingHookTool | null): AuditCaseShape {
-    try {
-      const text = this.#screenText;
-      const { route, reason } = routeDialog({
-        cliDialog: this.#cliReserve.cliWaiting, hook: routeHookOf(hook), screen: routeScreenOf(text),
-      });
-      return { ...(text === null ? {} : { blockVisible: blockVisible(text) }), route, routeReason: reason };
-    } catch {
-      return {};
-    }
-  }
-
-  /** Kontekst rejestru i rozdzielacza do wpisu `approve`: klasa CLI (gdy `waiting`) i {@link #routeFields}. */
-  #approveContext(): Pick<AuditDetails, 'cliDialog'> & AuditCaseShape {
-    const cliDialog = this.#cliReserve.cliWaiting;
-    return { ...(cliDialog === null ? {} : { cliDialog }), ...this.#routeFields(this.#readHookQuietly()) };
-  }
-
-  /**
-   * Odpowiedź w inny dialog niż ten, który AKTUALNIE stoi — mówimy o tym GŁOŚNO.
-   *
-   * `active === null` to normalny wyścig (dialog właśnie rozstrzygnięto — decyzja spóźniona
-   * o ułamek sekundy, cisza jest poprawna). Ale odpowiedź adresująca INNY dialog znaczy, że
-   * telefon patrzył na nieświeżą kartę — a jej zjedzenie po cichu wyglądałoby jak „tapnąłem
-   * i nic".
-   */
-  #reportStaleDecision(): DecisionOutcome {
-    this.#auditRefusal('stale-card', this.#activeReq?.toolName);
-    this.#system(STALE_DECISION_MESSAGE);
-    /*
-     * `refused`, nie `stale`: Rarog POKAZUJE dziś inną kartę niż ta, w którą tapnięto, więc
-     * karta, o której mówi żądanie, ma zniknąć razem ze swoim pendingiem — ale ta ŻYWA ma
-     * zostać. `stale` wygasiłoby cały pending sesji (410 + `expired`), czyli zdjęłoby także
-     * kartę, która mówi prawdę o ekranie.
-     */
-    return refused('stale-card');
-  }
-
-  /**
    * Jedna cyfra do panelu + wpis dziennika, który mówi CO zatwierdzono, a nie co wysłano.
    *
    * `consent` = zgoda na narzędzie z karty (`respondPermission`): w trybie cienia przed resztą kroku idzie plik
@@ -2372,7 +2177,9 @@ export class HerdrDriver implements SessionDriver {
       if (this.#disposed) return STALE;
       // Tryb kanału (`main`): zgoda na narzędzie nie idzie cyfrą, także odpowiedź na potwierdzenie z ekranu.
       if (consentDigitRefused(this.#deps, this.#cliReserve.cliWaiting, answered, consent)) {
-        return this.#refuseDecision(TERMINAL_ONLY_MESSAGE, 'consent channel main: no digit for a consent', 'terminal-only');
+        return refuseDecision(
+          this.#refusals, TERMINAL_ONLY_MESSAGE, 'consent channel main: no digit for a consent', 'terminal-only',
+        );
       }
       const shadow = consent && this.#shadowChannel() !== undefined ? await this.#shadowStep('allow', answered) : null;
       // Digit that only the measured mark lets through: the send shield before the fresh read and the key.
@@ -2380,7 +2187,9 @@ export class HerdrDriver implements SessionDriver {
         && consentDigitRefused(this.#deps, this.#cliReserve.cliWaiting, { ...answered, measuredConsent: undefined }, true)
         ? answered.measuredConsent : undefined;
       const shield = mark === undefined ? null : await this.#promptQueue.keyShield(mark.cliDialog);
-      if (shield !== null) return this.#refuseDecision(SCREEN_CHANGED_MESSAGE, `measured: ${shield}`, 'screen-changed');
+      if (shield !== null) {
+        return refuseDecision(this.#refusals, SCREEN_CHANGED_MESSAGE, `measured: ${shield}`, 'screen-changed');
+      }
       const held = await this.#digitStillHolds(option, answered);
       if (!held.ok) {
         this.#shadowKeySent(shadow, false);
@@ -2394,7 +2203,7 @@ export class HerdrDriver implements SessionDriver {
       }
       // Measured digit: a hook registration without a card can come during the fresh read, after the shield.
       if (mark !== undefined && this.#promptQueue.keyHookWaits()) {
-        return this.#refuseDecision(SCREEN_CHANGED_MESSAGE, 'measured: hook', 'screen-changed');
+        return refuseDecision(this.#refusals, SCREEN_CHANGED_MESSAGE, 'measured: hook', 'screen-changed');
       }
       const live = held.dialog;
       // Odświeżamy meldunek o dialogu zaufania w chwili DECYZJI: to od niej liczy się karencja
@@ -2422,13 +2231,13 @@ export class HerdrDriver implements SessionDriver {
           // Tożsamość i pochodzenie zatwierdzonej karty — spina wpis z `degrade`/`refuse`.
           ...originFields(answered.reqId, answered.origin),
           // Klasa CLI i werdykt rozdzielacza ze świeżego ekranu `#digitStillHolds` — tylko dziennik.
-          ...this.#approveContext(),
+          ...approveContext(this.#refusals),
           // Wynik kroku trybu cienia i klucz pliku — tylko dziennik.
           ...shadowAuditFields(shadow),
         },
       );
       this.#shadowKeySent(shadow, sent);
-      if (!sent) return this.#refuseSend();
+      if (!sent) return refuseSend(this.#refusals);
       /*
        * Tryb zatwierdzania z ŻYWEGO odczytu, nie z karty: `preview` jest
        * własnością POJEDYNCZEGO pytania, a formularz przełącza zakładki bez mignięcia
@@ -2539,7 +2348,7 @@ export class HerdrDriver implements SessionDriver {
     const abort = (message: OwnText, reason: string): DecisionOutcome => {
       // Licznik odmów obejmuje TAKŻE ten krok: `abort` jest wspólną drogą obu ścieżek
       // odmowy (`gone()` też przez nią przechodzi), a wpis znaczy „cyfra poszła, `enter` NIE".
-      this.#auditRefusal('form-submit', toolName);
+      auditRefusal(this.#refusals, 'form-submit', toolName);
       this.#system(message);
       // Gasimy WYŁĄCZNIE własną kartę: przy podmianie w oknie pauzy `#clearActive` trafiłby
       // w świeżą kartę postawioną przez ocenę panelu — a ona mówi prawdę o ekranie.
@@ -2587,10 +2396,10 @@ export class HerdrDriver implements SessionDriver {
       {
         method: 'approve', keys: [FORM_SUBMIT_KEY], toolName, optionLabel: option.label,
         ...originFields(answered.reqId, answered.origin),
-        ...this.#approveContext(),
+        ...approveContext(this.#refusals),
       },
     );
-    return sent ? APPLIED : this.#refuseSend();
+    return sent ? APPLIED : refuseSend(this.#refusals);
   }
 
   /**
@@ -2617,7 +2426,7 @@ export class HerdrDriver implements SessionDriver {
       if (this.#disposed) return STALE;
       const seq = this.#blockedSeq;
       const refuse = (why: string): DecisionOutcome => {
-        this.#auditRefusal('screen-changed', toolName);
+        auditRefusal(this.#refusals, 'screen-changed', toolName);
         this.#system(SCREEN_CHANGED_MESSAGE);
         // Gasimy WYŁĄCZNIE własną kartę: podmieniona w trakcie mówi prawdę o ekranie.
         if (this.#activeReq === answered) {
@@ -2654,7 +2463,7 @@ export class HerdrDriver implements SessionDriver {
           () => this.#deps.client.sendTrustStep(this.#paneId, TRUST_DOWN_KEY),
           { method: 'send_keys', keys: [TRUST_DOWN_KEY], ...audit },
         );
-        if (!moved) return this.#refuseSend();
+        if (!moved) return refuseSend(this.#refusals);
         await this.#sleep(this.#deps.formSubmitConfirmDelayMs ?? FORM_SUBMIT_CONFIRM_DELAY_MS);
         verdict = await read(false);
         if (verdict === null) return STALE;
@@ -2670,9 +2479,9 @@ export class HerdrDriver implements SessionDriver {
       this.#deps.markTrustDialog?.();
       const sent = await this.#send(
         () => this.#deps.client.sendTrustStep(this.#paneId, enterKey),
-        { method: 'approve', keys: [enterKey], ...audit, ...this.#approveContext() },
+        { method: 'approve', keys: [enterKey], ...audit, ...approveContext(this.#refusals) },
       );
-      if (!sent) return this.#refuseSend();
+      if (!sent) return refuseSend(this.#refusals);
       this.#noteDecided(answered, seq, this.#hookGeneration(), this.#pending, {
         bodyPrint: expectedPrint ?? null, screenReqId: answered.reqId,
       });
@@ -2880,7 +2689,7 @@ export class HerdrDriver implements SessionDriver {
     ) {
       return { ok: true, dialog };
     }
-    this.#auditRefusal('screen-changed', this.#activeReq?.toolName);
+    auditRefusal(this.#refusals, 'screen-changed', this.#activeReq?.toolName);
     this.#system(SCREEN_CHANGED_MESSAGE);
     // Karta jest już nieprawdą — gasimy ją i każemy ocenie zbudować nową z tego, co stoi
     // TERAZ (świeży ekran siedzi po `#readDialog(true)` w cache'u tej blokady).
@@ -3369,16 +3178,10 @@ export class HerdrDriver implements SessionDriver {
   }
 
   /**
-   * Przerwanie tury JEDNYM `escape`, nie `ctrl+c`.
-   * Esc jest kanonicznym przerwaniem Claude Code: zatrzymuje turę i ODDAJE prompt
-   * do composera panelu — dokładnie ta semantyka, którą Rarog obiecuje po swojej stronie
-   * (`escInterrupt` w widoku sesji). `ctrl+c` tego nie robi, a w trakcie tury bywał przez
-   * TUI ignorowany. Jeden Esc, nie dwa: podwójny na pustym polu otwiera w CC rewind.
-   *
-   * Obietnica rozstrzyga się PO wysłaniu klawisza (`true` = poszedł), bo przerwanie czeka
-   * w tej samej kolejce co wysyłki — router składa z tego `delivered`. Metoda celowo
-   * NIE jest `async`: `#assertInScope()` ma rzucać synchronicznie, inaczej odmowa dla panelu
-   * poza zasięgiem zamienia się w odrzuconą obietnicę i przestaje być 400.
+   * Interrupts the turn with ONE `escape`, not `ctrl+c`: Esc is Claude Code's own interrupt, and a second one on an
+   * empty field opens the rewind. Whether Esc handed the prompt back to the field: {@link returnedPrompt}. The promise
+   * settles AFTER the key went (`true` = sent), as the interrupt waits in the send queue; the router builds `delivered`
+   * from it. Not `async`: `#assertInScope()` must throw synchronously, or an out-of-scope refusal stops being a 400.
    */
   interrupt(): Promise<boolean> {
     this.#assertInScope();
@@ -3386,18 +3189,23 @@ export class HerdrDriver implements SessionDriver {
     // Flaga PRZED wysyłką: nawet gdy `escape` nie dojdzie, następna wysyłka ma wyczyścić pole.
     this.#needsEscape = true;
     const session = this.#agentSessionId;
-    // Po Esc pole nie trzyma już na pewno zablokowanego promptu (CLI oddaje do niego przerwany prompt).
+    // After Esc the field no longer surely holds the blocked prompt: it may hold the interrupted one.
     this.#turnGuard.blockedLeftover = null;
     const token = ++this.#interruptProbeToken;
     return this.#enqueue(async () => {
+      const expected = await this.#returnedPrompt.beforeEscape(this.#engine === 'claude' && !this.#blockedNow()
+        && this.#activeReq === null && this.#promptQueue.prompts.length === 0 && !this.#promptQueue.submitUnsettled()
+        && !this.#takeBack.holdsField());
       /*
-       * Pauza „Session paused”: Esc z klawiatury apki przy fokusie poza kartą idzie tędy,
-       * nie przez „Odrzuć”, a Esc na pauzie zostaje odmową (`#pauseBlocksEscape`). Odmowa ZANIM ruszy cokolwiek innego;
-       * karta wraca oceną (`#refuseDecision`), bo manager zdjął ją już przy przejściu `interrupt-requested`.
+       * "Session paused": Esc from the app keyboard with focus outside the card comes here, not through "Deny", and Esc
+       * on the pause stays a refusal (`#pauseBlocksEscape`): before any state change and after the field read above, so
+       * no read follows the gate before the key. `refuseDecision` restores the card the manager took at the interrupt.
        */
       if ((await this.#pauseBlocksEscape()).blocks) {
         if (!this.#disposed) {
-          this.#refuseDecision(PAUSE_ESCAPE_MESSAGE, 'przerwanie: Esc na pauzie „Session paused”', 'terminal-only');
+          refuseDecision(
+            this.#refusals, PAUSE_ESCAPE_MESSAGE, 'przerwanie: Esc na pauzie „Session paused”', 'terminal-only',
+          );
         }
         return false;
       }
@@ -3409,9 +3217,9 @@ export class HerdrDriver implements SessionDriver {
        */
       this.#turnGuard.clearWatchdog();
       this.#turnGuard.localCommand = null;
-      // Set again here: a send that was in flight when Esc came cleared the flag in `afterSubmit`, yet the CLI
-      // hands that prompt back to its field, and the next send would type behind it. Not after a move to another
-      // conversation: its field holds that conversation's text, not the prompt this interrupt was accepted for.
+      // Set again here: a send that was in flight when Esc came cleared the flag in `afterSubmit`, yet Esc may hand
+      // that prompt back to its field (CLI 2.1.329), and the next send would type behind it. Not after a move to
+      // another conversation: its field holds that conversation's text, not the prompt this interrupt was accepted for.
       if (this.#agentSessionId === session) this.#needsEscape = true;
       /*
        * Czy było CO przerywać — mierzone PRZED wysłaniem klawisza, bo po nim `#status` zdąży
@@ -3443,6 +3251,8 @@ export class HerdrDriver implements SessionDriver {
         { method: 'send_keys', keys: ['escape'] },
         'interrupt',
       );
+      this.#returnedPrompt.start(sent ? expected : null,
+        () => this.#disposed || token !== this.#interruptProbeToken || this.#agentSessionId !== session);
       if (sent && !this.#disposed) {
         /*
          * Ślad po geście pisze SERWER, a nie telefon: tylko on zna
@@ -3461,6 +3271,11 @@ export class HerdrDriver implements SessionDriver {
       return sent;
     // Krok, który poległ, oddaje `undefined` — dla przerwania to znaczy „klawisz nie poszedł".
     }).then((sent) => sent ?? false);
+  }
+
+  /** {@link SessionDriver.returnedPrompt}: the field read after the last delivered `escape` (`returned-prompt.ts`). */
+  returnedPrompt(): Promise<string | null> {
+    return this.#returnedPrompt.answer();
   }
 
   /**
@@ -3622,6 +3437,7 @@ export class HerdrDriver implements SessionDriver {
     const waiting = signal.kind === 'waiting' ? signal.dialog : null;
     const was = this.#cliReserve.cliWaiting;
     this.#cliReserve.cliWaiting = waiting;
+    this.#noHook.registrySignal(signal.kind === 'active');
     if (signal.kind === 'active') this.#cliReserve.cliActiveAt = this.#scheduler.now();
     if (waiting === null) {
       if (was !== null) this.#cliReserve.onCliWaitingEnd(signal.kind === 'active');
@@ -3690,6 +3506,7 @@ export class HerdrDriver implements SessionDriver {
     }
     this.#turnGuard.clearWatchdog();
     this.#consentChannel.dispose();
+    this.#noHook.dispose();
     stopTasks(this.#tasks, this.#scheduler);
     if (this.#blockedTimer !== null) {
       this.#scheduler.clearTimeout(this.#blockedTimer);
@@ -3747,6 +3564,7 @@ export class HerdrDriver implements SessionDriver {
         this.#lastFollowAt = this.#scheduler.now();
         // Pole nowej rozmowy nie trzyma promptu zablokowanego w poprzedniej ani tekstu oddanego po jej Enterze.
         this.#turnGuard.blockedLeftover = null;
+        this.#returnedPrompt.conversationChanged();
         // The new conversation ran no send: a block entry of the old file still on its way decides none (notice only).
         this.#turnGuard.executedGeneration = 0;
         this.#promptQueue.heldLeftover = null;
@@ -3814,7 +3632,8 @@ export class HerdrDriver implements SessionDriver {
       this.#formReserve.formMisses = 0;
     }
     // herdr sam widzi blokadę — rezerwa z rejestru oddaje mu ją PO CICHU (ta sama blokada).
-    if (status === 'blocked') this.#cliReserve.dropCliHold();
+    // The block only changes hands, so the consent-without-hook episode goes on.
+    if (status === 'blocked') this.#noHook.handover(() => { this.#cliReserve.dropCliHold(); });
     /*
      * Spóźniony herdr `working` (albo `idle`/`done`), a rejestr CLI dalej mówi `waiting`:
      * dialog sprzed chwili wciąż stoi, więc blokada przechodzi na rezerwę z rejestru — bez nowego
@@ -3978,6 +3797,7 @@ export class HerdrDriver implements SessionDriver {
     // Blokada EFEKTYWNA: formularz trzymany przez rezerwę też stoi i też może się podmienić.
     const wanted = !this.#disposed && this.#inScope && this.#blockedNow();
     if (!wanted) {
+      this.#noHook.blockEnded();
       if (this.#blockedTimer !== null) {
         this.#scheduler.clearTimeout(this.#blockedTimer);
         this.#blockedTimer = null;
@@ -4177,6 +3997,7 @@ export class HerdrDriver implements SessionDriver {
     resetPulseEcho(this.#pulseEcho);
     switch (event.type) {
       case 'history': {
+        this.#returnedPrompt.noteHistory(event.messages);
         const { messages, output } = withoutCommandOutput(event.messages);
         // Wiadomość z kolejki wklejeń stoi w pliku bez Entera Raroga: wpis kolejki się kończy.
         for (const m of messages) if (m.echoToken !== undefined) this.#promptQueue.noteQueuedEcho(m.echoToken);
@@ -4189,6 +4010,7 @@ export class HerdrDriver implements SessionDriver {
         // Wpis `user` z pliku (prompt przy Macu, wstrzymane echo, notka harnessu): pole nie trzyma już
         // zablokowanego promptu pewnie.
         if (event.role === 'user') this.#turnGuard.blockedLeftover = null;
+        this.#returnedPrompt.noteFile([event]);
         if (event.role === 'user' && (this.#promptQueue.heldLeftover !== null || this.#promptQueue.submitted !== null)) {
           const sent = squashWhitespace(
             event.blocks.map((block) => (block.type === 'text' ? block.text.text : '')).join(''),
@@ -4534,7 +4356,7 @@ export class HerdrDriver implements SessionDriver {
     // Karta bez decyzji postawiona przy OCENIE ekranu — degradacja, nie odmowa wysyłki.
     // Kształt przypadku i pochodzenie karty jadą z oceny.
     if (action.audit !== null) {
-      this.#auditRefusal(action.audit, source?.toolName, 'degrade', undefined, {
+      auditRefusal(this.#refusals, action.audit, source?.toolName, 'degrade', undefined, {
         reqId: action.kind === 'card' ? action.card.active.reqId : action.reqId,
         origin: action.kind === 'card' ? action.card.active.origin : action.origin,
         // `decideCard` daje kształt przy każdym `audit`; zapas z cache'u ekranu, żeby wpis nie zniknął.
@@ -4593,6 +4415,7 @@ export class HerdrDriver implements SessionDriver {
     const event = consentOnlyEvent(card.event, card.active, this.#deps, this.#cliReserve.cliWaiting, {
       engineSessionId: this.#agentSessionId, cwd: this.#cwd,
     });
+    this.#noHook.noteCard(card);
     if (event.type === 'permission-request' && event.canAllow === false) {
       // Jedna karta na dialog: przy żywej karcie kanału zgód karta zgody bez przycisku zgody nie idzie do managera.
       if (this.#consentChannel.consentCardStands()) {
@@ -4616,6 +4439,7 @@ export class HerdrDriver implements SessionDriver {
     this.#undecided = undecided
       ? { active: card.active, cliDialog: 'cliDialog' in event ? event.cliDialog ?? null : null }
       : null;
+    this.#noHook.cardShown(card, event);
     this.#emit(event);
     this.#auditBlockCard(card.active);
   }
@@ -4733,7 +4557,7 @@ export class HerdrDriver implements SessionDriver {
       text = await this.#readDialog(true);
     } else {
       // Ekran z bramki wysyłki wchodzi do cache'u jak każdy odczyt dialogu — zrzut odmowy
-      // (`#refusalDump`) bierze go stamtąd.
+      // (`refusalDump`) bierze go stamtąd.
       this.#screenText = screen;
       this.#screenAt = this.#scheduler.now();
       this.#notePause(screen);
@@ -4745,7 +4569,7 @@ export class HerdrDriver implements SessionDriver {
     const origin: CardOrigin = { source: 'screen' };
     // Karta bez zatwierdzania = odmowa w dzienniku: suma odmów ma ją policzyć
     // razem z resztą „odpowiedz w terminalu", a zrzut ekranu wyjaśnia, co stało.
-    this.#auditRefusal('consent-dialog', `${SCREEN_DIALOG_TOOL}:${dialog}`, 'degrade', undefined, {
+    auditRefusal(this.#refusals, 'consent-dialog', `${SCREEN_DIALOG_TOOL}:${dialog}`, 'degrade', undefined, {
       reqId, origin, diagnosis: { mismatchReason: null, ...dialogShapeOf(text) },
     });
     this.#clearActive('dialog zgody CLI');

@@ -399,6 +399,9 @@ struct PendingRowsTests {
     let photoOnly = OutboxEntry(
       sessionId: "s1", text: "", attachments: [.init(name: "", bytes: 10, kind: .image)], createdAt: Sample.now)
     let withText = OutboxEntry(sessionId: "s1", text: "opis", attachments: [.init(name: "a.pdf", bytes: 3)], createdAt: Sample.now)
+    // The session screen's stream is open: without it the entry's deadline waits (`AppState.waitsForOpenStream`).
+    state.viewedSessionId = "s1"
+    state.sessionStream = .online
     for entry in [photoOnly, withText] { state.apply(.outboxEnqueued(entry), now: Sample.now) }
     func media(_ id: UUID) -> PendingMediaModel? {
       for row in TranscriptRows.build(state: state, sessionId: "s1") {

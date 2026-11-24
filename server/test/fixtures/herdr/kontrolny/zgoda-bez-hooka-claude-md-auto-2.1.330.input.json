@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/.claude/CLAUDE.md",
+    "old_string": "old value",
+    "new_string": "new value"
+  },
+  "cwd": "/Users/u/project",
+  "seeded": [
+    {
+      "file_path": "/Users/u/.claude/CLAUDE.md",
+      "content": "# Notes\nold value\n"
+    }
+  ]
+}

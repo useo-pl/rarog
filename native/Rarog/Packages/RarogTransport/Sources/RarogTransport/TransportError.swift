@@ -14,13 +14,20 @@ public struct APIFailure: Sendable, Equatable {
   public let reason: String?
   /// `Retry-After` w sekundach (429 przy logowaniu).
   public let retryAfter: Int?
+  /// The code of the server's sentence (`messageRef.code`, e.g. `session.conversation-changed`): it tells apart two
+  /// refusals with the same `code` (`bad-state`). `nil` = the body carried no readable sentence code.
+  public let sentenceCode: String?
 
-  public init(status: Int, code: String? = nil, message: String? = nil, reason: String? = nil, retryAfter: Int? = nil) {
+  public init(
+    status: Int, code: String? = nil, message: String? = nil, reason: String? = nil, retryAfter: Int? = nil,
+    sentenceCode: String? = nil
+  ) {
     self.status = status
     self.code = code
     self.message = message
     self.reason = reason
     self.retryAfter = retryAfter
+    self.sentenceCode = sentenceCode
   }
 }
 

@@ -27,10 +27,11 @@ public actor OutboxPersistence {
 
   /// Zapisuje manifest wpisu (tworzy katalog przy pierwszym zapisie) w bieżącej wersji formatu.
   /// Rzuca, gdy dysk odmówił — wtedy wiadomość NIE wychodzi (najpierw dysk, potem bajt).
+  /// The version is v3 for an entry with the voice agent's sender pair and v2 for any other.
   public func save(_ entry: OutboxEntry) throws {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     var current = entry
-    current.version = OutboxEntry.formatVersion
+    current.version = OutboxEntry.diskVersion(sender: entry.sender)
     try encoder.encode(current).write(to: manifestURL(entry.id), options: .atomic)
   }
 

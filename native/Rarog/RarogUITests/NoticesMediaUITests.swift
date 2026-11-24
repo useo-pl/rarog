@@ -52,21 +52,21 @@ final class NoticesMediaUITests: XCTestCase {
     XCTAssertEqual(app.textViews.matching(NSPredicate(format: "value CONTAINS %@", "<")).count, 0)
     snapshot(app, "zdjecia-i-chip")
 
-    // Stuknięcie w miniaturę otwiera systemowy podgląd z „Zamknij" apki; tap w obraz go nie zamyka.
-    // Esc sprawdza się ręcznie na iPadzie: klawisz z XCUITest nie dochodzi do podglądu.
+    // A tap on a thumbnail opens QuickLook alone, with its own close button; a tap on the image does not close it.
+    // XCUITest's Esc reaches no Esc handler in the simulator, so Esc is checked on an iPad.
     XCTAssertTrue(reveal(chart, in: transcript), "miniatura wykresu przed podglądem")
     chart.tap()
     let preview = app.otherElements["QLPreviewControllerView"]
     XCTAssertTrue(preview.waitForAppearance(timeout: 10), "podgląd QuickLook")
-    let close = app.buttons["preview.close"]
-    XCTAssertTrue(close.waitForAppearance(timeout: 5), "„Zamknij” w pasku podglądu")
-    XCTAssertEqual(close.label, "Zamknij podgląd")
+    let close = app.buttons["QLOverlayDoneButtonAccessibilityIdentifier"]
+    // A tap on the image shows or hides QuickLook's bars and never closes the preview.
+    if !close.waitForAppearance(timeout: 3) { preview.tap() }
+    XCTAssertTrue(close.waitForAppearance(timeout: 5), "QuickLook's close button in the preview bar")
     preview.tap()
     XCTAssertTrue(preview.exists, "tap w obraz nie zamyka podglądu")
     snapshot(app, "podglad")
-    // Tap w obraz chowa pasek; drugi go przywraca.
     if !close.isHittable { preview.tap() }
-    XCTAssertTrue(close.waitForAppearance(timeout: 5) && close.isHittable, "„Zamknij” do stuknięcia")
+    XCTAssertTrue(close.waitForAppearance(timeout: 5) && close.isHittable, "the close button can be tapped")
     close.tap()
     XCTAssertTrue(preview.waitForDisappearance(timeout: 5), "podgląd zamknięty")
     XCTAssertTrue(chart.waitForAppearance(timeout: 5), "z powrotem w transkrypcie")

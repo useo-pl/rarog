@@ -186,6 +186,40 @@ final class ComposerPrimaryButtonTests: XCTestCase {
     XCTAssertGreaterThan(button.layer.shadowOpacity, 0, "\(what): cień akcji domyślnej", line: line)
   }
 
+  // MARK: - Double "Send" on the session screen
+
+  /// Two activations of the field's button right after typing send once and interrupt nothing, although the send in
+  /// flight already makes a turn to interrupt: for `ComposerPrimaryTiming.sendGrace` after the send the button stays
+  /// "Send", so the second activation is an empty send. After the window the same activation is a Stop.
+  func testDoubleSendRightAfterTypingSendsOnceInterruptsNever() throws {
+    let fixture = try CommandSuggestionsKeysTests.Fixture(state: "waiting-input")
+    defer { fixture.close() }
+    fixture.calls.record {
+      $0.holdSends = true
+      $0.interruptReply = #"{"ok":true,"delivered":"yes"}"#
+    }
+    defer { fixture.calls.record { $0.holdSends = false } }
+    let button = try XCTUnwrap(Self.button(in: fixture.composer))
+    fixture.composer.textView.insertText("Double tap")
+    button.sendActions(for: .primaryActionTriggered)
+    fixture.wait("the send in the transport") { fixture.calls.read(\.sends) == ["Double tap"] }
+    XCTAssertEqual(
+      fixture.store.state.interruptAvailability(for: "s1"), .enabled, "the send in flight is a turn Stop could interrupt")
+    // The gap of a quick double tap, inside the window: the screen renders the send in flight before the second tap.
+    RunLoop.main.run(until: Date().addingTimeInterval(0.15))
+    XCTAssertEqual(fixture.composer.primaryAction, .send, "inside the window the button still sends")
+    button.sendActions(for: .primaryActionTriggered)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+    XCTAssertEqual(fixture.calls.read(\.sends), ["Double tap"], "one send")
+    XCTAssertEqual(fixture.calls.read(\.interrupts), [], "the second activation interrupts nothing")
+
+    fixture.wait("Stop after the window", timeout: ComposerPrimaryTiming.sendGrace + 2) {
+      fixture.composer.primaryAction == .stop(enabled: true)
+    }
+    button.sendActions(for: .primaryActionTriggered)
+    fixture.wait("the interrupt after the window") { fixture.calls.read(\.interrupts) == ["s1"] }
+  }
+
   private static func buttons(in view: UIView) -> [UIButton] {
     var found: [UIButton] = []
     if let button = view as? UIButton, ["composer.send", "composer.stop"].contains(button.accessibilityIdentifier) {

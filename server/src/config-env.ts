@@ -277,6 +277,30 @@ export const WITHDRAWN_ENV_NAMES: readonly string[] = ['RAROG_COMPANION_SPEECH']
  */
 export const PR_STATUS_ENV = 'RAROG_PR_STATUS';
 
+/**
+ * Inbox flag (`docs/server-config.md`): missing, empty or `1` = the server keeps an Inbox card per session
+ * (`server/src/inbox/`), sends its heads to a stream opened with `inbox=1`, serves `/api/inbox` and announces the
+ * `inbox` capability; `0` = no card tracker, no Inbox event, no capability, and the Inbox routes answer 503;
+ * `inbox.json` stays on disk untouched. Any other value is a configuration error at start. It sends nothing to a pane,
+ * so NOT a killswitch.
+ */
+export const INBOX_ENV = 'RAROG_INBOX';
+
+/**
+ * Session files switch (`docs/server-config.md`): missing, empty or `1` = the server lists a directory of a session
+ * (`GET /api/sessions/:id/files`) and announces the `files` capability; `0` = the file routes answer 404 as unknown
+ * routes and the capability is absent. Any other value is a configuration error at start. It sends nothing to a pane,
+ * so NOT a killswitch.
+ */
+export const FILES_ENV = 'RAROG_FILES';
+
+/**
+ * The largest file of a session the server sends, in whole megabytes from 1 to 1024 (`docs/server-config.md`);
+ * missing or empty = 50. Every listing announces it in bytes (`maxBytes`), so the app keeps no limit of its own. Any
+ * other value is a configuration error at start.
+ */
+export const FILES_MAX_MB_ENV = 'RAROG_FILES_MAX_MB';
+
 // ---------------------------------------------------------------------------
 // Dyktowanie i powiadomienia
 // ---------------------------------------------------------------------------
@@ -447,6 +471,9 @@ export const SERVER_ENV = {
   [COMPANION_SESSIONS_ENV]: 'plain',
   [COMPANION_MODEL_ENV]: 'plain',
   [PR_STATUS_ENV]: 'plain',
+  [INBOX_ENV]: 'plain',
+  [FILES_ENV]: 'plain',
+  [FILES_MAX_MB_ENV]: 'plain',
   [OPENAI_API_KEY_ENV]: 'secret',
   // Dyktowanie i powiadomienia.
   [SONIOX_API_KEY_ENV]: 'secret',

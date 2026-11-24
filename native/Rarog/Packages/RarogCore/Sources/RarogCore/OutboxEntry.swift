@@ -15,7 +15,9 @@ import RarogContract
 public struct OutboxEntry: Sendable, Equatable, Codable, Identifiable {
   /// Format pliku na dysku; zmiana kształtu = nowa wersja. v1: sam tekst, bez plików treści;
   /// v2: załączniki z rodzajem, typem MIME i plikiem treści. Starsze czytane, nowsze pomijane.
-  public static let formatVersion = 2
+  /// v3: the voice agent's sender pair (``sender``). Only an entry with that pair is written as v3, so an app that
+  /// does not know the pair skips it instead of sending it without its conversation check; any other entry stays v2.
+  public static let formatVersion = 3
   public static let readableVersions = 1...formatVersion
 
   public enum State: Sendable, Equatable, Codable {
@@ -40,8 +42,12 @@ public struct OutboxEntry: Sendable, Equatable, Codable, Identifiable {
     public static let clientIdConflict = "client-id-conflict"
     /// The stop before the request: nothing went out, so "Retry" sends the same entry. Not final.
     public static let cancelled = "cancelled"
+    /// The server's 409 to a voice agent's prompt: the session writes another engine conversation than the one the
+    /// agent read, and nothing reached the pane. Final: the prompt was confirmed for that conversation, so no Retry
+    /// sends it into another one.
+    public static let conversationChanged = "conversation-changed"
 
-    static let final: Set<String> = [attachmentMissing, encodingFailed, clientIdConflict]
+    static let final: Set<String> = [attachmentMissing, encodingFailed, clientIdConflict, conversationChanged]
   }
 
   /// Granica wiadomości znanych w chwili wysyłki — echo musi być od niej NOWSZE.
@@ -89,6 +95,39 @@ public struct OutboxEntry: Sendable, Equatable, Codable, Identifiable {
     }
   }
 
+  /// Who sent a prompt that the person did not type at the field: the voice agent across sessions and the
+  /// `conversation` token it read (``MessageSender``). Every attempt of the entry, a person's Retry included, puts the
+  /// pair on the wire as `source` and `expectedConversation`. Such an entry is text only.
+  public struct Sender: Sendable, Equatable, Codable {
+    public let message: MessageSender
+
+    public init(_ message: MessageSender) {
+      self.message = message
+    }
+
+    private enum CodingKeys: String, CodingKey {
+      case source
+      case expectedConversation
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      let raw = try container.decode(String.self, forKey: .source)
+      // A source this app does not know makes the whole entry unreadable: it is never sent without its pair.
+      guard let source = MessageSource(rawValue: raw) else {
+        throw DecodingError.dataCorruptedError(forKey: .source, in: container, debugDescription: "unknown source")
+      }
+      let conversation = try container.decode(String.self, forKey: .expectedConversation)
+      message = MessageSender(source: source, expectedConversation: conversation)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(message.source.rawValue, forKey: .source)
+      try container.encode(message.expectedConversation, forKey: .expectedConversation)
+    }
+  }
+
   /// Identyfikator wpisu — także `clientMessageId` (ten sam przy „Ponów").
   public let id: UUID
   public let sessionId: String
@@ -109,11 +148,13 @@ public struct OutboxEntry: Sendable, Equatable, Codable, Identifiable {
   /// mógł jeszcze nie stanąć w pliku rozmowy). `nil` = wpis starszej wersji apki
   /// albo z załącznikami.
   public var queueAware: Bool?
+  /// The voice agent's sender pair; `nil` = the person at the field. Saved before the first request.
+  public let sender: Sender?
   public var version: Int
 
   public init(
     id: UUID = UUID(), sessionId: String, text: String, attachments: [Attachment] = [],
-    createdAt: Date, boundary: EchoBoundary? = nil, state: State = .queued
+    createdAt: Date, boundary: EchoBoundary? = nil, state: State = .queued, sender: Sender? = nil
   ) {
     self.id = id
     self.sessionId = sessionId
@@ -122,8 +163,12 @@ public struct OutboxEntry: Sendable, Equatable, Codable, Identifiable {
     self.createdAt = createdAt
     self.boundary = boundary
     self.state = state
-    version = Self.formatVersion
+    self.sender = sender
+    version = Self.diskVersion(sender: sender)
   }
+
+  /// The format an entry is written in: v3 only with the sender pair, v2 otherwise (``formatVersion``).
+  static func diskVersion(sender: Sender?) -> Int { sender == nil ? 2 : formatVersion }
 
   /// `clientMessageId` w ciele żądania: UUID małymi literami (postać `crypto.randomUUID()`).
   public var clientMessageId: String { id.uuidString.lowercased() }

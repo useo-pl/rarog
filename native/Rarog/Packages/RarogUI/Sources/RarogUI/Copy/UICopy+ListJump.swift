@@ -46,7 +46,7 @@ extension UICopy {
   static func listJumpHint(language: CopyLanguage = .current) -> String { L("list.jump.hint", language: language) }
 
   /// "1 waiting", "2 failed", "5 unread" for every non-zero state, in the order waiting, failed, unread.
-  private static func listJumpStateParts(_ side: ListJumpPill.Side, language: CopyLanguage) -> [ListJumpPill.Segment] {
+  static func listJumpStateParts(_ side: ListJumpPill.Side, language: CopyLanguage) -> [ListJumpPill.Segment] {
     ListJumpPill.Attention.allCases.compactMap { attention in
       let count = side.count(attention)
       guard count > 0 else { return nil }

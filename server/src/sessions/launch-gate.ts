@@ -329,6 +329,11 @@ export type LaunchOptions = CreateSessionOptions & {
    * go zdejmuje ze zdaniem {@link RESUME_WITHOUT_ULTRACODE_MESSAGE}, zamiast odbić start 400.
    */
   ultracodeInherited?: boolean;
+  /**
+   * The ring of the card a new panel replaces under the same id (restart, "Resume"). The new card numbers on from its
+   * last seq, read when the card is built, so a cursor of the old card gets a snapshot and not a replay.
+   */
+  continuesRing?: { readonly lastSeq: number };
 };
 
 /** Dymek promptu startowego — bloki i wizytówki jak w echu wysyłki z Raroga. */

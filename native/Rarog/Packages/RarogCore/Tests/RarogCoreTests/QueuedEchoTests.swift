@@ -17,6 +17,9 @@ struct ReducerQueuedEchoTests {
     var state = AppState(clientBuild: 1)
     state.apply(.loggedIn, now: t0)
     state.apply(.frame(try Frames.snapshot([Frames.summary("s1", state: sessionState)]), source: .global, cursor: nil), now: t0)
+    // The session's stream is open: an entry of a session without one waits for it (`ReducerCompanionSendTests`).
+    state.apply(.viewSession("s1"), now: t0)
+    state.apply(.streamOpened(.session(id: "s1"), resumedWithCursor: false), now: t0)
     return state
   }
 
@@ -140,6 +143,9 @@ struct StoreQueuedEchoTests {
     let (store, transport) = try await readyStore(state: "running")
     _ = await store.send(text: "dopisek", to: "s1")
     #expect(transport.read { $0.messages.last?.body.queueAware } == true)
+    // A message typed at the field carries no voice agent's sender pair.
+    let typed = transport.read { $0.messages.last?.body }
+    #expect(typed?.source == nil && typed?.expectedConversation == nil)
 
     let data = Data("treść".utf8)
     let dir = FileManager.default.temporaryDirectory.appending(path: "rarog-core-sources/\(UUID().uuidString)")
@@ -231,7 +237,7 @@ struct StoreQueuedEchoTests {
     #expect(store.state.outbox.isEmpty)
   }
 
-  @Test("restart apki: wpis w kolejce nie spada po progu 15 s, tylko po suficie")
+  @Test("app restart: a queued entry waits for its session's stream; on opening the cap counts from queuedAt")
   func restore() async throws {
     // A ceiling of 3 s instead of 600 ms: `start()` must finish while the first entry is still under the ceiling,
     // and under a parallel package run it can take more than the 300 ms the shared timing leaves.
@@ -252,7 +258,11 @@ struct StoreQueuedEchoTests {
     let (store, _) = makeStore(outbox: outbox, timing: timing)
     await store.start()
     #expect(store.state.outbox.first { $0.text == "w kolejce" }?.isQueued == true,
-            "0,3 s po przyjęciu to więcej niż próg 15 s (150 ms) w testach")
-    await until("sufit obu") { store.state.outbox.allSatisfy { $0.state == .unconfirmed } }
+            "0.3 s after the acceptance is more than the 15 s threshold (150 ms) in tests")
+    #expect(store.state.outbox.allSatisfy { $0.isQueued }, "no stream open at start: the cap waits for it")
+    store.dispatch(.viewSession("s1"))
+    store.dispatch(.streamOpened(.session(id: "s1"), resumedWithCursor: false))
+    #expect(store.state.outbox.first { $0.text == "w kolejce" }?.isQueued == true, "the cap is not over yet")
+    await until("both caps") { store.state.outbox.allSatisfy { $0.state == .unconfirmed } }
   }
 }

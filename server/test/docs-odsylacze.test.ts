@@ -22,6 +22,10 @@ import { repoFiles, repoTextFiles } from './source-scan.ts';
 const WYJATKI: ReadonlyMap<string, string> = new Map([
   ['native/Rarog/Packages/RarogUI/Sources/RarogUI/Terminal/TerminalDemoSeam.swift docs/old-notes.md',
     'dane demo: udawany wynik `git status` z usuniętym plikiem (`D`), którego celowo nie ma'],
+  ['server/src/demo/files.ts docs/guide.md',
+    'demo data: a file of the demo project tree, held in memory, not in the repository'],
+  ['native/Rarog/RarogUITests/InspectorUITests+Files.swift inspector.git.file.README.md',
+    'the accessibility identifier of a demo project file row, not a reference'],
 ]);
 
 /**

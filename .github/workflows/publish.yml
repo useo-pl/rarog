@@ -1,24 +1,29 @@
 # Publishing the npm package (docs/publishing.md, "Publishing the npm package"). Run by hand only, with the
-# version number, the package name and the dry-run mode. Three jobs:
+# version number, the package name and the dry-run mode. Four jobs:
 #
-# 1. build: typecheck, tests, the packer's tarball (`scripts/package.mjs`) and the mandatory audit of the tarball
-#    against the build manifest (`scripts/package-audit.mjs`); tarball and manifest go out as an artifact, the
-#    tarball's sha256 as an output;
-# 2. sbom: on Ubuntu and macOS the tarball from build, its sha256 checked, `npm i -g` into a prefix, a CycloneDX SBOM
-#    of the installed package as an artifact per platform;
-# 3. publish (not in dry-run mode): the same tarball after the sha256 check, `npm stage publish` with the trusted
-#    publisher's OIDC token. The version waits in the registry for approval with 2FA; the workflow approves nothing.
+# 1. build: the inputs and the npm dist-tag of the version (`beta` for X.Y.Z-beta.N, otherwise `latest`), typecheck,
+#    the packer's tarball (`scripts/package.mjs`) and the mandatory audit of the tarball against the build manifest
+#    (`scripts/package-audit.mjs`); tarball and manifest go out as an artifact, the tarball's sha256 and the dist-tag
+#    as outputs;
+# 2. sbom-ubuntu and sbom-macos, one set of steps (YAML anchor): the tarball from build, its sha256 checked,
+#    `npm i -g` into a prefix, a CycloneDX SBOM of the installed package as an artifact per platform;
+# 3. publish (not in dry-run mode, after build and sbom-ubuntu; it does not wait for sbom-macos): the same tarball
+#    after the sha256 check, `npm stage publish` with the trusted publisher's OIDC token, `--tag beta` for a beta.
+#    The version waits in the registry for approval with 2FA; the workflow approves nothing.
 #
 # Workflow-level permissions are empty; only the publish job, in the `npm` environment, has `id-token: write`. Job
 # inputs and outputs reach the shell only through `env`. No secrets and no package manager cache (zizmor,
 # `cache-poisoning`). Actions are pinned to the release SHA (comment: tag and release date).
 name: publish
+# The run title names the package, the version and the dry-run mode: GitHub does not return the inputs of a run,
+# so a publication run is told apart from a dry run of the same version on the same commit by its title.
+run-name: publish ${{ inputs.name }}@${{ inputs.version }} dry-run=${{ inputs.dry-run }}
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Package version X.Y.Z; outside dry-run mode the workflow starts from the tag vX.Y.Z
+        description: Package version X.Y.Z or X.Y.Z-beta.N; outside dry-run mode the workflow starts from the tag v<version>
         required: true
         type: string
       name:
@@ -36,9 +41,11 @@ on:
 
 permissions: {}
 
-# One publication at a time; a run in progress is not cancelled when the next one starts.
+# Publication runs share one group, so one runs at a time; a run in progress is not cancelled when the next one
+# starts. A dry run has a group of its own (its run id), so it never holds a publication run back. A run without the
+# dry-run input counts as a publication, as in the `if` of the publish job.
 concurrency:
-  group: publish
+  group: ${{ inputs.dry-run && format('publish-dry-run-{0}', github.run_id) || 'publish' }}
   cancel-in-progress: false
 
 defaults:
@@ -49,23 +56,31 @@ jobs:
   build:
     name: Tarball and audit
     runs-on: ubuntu-latest
-    # No server tests here: the release gate runs them on the same export tree, and the sha256 of this tarball is
-    # compared with the tested candidate before the version is approved. `check.yml` runs them on the tag.
+    # No server tests here: the release gate runs them on the same export tree. Before the version is approved, the
+    # staged tarball is compared with the sha256 this job reports and, file by file, with a local build of that
+    # export tree. `check.yml` runs the tests on the tag.
     timeout-minutes: 30
     permissions:
       contents: read
     outputs:
       tarball: ${{ steps.pack.outputs.tarball }}
       sha256: ${{ steps.pack.outputs.sha256 }}
+      dist-tag: ${{ steps.inputs.outputs.dist-tag }}
     steps:
+      # The dist-tag is decided here, once, from the version: `beta` for X.Y.Z-beta.N, `latest` for X.Y.Z.
       - name: inputs
+        id: inputs
         env:
           VERSION: ${{ inputs.version }}
           NAME: ${{ inputs.name }}
           DRY_RUN: ${{ inputs.dry-run }}
         run: |
-          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-            echo "::error::input version: expected X.Y.Z"
+          if [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            dist_tag=latest
+          elif [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-beta\.(0|[1-9][0-9]*)$ ]]; then
+            dist_tag=beta
+          else
+            echo "::error::input version: expected X.Y.Z or X.Y.Z-beta.N"
             exit 1
           fi
           case "$NAME" in
@@ -79,9 +94,10 @@ jobs:
             echo "::error::publishing starts from the tag v$VERSION (gh workflow run publish.yml --ref v$VERSION)"
             exit 1
           fi
+          echo "dist-tag=$dist_tag" >>"$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, 2026-07-20
         with:
-          # Full git history as in the Ubuntu job of `check.yml`: the same tests, the same checkout.
+          # Full git history, the same checkout as the Ubuntu job of `check.yml`; no step of this job reads it.
           fetch-depth: 0
           persist-credentials: false
       # npm >= 11.15 in Node 24 (`npm stage`); pnpm from `packageManager` in package.json.
@@ -153,28 +169,33 @@ jobs:
           DRY_RUN: ${{ inputs.dry-run }}
           TARBALL: ${{ steps.pack.outputs.tarball }}
           SHA256: ${{ steps.pack.outputs.sha256 }}
+          DIST_TAG: ${{ steps.inputs.outputs.dist-tag }}
         run: |
           {
             echo "### $NAME@$VERSION"
             echo
             echo "- tarball: \`$TARBALL\`"
             echo "- sha256: \`$SHA256\`"
+            echo "- dist-tag: \`$DIST_TAG\`"
             echo "- dry run: $DRY_RUN"
           } >>"$GITHUB_STEP_SUMMARY"
 
-  sbom:
+  # Two SBOM jobs with one set of steps (anchor `sbom-steps`, alias in sbom-macos). The one-entry matrix names the
+  # runner and the artifact (`sbom-ubuntu-latest`, `sbom-macos-latest`) for the shared steps. publish waits only for
+  # sbom-ubuntu: a red sbom-macos marks the run red and holds nothing back.
+  sbom-ubuntu:
     name: SBOM (${{ matrix.os }})
     needs: build
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     permissions: {}
-    steps:
-      # npm 11 as in the publish job: with a package that bundles dependencies, npm 10 installs the iroh platform
-      # packages of every system, and the SBOM would list them all.
+    # Node 24 for npm 11 as in the publish job: with a package that bundles dependencies, npm 10 installs the iroh
+    # platform packages of every system, and the SBOM would list them all. No comment line directly under the anchor:
+    # zizmor 1.31.1 stops the `adhoc-packages` audit on it ("unexpected node: comment").
+    steps: &sbom-steps
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0, 2026-10-08
         with:
           node-version: 24
@@ -241,14 +262,25 @@ jobs:
           path: ${{ runner.temp }}/sbom/out/
           if-no-files-found: error
 
+  sbom-macos:
+    name: SBOM (${{ matrix.os }})
+    needs: build
+    strategy:
+      matrix:
+        os: [macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions: {}
+    steps: *sbom-steps
+
   publish:
     name: npm stage publish
-    needs: [build, sbom]
+    needs: [build, sbom-ubuntu]
     if: ${{ !inputs.dry-run }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Environment `npm`: only `v*` tags and the owner's approval before the job starts; the trusted publisher in the
-    # registry accepts a token only from this workflow in this environment.
+    # Environment `npm`: only `v*` tags and no required reviewer, because the one human approval is `npm stage approve`
+    # with 2FA; the trusted publisher in the registry accepts a token only from this workflow in this environment.
     environment: npm
     permissions:
       id-token: write
@@ -281,16 +313,28 @@ jobs:
           fi
           echo "$SHA256  $RUNNER_TEMP/paczka/$TARBALL" | shasum -a 256 -c -
       # An empty working directory and an empty npm config file: the default registry, token and provenance from OIDC.
+      # The dist-tag comes from build: `--tag beta` for a beta. A stable version goes without `--tag`, so npm applies
+      # its default `latest` and refuses a version below the current `latest` (npm docs, `npm stage`, "Tag
+      # Behavior"); an explicit `--tag latest` would satisfy that rule and skip the refusal.
       - name: npm stage publish
         env:
           TARBALL: ${{ needs.build.outputs.tarball }}
+          DIST_TAG: ${{ needs.build.outputs.dist-tag }}
         run: |
+          case "$DIST_TAG" in
+            beta) tag=(--tag beta) ;;
+            latest) tag=() ;;
+            *)
+              echo "::error::outputs of the build job: bad dist-tag"
+              exit 1
+              ;;
+          esac
           w="$RUNNER_TEMP/stage"
           mkdir -p "$w/cwd"
           : >"$w/empty-npmrc"
           cd "$w/cwd"
           npm_config_userconfig="$w/empty-npmrc" npm_config_cache="$w/npm-cache" npm_config_update_notifier=false \
-            npm stage publish "$RUNNER_TEMP/paczka/$TARBALL" --ignore-scripts
+            npm stage publish "$RUNNER_TEMP/paczka/$TARBALL" --ignore-scripts "${tag[@]}"
       - name: summary
         env:
           VERSION: ${{ inputs.version }}
@@ -300,6 +344,6 @@ jobs:
           {
             echo "### $NAME@$VERSION is waiting in the registry (staged)"
             echo
-            echo "Tarball sha256: \`$SHA256\`. Approval: \`npm stage list $NAME\`, \`npm stage download\`,"
-            echo "a comparison with your own build, \`npm stage approve\` with 2FA."
+            echo "Tarball sha256: \`$SHA256\`. Before approval the staged tarball is compared with this sha256 and,"
+            echo "file by file, with a local build of the same export tree; then \`npm stage approve\` with 2FA."
           } >>"$GITHUB_STEP_SUMMARY"

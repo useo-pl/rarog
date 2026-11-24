@@ -1,0 +1,15 @@
+{
+  "toolName": "Edit",
+  "input": {
+    "file_path": "/Users/u/dotfiles/settings.json",
+    "old_string": "\"PostToolUse\": [",
+    "new_string": "\"PostToolUse\":["
+  },
+  "cwd": "/Users/u/project",
+  "seeded": [
+    {
+      "file_path": "/Users/u/dotfiles/settings.json",
+      "content": "{\n  \"hooks\": {\n    \"PermissionRequest\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"node '/Users/u/.claude/hooks/rarog/rarog-pending.mjs' --answer-wait=86398\",\n            \"timeout\": 86400\n          }\n        ]\n      },\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"node '/Users/u/.run/probe.mjs'\",\n            \"timeout\": 10\n          }\n        ]\n      }\n    ],\n    \"PreToolUse\": [\n      {\n        \"matcher\": \"AskUserQuestion\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"node '/Users/u/.claude/hooks/rarog/rarog-pending.mjs' --answer-wait=86398\",\n            \"timeout\": 5\n          }\n        ]\n      },\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"node '/Users/u/.run/probe.mjs'\",\n            \"timeout\": 10\n          }\n        ]\n      }\n    ],\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"node '/Users/u/.run/probe.mjs'\",\n            \"timeout\": 10\n          }\n        ]\n      }\n    ]\n  },\n  \"env\": {\n    \"DISABLE_AUTOUPDATER\": \"1\"\n  }\n}\n"
+    }
+  ]
+}

@@ -13,6 +13,12 @@ import { messageAsksOwner } from './asks-owner.ts';
 export interface CompanionEntry extends CompanionTarget {
   /** The newest message of the session's transcript in the server's memory; `undefined` = none. */
   readonly lastMessage: TranscriptMessage | undefined;
+  /**
+   * Opaque name of the newest message in the server's memory of the session and of its `stateSince`
+   * (`Session.readMark`), for the turns route's `readMark`. The catalog row does not carry it: a pick-up needs a turns
+   * read.
+   */
+  readonly readMark: string;
 }
 
 /** What the catalog needs from the session manager (`ManagerApi`). */

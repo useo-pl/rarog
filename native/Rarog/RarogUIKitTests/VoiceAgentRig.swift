@@ -184,6 +184,7 @@ final class VoiceAgentRowBackend: VoiceAgentBackend {
   func ask(sessionId: String, question: String) async -> CompanionAskOutcome { .disabled(message: nil) }
   func transcript(sessionId: String) -> [TranscriptMessage] { [] }
   func trace(_ line: String, budget: TraceBudget) {}
+  func sessionSummary(_ sessionId: String) -> SessionSummary? { nil }
 }
 
 @MainActor

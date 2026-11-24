@@ -16,7 +16,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   required field, a wrong type and a broken known block reject the frame. Unknown keys are dropped.
   `APIErrorTolerance` reads a REST refusal body: the code stays a string (each area recognizes its own codes, the
   rest falls back to `message ?? <generic sentence>`), and the server's sentence survives a body without a code or
-  with a code that is not a string.
+  with a code that is not a string. The code of the server's sentence (`messageRef.code`) stays in
+  `APIFailure.sentenceCode`, so an area can tell apart two refusals with the same code (a 409 `bad-state`).
 - **`null` ≠ missing field.** Every wire type decodes by hand through `ContractContainer`. `decodeIfPresent` (and a
   synthesized `Decodable`) turns `null` into a missing field, so `SourceGuardTests` (in `RarogContract`) fails on any
   `decodeIfPresent` in the contract sources.

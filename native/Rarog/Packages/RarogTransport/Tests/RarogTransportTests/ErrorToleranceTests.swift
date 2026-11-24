@@ -35,9 +35,11 @@ struct ErrorToleranceTests {
   func translated() async throws {
     let notFound = try goldenRest("error.not-found.json")
     #expect(await failure(notFound, status: 404)
-      == .http(APIFailure(status: 404, code: "not-found", message: "Nie ma takiej sesji.")))
+      == .http(APIFailure(
+        status: 404, code: "not-found", message: "Nie ma takiej sesji.", sentenceCode: "rest.session-not-found")))
     let future = #"{"error":"x","message":"A sentence from the future.","messageRef":{"code":"rest.z-przyszlosci"}}"#
-    #expect(await failure(future) == .http(APIFailure(status: 409, code: "x", message: "A sentence from the future.")))
+    #expect(await failure(future) == .http(APIFailure(
+      status: 409, code: "x", message: "A sentence from the future.", sentenceCode: "rest.z-przyszlosci")))
   }
 
   @Test("`messageRef` null albo uszkodzony: zdanie z `message` bez zmian, kod zostaje, bez wyjątku")
@@ -53,6 +55,7 @@ struct ErrorToleranceTests {
   @Test("ciało spoza ścisłego kształtu z poprawnym `messageRef`: zdanie i tak po polsku")
   func lenientShapeTranslated() async {
     let body = #"{"error":42,"message":"That session doesn't exist.","messageRef":{"code":"rest.session-not-found"}}"#
-    #expect(await failure(body, status: 404) == .http(APIFailure(status: 404, message: "Nie ma takiej sesji.")))
+    #expect(await failure(body, status: 404)
+      == .http(APIFailure(status: 404, message: "Nie ma takiej sesji.", sentenceCode: "rest.session-not-found")))
   }
 }

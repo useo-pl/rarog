@@ -544,6 +544,12 @@ export interface SessionDriver {
    */
   interrupt(): Promise<boolean>;
   /**
+   * The prompt Claude Code handed back to its prompt field after the last delivered `escape`, proven by the field empty
+   * before the key and equal to the turn's prompt after it; `null` otherwise, also once a newer send or interrupt came
+   * or the conversation changed. It settles within a bounded field read. No method = no field read.
+   */
+  returnedPrompt?(): Promise<string | null>;
+  /**
    * WEWNĘTRZNA ścieżka komend sterujących panelu — dziś wyłącznie `/model` i `/effort`, w tym dwie formy
    * ultracode (`ULTRACODE_COMMANDS` z rejestru komend).
    *

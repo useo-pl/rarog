@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "session": {
+    "id": "sess-1",
+    "cwd": "/tmp/rarog-demo/willow",
+    "title": "willow",
+    "state": "waiting-input",
+    "stateSince": "2026-08-21T10:00:00.000Z",
+    "createdAt": "2026-08-21T10:00:00.000Z",
+    "lastActivityAt": "2026-08-21T10:00:00.000Z"
+  },
+  "delivered": "yes",
+  "returnedPrompt": "Refactor the parser and keep the tests green"
+}

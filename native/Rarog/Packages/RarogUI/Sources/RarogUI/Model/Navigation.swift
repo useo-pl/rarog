@@ -28,6 +28,8 @@ public final class RarogNavigation {
     /// Terminal, którego id jeszcze nie znamy (zaproszenie albo świadomy „Nowy terminal"). Pierwsza odpowiedź
     /// `POST /api/term` przepina trasę na ``terminal(_:)`` (``terminalIdentified(_:screen:state:)``).
     case openingTerminal(TerminalOpening)
+    /// The Inbox: the last message of every agent that stopped, one card per session (`Navigation+Inbox.swift`).
+    case inbox
   }
 
   /// Pierwsze naciśnięcie „×" (albo Cmd+X) uzbraja na 5 s; gaśnie wcześniej przy
@@ -73,8 +75,17 @@ public final class RarogNavigation {
         screenRevision += 1
       }
       if case .openingTerminal = detail {} else { openingOwners.removeAll() }
+      inboxOrigin = inboxOrigin?.following(from: oldValue, to: detail, adopting: adopting)
     }
   }
+
+  /// The session on screen was opened from the Inbox and the Inbox still stands behind it
+  /// (``RarogNavigation/openSessionFromInbox(_:)``): the route moves with the screen when it takes its terminal's
+  /// route (``settleHostedRoute(_:)``); any other change of the right column clears it.
+  public internal(set) var inboxOrigin: InboxOrigin?
+  /// The session of the Inbox card the voice agent talks about (`VoiceAgentInboxConversation`): its transcript stream
+  /// stands while the Inbox is on screen (``transcriptSessionId``).
+  public internal(set) var inboxVoiceTarget: String?
 
   /// The session or terminal screen the human just came back from to the list, until the list takes it
   /// (``takeListReturn()``) or another screen opens. Not observed: taking it must not redraw anything.
@@ -87,17 +98,20 @@ public final class RarogNavigation {
   public private(set) var listCollapsed: Bool
   /// Projekty, które człowiek sam zwinął w drzewie; reszta jest rozwinięta.
   public private(set) var collapsedProjects: CollapsedProjects
+  /// Projects the human pinned in the tree on this device: they stand on top. Observed, so a pin redraws the list also
+  /// when the order of the rows stays (the glyph, the reader's value, the menu item).
+  public private(set) var pinnedProjects: PinnedProjects
   /// The filter segment over the list, in memory only: the app always starts on All, because a forgotten filter
   /// would hide sessions without a trace (`Navigation+ListFilter.swift`).
   public internal(set) var listFilter: ListFilter = .all
   /// Rows shown under the current segment choice that stand after they leave the segment
-  /// (`AppState.projectTree(collapsed:filter:held:)`).
+  /// (`AppState.projectTree(collapsed:pinned:filter:held:)`).
   public internal(set) var listFilterHeld: Set<String> = []
   /// Prawy panel sesji na iPadzie (`Model/Inspector.swift`).
   public let inspector: RarogInspector
   public private(set) var tabMemory: ProjectTabMemory
   public private(set) var history: ProjectHistory
-  /// Sessions visited on this device, newest last (session switcher, ``noteSessionVisit(_:)``).
+  /// Sessions visited on this device, newest last (``lastVisitedSession(_:)``, ``noteSessionVisit(_:)``).
   public private(set) var sessionHistory: SessionHistory
   public private(set) var closeArm: CloseArm?
   public private(set) var notice: Notice?
@@ -152,6 +166,8 @@ public final class RarogNavigation {
     listCollapsed = prefs.bool(forKey: NavigationPreferences.listCollapsed)
     collapsedProjects = NavigationPreferences.load(
       CollapsedProjects.self, key: NavigationPreferences.collapsedProjects, from: prefs) ?? CollapsedProjects()
+    pinnedProjects = NavigationPreferences.load(
+      PinnedProjects.self, key: NavigationPreferences.pinnedProjects, from: prefs) ?? PinnedProjects()
     tabMemory = NavigationPreferences.load(ProjectTabMemory.self, key: NavigationPreferences.projectTabs, from: prefs)
       ?? ProjectTabMemory()
     history = NavigationPreferences.load(ProjectHistory.self, key: NavigationPreferences.projectHistory, from: prefs)
@@ -201,7 +217,7 @@ public final class RarogNavigation {
     case let .project(cwd): ProjectPath.normalized(cwd)
     case let .terminal(id): terminalCwd(id, state: state)
     case let .openingTerminal(opening): ProjectPath.normalized(opening.cwd)
-    case nil: nil
+    case .inbox, nil: nil
     }
   }
 
@@ -211,7 +227,7 @@ public final class RarogNavigation {
     switch detail {
     case let .session(id): state.projectCwd(ofSession: id)
     case let .terminal(id): terminalCwd(id, state: state)
-    case .project, .openingTerminal, nil: nil
+    case .project, .openingTerminal, .inbox, nil: nil
     }
   }
 
@@ -223,7 +239,7 @@ public final class RarogNavigation {
       if let termId = state.hostTerminal(ofSession: id) { return .terminal(termId) }
       return .session(id)
     case let .terminal(id): return .terminal(id)
-    case .project, .openingTerminal, nil: return nil
+    case .project, .openingTerminal, .inbox, nil: return nil
     }
   }
 
@@ -252,7 +268,7 @@ public final class RarogNavigation {
     if let id = selectedSessionId, launch?.sessionId == id { launch = nil }
   }
 
-  // MARK: - Session history (session switcher)
+  // MARK: - Session history (the mark of the last visit on the list)
 
   /// Records the visited session: the list selection (``listSelection(_:)``), i.e. the session screen or the agent
   /// standing in the watched Rarog terminal. Called on every change of the list selection, also when an agent
@@ -262,16 +278,10 @@ public final class RarogNavigation {
     NavigationPreferences.save(sessionHistory, key: NavigationPreferences.sessionHistory, to: prefs)
   }
 
-  /// Up to `limit` recently visited sessions the app still knows, newest first. The session on screen is not added
-  /// here: the switcher puts it on top itself.
-  public func recentSessions(_ state: AppState, limit: Int = 10) -> [String] {
-    sessionHistory.recent(limit: limit) { state.sessions[$0] != nil }
-  }
-
   /// The most recently visited session the app still knows: the stacked list marks it (`ListRowHighlight`). A gone
   /// session hands the mark to the newest one still known; no history, no mark.
   public func lastVisitedSession(_ state: AppState) -> String? {
-    recentSessions(state, limit: 1).first
+    sessionHistory.recent(limit: 1) { state.sessions[$0] != nil }.first
   }
 
   // MARK: - Projekty
@@ -372,6 +382,16 @@ public final class RarogNavigation {
     return true
   }
 
+  /// Pins or unpins a project of the tree (the header's menu and reader action); `true` = a change, saved only then.
+  /// `present` = directories of the headers standing in the tree: the memory's cap does not unpin them
+  /// (``PinnedProjects``).
+  @discardableResult
+  public func setProjectPinned(_ cwd: String, pinned: Bool, present: Set<String> = []) -> Bool {
+    guard pinnedProjects.set(cwd, pinned: pinned, present: present) else { return false }
+    NavigationPreferences.save(pinnedProjects, key: NavigationPreferences.pinnedProjects, to: prefs)
+    return true
+  }
+
   // MARK: - Stos (iPhone, wąskie okno)
 
   /// W stosie (`compact`) na wierzchu stoi szczegół, dopóki jest w nim trasa — także taka, której lista nie
@@ -382,7 +402,7 @@ public final class RarogNavigation {
   /// System zszedł w stosie do listy („wstecz", gest krawędzi): trasa szczegółu znika — każda, nie tylko sesja,
   /// inaczej następna zmiana stanu wepchnęłaby zostawiony terminal z powrotem na wierzch.
   public func compactReturnedToList() {
-    detail = nil
+    detail = inboxBehindSession ? .inbox : nil
   }
 
   // MARK: - Zamknięcie
@@ -406,6 +426,7 @@ public final class RarogNavigation {
       return .confirmed
     }
     closeArm = CloseArm(sessionId: sessionId, until: now.addingTimeInterval(Self.closeArmWindow))
+    announceArming(session)
     return .armed
   }
 

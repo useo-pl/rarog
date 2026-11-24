@@ -91,25 +91,17 @@ struct ReducerTurnControlTests {
     #expect(state.sessions["zamknieta"] == nil, "odpowiedź nie wskrzesza karty")
   }
 
-  @Test("ostatni prompt: wpis w locie z tekstem, potem wiadomość człowieka; notka, sam załącznik i odmowa nie są promptem")
-  func lastPrompt() throws {
+  @Test("prompt text: a human message with text, trimmed; a harness notice, an attachment alone and the agent are not")
+  func promptText() throws {
     var state = try state([Frames.summary("s1", state: "running")])
-    #expect(state.lastPrompt(for: "s1") == "")
     let notice = #"{"seq":3,"role":"user","blocks":[{"type":"text","text":"<x>"}],"at":"2026-10-03T08:03:00.000Z","notice":{"kind":"command"}}"#
     let image = #"{"seq":2,"role":"user","blocks":[],"at":"2026-10-03T08:02:00.000Z","attachments":[{"kind":"image","name":"","bytes":3,"mime":"image/jpeg"}]}"#
     state.apply(.frame(try Frames.transcript("s1", messages: [
       Frames.messageJSON(seq: 1, role: "user", text: "  napraw test  "), image, notice,
       Frames.messageJSON(seq: 4, role: "assistant", text: "Robię."),
     ]), source: .session("s1"), cursor: nil), now: t0)
-    #expect(state.lastPrompt(for: "s1") == "napraw test")
-
-    state.apply(.outboxEnqueued(entry("s1", "  ")), now: t0)
-    #expect(state.lastPrompt(for: "s1") == "napraw test", "pusty wpis (sam załącznik) nie jest promptem")
-    state.apply(.outboxEnqueued(entry("s1", "drugi", at: 1)), now: t0)
-    #expect(state.lastPrompt(for: "s1") == "drugi")
-    let id = try #require(state.outbox.last?.id)
-    state.apply(.outboxRefused(id, code: nil, message: "nie"), now: t0)
-    #expect(state.lastPrompt(for: "s1") == "napraw test", "odmowa nie jest promptem w drodze")
+    let texts = try #require(state.transcripts["s1"]?.messages).map(AppState.promptText)
+    #expect(texts == ["napraw test", nil, nil, nil])
   }
 
   @Test("„Pokaż w herdr” wycofane: rdzeń i transport apki nie mają akcji ani trasy focus")
@@ -147,6 +139,25 @@ struct ReducerTurnControlTests {
     #expect(state.seenTarget("ready") == "2026-10-03T08:05:00.000Z")
     #expect(state.seenTarget("seen") == nil)
     #expect(state.seenTarget("run") == nil, "zerknięcie w trakcie tury to nie odbiór")
+  }
+
+  /// Catches a session the voice agent picked up keeping `seenBy` after a person opens it: the screen would send no
+  /// receipt, so the list would go on saying "discussed by voice" about a result the person has read.
+  @Test("seen target: a standing result the voice agent picked up is a person's receipt to send; other guards stand")
+  func seenTargetAfterPickUp() throws {
+    let picked = #","seen":true,"seenBy":"voice-agent""#
+    var state = try state([
+      Frames.summary("voice", state: "waiting-input", stateSince: "2026-10-03T08:05:00.000Z", extra: picked),
+      Frames.summary("human", state: "waiting-input", stateSince: "2026-10-03T08:05:00.000Z", extra: #","seen":true"#),
+      Frames.summary("work", state: "running", stateSince: "2026-10-03T08:05:00.000Z", extra: picked),
+      Frames.summary("held", state: "waiting-input", stateSince: "2026-10-03T08:05:00.000Z", extra: picked),
+    ])
+    state.apply(.streamOpened(.global, resumedWithCursor: false), now: t0)
+    state.apply(.turnControl(.unreadMarked(sessionId: "held")), now: t0)
+    #expect(state.seenTarget("voice") == "2026-10-03T08:05:00.000Z")
+    #expect(state.seenTarget("human") == nil, "a person's receipt stands: nothing to send")
+    #expect(state.seenTarget("work") == nil, "a glance during a turn is no receipt")
+    #expect(state.seenTarget("held") == nil, "a result marked unread by hand is not taken back by the screen")
   }
 
   @Test("przełącznik odbioru: tylko stojący wynik przy żywym strumieniu i świeżej liście; kierunek z `seen`")
@@ -281,11 +292,31 @@ struct StoreInterruptTests {
     await until("przerywa") { store.state.isInterrupting("s1") }
     #expect(await store.interrupt("s1") == .inFlight, "drugie naciśnięcie w jednym geście nic nie wysyła")
     gate.continuation.yield()
-    #expect(await first.value == .delivered)
+    #expect(await first.value == .delivered(returnedPrompt: nil))
     #expect(!store.state.isInterrupting("s1"))
     #expect(store.state.sessions["s1"]?.state == .waitingInput, "stan z odpowiedzi, bez czekania na strumień")
     #expect(probe.read(\.interrupts) == ["s1"])
     #expect(await store.interrupt("s1") == .notAllowed, "sesja stoi i nic nie leci — nie ma czego przerywać")
+  }
+
+  @Test("delivered carries the prompt Claude Code handed back, word for word; no field or an empty one = none, also with a queued entry")
+  func returnedPrompt() async throws {
+    let (store, probe) = try await turnStore([Frames.summary("s1", state: "running")])
+    probe.set {
+      $0.interruptResults = [
+        .success(#"{"ok":true,"delivered":"yes","returnedPrompt":"  Refactor the parser\nkeep tests  "}"#),
+        .success(#"{"ok":true,"returnedPrompt":"older server shape"}"#),
+        .success(#"{"ok":true,"delivered":"yes","returnedPrompt":""}"#),
+        .success(#"{"ok":true,"delivered":"yes"}"#),
+      ]
+    }
+    #expect(await store.interrupt("s1") == .delivered(returnedPrompt: "  Refactor the parser\nkeep tests  "))
+    #expect(await store.interrupt("s1") == .delivered(returnedPrompt: "older server shape"), "missing `delivered` = delivered")
+    #expect(await store.interrupt("s1") == .delivered(returnedPrompt: nil), "an empty field is no hand-back")
+    let queued = OutboxEntry(sessionId: "s1", text: "Queued next step", createdAt: Date())
+    store.dispatch(.outboxEnqueued(queued))
+    store.dispatch(.outboxQueued(queued.id, at: Date()))
+    #expect(await store.interrupt("s1") == .delivered(returnedPrompt: nil), "a queued text is never a hand-back")
   }
 
   @Test("los klawisza: no → panel nie przyjął, pending → nie wiem; 4xx bramka Raroga zdaniem serwera, 5xx → panel")
@@ -312,7 +343,7 @@ struct StoreInterruptTests {
   func retry() async throws {
     let (store, probe) = try await turnStore([Frames.summary("s1", state: "running")])
     probe.set { $0.interruptResults = [.failure(.timedOut), .success(#"{"ok":true,"delivered":"yes"}"#)] }
-    #expect(await store.interrupt("s1") == .delivered)
+    #expect(await store.interrupt("s1") == .delivered(returnedPrompt: nil))
     #expect(probe.read(\.interrupts).count == 2)
     probe.set { $0.interruptResults = [.failure(.offline(.networkConnectionLost)), .failure(.timedOut)] }
     #expect(await store.interrupt("s1") == .unsure)
@@ -395,6 +426,29 @@ struct StoreFocusSeenTests {
     store.noteResultViewed("s1")
     try await Task.sleep(for: .milliseconds(30))
     #expect(probe.read(\.seen).count == 3, "odebrany wynik nie wysyła niczego")
+  }
+
+  /// Catches two failures of a person's receipt over the voice agent's pick-up: none at all (`seenBy` would stay),
+  /// and one on every report while the screen stands (each frame re-renders the screen until the server's frame
+  /// takes `seenBy` away).
+  @Test("a result the voice agent picked up: the screen's report sends one receipt, before and after the server frame")
+  func pickedUpResultOnce() async throws {
+    let since = "2026-10-03T08:05:00.000Z"
+    let (store, probe) = try await turnStore([
+      Frames.summary("s1", state: "waiting-input", stateSince: since, extra: #","seen":true,"seenBy":"voice-agent""#),
+    ])
+    store.noteResultViewed("s1")
+    await until("POST seen") { probe.read(\.seen) == ["s1"] }
+    store.noteResultViewed("s1")
+    try await Task.sleep(for: .milliseconds(30))
+    #expect(probe.read(\.seen) == ["s1"], "a second report of the same result sends nothing")
+
+    let received = Frames.summary("s1", state: "waiting-input", stateSince: since, extra: #","seen":true"#)
+    probe.base.push(.global, json: #"{"type":"session-changed","session":\#(received)}"#)
+    await until("seenBy gone") { store.state.sessions["s1"]?.seenBy == nil }
+    store.noteResultViewed("s1")
+    try await Task.sleep(for: .milliseconds(30))
+    #expect(probe.read(\.seen) == ["s1"], "the person's receipt stands: nothing more to send")
   }
 
   @Test("przeczytane / nieprzeczytane: właściwe żądanie; ekran z blokadą nie odbiera, wejście ją zwalnia")

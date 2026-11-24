@@ -13,6 +13,15 @@ final class MockURLProtocol: URLProtocol, @unchecked Sendable {
     var error: URLError?
     /// No answer: the request stays open until its task is cancelled or times out (``held(port:)``).
     var hold = false
+    /// What follows the chunks of an answer: the end of the body, a failure, or a body that stays open until its task
+    /// is cancelled (counted in ``held(port:)``).
+    var afterChunks: AfterChunks = .finish
+
+    enum AfterChunks: Sendable {
+      case finish
+      case fail(URLError)
+      case stayOpen
+    }
 
     static let held = Reply(hold: true)
 
@@ -94,7 +103,15 @@ final class MockURLProtocol: URLProtocol, @unchecked Sendable {
     let response = HTTPURLResponse(url: url, statusCode: reply.status, httpVersion: "HTTP/1.1", headerFields: reply.headers)!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     for chunk in reply.chunks { client?.urlProtocol(self, didLoad: chunk) }
-    client?.urlProtocolDidFinishLoading(self)
+    switch reply.afterChunks {
+    case .finish:
+      client?.urlProtocolDidFinishLoading(self)
+    case let .fail(error):
+      client?.urlProtocol(self, didFailWithError: error)
+    case .stayOpen:
+      heldPort.withLock { $0 = port }
+      Self.holding.withLock { $0[port, default: 0] += 1 }
+    }
   }
 
   override func stopLoading() {

@@ -166,7 +166,8 @@ enum RealtimeProjector {
 
   // MARK: - Budżet
 
-  private static func omittedNote(_ first: Int, _ last: Int) -> String {
+  /// The note in place of the omitted turns `first`–`last` of the session projection.
+  static func omittedNote(_ first: Int, _ last: Int) -> String {
     "[Omitted: turns \(first)–\(last) (the older part of the session is over the size budget). "
       + "Ask ask_session about them.]"
   }
@@ -180,14 +181,18 @@ enum RealtimeProjector {
   private static func join(_ parts: [String]) -> String { parts.joined(separator: "\n\n") }
 
   /// Najnowsze tury w całości, starsze zastąpione notką; najnowsza ponad budżet — z wyciętym środkiem.
-  private static func fit(_ turns: [Turn], budget: Int, windowFull: Bool) -> (text: String, omitted: Int, cut: Bool) {
+  /// `note`: the text in place of the omitted turns (the session projection's own by default; a read of the mode
+  /// across sessions names its read).
+  static func fit(
+    _ turns: [Turn], budget: Int, windowFull: Bool, note: (Int, Int) -> String = omittedNote
+  ) -> (text: String, omitted: Int, cut: Bool) {
     let head = windowFull ? [windowNote] : []
     let rendered = turns.map(\.text)
     let whole = join(head + rendered)
     if whole.count <= budget { return (whole, 0, false) }
     func notes(keptFrom: Int) -> [String] {
       guard keptFrom > 0, let first = turns.first else { return head }
-      return head + [omittedNote(first.number, turns[keptFrom - 1].number)]
+      return head + [note(first.number, turns[keptFrom - 1].number)]
     }
     // Długości liczone raz: łączenie całego tekstu przy każdej turze kosztowałoby kwadrat rozmiaru okna.
     let lengths = rendered.map(\.count)

@@ -97,6 +97,10 @@ public enum Palette {
   static let noteInk = dynamic(PaletteTokens.noteInk)
   /// Płytka bieżącej zakładki paska (`TabTokens.plate`, kolor zaznaczonego wiersza listy).
   static let tabPlate = dynamic(TabTokens.plate)
+  /// The `err` wash under the armed "×" of the current tab (`TabTokens.closeArmedWashAlpha`).
+  static let tabCloseWash = dynamic(
+    dark: PaletteTokens.err.dark, light: PaletteTokens.err.light,
+    darkAlpha: CGFloat(TabTokens.closeArmedWashAlpha.dark), lightAlpha: CGFloat(TabTokens.closeArmedWashAlpha.light))
   static let linkInk = dynamic(PaletteTokens.linkInk)
 
   static let wait = dynamic(PaletteTokens.wait)

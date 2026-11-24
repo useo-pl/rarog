@@ -36,6 +36,11 @@ private struct InspectorSheetHost: ViewModifier {
       .popover(isPresented: presented(sessionId), arrowEdge: .top) {
         if let sessionId {
           InspectorPanel(store: store, sessionId: sessionId, gitStale: gitStale(sessionId), placement: .sheet)
+            // The app's toast at the bottom of the sheet (a refused file preview, a signal of another session):
+            // the sheet covers the session screen, so the toast there would never be seen.
+            .modifier(ToastOverlay(
+              navigation: navigation, placement: ToastPlacement.resolve(navigation: navigation, state: store.state),
+              slot: .inspectorSheet))
             .environment(navigation)
             .dismissOnEscape { navigation.closeInspectorSheet() }
             .popoverSheetChrome(title: UICopy.inspectorSheetTitle)

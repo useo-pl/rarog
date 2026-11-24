@@ -9,7 +9,8 @@ extension RarogNavigation {
   /// anchor: one function, so the announcement always matches the list under a filter.
   public func treeRows(_ state: AppState, openCwd: String?, jumpCwd: String?) -> [ProjectTreeRow] {
     state.projectTreeRows(
-      collapsed: collapsedProjects, openCwd: openCwd, jumpCwd: jumpCwd, filter: listFilter, held: listFilterHeld)
+      collapsed: collapsedProjects, pinned: pinnedProjects, openCwd: openCwd, jumpCwd: jumpCwd, filter: listFilter,
+      held: listFilterHeld)
   }
 
   /// A tap on a segment. Another segment is chosen; a tap on the active one refreshes it. Either way the held rows

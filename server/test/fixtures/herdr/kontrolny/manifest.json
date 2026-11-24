@@ -7062,6 +7062,405 @@
         "buttons": [],
         "why": "Zgoda `Write` z klasą rejestru `permission prompt` (herdr `blocked`): kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcja „switch to accept edits” zmienia uprawnienia sesji. Zmierzona na atrapie API i osobnym serwerze herdr, odrzucona `Esc`; plik i dokładne wejście narzędzia w `<zrzut>.input.json`."
       }
+    },
+    {
+      "id": "zgoda-bez-hooka-bash-control-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-bash-control-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Bash command",
+        "options": [
+          {
+            "digit": "1",
+            "label": "Yes"
+          },
+          {
+            "digit": "2",
+            "label": "Yes, and always allow access to /Users/u/project"
+          },
+          {
+            "digit": "3",
+            "label": "Yes, and switch to auto mode · auto mode handles these prompts for you"
+          },
+          {
+            "digit": "4",
+            "label": "No"
+          }
+        ],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "permission-request",
+        "reason": null,
+        "knownDialog": null,
+        "buttons": [
+          "1",
+          "4"
+        ],
+        "bodyPrint": "0f1c45e6b9f90759"
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Kontrola pomiaru dialogów bez hooka: zgoda `Bash` z klasą rejestru `permission prompt` (herdr `blocked`), hook ruszył; kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcje „always allow access” i „switch to auto mode” zmieniają uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-bash-hooks-off-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-bash-hooks-off-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Bash command",
+        "options": [
+          {
+            "digit": "1",
+            "label": "Yes"
+          },
+          {
+            "digit": "2",
+            "label": "Yes, and always allow access to /Users/u/project"
+          },
+          {
+            "digit": "3",
+            "label": "Yes, and switch to auto mode · auto mode handles these prompts for you"
+          },
+          {
+            "digit": "4",
+            "label": "No"
+          }
+        ],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "permission-request",
+        "reason": null,
+        "knownDialog": null,
+        "buttons": [
+          "1",
+          "4"
+        ],
+        "bodyPrint": "0f1c45e6b9f90759"
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Bash` przy `disableAllHooks: true` w `.claude/settings.local.json` projektu i hooku Raroga w ustawieniach użytkownika: hook nie ruszył (0 `PermissionRequest`, bez śladu hooka), status hooka `ok`, tryb efektywny `all`; ekran jak w kontroli `zgoda-bez-hooka-bash-control-2.1.330`, klasa `permission prompt` (herdr `blocked`); kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcje „always allow access” i „switch to auto mode” zmieniają uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-claude-md-default-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-claude-md-default-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Edit file",
+        "options": [
+          {
+            "digit": "1",
+            "label": "Yes"
+          },
+          {
+            "digit": "2",
+            "label": "Yes, and allow Claude to edit files in its ~/.claude folder for this session"
+          },
+          {
+            "digit": "3",
+            "label": "No"
+          }
+        ],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "permission-request",
+        "reason": null,
+        "knownDialog": null,
+        "buttons": [
+          "1",
+          "3"
+        ],
+        "bodyPrint": "0468ce7889aa2e24"
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Edit` pliku `~/.claude/CLAUDE.md` w HOME przebiegu w trybie `default` z klasą rejestru `permission prompt` (herdr `blocked`), hook ruszył; kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcja 2 zmienia uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-claude-md-default-link-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-claude-md-default-link-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Edit file",
+        "options": [
+          {
+            "digit": "1",
+            "label": "Yes"
+          },
+          {
+            "digit": "2",
+            "label": "Yes, and allow Claude to edit files in its ~/.claude folder for this session"
+          },
+          {
+            "digit": "3",
+            "label": "No"
+          }
+        ],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "permission-request",
+        "reason": null,
+        "knownDialog": null,
+        "buttons": [
+          "1",
+          "3"
+        ],
+        "bodyPrint": "0468ce7889aa2e24"
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Edit` pliku `~/.claude/CLAUDE.md` w HOME przebiegu w trybie `default`, `settings.json` HOME przebiegu jako dowiązanie do pliku poza `~/.claude`; klasa rejestru `permission prompt` (herdr `blocked`), hook ruszył; kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcja 2 zmienia uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-claude-md-auto-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-claude-md-auto-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Edit file",
+        "options": [],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "screen-dialog",
+        "reason": "unreadable",
+        "knownDialog": null,
+        "buttons": [],
+        "bodyPrint": null
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Edit` pliku `~/.claude/CLAUDE.md` w HOME przebiegu w trybie `auto`: atrapa API nie przepuszcza kontroli bezpieczeństwa trybu `auto`, więc najpierw stanął ekran „Auto mode can't check actions in this session” (klasa `dialog open`, kształt `auto-bez-kontroli-bash-2.1.322`), a po Enter ten dialog zgody: „Auto mode can't check actions in this session, so this one needs your approval”, opcje „No” (`❯`) i „Yes” bez cyfr, klasa `permission prompt`. Hook nie ruszył (0 `PermissionRequest`, sonda widziała `PreToolUse` tego `Edit`). Z działającym klasyfikatorem o tym, czy dialog stanie, decyduje klasyfikator. Tekst nad dialogiem niesie lokalny port atrapy. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-claude-md-auto-link-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-claude-md-auto-link-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Edit file",
+        "options": [],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "screen-dialog",
+        "reason": "unreadable",
+        "knownDialog": null,
+        "buttons": [],
+        "bodyPrint": null
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Edit` pliku `~/.claude/CLAUDE.md` w HOME przebiegu w trybie `auto`, `settings.json` HOME przebiegu jako dowiązanie do pliku poza `~/.claude`: atrapa API nie przepuszcza kontroli bezpieczeństwa trybu `auto`, więc najpierw stanął ekran „Auto mode can't check actions in this session” (klasa `dialog open`, kształt `auto-bez-kontroli-bash-2.1.322`), a po Enter ten dialog zgody: „Auto mode can't check actions in this session, so this one needs your approval”, opcje „No” (`❯`) i „Yes” bez cyfr, klasa `permission prompt`. Hook nie ruszył (0 `PermissionRequest`, sonda widziała `PreToolUse` tego `Edit`). Z działającym klasyfikatorem o tym, czy dialog stanie, decyduje klasyfikator. Tekst nad dialogiem niesie lokalny port atrapy. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-edit-relative-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-edit-relative-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Edit file",
+        "options": [
+          {
+            "digit": "1",
+            "label": "Yes"
+          },
+          {
+            "digit": "2",
+            "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)"
+          },
+          {
+            "digit": "3",
+            "label": "No"
+          }
+        ],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "permission-request",
+        "reason": null,
+        "knownDialog": null,
+        "buttons": [
+          "1",
+          "3"
+        ],
+        "bodyPrint": "66de6d7edfa19308"
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Edit` pliku `notes.txt` w katalogu sesji z klasą rejestru `permission prompt` (herdr `blocked`), hook ruszył; `cwd` sondy hooka, wpisu pliku rozmowy, rejestru CLI i agenta herdr to katalog sesji; kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcja „switch to accept edits” zmienia uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-edit-relative-cd-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-edit-relative-cd-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Edit file",
+        "options": [
+          {
+            "digit": "1",
+            "label": "Yes"
+          },
+          {
+            "digit": "2",
+            "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)"
+          },
+          {
+            "digit": "3",
+            "label": "No"
+          }
+        ],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "permission-request",
+        "reason": null,
+        "knownDialog": null,
+        "buttons": [
+          "1",
+          "3"
+        ],
+        "bodyPrint": "66de6d7edfa19308"
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Edit` pliku `sub/notes.txt` po `cd sub` w `Bash`: nagłówek pokazuje `notes.txt` względem `sub`; klasa rejestru `permission prompt` (herdr `blocked`), hook ruszył. `cwd` sondy hooka i wpisu pliku rozmowy to `sub`, rejestr CLI i agent herdr zostają na katalogu sesji; karta ścieżki `off` z `cwd` agenta herdr nie ma przycisków (`mismatch`), z `cwd` wpisu pliku rozmowy ma 1 i 3. kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcja „switch to accept edits” zmienia uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
+    },
+    {
+      "id": "zgoda-bez-hooka-settings-target-auto-2.1.330",
+      "file": "kontrolny/zgoda-bez-hooka-settings-target-auto-2.1.330.txt",
+      "cli": "2.1.330",
+      "columns": 119,
+      "billing": "api-key",
+      "waitingFor": {
+        "status": "waiting",
+        "value": "permission prompt"
+      },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Edit file",
+        "options": [
+          {
+            "digit": "1",
+            "label": "Yes"
+          },
+          {
+            "digit": "2",
+            "label": "Yes, and always allow access to /Users/u/dotfiles"
+          },
+          {
+            "digit": "3",
+            "label": "No"
+          }
+        ],
+        "footer": "Esc to cancel · Tab to amend",
+        "complete": true
+      },
+      "today": {
+        "event": "permission-request",
+        "reason": null,
+        "knownDialog": null,
+        "buttons": [
+          "1",
+          "3"
+        ],
+        "bodyPrint": "ac7d7e52ba1b08ea"
+      },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Zgoda `Edit` pliku `~/dotfiles/settings.json` w HOME przebiegu w trybie `auto`: to cel dowiązania `settings.json` HOME przebiegu, poza `~/.claude`. Ekranu „Auto mode can't check actions in this session” nie było, od razu stanął dialog zgody z cyframi; klasa rejestru `permission prompt` (herdr `blocked`), hook ruszył. Kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcja 2 („always allow access”) zmienia uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
+      }
     }
   ],
   "missing": [

@@ -64,7 +64,7 @@ extension SessionViewController {
   /// still alive. A screen out of the window (under a full-screen presentation, or closed and not yet released) keeps
   /// its field and writes it again when it changes, without taking the stored draft back, so texts put only into the
   /// stored draft would be overwritten. `nil`: no screen of the session lives.
-  private static func receivingScreen(
+  static func receivingScreen(
     of sessionId: String, drafts: ComposerDrafts, state: AppState
   ) -> SessionViewController? {
     let screens = screens(of: sessionId, drafts: drafts)

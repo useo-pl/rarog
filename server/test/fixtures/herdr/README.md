@@ -390,6 +390,24 @@ places: one hunk and the note "The diff doesn't show all of what this edit chang
 (number fields of two and three digits across 9 → 10 and 99 → 100), `geo` (a line over three rows and an English
 sentence).
 Each frame has a row of full width W.
+The `zgoda-bez-hooka-…` captures (Claude Code 2.1.330, 119-column pane) are consent dialogs from a session whose own
+`HOME` has Rarog's `PermissionRequest` hook installed, next to a logging probe in the same settings file, with a
+separate Rarog server in mode `all` and hook status `ok`; `<capture>.input.json` holds the tool input as above, and
+each dialog is dismissed with `Esc`. `bash-control` is a `Bash` dialog with the hook running; `bash-hooks-off` is the
+same dialog with `disableAllHooks: true` in the project's `.claude/settings.local.json`, where neither the hook nor
+the probe runs. `claude-md-default` edits the `.claude/CLAUDE.md` of the session's own `HOME` (option 2 allows edits
+in the `~/.claude` folder for the session), and in `-link` the user `settings.json` is a symbolic link to a file
+outside `~/.claude`. `edit-relative` edits `notes.txt` in the session directory; `edit-relative-cd` edits
+`sub/notes.txt` after `cd sub` in `Bash`, so the dialog shows `notes.txt`, while the `cwd` field of its
+`.input.json` stays the session directory. `claude-md-auto` and `claude-md-auto-link` are the same edit in `auto`
+mode. The fake API does not pass the auto mode safety check, so the dialog "Auto mode can't check actions in this
+session" comes first; after Enter on it ("stay in auto mode") this consent dialog follows, with "No" (focused) and
+"Yes" and no digits, and the hook does not run. Per the Claude Code documentation ("Protected paths"), in `auto` mode
+with a working safety check this write goes to the classifier, which decides whether the dialog appears at all. The
+text above the dialog holds the run's local port.
+`settings-target-auto` edits, also in `auto` mode, the target of that symbolic link, `~/dotfiles/settings.json` in the
+session's own `HOME`; there no "Auto mode can't check" dialog comes first, the consent dialog with digits appears at
+once (option 2 allows access to the target's folder for the session), and the hook runs.
 Shapes that never appeared stand under `missing` ("Change effort level?", a start dialog of `--permission-mode auto`
 and the auto-deny countdown, which the fake API cannot raise). The manifest has no `provenance.json` entry. Test:
 `dialogs-control-set.test.ts`.

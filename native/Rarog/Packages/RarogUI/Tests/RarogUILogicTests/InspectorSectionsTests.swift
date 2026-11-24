@@ -27,14 +27,14 @@ struct InspectorSectionsTests {
     return String(rest[..<end])
   }
 
-  @Test("kolejność: W TLE, SKOŃCZONE, SCHEDULED TASKS, ARTEFAKTY, PULL REQUESTY, ZMIANY W KATALOGU; PR-y tylko z wierszami")
+  @Test("kolejność: W TLE, SKOŃCZONE, SCHEDULED TASKS, ARTEFAKTY, PULL REQUESTY, FILES; PR-y tylko z wierszami")
   func order() throws {
     let panel = try Self.body(of: "InspectorPanel", in: try Self.code())
     let markers = [
       "BackgroundTasksHeader(", "if !finished.isEmpty", "InspectorFinishedSection(", "if !scheduled.isEmpty",
       "InspectorScheduledSection(", "if !artifacts.isEmpty",
       "InspectorArtifactsSection(", "if !pullRequests.isEmpty", "InspectorPullRequestsSection(",
-      "InspectorChangesSection(",
+      "InspectorFilesSection(",
     ]
     var cursor = panel.startIndex
     for marker in markers {

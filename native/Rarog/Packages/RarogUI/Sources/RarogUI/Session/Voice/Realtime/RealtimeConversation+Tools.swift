@@ -8,6 +8,7 @@ import Foundation
 extension RealtimeConversation {
   func call(response: String, callId: String, name: String, arguments: String) {
     guard audioRunning, !interrupted.contains(response) else { return }
+    answers.calledTool.insert(response)
     callsByResponse[response, default: []].append(callId)
     let tool = content.tools.first { $0.name == name }
     usage.toolCall(tool?.tally)
@@ -27,7 +28,15 @@ extension RealtimeConversation {
       return
     case let .work(checking, work)?:
       if checking { asking.insert(callId) } else { sending.insert(callId) }
-      run(callId: callId, response: response, work)
+      run(callId: callId, response: response) { .output(await work()) }
+    case let .workAtTurn(checking, work)?:
+      if checking { asking.insert(callId) } else { sending.insert(callId) }
+      let turn = toolTurn(response)
+      run(callId: callId, response: response) { .output(await work(turn)) }
+    case let .workAndRead(checking, work)?:
+      if checking { asking.insert(callId) } else { sending.insert(callId) }
+      let turn = toolTurn(response)
+      run(callId: callId, response: response) { await work(turn) }
     case let .showPrompt(place)?:
       let version = promptVersion + 1
       switch place(version) {
@@ -55,11 +64,16 @@ extension RealtimeConversation {
         return
       }
       sending.insert(callId)
-      run(callId: callId, response: response) { await send(version) }
+      run(callId: callId, response: response) { .output(await send(version)) }
     case nil:
       deliver(Self.toolError("Unknown tool."), callId: callId, response: response, token: turnToken)
     }
     updatePhase()
+  }
+
+  /// The moment of a call that `response` makes (``RealtimeToolTurn``).
+  func toolTurn(_ response: String) -> RealtimeToolTurn {
+    RealtimeToolTurn(response: response, utterances: utterances, utteranceAfterReading: readings.afterMark)
   }
 
   /// The work of a call between `run` and the start of its task.
@@ -68,13 +82,14 @@ extension RealtimeConversation {
     let response: String
     let generation: Int
     let token: Int
-    let work: @MainActor () async -> String
+    let work: @MainActor () async -> RealtimeToolResult
   }
 
   /// Wywołanie asynchroniczne: wynik liczy się tylko w tej samej generacji i przed przerwaniem mową. The work is
   /// registered before its task, so a window of speech over the answer that opens before the task starts takes it
-  /// over (`RealtimeConversation+Noise.swift`).
-  func run(callId: String, response: String, _ work: @escaping @MainActor () async -> String) {
+  /// over (`RealtimeConversation+Noise.swift`). A text to read goes to the reading first
+  /// (`RealtimeConversation+Reading.swift`), and the result goes at its end.
+  func run(callId: String, response: String, _ work: @escaping @MainActor () async -> RealtimeToolResult) {
     if hold(.work(response: response, callId: callId, work: work)) { return }
     unstartedWork.append(
       UnstartedWork(callId: callId, response: response, generation: generation, token: turnToken, work: work))
@@ -82,10 +97,25 @@ extension RealtimeConversation {
       // Koniec rozmowy albo przerwanie mową między wywołaniem a startem zadania: narzędzie nie rusza (wysyłka
       // promptu po końcu rozmowy poszłaby do sesji). Nor when a window took the work over.
       guard let entry = self?.startWork(callId) else { return }
-      let output = await entry.work()
+      let result = await entry.work()
       guard let self, self.current(entry.generation) else { return }
-      self.deliver(output, callId: callId, response: entry.response, token: entry.token)
+      switch result {
+      case let .output(output):
+        self.deliver(output, callId: callId, response: entry.response, token: entry.token)
+      case let .read(text, then, progress):
+        self.read(
+          text, then: then, progress: progress,
+          call: ToolCall(callId: callId, response: entry.response, generation: entry.generation, token: entry.token))
+      }
     }
+  }
+
+  /// A call whose result is still to come: the conversation run and the exchange it belongs to.
+  struct ToolCall {
+    let callId: String
+    let response: String
+    let generation: Int
+    let token: Int
   }
 
   /// The task of a call starts: its work, while it still waits here, from the same generation and with no cut since

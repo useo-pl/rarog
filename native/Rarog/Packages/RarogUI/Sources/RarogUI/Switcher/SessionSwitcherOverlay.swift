@@ -3,10 +3,10 @@ import RarogContract
 import RarogCore
 import SwiftUI
 
-// The session switcher window under Cmd+S: a vertical list of the recently
-// visited sessions in the middle of the app window; with the keyboard each row starts with its digit key. It appears and disappears at once, without dimming underneath and
-// without animation, and stays until a human picks a row or
-// closes it. A SwiftUI overlay, not a sheet; with a hardware keyboard the window takes it through its UIKit key
+// The session switcher window, opened by a tap on the current tab: a vertical list of the tabs of the current project
+// in the order of the bar (sessions, then terminals), in the middle of the app window; with the keyboard each row
+// starts with the digit key of its tab. It appears and disappears at
+// once, without dimming underneath and without animation, and stays until a human picks a row or closes it. A SwiftUI overlay, not a sheet; with a hardware keyboard the window takes it through its UIKit key
 // receiver (`SwitcherKeyResponder`), and a close without a jump gives the caret back where it was.
 // Looks like the app's popovers: full `surface`, radii from the scale, no glass. Owner: shortcuts.
 
@@ -20,7 +20,7 @@ struct SessionSwitcherHost: ViewModifier {
   func body(content: Content) -> some View {
     content
       .overlay {
-        SessionSwitcherOverlay(store: store, switcher: switcher)
+        SessionSwitcherOverlay(store: store, navigation: navigation, switcher: switcher)
       }
       .onAppear(perform: wire)
       .onDisappear {
@@ -32,8 +32,9 @@ struct SessionSwitcherHost: ViewModifier {
       .onChange(of: store.state.auth == .loggedIn) { _, loggedIn in
         if !loggedIn { switcher.cancel(.loggedOut) }
       }
-      .onChange(of: Set(store.state.sessions.keys)) { _, existing in
-        switcher.sessionsChanged(existing: existing)
+      // The rows follow the bar while the window stands: a new tab comes in at its place, a closed one leaves.
+      .onChange(of: navigation.tabRefs(store.state)) { _, tabs in
+        switcher.tabsChanged(tabs)
       }
   }
 
@@ -45,48 +46,30 @@ struct SessionSwitcherHost: ViewModifier {
     switcher.onWatch = { [weak watch] on in
       if on { watch?.start() } else { watch?.stop() }
     }
-    switcher.onOpen = { [navigation] id in
+    switcher.onOpen = { [navigation, store] tab in
       // The gate and the scene once more right before the jump: a window may have appeared, or the app left the
-      // foreground, after the last check.
+      // foreground, after the last check. The same path as a tap on the tab.
       guard SwitcherPresentationGate.sceneIsActive(), !SwitcherPresentationGate.isBlocked() else { return }
-      navigation.selectSession(id)
+      navigation.openTab(tab, state: store.state)
     }
   }
 
-  /// The menu command: Cmd+S (`backward == false`) or Shift+Cmd+S. Silent without login and while anything is
-  /// presented. `keyboard`: a hardware keyboard is connected (the window takes it).
-  static func command(
-    backward: Bool, switcher: SessionSwitcher, store: RarogStore, navigation: RarogNavigation,
-    keyboard: Bool = TerminalKeyboard.isConnected()
-  ) {
-    let state = store.state
-    guard state.auth == .loggedIn, !SwitcherPresentationGate.isBlocked() else { return }
-    let current = navigation.listSelection(state)
-    switcher.command(
-      backward: backward, keyboard: keyboard, snapshot: snapshot(state: state, current: current, navigation: navigation),
-      current: current)
-  }
-
-  /// A tap on the current tab: the window like Cmd+S. Silent where the command is.
+  /// A tap on the current tab, the only way to open the window. Silent without login and while anything is
+  /// presented. `keyboard`: a hardware keyboard is connected (the window takes it). The tab on screen is the bar's
+  /// current tab: a Rarog terminal with an agent inside stands on the terminal's tab.
   static func openByTap(
     switcher: SessionSwitcher, store: RarogStore, navigation: RarogNavigation,
     keyboard: Bool = TerminalKeyboard.isConnected()
   ) {
     let state = store.state
     guard state.auth == .loggedIn, !SwitcherPresentationGate.isBlocked() else { return }
-    let current = navigation.listSelection(state)
-    switcher.openByTap(
-      keyboard: keyboard, snapshot: snapshot(state: state, current: current, navigation: navigation), current: current)
-  }
-
-  private static func snapshot(state: AppState, current: String?, navigation: RarogNavigation) -> [String] {
-    SwitcherRows.snapshot(
-      current: current, recent: navigation.recentSessions(state, limit: SwitcherRows.limit + 1), state: state)
+    switcher.openByTap(keyboard: keyboard, tabs: navigation.tabRefs(state), current: navigation.currentTab(state))
   }
 }
 
 struct SessionSwitcherOverlay: View {
   let store: RarogStore
+  let navigation: RarogNavigation
   let switcher: SessionSwitcher
 
   static let maxWidth: CGFloat = 560
@@ -125,19 +108,19 @@ struct SessionSwitcherOverlay: View {
     .allowsHitTesting(shown)
   }
 
-  /// The order from the snapshot, the content live. "You're here" is the session on screen at the opening.
+  /// The tabs of the bar, live: the same list the bar draws. "You're here" is the tab on screen.
   private var rows: [SwitcherRow] {
-    SwitcherRows.rows(order: switcher.machine.order, state: store.state, current: switcher.machine.current)
+    SwitcherRows.rows(tabs: navigation.stripTabs(store.state), state: store.state)
   }
 }
 
 private struct SwitcherWindow: View {
   let rows: [SwitcherRow]
-  let selected: String?
+  let selected: ProjectTabRef?
   let opening: Int
   let serial: Int
   let switcher: SessionSwitcher
-  @AccessibilityFocusState private var spokenRow: String?
+  @AccessibilityFocusState private var spokenRow: ProjectTabRef?
   /// Przybliżona wysokość wiersza (tytuł i linia stanu) — sufit ośmiu wierszy rośnie z pismem.
   @AppScaledMetric(relativeTo: .subheadline) private var rowHeight: CGFloat = 54
 
@@ -185,18 +168,23 @@ private struct SwitcherWindow: View {
     }
   }
 
-  /// Lista przewijana: zaznaczenie zawsze zostaje w widoku.
+  /// The scrolling list: the selection always stays in view. The rows are live, so tabs that come in or leave before
+  /// the selected row move it while the selection stays on its tab; the list scrolls it back, or Return would confirm
+  /// a row out of sight.
   private var scrolling: some View {
     ScrollViewReader { proxy in
       ScrollView { list }
         .onAppear { proxy.scrollTo(selected, anchor: .center) }
         .onChange(of: selected) { _, id in proxy.scrollTo(id, anchor: .center) }
+        .onChange(of: rows.map(\.id)) { proxy.scrollTo(selected, anchor: .center) }
     }
   }
 
   private var list: some View {
-    VStack(spacing: 2) {
-      ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
+    // The digits the bar draws on the same tabs.
+    let digits = ShortcutMenu.tabDigits(rows.map(\.tab), hardwareKeyboard: true)
+    return VStack(spacing: 2) {
+      ForEach(rows) { item in
         Button {
           switcher.tapRow(item.id)
         } label: {
@@ -204,7 +192,8 @@ private struct SwitcherWindow: View {
           RarogHoverReader { hovered in
             SwitcherRowView(
               item: item, selected: item.id == selected,
-              digitKey: SwitcherRows.digitKey(at: index, keyboard: switcher.holdsKeyboard), hovered: hovered)
+              digitKey: SwitcherRows.digitKey(for: item.tab, digits: digits, keyboard: switcher.holdsKeyboard),
+              hovered: hovered)
           }
         }
         .buttonStyle(.plain)
@@ -212,7 +201,7 @@ private struct SwitcherWindow: View {
         .focusable(false)
         .accessibilityFocused($spokenRow, equals: item.id)
         .accessibilityAddTraits(item.id == selected ? .isSelected : [])
-        .accessibilityIdentifier("switcher.row.\(item.id)")
+        .accessibilityIdentifier("switcher.row.\(item.key)")
         .id(item.id)
       }
     }
@@ -250,7 +239,7 @@ private struct SwitcherWindow: View {
   private func speak() {
     spokenRow = selected
     guard let row = rows.first(where: { $0.id == selected }) else { return }
-    Announcer.shared.say(row.row.spoken(now: Date()), eventID: "switcher-\(opening)-\(serial)")
+    Announcer.shared.say(row.spoken(now: Date()), eventID: "switcher-\(opening)-\(serial)")
   }
 }
 
@@ -266,35 +255,18 @@ private struct SwitcherRowView: View {
   @Environment(\.dynamicTypeSize) private var typeSize
   @AppScaledMetric(relativeTo: .subheadline) private var dotLift: CGFloat = 4
 
+  /// Na zaznaczeniu `muted2` nie trzyma 4,5:1 — tekst drugorzędny idzie w `muted` (`PaletteContrastTests`).
+  private var secondary: Color { Color(uiColor: selected ? Palette.muted : Palette.muted2) }
+
   var body: some View {
-    let row = item.row
-    // Na zaznaczeniu `muted2` nie trzyma 4,5:1 — tekst drugorzędny idzie w `muted` (`PaletteContrastTests`).
-    let secondary = Color(uiColor: selected ? Palette.muted : Palette.muted2)
     TimelineView(.periodic(from: .now, by: 1)) { timeline in
       HStack(alignment: .firstTextBaseline, spacing: 10) {
         digitKeyView
-        Circle()
-          .fill(Color(uiColor: Palette.tone(row.status.tone)))
-          .frame(width: 9, height: 9)
-          .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + dotLift }
-        VStack(alignment: .leading, spacing: 2) {
-          Text("\(Text(row.project).fontWeight(.semibold))\(Text(row.titleTail).foregroundStyle(secondary))")
-            .appFont(.subheadline)
-            .foregroundStyle(Color(uiColor: Palette.text))
-            .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
-          HStack(alignment: .firstTextBaseline, spacing: 6) {
-            // The status word in the status colour; a quiet session (the recent list holds them) in `muted`,
-            // because `done` is too weak as text (`PaletteContrastTests`).
-            Text(row.status.text)
-              .foregroundStyle(
-                Color(uiColor: row.status.tone == .quiet ? Palette.muted : Palette.tone(row.status.tone)))
-            if row.isCodex { Text(UICopy.codexTag).foregroundStyle(secondary) }
-            if let detail = Self.detail(row) {
-              Text(detail).foregroundStyle(secondary).truncationMode(.tail)
-            }
-          }
-          .appFont(.caption.monospaced())
-          .lineLimit(1)
+        switch item.content {
+        case let .session(row):
+          sessionContent(row)
+        case let .terminal(label, detail, _):
+          terminalContent(label: label, detail: detail)
         }
         Spacer(minLength: 8)
         if item.isCurrent {
@@ -307,7 +279,7 @@ private struct SwitcherRowView: View {
             .lineLimit(1)
         }
         // Sam czas, bez „czeka od”; zamrożony wiersz zegara nie pokazuje (liczba nie jest żywa).
-        if !row.frozen, let since = row.clockSince {
+        if let row = item.session, !row.frozen, let since = row.clockSince {
           Text(RelativeTime.short(since: since, now: timeline.date))
             .appFont(.caption.monospaced())
             .monospacedDigit()
@@ -320,16 +292,65 @@ private struct SwitcherRowView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(plate, in: .inner)
       .contentShape(Rectangle())
-      .opacity(row.frozen ? 0.55 : 1)
+      .opacity(item.session?.frozen == true ? 0.55 : 1)
       .accessibilityElement(children: .ignore)
-      .accessibilityLabel(row.spoken(now: timeline.date) + (item.isCurrent ? ", \(UICopy.switcherHere)" : ""))
+      .accessibilityLabel(item.spoken(now: timeline.date))
       .accessibilityAddTraits(.isButton)
+    }
+  }
+
+  /// A session: the state dot, "project · name #n", under it the state word in its colour and the "waiting for"
+  /// line or the stage line.
+  @ViewBuilder private func sessionContent(_ row: SessionRowModel) -> some View {
+    Circle()
+      .fill(Color(uiColor: Palette.tone(row.status.tone)))
+      .frame(width: 9, height: 9)
+      .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + dotLift }
+    VStack(alignment: .leading, spacing: 2) {
+      Text("\(Text(row.project).fontWeight(.semibold))\(Text(row.titleTail).foregroundStyle(secondary))")
+        .appFont(.subheadline)
+        .foregroundStyle(Color(uiColor: Palette.text))
+        .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        // The status word in the status colour; a quiet session in `muted`, because `done` is too weak as text
+        // (`PaletteContrastTests`).
+        Text(row.status.text)
+          .foregroundStyle(
+            Color(uiColor: row.status.tone == .quiet ? Palette.muted : Palette.tone(row.status.tone)))
+        if row.isCodex { Text(UICopy.codexTag).foregroundStyle(secondary) }
+        if let detail = Self.detail(row) {
+          Text(detail).foregroundStyle(secondary).truncationMode(.tail)
+        }
+      }
+      .appFont(.caption.monospaced())
+      .lineLimit(1)
+    }
+  }
+
+  /// A terminal: the terminal glyph in the place of the dot, the tab label (the foreground process) and a quiet line
+  /// (slot, running) in the secondary ink — a terminal has no state colour, like its tab.
+  @ViewBuilder private func terminalContent(label: String, detail: String?) -> some View {
+    Image(systemName: "terminal")
+      .appFont(.caption)
+      .foregroundStyle(Color(uiColor: Palette.muted))
+      .accessibilityHidden(true)
+    VStack(alignment: .leading, spacing: 2) {
+      Text(label)
+        .appFont(.subheadline.weight(.semibold))
+        .foregroundStyle(Color(uiColor: Palette.text))
+        .lineLimit(1)
+      if let detail {
+        Text(detail)
+          .appFont(.caption.monospaced())
+          .foregroundStyle(secondary)
+          .lineLimit(1)
+      }
     }
   }
 
   /// An outlined key with the row's digit, like the footer keys: `caption` mono in `muted` (4.5:1 on the selection
   /// and on `surface`, `PaletteContrastTests`), a 1 pt `border` outline with the `ghost` corner, one width for every
-  /// digit. A row past nine keeps the same room empty, so the dots stay in a column. Decoration: the row's
+  /// digit. A row without a digit keeps the same room empty, so the dots stay in a column. Decoration: the row's
   /// sentence for VoiceOver ignores its children.
   @ViewBuilder private var digitKeyView: some View {
     switch digitKey {

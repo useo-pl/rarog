@@ -167,6 +167,29 @@ describe('pendingToolUse', () => {
     expect(pending?.id).toBe('t-9');
   });
 
+  /*
+   * The call `cwd` without a hook dump: after a Bash `cd`, the `cwd` field of the transcript entry carrying the
+   * `tool_use` names the directory the call runs in, while the CLI registry and the herdr agent stay on the session
+   * start directory (measured on CLI 2.1.330).
+   */
+  it.each<[string, Record<string, unknown>, string | undefined]>([
+    ['the entry after `cd sub`', { cwd: '/w/project/sub' }, '/w/project/sub'],
+    ['an entry without `cwd`', {}, undefined],
+    ['a relative `cwd`', { cwd: 'sub' }, undefined],
+    ['an empty `cwd`', { cwd: '' }, undefined],
+    ['a `cwd` that is not a string', { cwd: 42 }, undefined],
+  ])('call `cwd` from the transcript entry: %s', (_case, extra, expected) => {
+    const pending = pendingToolUse([
+      assistantLine([toolUse('t-1', 'Bash', { command: 'cd sub' })], { cwd: '/w/project' }),
+      userLine([toolResult('t-1')], { cwd: '/w/project/sub' }),
+      assistantLine([toolUse('t-2', 'Edit', { file_path: 'notes.txt' })], extra),
+    ]);
+    expect(pending?.id).toBe('t-2');
+    expect(pending?.entryCwd).toBe(expected);
+    // The field the card decision reads stays the hook payload's alone.
+    expect(pending?.cwd).toBeUndefined();
+  });
+
   it('tracker liczy to samo co funkcja czysta, wpis po wpisie', () => {
     const tracker = createPendingTracker();
     const lines = load('transcript-pending.jsonl');

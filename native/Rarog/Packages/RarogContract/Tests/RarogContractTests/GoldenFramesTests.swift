@@ -15,9 +15,9 @@ struct GoldenFramesTests {
     #expect(try frames.frameFiles() == frames.names)
   }
 
-  @Test("każdy z 17 typów ramki ma `<type>.max.json` oczekiwany jako ok i dekoduje się do swojego przypadku")
+  @Test("każdy z 20 typów ramki ma `<type>.max.json` oczekiwany jako ok i dekoduje się do swojego przypadku")
   func everyWireTypeHasMaxFrame() throws {
-    #expect(ServerEvent.WireType.allCases.count == 17)
+    #expect(ServerEvent.WireType.allCases.count == 20)
     for type in ServerEvent.WireType.allCases {
       let name = "\(type.rawValue).max.json"
       #expect(frames.entries[name]?.expect == .ok, "brak \(name)")
@@ -87,6 +87,28 @@ struct GoldenFramesTests {
     let plain = try EventDecoder.decode(try frames.dataField("session-changed.idle.json")).get()
     guard case let .sessionChanged(idle) = plain.event else { throw FixtureError("not session-changed") }
     #expect(idle.session.seenBy == nil)
+  }
+
+  @Test("`inbox-heads`: two unreadable heads drop, a broken head still rejects the frame next to an unknown value")
+  func inboxHeadsLossy() throws {
+    let base = try frames.document("inbox-heads.max.json")
+    func decode(_ ops: [(String, JSONValue?)]) throws -> Result<DecodedEvent, EventRejection> {
+      let patched = try base.applying(ops.map { JSONPatchOp(path: $0.0, value: $0.1, remove: $0.1 == nil) })
+      return EventDecoder.decode(try JSONEncoder().encode(patched))
+    }
+    let two = try decode([("/heads/0/kind", .string("summary")), ("/heads/2/state", .string("paused"))]).get()
+    guard case let .inboxHeads(heads) = two.event else { throw FixtureError("not inbox-heads") }
+    #expect(heads.heads.map(\.sessionId) == ["herdr-w1-p1"])
+    #expect(Set(two.degradations) == [
+      Degradation(path: "/heads/0/kind", value: "summary"), Degradation(path: "/heads/2/state", value: "paused"),
+    ])
+    for ops in [
+      [("/heads/1/kind", JSONValue.string("summary")), ("/heads/1/version", .string(""))],
+      [("/heads/1/kind", .null)],
+      [("/heads/1/at", nil)],
+    ] as [[(String, JSONValue?)]] {
+      #expect(throws: EventRejection.self, "\(ops.map(\.0))") { try decode(ops).get() }
+    }
   }
 
   private func encode(_ event: ServerEvent) throws -> JSONValue {

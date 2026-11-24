@@ -1,0 +1,7 @@
+{
+  "error": "codex",
+  "message": "Rarog only observes the Codex pane, so it doesn't show the files in its directory.",
+  "messageRef": {
+    "code": "rest.files-codex"
+  }
+}

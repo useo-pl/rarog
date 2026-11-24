@@ -92,20 +92,25 @@ public struct CompanionSpeechToken: Sendable, Equatable, Decodable, CustomString
 /// the session writes now, in the shape of the session stream (`seq` numbers the messages of this response from 1,
 /// it is not the stream's `seq`). `conversation` is an opaque token of that conversation: another one after `/clear`
 /// or `/resume` in the pane and after a server restart, never the engine's id. `stateSince` is the session's
-/// `stateSince` at the read; `complete == false` = the read window starts inside the oldest returned turn.
+/// `stateSince` at the read. `readMark` is an opaque name of the newest message the server's memory of the session
+/// held and of the session's `stateSince` when the server took the session for this read; a pick-up of the result
+/// sends it back (``SeenPickUp``).
+/// `complete == false` = the read window starts inside the oldest returned turn.
 public struct CompanionTurns: Sendable, Equatable, Decodable {
   public var messages: [TranscriptMessage]
   public var conversation: String
   public var stateSince: String
+  public var readMark: String
   public var complete: Bool
 
-  enum CodingKeys: String, CodingKey { case messages, conversation, stateSince, complete }
+  enum CodingKeys: String, CodingKey { case messages, conversation, stateSince, readMark, complete }
 
   public init(from decoder: any Decoder) throws {
     let c = try ContractContainer(decoder, keyedBy: CodingKeys.self)
     messages = try c.required(.messages)
     conversation = try c.nonEmpty(.conversation)
     stateSince = try c.required(.stateSince)
+    readMark = try c.nonEmpty(.readMark)
     complete = try c.required(.complete)
   }
 }

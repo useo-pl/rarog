@@ -96,6 +96,15 @@ const question = {
   }],
 };
 
+const inboxHeads = [
+  {
+    sessionId: 's1', turnId: 't1', version: 'v1', kind: 'decision', state: 'waiting-permission', at: AT,
+    dialog: 'permission',
+  },
+  { sessionId: 's2', turnId: 't2', version: 'v2', kind: 'result', state: 'waiting-input', at: AT },
+  { sessionId: 's3', turnId: 't3', version: 'v3', kind: 'failed', state: 'error', at: AT },
+];
+
 const FRAMES = {
   snapshot: { type: 'sessions-snapshot', sessions: [summary, { ...summary, id: 's2' }] },
   changed: { type: 'session-changed', session: summary },
@@ -129,7 +138,12 @@ const FRAMES = {
       { path: 'b.md', kind: 'added' },
     ],
   },
+  inboxHeads: { type: 'inbox-heads', heads: inboxHeads },
+  inboxHead: { type: 'inbox-head', head: inboxHeads[0] },
 } as const;
+
+/** The `inbox-heads` frame with only the heads at `keep` (indices of {@link inboxHeads}). */
+const headsOnly = (...keep: number[]) => ({ type: 'inbox-heads', heads: keep.map((index) => inboxHeads[index]) });
 
 // ---------------------------------------------------------------------------
 // Edycja ramek po JSON Pointer — tylko na potrzeby testu, zawsze na kopii.
@@ -471,6 +485,12 @@ const CASES: Record<keyof typeof DEGRADATIONS, DegradationCase[]> = {
     { frame: FRAMES.changed, path: '/session/seenBy', result: { path: '/session/seenBy', remove: true } },
     { frame: FRAMES.snapshot, path: '/sessions/1/seenBy', result: { path: '/sessions/1/seenBy', remove: true } },
   ],
+  // The unreadable head drops out of the list; the other heads stay in order.
+  'inbox.head': [
+    { frame: FRAMES.inboxHeads, path: '/heads/1/kind', result: { path: '/heads', value: headsOnly(0, 2).heads } },
+    { frame: FRAMES.inboxHeads, path: '/heads/2/state', result: { path: '/heads', value: headsOnly(0, 1).heads } },
+    { frame: FRAMES.inboxHeads, path: '/heads/0/dialog', result: { path: '/heads', value: headsOnly(1, 2).heads } },
+  ],
 };
 
 function applyResult(frame: unknown, result: DegradationCase['result']): Json {
@@ -616,6 +636,45 @@ describe('kilka degradacji w jednej ramce', () => {
   });
 });
 
+describe('inbox-heads: an unreadable head drops only itself', () => {
+  it('two unreadable heads: both drop, each reported at its own index, the readable head stays', () => {
+    let frame = setAt(FRAMES.inboxHeads, '/heads/0/kind', 'summary');
+    frame = setAt(frame, '/heads/2/state', 'paused');
+    const decoded = decodeServerEvent(frame);
+    expect(decoded?.degradations).toStrictEqual([
+      { path: '/heads/0/kind', value: 'summary' },
+      { path: '/heads/2/state', value: 'paused' },
+    ]);
+    expect(decoded?.event).toStrictEqual(headsOnly(1));
+  });
+
+  it('a head with several unknown values drops once and reports every value', () => {
+    let frame = setAt(FRAMES.inboxHeads, '/heads/0/kind', 'summary');
+    frame = setAt(frame, '/heads/0/dialog', 'browser');
+    const decoded = decodeServerEvent(frame);
+    expect(byPath(decoded?.degradations)).toStrictEqual(byPath([
+      { path: '/heads/0/kind', value: 'summary' },
+      { path: '/heads/0/dialog', value: 'browser' },
+    ]));
+    expect(decoded?.event).toStrictEqual(headsOnly(1, 2));
+  });
+
+  it('every head unreadable: the frame stays with an empty list', () => {
+    let frame: unknown = FRAMES.inboxHeads;
+    for (const index of [0, 1, 2]) frame = setAt(frame, `/heads/${index}/kind`, 'summary');
+    expect(decodeServerEvent(frame)?.event).toStrictEqual(headsOnly());
+  });
+
+  it('a single inbox-head with an unknown value is ignored whole', () => {
+    const unknown: Array<[string, string]> = [
+      ['/head/kind', 'summary'], ['/head/state', 'paused'], ['/head/dialog', 'browser'],
+    ];
+    for (const [pointer, value] of unknown) {
+      expect(decodeServerEvent(setAt(FRAMES.inboxHead, pointer, value)), pointer).toBeNull();
+    }
+  });
+});
+
 describe('odrzucenia — uszkodzony kształt dalej daje null', () => {
   const rejected: Array<[string, unknown]> = [
     ['nieznany type ramki', { type: 'teleport', sessionId: 's1' }],
@@ -667,6 +726,14 @@ describe('odrzucenia — uszkodzony kształt dalej daje null', () => {
     // PR status: only an unknown string degrades; `null` and a number reject the frame.
     ['pullRequests.state: null', setAt(FRAMES.changed, '/session/pullRequests/0/state', null)],
     ['pullRequests.state: a number', setAt(FRAMES.changed, '/session/pullRequests/0/state', 7)],
+    // Inbox heads: only an unknown string drops a head; a broken head still rejects the whole list.
+    ['inbox-heads: kind null', setAt(FRAMES.inboxHeads, '/heads/1/kind', null)],
+    ['inbox-heads: kind a number', setAt(FRAMES.inboxHeads, '/heads/1/kind', 3)],
+    ['inbox-heads: head without version', removeAt(FRAMES.inboxHeads, '/heads/1/version')],
+    ['inbox-heads: empty version', setAt(FRAMES.inboxHeads, '/heads/1/version', '')],
+    ['inbox-heads: unknown kind next to an empty version',
+      setAt(setAt(FRAMES.inboxHeads, '/heads/1/kind', 'summary'), '/heads/1/version', '')],
+    ['inbox-heads: heads null', setAt(FRAMES.inboxHeads, '/heads', null)],
   ];
 
   for (const [name, frame] of rejected) {

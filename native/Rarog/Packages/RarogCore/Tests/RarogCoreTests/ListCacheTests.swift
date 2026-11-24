@@ -253,6 +253,21 @@ struct ListCacheStateTests {
     #expect(state.canResume("s3") && state.seenTarget("s4") != nil)
     #expect(state.transcriptPhase(for: "nieznana") == .unknownSession)
   }
+
+  /// Catches the screen sending a person's receipt over the voice agent's pick-up from a cached list: the list does
+  /// not know whether that result still stands.
+  @Test("a result the voice agent picked up: no receipt from a cached list, one target after the fresh list")
+  func pickedUpResultWaitsForFreshList() throws {
+    let picked = #","seen":true,"seenBy":"voice-agent""#
+    var state = cachedState([try summary("s1", extra: picked)])
+    state.global = .online
+    state.compat = .ok
+    #expect(state.seenTarget("s1") == nil)
+    state.apply(.frame(try Frames.snapshot([Frames.summary("s1", state: "waiting-input", extra: picked)]),
+                       source: .global, cursor: nil), now: now)
+    state.apply(.frame(try Frames.transcript("s1"), source: .session("s1"), cursor: nil), now: now)
+    #expect(state.seenTarget("s1") == "2026-10-03T08:00:00.000Z")
+  }
 }
 
 @MainActor

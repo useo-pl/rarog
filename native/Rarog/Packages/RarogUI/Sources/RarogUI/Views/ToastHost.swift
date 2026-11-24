@@ -11,12 +11,14 @@ import UIKit
 /// kolumny szczegółu) pokazuje tylko dymki z akcją (`actionsOnly`: „Cofnij" po skasowaniu notatki nie może przepaść
 /// tylko dlatego, że formularz zamknięto nad listą). Okno terminala Cmd+F/Cmd+G stawia ten sam modyfikator u dołu
 /// arkusza (`slot: .terminalWindow`); kolumna pod nim wtedy milczy. Zegar i ogłoszenie czytnika prowadzi `ToastCenter`.
+/// The phone's panel sheet puts it at the bottom of the sheet (`slot: .inspectorSheet`).
 struct ToastOverlay: ViewModifier {
   let navigation: RarogNavigation
   /// Gdzie dymek stoi teraz (`ToastPlacement.resolve`).
   let placement: ToastPlacement
   var actionsOnly = false
-  /// Które osadzenie rysuje ten modyfikator: kolumna (`overlay`) albo okno terminala (`terminalWindow`).
+  /// Which embedding this modifier draws: the column (`overlay`), the terminal window (`terminalWindow`) or the phone's
+  /// panel sheet (`inspectorSheet`).
   var slot: ToastPlacement = .overlay
   /// Opcjonalnie: ekran hostowany bez centrum dymków (testy) rysuje się bez nakładki.
   @Environment(ToastCenter.self) private var toasts: ToastCenter?

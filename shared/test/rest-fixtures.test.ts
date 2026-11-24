@@ -21,6 +21,7 @@ import {
 import {
   DEVICE_ID_RE, PAIRING_CODE_RE, ULTRACODE_REFUSED_ERROR, apnsStatusResponseSchema, companionAskSchema, companionTokenSchema,
   companionSessionsSchema, companionSpeechTokenSchema, companionTurnsSchema, deviceListSchema, deviceMeSchema, deviceRevokedBodySchema, errorBodySchema, liveActivityMacSchema, messageAcceptedSchema, okAckSchema,
+  inboxActionResponseSchema, inboxCardResponseSchema, inboxListSchema, fileIndexSchema, fileListingSchema, fileTooLargeBodySchema,
   pairResponseSchema, pairingIssuedSchema, planUsageSchema, queueTakeBackResponseSchema, restartResponseSchema,
   resumeResponseSchema,
   termHistoryResponseSchema, termListResponseSchema, termOpenResponseSchema, versionResponseSchema,
@@ -88,13 +89,23 @@ const SCHEMAS: Record<string, ZodType> = {
   companionTurns: companionTurnsSchema,
   // The voice agent's session catalog: rows of the sessions in its scope.
   companionSessions: companionSessionsSchema,
+  // Inbox: every visible card with its text, one card (or none), and the answer of remove and restore.
+  inboxList: inboxListSchema,
+  inboxCardResponse: inboxCardResponseSchema,
+  inboxActionResponse: inboxActionResponseSchema,
+  // Session files: the listing of one directory and the 413 of a file over the server's limit.
+  fileListing: fileListingSchema,
+  fileIndex: fileIndexSchema,
+  fileTooLargeBody: fileTooLargeBodySchema,
 };
 
 /**
  * Schematy odmów: ciało błędu z kodem i zdaniem albo odmowa z treścią (409 notatek, 401 odpiętego urządzenia, 422
  * odmowy decyzji).
  */
-const REFUSAL_SCHEMAS = new Set(['errorBody', 'notesConflict', 'deviceRevokedBody', 'decisionRefusedBody']);
+const REFUSAL_SCHEMAS = new Set([
+  'errorBody', 'notesConflict', 'deviceRevokedBody', 'decisionRefusedBody', 'fileTooLargeBody',
+]);
 
 /**
  * Odpowiedzi ze zdaniami serwera: identyfikator schematu z {@link SCHEMAS}, typ Swift z `RarogContract`
@@ -109,6 +120,7 @@ const SENTENCE_RESPONSES: readonly { id: string; swiftType: string; file: string
   { id: 'sessionModelResponse', swiftType: 'SessionModelAccepted', file: 'model-accepted.json' },
   { id: 'modelList', swiftType: 'ModelList', file: 'models.json' },
   { id: 'interruptResponse', swiftType: 'InterruptResponse', file: 'interrupt.json' },
+  { id: 'fileTooLargeBody', swiftType: 'FileTooLargeBody', file: 'error.file-too-large.json' },
 ];
 
 const SWIFT_SENTENCE_SOURCE = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
@@ -186,7 +198,9 @@ const REGISTRY_PATTERNS: readonly { code: string; pattern: RegExp }[] = Object.e
  * zależy od roli wiadomości ({@link FOREIGN_ROLES}), jak w złotych ramkach SSE. Test niżej trzyma tę mapę równą
  * zbiorowi pól ze schematów {@link SCHEMAS}.
  */
-const TEXT_FIELD_KINDS: Readonly<Record<string, 'own' | 'block' | 'session-label' | 'model-label' | 'model-description'>> = {
+const TEXT_FIELD_KINDS: Readonly<Record<
+  string, 'own' | 'block' | 'session-label' | 'model-label' | 'model-description' | 'question' | 'display-text'
+>> = {
   '/message': 'own',
   '/messages/*/blocks/*/text': 'block',
   '/warning': 'own',
@@ -320,6 +334,10 @@ describe('złote odpowiedzi REST: manifest i pliki', () => {
       // Agent głosowy.
       'POST /api/sessions/:id/companion/ask', 'POST /api/companion/token', 'POST /api/companion/speech-token',
       'GET /api/sessions/:id/companion/turns?count=', 'GET /api/companion/sessions',
+      // Inbox cards.
+      'GET /api/inbox', 'GET /api/inbox/:id', 'POST /api/inbox/:id/remove', 'POST /api/inbox/:id/restore',
+      // Session files: the listing of one directory and the raw bytes of one file.
+      'GET /api/sessions/:id/files?dir=', 'GET /api/sessions/:id/files/raw?path=',
     ]) {
       expect(routes.has(route), route).toBe(true);
     }
@@ -638,5 +656,26 @@ describe('złote odpowiedzi REST: plik → schemat', () => {
     expect(apnsStatusResponseSchema.parse(read('push.apns.status.json'))).toEqual({
       enabled: false, registered: false, alerts: false, degradedSince: null,
     });
+  });
+
+  it('Inbox: `inbox` only on a server with an Inbox, every card kind and dialog, the refusals with their codes', () => {
+    const plain = versionResponseSchema.parse(read('version.json'));
+    const inbox = versionResponseSchema.parse(read('version.inbox.json'));
+    expect(plain.capabilities).not.toContain('inbox');
+    expect(inbox.capabilities).toContain('inbox');
+    expect(inbox.capabilities?.filter((one) => one !== 'inbox')).toEqual(plain.capabilities);
+    const { cards } = inboxListSchema.parse(read('inbox.list.json'));
+    expect(new Set(cards.map((card) => card.kind))).toEqual(new Set(['result', 'decision', 'failed']));
+    expect(new Set(cards.map((card) => card.dialog?.kind).filter(Boolean))).toEqual(new Set(['permission', 'question', 'panel']));
+    expect(cards.some((card) => card.truncated)).toBe(true);
+    expect(cards.some((card) => card.dialog?.kind === 'permission' && card.dialog.requestId !== undefined)).toBe(true);
+    expect(inboxCardResponseSchema.parse(read('inbox.card.none.json'))).toEqual({});
+    for (const [name, status, code] of [
+      ['error.inbox-card-changed.json', 409, 'inbox-card-changed'],
+      ['error.inbox-disabled.json', 503, 'inbox-disabled'],
+    ] as const) {
+      expect(manifest[name]?.status, name).toBe(status);
+      expect(errorBodySchema.parse(read(name)).error, name).toBe(code);
+    }
   });
 });

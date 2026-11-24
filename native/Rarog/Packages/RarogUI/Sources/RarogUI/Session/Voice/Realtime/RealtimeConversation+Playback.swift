@@ -5,7 +5,8 @@ import Foundation
 // user heard when they speak over the answer or the engine restarts. Owner: voice agent. The events that call in
 // stand in `RealtimeConversation.swift` and `RealtimeConversation+Speech.swift`; the fixes of the conversation to
 // the heard text in `RealtimeConversation+SpeechBargeIn.swift`; the window that tells noise from speech over the
-// answer in `RealtimeConversation+Noise.swift`.
+// answer in `RealtimeConversation+Noise.swift`. A tool's reading plays on the same axis without an answer item
+// (`RealtimeConversation+Reading.swift`); the cut stops it and a lost playback ends it as not read.
 
 extension RealtimeConversation {
   func play(_ pcm: Data, response: String, item: String) {
@@ -18,8 +19,14 @@ extension RealtimeConversation {
       items[item] = (response, cursor, count)
       itemOrder.append(item)
     }
+    enqueue(pcm)
+  }
+
+  /// `pcm` at the end of the playback queue, at the cursor: an answer item's or a reading's
+  /// (`RealtimeConversation+Reading.swift`).
+  func enqueue(_ pcm: Data) {
     meter.queued(pcm, at: cursor)
-    cursor += count
+    cursor += RealtimeAudioFormat.samples(in: pcm)
     playbackPending = true
     dependencies.audio.play(pcm)
     updatePhase()
@@ -35,6 +42,7 @@ extension RealtimeConversation {
   func drained() {
     playbackPending = false
     speechDrained()
+    readingsDrained()
     // Elementy zamkniętych odpowiedzi są całe odtworzone; element odpowiedzi w toku zostaje, bo jego dalsze delty
     // dochodzą na tej samej osi. An item is over only after its synthesis too (`+Speech`).
     itemOrder.removeAll { item in
@@ -57,6 +65,7 @@ extension RealtimeConversation {
     // With the queue drained, everything queued has played.
     let played = playbackPending ? truncatePlayback() : cursor
     speechInterrupted(played: played, responses: activeResponses)
+    cutReadings()
     activeResponses = []
     awaitingResponse = false
     // Wyniki narzędzi w toku i odpowiedzi zamówione przed tą chwilą należą do przerwanej wymiany.
@@ -73,6 +82,7 @@ extension RealtimeConversation {
     itemOrder = []
     speechStoppedAt = nil
     zeroLevels()
+    answerCut()
     updatePhase()
   }
 
@@ -86,6 +96,8 @@ extension RealtimeConversation {
     items = [:]
     itemOrder = []
     zeroLevels()
+    answerCut()
+    loseReadings()
     updatePhase()
   }
 

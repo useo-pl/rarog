@@ -101,10 +101,21 @@ struct TabTokensTests {
     #expect(middle.leading == 0 && middle.trailing == 0, "środek listy")
     let fits = TabTokens.edgeFade(offset: 0, contentWidth: 300, containerWidth: 400, leadingInset: 0, trailingInset: 0)
     #expect(fits == .off, "treść mieści się w widoku")
-    // iPad: ramka paska od x = 0, treść za listą (wcięcie 320 pt), spoczynek przy offsecie -320.
-    let rest = TabTokens.edgeFade(offset: -320, contentWidth: 900, containerWidth: 1000, leadingInset: 320, trailingInset: 0)
+    // iPad: the bar's frame from x = 0 is 1000 pt, the content after the list (a 320 pt inset), at rest at offset -320;
+    // `ScrollGeometry` reports the container as the visible part, 680 pt.
+    let rest = TabTokens.edgeFade(offset: -320, contentWidth: 900, containerWidth: 680, leadingInset: 320, trailingInset: 0)
     #expect(rest.leading == 1 && rest.leadingInset == 320, "iPad w spoczynku: lewa krawędź kolumny bez wygaszenia")
-    let nudged = TabTokens.edgeFade(offset: -316, contentWidth: 900, containerWidth: 1000, leadingInset: 320, trailingInset: 0)
+    let nudged = TabTokens.edgeFade(offset: -316, contentWidth: 900, containerWidth: 680, leadingInset: 320, trailingInset: 0)
     #expect(nudged.leading == 0.75 && nudged.trailing == 0, "4 pt przewinięcia")
+    // At the end the content's end stands at the visible part's end, at offset 900 - 680 - 320: nothing hidden there.
+    let padEnd = TabTokens.edgeFade(offset: -100, contentWidth: 900, containerWidth: 680, leadingInset: 320, trailingInset: 0)
+    #expect(padEnd.leading == 0 && padEnd.trailing == 1, "the iPad bar's end with the list beside it")
+    let padNearEnd = TabTokens.edgeFade(
+      offset: -104, contentWidth: 900, containerWidth: 680, leadingInset: 320, trailingInset: 0)
+    #expect(padNearEnd.trailing == 0.75, "4 pt before the end")
+    // iPhone in landscape: 62 pt of safe area on both sides of an 874 pt bar, a 750 pt container.
+    let phoneEnd = TabTokens.edgeFade(
+      offset: 1188, contentWidth: 2000, containerWidth: 750, leadingInset: 62, trailingInset: 62)
+    #expect(phoneEnd.trailing == 1 && phoneEnd.trailingInset == 62, "the end of the phone bar in landscape")
   }
 }

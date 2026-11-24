@@ -40,24 +40,96 @@ private func capabilities(term: Bool) throws -> Capabilities {
   return Capabilities(try JSONDecoder().decode(VersionInfo.self, from: Data(json.utf8)))
 }
 
-private let utc: Calendar = {
-  var calendar = Calendar(identifier: .gregorian)
-  calendar.timeZone = TimeZone(identifier: "UTC")!
-  return calendar
-}()
-
 @Suite("projekty: sekcja PROJEKTY, cel wejścia, zakładki, zamknięcie")
 struct ProjectSelectorTests {
-  @Test("kolejność: doba aktywności malejąco, w dobie alfabet polski z liczbami, remis po ścieżce")
+  @Test("order: names alphabetically in the app language with numbers, whatever the activity times")
   func ordering() throws {
     let state = try state([
       summary("a", project: "rarog10", activity: "2026-10-03T09:00:00.000Z"),
-      summary("b", project: "rarog2", activity: "2026-10-03T07:00:00.000Z"),
-      summary("c", project: "ćma", activity: "2026-10-03T08:30:00.000Z"),
-      summary("d", project: "dawny", activity: "2026-10-01T23:59:00.000Z"),
-      summary("e", project: "cebula", activity: "2026-10-03T00:01:00.000Z"),
+      summary("b", project: "ćma", activity: "2026-10-01T07:00:00.000Z"),
+      summary("c", project: "Birch", activity: "2026-10-02T08:30:00.000Z"),
+      summary("d", project: "rarog2", activity: "2026-09-20T23:59:00.000Z"),
+      summary("e", project: "atlas", activity: "2026-10-03T00:01:00.000Z"),
     ])
-    #expect(state.projectGroups(calendar: utc).map(\.name) == ["cebula", "ćma", "rarog2", "rarog10", "dawny"])
+    #expect(state.projectGroups().map(\.name) == ["atlas", "Birch", "ćma", "rarog2", "rarog10"])
+  }
+
+  @Test("new activity in the last project of a new day does not move it")
+  func activityKeepsOrder() throws {
+    var state = try state([
+      summary("a", project: "atlas", activity: "2026-10-03T09:00:00.000Z"),
+      summary("b", project: "birch", activity: "2026-10-03T08:00:00.000Z"),
+      summary("z", project: "zeta", activity: "2026-10-01T08:00:00.000Z"),
+    ])
+    let before = state.projectGroups().map(\.cwd)
+    #expect(before == ["/Users/demo/atlas", "/Users/demo/birch", "/Users/demo/zeta"])
+    play(&state, [try Frames.sessionChanged(summary("z", project: "zeta", activity: "2026-10-04T10:00:00.000Z"))],
+         at: base)
+    #expect(state.projectGroups().map(\.cwd) == before)
+  }
+
+  @Test("two projects with the same name in different directories: the path breaks the tie")
+  func sameNameTieByPath() throws {
+    func named(_ id: String, cwd: String, activity: String) -> String {
+      #"""
+      {"id":"\#(id)","cwd":"\#(cwd)","title":"app","state":"waiting-input","stateSince":"2026-10-03T08:00:00.000Z",
+      "createdAt":"2026-10-03T08:00:00.000Z","lastActivityAt":"\#(activity)"}
+      """#
+    }
+    let state = try state([
+      named("w", cwd: "/Users/demo/work/app", activity: "2026-10-03T09:00:00.000Z"),
+      named("h", cwd: "/Users/demo/home/app", activity: "2026-10-01T09:00:00.000Z"),
+    ])
+    #expect(state.projectGroups().map(\.cwd) == ["/Users/demo/home/app", "/Users/demo/work/app"])
+  }
+
+  @Test("pinned projects stand first, alphabetically among themselves; the rest alphabetically after them")
+  func pinnedFirst() throws {
+    let state = try state(["atlas", "birch", "grove", "omega", "zeta"].map { summary($0, project: $0) })
+    var pins = PinnedProjects()
+    pins.set("/Users/demo/zeta", pinned: true)
+    #expect(state.projectGroups(pinned: pins).map(\.name) == ["zeta", "atlas", "birch", "grove", "omega"])
+    pins.set("/Users/demo/grove", pinned: true)
+    #expect(state.projectGroups(pinned: pins).map(\.name) == ["grove", "zeta", "atlas", "birch", "omega"],
+            "pin order does not matter: grove before zeta")
+    pins.set("/Users/demo/zeta", pinned: false)
+    #expect(state.projectGroups(pinned: pins).map(\.name) == ["grove", "atlas", "birch", "omega", "zeta"],
+            "unpinned zeta goes back to its place in the alphabet")
+  }
+
+  @Test("a pin with a trailing slash pins the project; two projects with the same name pin separately")
+  func pinnedByPath() throws {
+    func named(_ id: String, cwd: String) -> String {
+      #"""
+      {"id":"\#(id)","cwd":"\#(cwd)","title":"app","state":"waiting-input","stateSince":"2026-10-03T08:00:00.000Z",
+      "createdAt":"2026-10-03T08:00:00.000Z","lastActivityAt":"2026-10-03T08:00:00.000Z"}
+      """#
+    }
+    let state = try state([
+      named("w", cwd: "/Users/demo/work/app"), named("h", cwd: "/Users/demo/home/app"),
+      summary("a", project: "alder"),
+    ])
+    var pins = PinnedProjects()
+    pins.set("/Users/demo/work/app/", pinned: true)
+    #expect(state.projectGroups(pinned: pins).map(\.cwd) == [
+      "/Users/demo/work/app", "/Users/demo/alder", "/Users/demo/home/app",
+    ])
+  }
+
+  @Test("a pinned project without sessions is not in the list, stays pinned and comes back on top with a new session")
+  func pinnedWithoutSessions() throws {
+    var state = try state([summary("a", project: "atlas"), summary("z", project: "zeta")])
+    var pins = PinnedProjects()
+    pins.set("/Users/demo/zeta", pinned: true)
+    #expect(state.projectGroups(pinned: pins).map(\.name) == ["zeta", "atlas"])
+    play(&state, [try Frames.snapshot([summary("a", project: "atlas")])], at: base)
+    #expect(state.projectGroups(pinned: pins).map(\.name) == ["atlas"], "no sessions, no project")
+    #expect(state.projectTree(collapsed: CollapsedProjects(), pinned: pins).map(\.id) == [
+      .project("/Users/demo/atlas"), .session("a"),
+    ])
+    #expect(pins.contains("/Users/demo/zeta"), "the pin stays in memory")
+    play(&state, [try Frames.sessionChanged(summary("z2", project: "zeta"))], at: base)
+    #expect(state.projectGroups(pinned: pins).map(\.name) == ["zeta", "atlas"])
   }
 
   @Test("projekt z historii CLI bez sesji nie stoi w liście, zostaje w katalogu dla okna nowej sesji")
@@ -68,10 +140,9 @@ struct ProjectSelectorTests {
       ("/Users/demo/stary", "2026-10-02T10:00:00.000Z"),
       ("/Users/demo/nowy", "2026-10-03T11:00:00.000Z"),
     ]), at: base)), now: base)
-    let groups = state.projectGroups(calendar: utc)
+    let groups = state.projectGroups()
     #expect(groups.map(\.cwd) == ["/Users/demo/willow"])
     #expect(groups.allSatisfy { !$0.sessions.isEmpty }, "każdy projekt listy ma sesję")
-    #expect(groups.first?.activityAt == ISOTime.parse("2026-10-03T09:00:00.000Z"), "aktywność z sesji, nie z mtime")
     #expect(state.catalog.recent.map(\.cwd) == ["/Users/demo/willow/", "/Users/demo/stary", "/Users/demo/nowy"])
   }
 
@@ -85,16 +156,16 @@ struct ProjectSelectorTests {
       ("/Users/demo/willow", "2026-10-03T10:00:00.000Z"),
       ("/Users/demo/atlas", "2026-10-03T08:00:00.000Z"),
     ]), at: base)), now: base)
-    #expect(state.projectGroups(calendar: utc).map(\.cwd) == ["/Users/demo/atlas", "/Users/demo/willow"])
+    #expect(state.projectGroups().map(\.cwd) == ["/Users/demo/atlas", "/Users/demo/willow"])
 
     // Serwer po zamknięciu sesji wysyła pełny stan listy bez niej (`sessions-snapshot` managera).
     play(&state, [try Frames.snapshot([summary("b", project: "atlas", activity: "2026-10-03T08:00:00.000Z")])], at: base)
-    #expect(state.projectGroups(calendar: utc).map(\.cwd) == ["/Users/demo/atlas"], "katalog z historii nie wraca")
+    #expect(state.projectGroups().map(\.cwd) == ["/Users/demo/atlas"], "katalog z historii nie wraca")
     #expect(state.catalog.recent.map(\.cwd).contains("/Users/demo/willow"), "okno nowej sesji dalej go ma")
 
     play(&state, [try Frames.sessionChanged(summary("c", project: "willow", activity: "2026-10-03T11:00:00.000Z"))],
          at: base)
-    let groups = state.projectGroups(calendar: utc)
+    let groups = state.projectGroups()
     #expect(groups.map(\.cwd) == ["/Users/demo/atlas", "/Users/demo/willow"])
     #expect(groups.last?.sessions.map(\.id) == ["c"])
   }
@@ -107,7 +178,7 @@ struct ProjectSelectorTests {
       summary("ask", project: "q", state: "waiting-permission"),
       summary("err", project: "q", state: "error"),
     ])
-    let groups = Dictionary(uniqueKeysWithValues: state.projectGroups(calendar: utc).map { ($0.name, $0) })
+    let groups = Dictionary(uniqueKeysWithValues: state.projectGroups().map { ($0.name, $0) })
     #expect(groups["p"]?.tone == .working)
     #expect(groups["q"]?.tone == .failed)
     #expect(groups["p"]?.git == ProjectGit(branch: "main", ahead: 3, behind: nil))
@@ -124,7 +195,7 @@ struct ProjectSelectorTests {
       summary("bg3", project: "r", extra: #","seen":true"# + monitor),
       summary("new", project: "r"),
     ])
-    let groups = Dictionary(uniqueKeysWithValues: state.projectGroups(calendar: utc).map { ($0.name, $0) })
+    let groups = Dictionary(uniqueKeysWithValues: state.projectGroups().map { ($0.name, $0) })
     #expect(groups["p"]?.tone == .backgroundWait)
     #expect(groups["q"]?.tone == .working)
     #expect(groups["r"]?.tone == .unread)

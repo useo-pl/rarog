@@ -19,7 +19,7 @@ import SwiftUI
 struct HeaderTitleSlot: ViewModifier {
   let store: RarogStore
   let selection: String?
-  /// Uzbrojone „×" terminala („Na pewno?") jest szersze — tytuł ustępuje mu miejsca jak przy „×" sesji.
+  /// The terminal's armed "×" in the corner ("Sure?") is wider: the title gives it room.
   let terminal: TerminalChrome
   @Environment(RarogNavigation.self) private var navigation
   @Environment(\.horizontalSizeClass) private var sizeClass
@@ -32,7 +32,10 @@ struct HeaderTitleSlot: ViewModifier {
       terminalCwd: navigation.currentProjectCwd(store.state))
     let leading = navigation.detail != nil
     let toggle = sizeClass != .compact
-    let closeArmed = navigation.closeArm != nil || (terminal.isAttached && terminal.close == .armed)
+    // Only the terminal's armed "×" in the corner (a terminal without a tab bar) asks in text; the tab's "×" keeps its
+    // width.
+    let closeArmed =
+      terminal.isAttached && terminal.close == .armed && navigation.terminalCloseInCorner(store.state)
     // Przed tytułem przycisk listy na iPadzie (w grupie z tytułem, co 2 pt), w stosie systemowe „wstecz" (osobny
     // element paska, odstęp systemu).
     let maxWidth =
@@ -53,7 +56,9 @@ struct HeaderTitleSlot: ViewModifier {
           ToolbarItem(placement: .topBarLeading) {
             HStack(spacing: HeaderMetrics.titleSpacing) {
               if toggle { HeaderListToggle(navigation: navigation) }
-              HeaderLeadingTitle(title: title.title, subtitle: title.subtitle, maxWidth: maxWidth)
+              HeaderLeadingTitle(
+                title: title.title, subtitle: title.subtitle, count: Self.count(store.state, detail: navigation.detail),
+                maxWidth: maxWidth)
             }
           }
           // Cichy glif i napis, bez szklanej kapsuły paska (jak ikony prawego rogu).
@@ -83,9 +88,17 @@ struct HeaderTitleSlot: ViewModifier {
     case .terminal, .openingTerminal:
       guard let cwd = terminalCwd else { return (UICopy.terminalTitle, "") }
       return (ProjectPath.name(cwd), PathText.shortPath(cwd))
+    case .inbox:
+      return (UICopy.inboxTitle, "")
     case nil:
       return ("", "")
     }
+  }
+
+  /// The number next to the title: every card standing on the Inbox screen (not the button's count of cards that
+  /// wait or carry an unread result). `0` = no number, also on every other screen.
+  static func count(_ state: AppState, detail: RarogNavigation.Detail?) -> Int {
+    detail == .inbox ? state.inboxItems.count : 0
   }
 }
 
@@ -110,17 +123,28 @@ struct HeaderListToggle: View {
 
 /// Nazwa projektu i ścieżka wyrównane do lewej, w piśmie tytułu paska (`headline`, ścieżka `footnote` w `muted`).
 /// Jedna linia każda: długa nazwa ucina się na końcu, długa ścieżka w środku, w suficie `maxWidth`.
+/// The Inbox puts its number of cards after the title (`count`, quiet monospaced digits; `0` = none).
 struct HeaderLeadingTitle: View {
   let title: String
   let subtitle: String
+  var count = 0
   let maxWidth: CGFloat?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      Text(title)
-        .appFont(.headline)
-        .foregroundStyle(Color(uiColor: Palette.text))
-        .truncationMode(.tail)
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text(title)
+          .appFont(.headline)
+          .foregroundStyle(Color(uiColor: Palette.text))
+          .truncationMode(.tail)
+        if count > 0 {
+          Text(count, format: .number)
+            .appFont(.footnote.monospaced())
+            .foregroundStyle(Color(uiColor: Palette.muted2))
+            .accessibilityLabel(UICopy.inboxCardsSpoken(count))
+            .layoutPriority(1)
+        }
+      }
       if !subtitle.isEmpty {
         Text(subtitle)
           .appFont(.footnote)

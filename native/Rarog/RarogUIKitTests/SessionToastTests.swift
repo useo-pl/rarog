@@ -112,6 +112,26 @@ final class SessionToastTests: XCTestCase {
     XCTAssertEqual(fixture.navigation.selectedSessionId, "s2", "dymek prowadzi do swojej sesji")
   }
 
+  /// The phone's panel sheet of this session covers the prompt: the toast stands at the bottom of the sheet, so the
+  /// screen shows none while the sheet stands, and the same toast comes back when the sheet closes.
+  func testPanelSheetSilencesToastAndClosingBringsItBack() throws {
+    let fixture = try Self.make(messages: 2)
+    defer { fixture.window.isHidden = true }
+    try Self.offer(fixture)
+    let chrome = fixture.controller.toastChrome
+    let toast = try XCTUnwrap(chrome.host?.rootView.toast)
+    fixture.navigation.openInspectorSheet(sessionId: "s1", anchor: InspectorModel.backgroundAnchor)
+    Self.until { chrome.shown == nil }
+    Self.spin(0.35)
+    XCTAssertNil(chrome.shown, "no toast on the screen under the panel sheet")
+    XCTAssertEqual(chrome.host?.view.isHidden, true, "the hidden toast has no touch target")
+    XCTAssertEqual(fixture.toasts.current, toast, "the toast itself stays, at the bottom of the sheet")
+
+    fixture.navigation.closeInspectorSheet()
+    Self.until { chrome.shown != nil }
+    XCTAssertEqual(chrome.shown?.id, toast.id, "the same toast is back over the prompt")
+  }
+
   /// Stuknięcie w trakcie pojawiania (krycie i wjazd w toku): dymek gaśnie od razu, bez resztek animacji.
   func testTapDuringAppearanceHidesAtOnce() throws {
     let fixture = try Self.make(messages: 2)

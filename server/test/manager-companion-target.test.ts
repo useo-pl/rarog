@@ -92,7 +92,7 @@ describe('manager: cel pytania agenta głosowego', () => {
     const { manager, driver, id } = await withAgent();
     driver.queue.push({ type: 'init', engineSessionId: CONV_A, model: 'claude-opus-5' });
     await flush();
-    expect(manager.companionTarget(id)).toEqual({ cwd: PROJECT, agentSessionId: CONV_A });
+    expect(manager.companionTarget(id)).toMatchObject({ cwd: PROJECT, agentSessionId: CONV_A });
 
     const heard: [string, string][] = [];
     const off = manager.onConversationChange((sessionId, agentSessionId) => { heard.push([sessionId, agentSessionId]); });
@@ -103,7 +103,7 @@ describe('manager: cel pytania agenta głosowego', () => {
     driver.queue.push({ type: 'init', engineSessionId: CONV_B, model: 'claude-opus-5' });
     await flush();
     expect(heard).toEqual([[id, CONV_B]]);
-    expect(manager.companionTarget(id)).toEqual({ cwd: PROJECT, agentSessionId: CONV_B });
+    expect(manager.companionTarget(id)).toMatchObject({ cwd: PROJECT, agentSessionId: CONV_B });
 
     off();
     driver.queue.push({ type: 'init', engineSessionId: CONV_A, model: 'claude-opus-5' });

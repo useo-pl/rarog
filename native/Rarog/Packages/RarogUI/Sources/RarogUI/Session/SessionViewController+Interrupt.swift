@@ -14,6 +14,9 @@ import UIKit
 final class TurnChrome {
   /// Odroczony zapis szkicu po przerwie od ostatniej zmiany pola (`+Drafts`).
   var draftSave: Task<Void, Never>?
+  /// The last Send of the field from its button or key: the end of a dictation recording waits for it
+  /// (`dictationEndWait`).
+  var fieldSend: Task<ComposerSendResult, Never>?
   /// Stan zapisany i stan, na który czeka odliczanie — zapis tylko przy zmianie (`+Drafts`).
   var draftSchedule = DraftSaveSchedule()
   /// Obserwatorzy cyklu życia apki (tło, powrót).
@@ -142,35 +145,67 @@ extension SessionViewController {
 
   // MARK: - Przerwanie
 
-  /// Stop (przycisk pola w trybie Stopu) i Esc — jedna droga. Prompt bierzemy PRZED żądaniem: render w trakcie mógłby podmienić
-  /// stan pod ręką. Wynik dotyczy tylko TEGO ekranu: po zmianie sesji albo wylogowaniu przepada.
-  /// Czas od gestu do rozstrzygnięcia zostaje śladem w `client.log` (`DiagnosticsTrace`).
+  /// Stop (the field button in its Stop mode) and Esc share one path. The field gets only the prompt Claude Code
+  /// handed back to its own field (`returnedPrompt` in the answer), placed against the field as it is when the answer
+  /// arrives. The next send clears the CLI's field, so the prompt must not be lost when the screen of the gesture is
+  /// gone by then: the answer goes to the session, not to this screen (`receiveInterrupt`). An answer to a gesture from
+  /// before a logout goes nowhere. The time from the gesture to the verdict goes to `client.log` (`DiagnosticsTrace`).
   func interruptTurn(trigger: InterruptTrigger = .stop) {
     guard store.state.interruptAvailability(for: sessionId) == .enabled,
       !store.state.interruptHeld(sessionId, now: Date())
     else { return }
-    let prompt = store.state.lastPrompt(for: sessionId)
     Announcer.shared.say(UICopy.interruptSent)
+    let store = store
+    let sessionId = sessionId
+    // The draft store of this screen's space, which also knows the session's screens.
+    let drafts = drafts
     let started = ContinuousClock.now
-    Task { [weak self] in
-      guard let self else { return }
-      let outcome = await self.store.interrupt(self.sessionId)
+    Task {
+      let outcome = await store.interrupt(sessionId)
       let elapsed = ContinuousClock.now - started
       let milliseconds = Int(elapsed.components.seconds * 1000 + elapsed.components.attoseconds / 1_000_000_000_000_000)
-      self.store.trace(DiagnosticsTrace.interrupt(trigger: trigger, outcome: outcome, milliseconds: milliseconds))
-      self.presentInterrupt(outcome, prompt: prompt)
+      store.trace(DiagnosticsTrace.interrupt(trigger: trigger, outcome: outcome, milliseconds: milliseconds))
+      await Self.receiveInterrupt(outcome, of: sessionId, drafts: drafts, store: store)
     }
   }
 
-  private func presentInterrupt(_ outcome: InterruptOutcome, prompt: String) {
-    guard isViewLoaded, view.window != nil, store.state.auth == .loggedIn else { return }
-    let fieldEmpty = composer.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    guard let shown = InterruptPresentation.make(
-      outcome, prompt: prompt, fieldEmpty: fieldEmpty, machine: store.state.serverMachine) else { return }
-    if shown.restorePrompt {
-      composer.text = prompt
-      persistDraftNow()
+  /// The answer goes where the prompt will not be lost, decided at answer time, as a queue take-back's: the screen of
+  /// the session whose live field writes the session's draft next (`receivingScreen`, also a newer screen than the
+  /// gesture's, or one under a full-screen presentation), and with no screen of the session alive the stored draft.
+  /// Only the receiving screen in a window shows the line under the field and speaks.
+  private static func receiveInterrupt(
+    _ outcome: InterruptOutcome, of sessionId: String, drafts: ComposerDrafts, store: RarogStore
+  ) async {
+    guard store.state.auth == .loggedIn else { return }
+    if let screen = receivingScreen(of: sessionId, drafts: drafts, state: store.state) {
+      await screen.presentInterrupt(outcome)
+    } else if case let .delivered(prompt?) = outcome {
+      drafts.saveReturnedPrompt(prompt, for: sessionId)
     }
+  }
+
+  /// The prompt into the live field, then the result on screen when it stands in a window, then a confirmed write of
+  /// the field to the durable draft. That write replaces the draft, so a failed send's text waiting for this screen
+  /// joins the field first, and the prompt stands before it. A refused write leaves the field as it is: nothing
+  /// replays an interrupt, and the field's next write tries again.
+  private func presentInterrupt(_ outcome: InterruptOutcome) async {
+    if case .delivered(_?) = outcome { takeWaitingDraft() }
+    guard let shown = InterruptPresentation.make(outcome, field: composer.text, machine: store.state.serverMachine)
+    else { return }
+    if let field = shown.field {
+      let selection = composer.textView.selectedRange
+      composer.text = field
+      // Typed text stays under the cursor: it moves right by the prompt line put before it.
+      if let shift = shown.keptTextShift {
+        composer.textView.selectedRange = NSRange(location: selection.location + shift, length: selection.length)
+      }
+    }
+    if isScreenAttached(store.state) { showInterruptResult(shown) }
+    if shown.field != nil { _ = await persistDraftConfirmed() }
+  }
+
+  /// The line under the field and VoiceOver, on the screen in a window.
+  private func showInterruptResult(_ shown: InterruptPresentation) {
     if let line = shown.line {
       // Linia zostaje do edycji pola (jak wynik wysyłki); błąd ogłasza samo pole.
       transientHint = composer.isEditable

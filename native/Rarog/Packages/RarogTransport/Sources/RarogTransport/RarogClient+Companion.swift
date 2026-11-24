@@ -2,7 +2,8 @@ import Foundation
 import RarogContract
 
 // Klucz krótki OpenAI agenta głosowego. Właściciel: agent głosowy.
-// The temporary Soniox speech key of the voice agent's voice goes the same way.
+// The temporary Soniox speech key of the voice agent's voice goes the same way, and so do the two reads of the mode
+// across sessions: the session catalog and the last turns of one session.
 extension RarogClient {
   /// `POST /api/companion/token` z pustym ciałem → klucz KRÓTKI OpenAI Realtime, jego ważność i model z serwera.
   ///
@@ -53,6 +54,54 @@ extension RarogClient {
     let path = "/api/sessions/\(Self.segment(sessionId))/companion/ask"
     let response = try await perform(.post(path, json: body, timeout: Self.companionAskTimeout))
     return try decode(CompanionAnswer.self, from: response.body, path: path)
+  }
+
+  // MARK: Mode across sessions (read only)
+
+  /// Most turns one read asks for: `COMPANION_TURNS_MAX` in `shared/src/rest.ts`. The least is 1.
+  public static let companionTurnsMax = 3
+
+  /// `GET /api/companion/sessions` → the voice agent's session catalog (``CompanionSessions``).
+  ///
+  /// A read, so no mutation gate. Refusals come typed: 404 (older server or demo), 503 `companion-disabled` (the
+  /// voice agent is off) and 503 `companion-sessions-disabled` (the mode across sessions is off) as `.http`.
+  public func companionSessions() async throws(TransportError) -> CompanionSessions {
+    let path = "/api/companion/sessions"
+    let response = try await perform(.get(path))
+    return try decode(CompanionSessions.self, from: response.body, path: path)
+  }
+
+  /// `GET /api/sessions/<id>/companion/turns?count=<count>` → the last `count` turns of the session's current engine
+  /// conversation (``CompanionTurns``), with the server's sentences in the messages translated.
+  ///
+  /// `count` outside 1…``companionTurnsMax`` is refused before the request (`.invalidResponse`), as the server would
+  /// answer 400. Refusals come typed: 404 (a session outside the voice agent's catalog, with the server's sentence),
+  /// 503 `companion-disabled` and `companion-sessions-disabled` as `.http`.
+  public func companionTurns(sessionId: String, count: Int) async throws(TransportError) -> CompanionTurns {
+    let path = "/api/sessions/\(Self.segment(sessionId))/companion/turns"
+    guard (1...Self.companionTurnsMax).contains(count) else {
+      throw .invalidResponse("\(path): count \(count) outside 1...\(Self.companionTurnsMax)")
+    }
+    let response = try await perform(.get("\(path)?count=\(count)"))
+    var turns = try decode(CompanionTurns.self, from: response.body, path: path)
+    // The answer is not `SentenceBearing` but carries messages, so their server sentences are translated here.
+    turns.messages = turns.messages.map(translated)
+    return turns
+  }
+
+  // MARK: Mode across sessions: picking up a result
+
+  /// `POST /api/sessions/<id>/seen` with the voice agent's pick-up (``SeenBody`` with all three fields of `pickUp`)
+  /// → 200 `{ok: true}`: the result the agent read is received, and the session row carries `seenBy`.
+  ///
+  /// A mutation, so it goes through `MutationGate` (compatibility and the session gate) with `Origin`. Refusals come
+  /// typed as `.http`: 409 `bad-state` when the result is not the one read (sentence `session.seen-result-changed`),
+  /// 404 for an unknown session or one outside the voice agent's catalog, 503 `companion-disabled` and
+  /// `companion-sessions-disabled`. A person's receipt is ``markSeen(sessionId:)``, whose body stays `{}`.
+  public func pickUpResult(sessionId: String, _ pickUp: SeenPickUp) async throws(TransportError) {
+    let path = "/api/sessions/\(Self.segment(sessionId))/seen"
+    let response = try await perform(.post(path, json: SeenBody(pickUp: pickUp)))
+    _ = try decodeCatalog(OkAck.self, from: response.body, path: path)
   }
 
   /// Ścieżka pola z błędu dekodowania, bez wartości i bez opisu, który mógłby ją zacytować.

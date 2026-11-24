@@ -40,23 +40,6 @@ private func echo(_ text: String, seq: Int, id: String?, attachments: String = "
     """#
 }
 
-/// Zawór dla atrapy: wysyłka stoi, dopóki test go nie otworzy.
-private actor Valve {
-  private var open = false
-  private var waiters: [CheckedContinuation<Void, Never>] = []
-
-  func wait() async {
-    if open { return }
-    await withCheckedContinuation { waiters.append($0) }
-  }
-
-  func release() {
-    open = true
-    for waiter in waiters { waiter.resume() }
-    waiters.removeAll()
-  }
-}
-
 @MainActor
 @Suite("wysyłka z clientMessageId: identyfikator, powtórka, konflikt")
 struct StoreSendClientMessageIdTests {

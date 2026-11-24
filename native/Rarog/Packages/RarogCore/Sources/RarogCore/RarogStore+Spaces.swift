@@ -34,7 +34,9 @@ import RarogTransport
 // - Wejście w inną przestrzeń czyści stan w pamięci (`.dataWiped`, półka załączników), a preferencje zależne od serwera
 //   (`NavigationPreferences.serverScoped`) zeruje znacznik ich przestrzeni (`preferencesSpaceKey`), sprawdzany przy
 //   każdym wyborze — także po zabiciu procesu, zanim `UserDefaults` utrwaliło zerowanie. Interfejs buduje się od nowa
-//   i czyta szkice z nowej przestrzeni.
+//   i czyta szkice z nowej przestrzeni. A space entered after the start also gets its queue back
+//   (`restoreEnteredSpace`), because the start reads it once per store; a pairing logs in only after that read, with
+//   the space's list cache (`switchEndpoint`).
 
 extension RarogStore {
   /// Nazwa przestrzeni, do której należą preferencje `NavigationPreferences.serverScoped` (UTF-8; pusta = żadna; brak
@@ -264,7 +266,22 @@ extension RarogStore {
     let directory = target.map(spaces.directory)
     persistence = OutboxPersistence(directory: directory?.appending(path: ServerSpaces.outbox) ?? spaces.scratch())
     listCacheDisk.cache = directory.map { SnapshotCache(directory: $0.appending(path: ServerSpaces.list)) }
+    if target != nil { restoreEnteredSpace() }
     return true
+  }
+
+  /// A space entered after the start (pairing, unpairing): its queue comes back the way the start reads it, because
+  /// the start takes effect once per store and the memory holds another owner's data (or none). Before the start
+  /// (attaching, the Keychain after the first unlock) the start reads it itself. The read belongs to the space entered
+  /// here: a later entry swaps `persistence`, and the result goes to the bin. A login waits for this read
+  /// (`serverRuntime.spaceRestore`) and reads the list cache after it (`switchEndpoint`).
+  private func restoreEnteredSpace() {
+    guard started else { return }
+    let persistence = persistence
+    serverRuntime.spaceRestore = Task { [weak self] in
+      guard let self, self.persistence === persistence else { return }
+      await self.restoreOutbox()
+    }
   }
 
   /// „Zapomnij serwer”, PIERWSZY krok: dane tego serwera unieważnione na dysku, zanim cokolwiek (także własne

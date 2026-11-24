@@ -56,6 +56,47 @@ final class ToastUITests: XCTestCase {
     try await control.reset()
   }
 
+  /// iPhone: the session panel sheet covers the prompt, so a toast raised while it stands (here the end of a turn in
+  /// another session) stands at the bottom of the sheet, one toast only, and a tap on it works.
+  @MainActor
+  func testToastStandsInPanelSheetOnPhone() async throws {
+    guard UIDevice.current.userInterfaceIdiom == .phone else {
+      throw XCTSkip("the panel is a sheet only on a phone; an iPad keeps it as a column")
+    }
+    let port = try DemoServer.requirePort()
+    let control = DemoControl(port: port)
+    try await control.reset()
+    let id = try await control.create("idle", label: "panel toast")
+    let app = DemoServer.launch(port: port)
+    DemoServer.pair(app)
+    XCTAssertTrue(DemoServer.listShown(app), "session list")
+    DemoServer.reveal(app, "demo-rarog-stop").tap()
+    XCTAssertTrue(app.textViews["composer.field"].waitForAppearance(timeout: 10), "the session screen")
+    DemoServer.hideKeyboard(app)
+    let button = element(app, "header.inspector")
+    XCTAssertTrue(button.waitForAppearance(timeout: 10), "the panel button")
+    button.tap()
+    let panel = element(app, "inspector.panel")
+    XCTAssertTrue(panel.waitForAppearance(timeout: 5), "the panel sheet")
+    sleep(1)
+
+    try await control.emit("delta", sessionId: id, text: "panel toast working")
+    sleep(1)
+    try await control.emit("message", sessionId: id, text: "panel toast done")
+    let toast = element(app, "toast.session")
+    XCTAssertTrue(toast.waitForAppearance(timeout: 10), "the toast over the panel sheet")
+    XCTAssertTrue(toast.isHittable, "the toast is on top, not under the sheet: \(toast.frame)")
+    XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "toast.session").count, 1, "one toast only")
+    let sheet = panel.frame
+    XCTAssertGreaterThan(toast.frame.minY, sheet.minY, "inside the sheet: \(toast.frame), sheet \(sheet)")
+    XCTAssertLessThanOrEqual(toast.frame.maxY, app.frame.maxY - 16, "at the bottom of the sheet: \(toast.frame)")
+    XCTAssertGreaterThan(toast.frame.midY, sheet.midY, "in the lower half of the sheet: \(toast.frame), sheet \(sheet)")
+    toast.tap()
+    XCTAssertTrue(toast.waitForDisappearance(timeout: 2), "a tap takes the toast away")
+    app.terminate()
+    try await control.reset()
+  }
+
   @MainActor
   private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
     app.descendants(matching: .any)[id].firstMatch

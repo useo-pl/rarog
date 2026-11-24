@@ -291,7 +291,7 @@ const GIT_GLOBAL_OPTIONS: readonly string[] = ['--literal-pathspecs'] satisfies 
  * git czyta jeszcze jako opcję globalną, więc „podkomenda” `-c` z `rest` = `['core.fsmonitor=…', …]` stałaby
  * po osłonach i je nadpisała. Wbudowanych podkomend nie zasłoni też alias z konfiguracji repo.
  */
-export const GIT_SUBCOMMANDS = ['status', 'log', 'diff', 'ls-files', 'rev-parse'] as const;
+export const GIT_SUBCOMMANDS = ['status', 'log', 'diff', 'ls-files', 'rev-parse', 'check-ignore'] as const;
 export type GitSubcommand = (typeof GIT_SUBCOMMANDS)[number];
 
 /**
@@ -467,7 +467,8 @@ function guardedGitEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 
 /**
  * Oldest git the runner starts `diff` with: `GIT_NO_LAZY_FETCH` works from git 2.44. With an older git `diff` is
- * refused, because a lazy fetch was measured on `diff` only; `status`, `log`, `ls-files` and `rev-parse` still run.
+ * refused, because a lazy fetch was measured on `diff` only; `status`, `log`, `ls-files`, `rev-parse` and
+ * `check-ignore` still run.
  */
 const MIN_GIT_VERSION = { major: 2, minor: 44 } as const;
 

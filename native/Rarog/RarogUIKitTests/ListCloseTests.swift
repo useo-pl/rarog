@@ -39,6 +39,25 @@ final class ListCloseTests: XCTestCase {
     XCTAssertTrue(navigation.closing.isEmpty)
   }
 
+  /// The current tab's "×" turns into a spinner while its close is on the way and takes no press, then the screen
+  /// goes to the sister the human came from.
+  func testTabCloseSpinsWhileClosing() async throws {
+    let hold = CloseHold()
+    let store = try makeStore(hold)
+    let navigation = RarogNavigation(prefs: MemoryPreferences())
+    navigation.detail = .session("a")
+    XCTAssertEqual(navigation.tabClose(store.state)?.glyph, .idle)
+    let close = Task { await navigation.close("a", store: store) }
+    let started = await waitUntil { await hold.requested == ["a"] }
+    XCTAssertTrue(started)
+    let closing = try XCTUnwrap(navigation.tabClose(store.state))
+    XCTAssertEqual(closing.glyph, .closing, "a spinner in place of the “×”")
+    XCTAssertFalse(closing.acts, "no press while the close is on its way")
+    await hold.releaseAll()
+    await close.value
+    XCTAssertEqual(navigation.detail, .session("b"), "the screen goes to the sister")
+  }
+
   /// Siostra, do której wraca ekran, sama jest zamykana: po zamknięciu lista, nie zamykana sesja.
   func testReturnTargetBeingClosedFallsBackToList() async throws {
     let hold = CloseHold()

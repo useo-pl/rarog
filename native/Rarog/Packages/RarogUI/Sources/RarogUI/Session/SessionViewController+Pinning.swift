@@ -28,6 +28,11 @@ extension SessionViewController {
 
   /// Gest przejmuje listę: animowany skok „na dół" albo do linii „NOWE" (jeśli trwał) już nie dojdzie sam.
   func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+    takeListForGesture()
+  }
+
+  /// The start of a gesture on the list, a finger's drag or a pointer's selection press (`+PointerSelection`).
+  func takeListForGesture() {
     readingChrome.gesture = true
     readingChrome.jumpAnimating = false
     readingChrome.jumpDeadline?.cancel()
@@ -46,6 +51,11 @@ extension SessionViewController {
 
   func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
     guard !decelerate else { return }
+    endGestureOnList()
+  }
+
+  /// The end of a gesture that leaves the list still: the pin follows the place it ended at, and the place is kept.
+  func endGestureOnList() {
     readingChrome.gesture = false
     pinned = distanceFromBottom() <= Self.pinThreshold
     rememberPosition()
@@ -205,6 +215,10 @@ final class PinnedCollectionView: UICollectionView {
     }
   }
 
-  var isUserScrolling: Bool { isTracking || isDragging || isDecelerating }
+  /// The pointer selection holds the list (`+PointerSelection`): its press and its edge autoscroll count as a gesture,
+  /// so the pin follows them and nothing scrolls the list under the pointer.
+  var pointerScrolling = false
+
+  var isUserScrolling: Bool { isTracking || isDragging || isDecelerating || pointerScrolling }
 }
 #endif

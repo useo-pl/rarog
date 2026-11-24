@@ -124,7 +124,7 @@ final class ShortcutSheetUIKitTests: XCTestCase {
     let controller = controller(rig, window: window) {
       ShortcutSheetController.conditions(window: window, loggedIn: true, switcherOpen: switcher.windowShown)
     }
-    switcher.openByTap(keyboard: false, snapshot: ["a"], current: nil)
+    switcher.openByTap(keyboard: false, tabs: [.session("a")], current: .session("a"))
     XCTAssertTrue(switcher.windowShown)
 
     hold(controller, rig)
@@ -135,7 +135,7 @@ final class ShortcutSheetUIKitTests: XCTestCase {
     controller.receive(.commandUp(.left))
     hold(controller, rig)
     XCTAssertNotNil(ShortcutSheetPanel.visible, "with the window closed a new hold shows the sheet")
-    switcher.openByTap(keyboard: false, snapshot: ["a"], current: nil)
+    switcher.openByTap(keyboard: false, tabs: [.session("a")], current: .session("a"))
     rig.time += CommandHold.checkInterval
     controller.check()
     XCTAssertNil(ShortcutSheetPanel.visible, "the switcher opened over the sheet hides it")

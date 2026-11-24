@@ -1,0 +1,7 @@
+{
+  "error": "not-found",
+  "message": "That file or directory isn't there, or Rarog doesn't show it.",
+  "messageRef": {
+    "code": "rest.files-not-found"
+  }
+}

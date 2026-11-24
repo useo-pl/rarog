@@ -37,13 +37,21 @@ public final class RarogStore {
   @ObservationIgnored public let clientId = UUID().uuidString
 
   @ObservationIgnored private var phase: ScenePhase = .active
+  /// `start()` got past the Keychain wait; a later call changes nothing, and a space entered from now on reads its
+  /// queue itself (`RarogStore+Spaces`).
+  @ObservationIgnored private(set) var started = false
   /// Strumienie zamknięte przez zejście w tło — wstają przy wejściu w `active`, z której fazy
   /// by nie przyszło (iOS wraca `background → inactive → active`).
   @ObservationIgnored private var suspendedInBackground = false
   /// Wpisy, których „Ponów" właśnie trwa — drugie tapnięcie nic nie wysyła. Właściciel: `+Send`.
-  @ObservationIgnored var retrying: Set<UUID> = []
+  /// The value is the Retry's attempt from its start, the manifest write included; a voice agent's call joins it.
+  @ObservationIgnored var retrying: [UUID: SendFlight] = [:]
   /// The delivery attempt in flight of each outbox entry, for the stop and against late results. Owner: `+Send`.
   @ObservationIgnored var sendFlights: [UUID: SendFlight] = [:]
+  /// The voice agent's prompt sends running, by `clientMessageId`, with the prompt the id names: a second call with the
+  /// same id and prompt shares the first. Owner: `+CompanionSend`.
+  @ObservationIgnored
+  var companionSends: [UUID: (prompt: CompanionPrompt, task: Task<CompanionSendOutcome, Never>)] = [:]
   /// Stall threshold of both streams: every `hello` of the global stream sets it, `retire` resets it.
   @ObservationIgnored let stallThreshold = StallThreshold()
   /// Clock and sleep of the stream loops (stall guard, retry backoff); tests swap it before `start()`.
@@ -69,6 +77,10 @@ public final class RarogStore {
   @ObservationIgnored var turnRequests = TurnRequests()
   /// Zdjęcia do miniatur: pamięć, brakujące, odczyty w drodze. Właściciel: `RarogStore+Uploads`.
   @ObservationIgnored var uploadReads = UploadReads()
+  /// Session file requests in flight; a logout cancels them. Owner: `RarogStore+Files`.
+  @ObservationIgnored var sessionFileReads = SessionFileReads()
+  /// The file tree of the session in the right panel. Owner: `RarogStore+FileTree`.
+  public let fileTree: FileTreeStore
   /// Klucze dyktowania w drodze i numer zalogowania. Właściciel: `RarogStore+Voice`.
   @ObservationIgnored var voiceMinting = VoiceMinting()
   /// Pamięć podręczna listy na dysku i łańcuch jej operacji. Właściciel: `RarogStore+Cache`.
@@ -84,6 +96,8 @@ public final class RarogStore {
   @ObservationIgnored var commandReads: Set<String> = []
   /// Punkt końcowy, fabryki transportu i Keychain, zadania parowania. Właściciel: `RarogStore+Pairing`.
   @ObservationIgnored var serverRuntime = ServerRuntime()
+  /// Inbox reads, the transcript read of a decision card and removals in flight. Owner: `RarogStore+Inbox`.
+  @ObservationIgnored var inboxRuntime = InboxRuntime()
   /// Wybór dyktowania i flaga builda. Wybór należy do urządzenia: `retire` (wylogowanie, „Zapomnij serwer”,
   /// nowy serwer) go nie dotyka. Apka podpina ``DictationServices/live(sonioxAllowed:defaults:)``.
   public private(set) var dictation: DictationServices = .memory(sonioxAllowed: true, choice: nil)
@@ -120,7 +134,9 @@ public final class RarogStore {
     persistence = OutboxPersistence(directory: outboxDirectory)
     state = AppState(clientBuild: clientBuild)
     listCacheDisk.cache = listCacheDirectory.map { SnapshotCache(directory: $0) }
+    fileTree = FileTreeStore(refreshGap: timing.fileTreeRefreshGap, indexGap: timing.fileIndexRefreshGap)
     rules.store = self
+    fileTree.owner = self
   }
 
   /// Magazyn z prawdziwym klientem HTTP (reguły wpięte w bramkę transportu) i kluczem urządzenia, bez złącza
@@ -141,10 +157,18 @@ public final class RarogStore {
   /// Z kluczem urządzenia pierwsza klatka rysuje listę z pamięci podręcznej jako
   /// nieświeżą (`RarogStore+Cache`). Keychain nieczytelny przed pierwszym odblokowaniem telefonu:
   /// ekran startowy zostaje, a start wraca przy wejściu na wierzch (`RarogStore+Pairing`).
+  /// Takes effect once per store: the scene root runs its `.task` again whenever a full-screen cover over it closes,
+  /// and a second `.loggedIn` would wipe what the store knows about the server (capabilities, plan limits, the list)
+  /// until the next version probe. Every later login goes through `enterLoggedIn`, and a space entered after the start
+  /// (pairing, unpairing) reads its own queue (`RarogStore+Spaces`) before a pairing logs in with its list cache.
   public func start() async {
-    guard !serverRuntime.awaitingKeychain else { return }
+    guard !serverRuntime.awaitingKeychain, !started else { return }
+    // Set before the first `await`: the scene's `.task` and the Keychain retry can call it at the same time.
+    started = true
     // Kolejka i lista z pamięci czytają się z przestrzeni bieżącego serwera (wybranej przy wpięciu, `RarogStore+Spaces`).
     await restoreOutbox()
+    // A space entered during that read (pairing from a link at the start) reads its own queue: the login waits for it.
+    await serverRuntime.spaceRestore?.value
     if transport.hasCredential {
       let cached = await readListCache()
       dispatch(.loggedIn)
@@ -176,7 +200,11 @@ public final class RarogStore {
       stopLoops()
     }
     if (previous == .background) != (next == .background) { refreshPresence() }
-    if previous == .background, next != .background { pushReturnedToForeground() }
+    if previous == .background, next != .background {
+      pushReturnedToForeground()
+      fileTree.requestRefresh()
+      fileTree.invalidateIndexes()
+    }
     syncUsagePolling()
     syncTerminals()
     liveActivityScenePhaseChanged(from: previous, to: next)
@@ -220,12 +248,16 @@ public final class RarogStore {
   /// `internal`: akcje obszarów (`RarogStore+<Obszar>`) zmieniają stan tym samym reduktorem.
   func dispatch(_ event: CoreEvent) {
     let noticesBefore = state.notices.count
+    let fileTreeBefore = fileTreeProbe()
     let now = clock()
     let effects = state.apply(event, now: now, timing: timing)
     for effect in effects { perform(effect) }
     // Echo odroczone: okres bezczynności sesji z wpisem w kolejce CLI — po KAŻDYM zdarzeniu.
     for effect in state.syncQueuedIdle(now: now) { perform(effect) }
     if state.notices.count > noticesBefore { schedulePruneNotices() }
+    noteInboxEvent(event)
+    noteFileTreeEvent(before: fileTreeBefore)
+    syncInbox()
     syncPushBadge()
     syncLiveActivity()
   }
@@ -246,6 +278,13 @@ public final class RarogStore {
         try? await Task.sleep(for: wait)
         self?.dispatch(.outboxQueuedIdle(sessionId: sessionId, since: since))
       }
+    case let .scheduleUnconfirmedCheck(id, delay, openedAt):
+      Task { [weak self] in
+        try? await Task.sleep(for: delay)
+        self?.dispatch(.outboxUnconfirmedAfterOpening(id, openedAt: openedAt))
+      }
+    case let .scheduleQueuedCeilingCheck(id, queuedAt):
+      scheduleQueuedCeiling(id, queuedAt: queuedAt)
     case let .scheduleRestartGrace(sessionId, settledAt):
       Task { [weak self] in
         try? await Task.sleep(for: .seconds(SessionControlTiming.restartSettleGrace))
@@ -298,10 +337,11 @@ public final class RarogStore {
     }
     globalLoop = nil
     sessionLoop = nil
+    stopInboxLoads()
   }
 
   /// Strumień oglądanej sesji: tylko dla sesji znanej z listy, przy zalogowaniu i na wierzchu.
-  private func syncSessionLoop(force: Bool = false) {
+  func syncSessionLoop(force: Bool = false) {
     let wanted = state.viewedSessionId.flatMap { state.sessions[$0] == nil ? nil : $0 }
     // Lista z pamięci podręcznej to jeszcze nie „sesja znana": transkrypt (i jego karty decyzji)
     // dopiero po świeżej liście — ramka listy idzie zaraz po `hello`.
@@ -323,7 +363,10 @@ public final class RarogStore {
       dispatch(.streamStopped(loop.scope))
     }
     let view = state.transcripts[wanted]
-    let cursor = (view?.snapshots ?? 0) > 0 ? view?.cursor : nil
+    // A fresh transcript asked by the voice agent of an Inbox card (`refreshTranscript`): no cursor, so a snapshot.
+    let fresh = inboxRuntime.freshTranscript == wanted
+    if fresh { inboxRuntime.freshTranscript = nil }
+    let cursor = !fresh && (view?.snapshots ?? 0) > 0 ? view?.cursor : nil
     startLoop(.session(id: wanted), cursor: cursor)
   }
 
@@ -407,6 +450,7 @@ public final class RarogStore {
   func retire(_ event: CoreEvent, unregisterPush: Bool) {
     loginGeneration += 1
     forgetCardRequests()
+    forgetInbox()
     stopLoops()
     // The next login (maybe another server) starts from the fallback until its own `hello`.
     stallThreshold.reset()
@@ -419,6 +463,8 @@ public final class RarogStore {
     stopTerminals()
     forgetAnswers()
     forgetUploadReads()
+    forgetSessionFileReads()
+    fileTree.reset()
     forgetVoiceMints()
     forgetPush(unregister: unregisterPush)
     forgetLiveActivity()

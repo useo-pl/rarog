@@ -4,6 +4,10 @@
  * Kontrakt ze speca: pojemność 500, `push(t) → seq` monotoniczny od 1, `since(seq) → T[]`,
  * `tooOld(seq) → boolean`.
  *
+ * A new card under an existing id (restart, "Resume") continues the old card's numbering with `startSeq`: the first
+ * push gets `startSeq + 1`, and a cursor at or below `startSeq` is too old, because the events it counts belong to the
+ * old card and none of them are in this ring.
+ *
  * Semantyka kursora (taka sama jak w SSE): kursor to `seq` OSTATNIEGO odebranego eventu,
  * więc `since(seq)` zwraca elementy o `seq > kursor`. Kursor `0` = „nic jeszcze nie widziałem".
  * `seq` żyje w ramach jednego `serverStartId` — po restarcie backendu kursor jest z definicji
@@ -71,6 +75,8 @@ export interface RingBufferOptions<T> {
   maxBytes?: number;
   /** Waga elementu; domyślnie {@link jsonBytes}. Bez `maxBytes` nie jest w ogóle wołana. */
   weigh?: (value: T) => number;
+  /** The last seq of the ring this one continues; the first push gets `startSeq + 1`. Default 0. */
+  startSeq?: number;
 }
 
 export class RingBuffer<T> {
@@ -86,8 +92,10 @@ export class RingBuffer<T> {
   #size = 0;
   /** Suma wag elementów aktualnie przechowywanych. */
   #bytes = 0;
-  /** Ostatnio przydzielony `seq`; 0 = nic jeszcze nie wrzucono. */
-  #lastSeq = 0;
+  /** Ostatnio przydzielony `seq`; `#floor` = nic jeszcze nie wrzucono. */
+  #lastSeq: number;
+  /** The last seq of the ring this one continues; a cursor at or below it is too old (0 = a fresh ring). */
+  readonly #floor: number;
 
   constructor(capacity: number = DEFAULT_RING_CAPACITY, opts: RingBufferOptions<T> = {}) {
     if (!Number.isInteger(capacity) || capacity < 1) {
@@ -98,6 +106,12 @@ export class RingBuffer<T> {
     this.#weights = new Array<number>(capacity).fill(0);
     this.#maxBytes = opts.maxBytes ?? null;
     this.#weigh = opts.weigh ?? jsonBytes;
+    const startSeq = opts.startSeq ?? 0;
+    if (!Number.isInteger(startSeq) || startSeq < 0) {
+      throw new RangeError(`RingBuffer: startSeq must be a non-negative integer, is ${String(startSeq)}`);
+    }
+    this.#floor = startSeq;
+    this.#lastSeq = startSeq;
   }
 
   get capacity(): number {
@@ -170,11 +184,13 @@ export class RingBuffer<T> {
    *
    * `true`, gdy:
    * - część eventów po kursorze została już wyparta z bufora (kursor za stary), albo
-   * - kursor wskazuje na `seq` z przyszłości / z innego `serverStartId` (kursor niespójny).
+   * - kursor wskazuje na `seq` z przyszłości / z innego `serverStartId` (kursor niespójny), albo
+   * - the cursor counts events of the ring this one continues (`startSeq`).
    */
   tooOld(seq: number): boolean {
     if (!Number.isFinite(seq)) return true;
     if (seq > this.#lastSeq) return true;
+    if (this.#floor > 0 && seq <= this.#floor) return true;
     return seq < this.oldestServableCursor;
   }
 

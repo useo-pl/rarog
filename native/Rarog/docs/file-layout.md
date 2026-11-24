@@ -12,7 +12,11 @@ own files and only reads the others; an "owner" comment stands at the top of eac
   `AnswerLimits` caps (answer 2000, note 8192, request total 32768) in UTF-16 units like the server's
   `string.length`; an image from `/uploads` at most 8 MB with a PNG/JPEG signature; the file path in a diff query
   is encoded by `segment` by hand with a closed character set, because the server reads a plus in a query as a
-  space; tokens travel only in the body.
+  space (the session files' `dir` and `path` too); tokens travel only in the body. A session file
+  (`RarogClient+Files`) streams to a copy in `rarog-preview/` of the temporary directory with complete file
+  protection, never whole in memory; the limit is the `maxBytes` of the session's latest listing (else of its file
+  index) passed by the caller (the app has no limit of its own), and a body that does not match its `Content-Length`
+  or any failure deletes the copy.
 - **Tunnel and transport switch:** `RarogTransport/Tunnel/` holds the iroh tunnel without IrohLib: the protocols
   (`TunnelTypes.swift`), the generation ticket and the upload door (`TunnelGeneration.swift`), the generation state
   machine (`TunnelMachine.swift`), the endpoint lease (`EndpointLease.swift`), the loopback proxy (`TunnelProxy.swift`),
@@ -74,8 +78,12 @@ own files and only reads the others; an "owner" comment stands at the top of eac
 - **Session screen:** `Session/SessionViewController*.swift`: the core (lifecycle, layout, render) and extensions per
   area (`+Cells`, `+Send`, `+Decisions`, `+Answers`, `+Pinning`, `+UnderFoot`, `+StateCard`, `+Reading`, `+Keys<Area>`,
   `+Controls`, `Voice/+Voice`, `+Interrupt`, `+Drafts`, `+PromptBar`, `+Toast`, `+CommandSuggestions`,
-  `+AppCommands`, `+Diagnostics`). The core calls each area's `build…`/`render…`/`leave…` in one line, and the
-  area's fields live in its own chrome type (`ReadingChrome`, `TurnChrome`, `ToastChrome`). The cell factory picks
+  `+AppCommands`, `+Diagnostics`, `+PointerSelection`, `+PointerAutoscroll`). The core calls each area's
+  `build…`/`render…`/`leave…` in one line, and the area's fields live in its own chrome type (`ReadingChrome`,
+  `TurnChrome`, `ToastChrome`, `TranscriptPointerChrome`). The pointer selection's model has no view and compiles on
+  macOS (`Model/TranscriptPointerSelection*.swift`: the selection, its copy text, the autoscroll curve and the trace
+  budget); a message row's part of it, the highlight and the geometry under the pointer, is
+  `Session/MessageContentView+PointerHighlight.swift`. The cell factory picks
   a cell by row kind and calls the area's function; `keyCommands` and `canPerformAction` assemble the areas' lists,
   so a new area adds one element. `+KeysInterrupt` stands BEHIND the card keys in `keyCommands`, so Esc on a
   focused card or a sheet wins.
@@ -85,19 +93,65 @@ own files and only reads the others; an "owner" comment stands at the top of eac
   `VoiceAgentHost` protocol (`VoiceAgentHost.swift`). A host gives `RealtimeConversation.Content` (the instructions
   with the opening content in a character budget, the content that is new after each closed utterance, and the tools
   as `RealtimeToolSpec`: name, schema, `client.log` tally and an action that is an answer at once, work with or
-  without the checking phase, or the prompt pair `showPrompt`/`sendPrompt` whose effects and words the host gives),
-  and the end rules (`startRefusal`, `endReason`). The session screen's host is `VoiceAgentSessionHost`
+  without the checking phase, work that also gets the moment of its call (`workAtTurn`: the reply that called, the
+  user's kept utterances and whether one began after the last reading played out whole, `RealtimeToolTurn`), such
+  work that may end in a text the conversation reads aloud before the result goes (`workAndRead`,
+  `RealtimeConversation+Reading.swift`, with the heard prefix of the text while it plays and the host's stop of the
+  reading; the alignment of Soniox's characters to the text is `RealtimeConversation+ReadAlong.swift`), or the prompt
+  pair `showPrompt`/`sendPrompt` whose effects and words the host gives),
+  and the end rules (`startRefusal`, `endReason`); a host may follow the answers (`answer`: a spoken answer played
+  out whole, a cut; `RealtimeConversation+Answer.swift`). The session screen's host is `VoiceAgentSessionHost`
   (`VoiceAgentSessionHost.swift`): the transcript projection (`VoiceAgentTranscriptSource`), `ask_session`,
   `show_prompt`, `send_prompt` (`RealtimeInstructions+SessionHost.swift`), `VoiceAgentWatch`, and the field closures
-  and app state input that `SessionViewController+VoiceAgent` sets in `connectVoiceAgent`. A new host adds its own
-  files and does not change the core.
+  and app state input that `SessionViewController+VoiceAgent` sets in `connectVoiceAgent`. The Inbox card's host
+  `VoiceAgentInboxHost` (`VoiceAgentInboxHost.swift`, owner `VoiceAgentInboxConversation.swift`) wraps it with the
+  card's own prompt pair, prompt rules and prompt tool descriptions (`RealtimeInstructions+InboxHost.swift`); the
+  prompt block's states and its voice lock are the pure type `InboxPromptBlock` (`InboxPromptBlock.swift`), and the
+  owner's part of it (the show, the reading, the block's actions, the send with its recovery, the hand-back of the
+  text) is `VoiceAgentInboxConversation+Prompt.swift`. The host of the
+  conversation across sessions is `VoiceAgentSessionsHost` (`VoiceAgentSessionsHost.swift`): its route to Rarog
+  `VoiceAgentSessionsBackend` (the store), the session list with handles and states (`VoiceAgentSessionList.swift`),
+  `read_sessions` with its read records (`VoiceAgentSessionReads.swift`), the discussed session and the pick-up of
+  its result (the rule `VoiceAgentDiscussion.swift`, the host's part `VoiceAgentSessionsHost+Discussion.swift`),
+  `check_open_requests` with its rule of the user's word (`VoiceAgentSessionsHost+Check.swift`), the prompt pair:
+  `show_prompt` with the prompt lock (`VoiceAgentSessionsHost+Prompt.swift`), `send_prompt` with its outcomes
+  (`VoiceAgentSessionsHost+PromptSend.swift`) and every sentence the pair gives the model
+  (`VoiceAgentSessionsHost+PromptText.swift`), and the instructions and tool schemas
+  (`RealtimeInstructions+SessionsHost.swift`). Its owner above navigation is
+  `VoiceAgentSessionsConversation` (`VoiceAgentSessionsConversation.swift`, built once by the root view): the entry
+  rule (`VoiceAgentSessionsEntry`) with the mode's own consent, one host per start, the ends and the scene phase. Its
+  views (the list button, the consent sheet and its flow, the lit circle with its bars, its place in the session
+  header and the Inbox's header, the end sentence's line and the strip under the list header in
+  `VoiceAgentSessionsHeader.swift`, what stands above the screen with the waiting prompt's card in
+  `VoiceAgentSessionsBar.swift`, and the rule of where the state stands in `VoiceAgentSessionsBarPlacement.swift`)
+  stand in `Views/VoiceAgent/`; the session header's icon group (`HeaderSessionSlot`) only places the circle, and the
+  Inbox at the root of the stack (`InboxStackRoot`) only mounts `InboxHeaderVoiceSlot`. A
+  new host adds its own files and does not change the core. The app's one microphone, `DictationCenter` with the
+  `DictationHost` protocol, stands without UIKit in `Session/Voice/DictationCenter.swift`, so the macOS tests use
+  it: the message field's, a project note's and an Inbox card's dictation and the voice conversations take it over
+  from each other. The Inbox card's dictation is the third host of a recording, written out like the other two:
+  `Views/Inbox/InboxDictation.swift` (the recording, ↑ during it, the ends), with the card's field as dictation sees
+  it in `Model/InboxDictationTarget.swift`, without UIKit.
+  Next to the center, also without UIKit, the locked-phone monitor `LockedPhoneMonitor`
+  (`Session/Voice/LockedPhoneMonitor.swift`) reads what records there, holds the server connection and writes its
+  `client.log` lines; the app's instance (`LockedPhoneMonitor+Live.swift`) wires the center, the store and the app's
+  `TunnelCoordinator.holdForVoice`, and the store's question to the server for its heartbeat stands in
+  `RarogCore/RarogStore+LockedPhone.swift` (`docs/companion.md`, "Locked phone (trial)"). The app target reaches the center
+  only through `AppMicrophone` (`Session/Voice/AppMicrophone.swift`, public): what records, its phase and its
+  subject (`MicrophonePhase`, `MicrophoneSubject` in `Session/Voice/DictationCenter.swift`; the subject carries
+  only a session's project and name), its changes and the end from outside the screens. Its one user is the voice
+  Live Activity's controller in the app, `VoiceActivityController` (`Rarog/VoiceActivityController.swift`: the
+  rules, the ActivityKit adapter behind `VoiceActivitySystem`); the activity's state, copy, views and End intent stand in `RarogActivity`
+  (`VoiceActivity*.swift`, `EndVoiceActivityIntent.swift`), and the `RarogWidgets` extension draws it
+  (`RarogVoiceActivity.swift`).
 - **Row model:** `TranscriptRows.swift` holds the `TranscriptRow` enum (Swift cannot extend an enum: a new case goes
   at the end) and `build`; messages in `TranscriptRows+Messages`, outbox and cards in `+Tail`; reading rules in
   `ToolRows`, `PromptFolds`, `TranscriptMarkers` and `TranscriptReading`.
 - **Copy:** `UICopy.swift` and its extensions `UICopy+<Area>`; an empty area is an empty `extension` with a comment.
-- **Views:** `Views/<Area>/` (`List`, `Header`, `Inspector`, `Notes`, `NewSession`, `Projects`, `SessionControl`,
-  `Presentation`, `Settings`, `Usage`, `Common`), cards and rows in `Session/Cards/` and `Session/Rows/`, the terminal in
-  `RarogUI/Terminal/`, the session switcher in `Switcher/`, attachments in `Session/Attachments/`.
+- **Views:** `Views/<Area>/` (`List`, `Header`, `Inspector`, `Inbox`, `Notes`, `NewSession`, `Projects`,
+  `SessionControl`, `Presentation`, `Settings`, `Usage`, `Common`), cards and rows in `Session/Cards/` and
+  `Session/Rows/`, the terminal in `RarogUI/Terminal/`, the session switcher in `Switcher/`, attachments in
+  `Session/Attachments/`.
 
 Behavior of the surfaces that the sections above do not describe:
 
@@ -111,22 +165,23 @@ Behavior of the surfaces that the sections above do not describe:
   (`Question.review`) shows question → answer pairs. The Note field appears only with `Question.notes == true`: the
   server computes it, and the app derives nothing; a note concerns ONE option from the list, so with a custom answer
   the card does not send (`noteRejected`, the server's rule mirrored in `submission`).
-- **Project tree** (`Views/List/ProjectTreeList`, the only list layout): one list over the whole height, project
-  headers ordered by the day's activity, then the alphabet of the app language (`CopyLocale`), then the path, and
-  under them agents oldest first, also Codex in a Rarog terminal. The header arrow is a separate 44 pt button
-  (`tree.toggle.<name>`); a header with agents collapses or expands without moving the route, without agents it
-  enters the project (`ProjectTreeHeaderModel.tap`). Collapsing remembers `rarog.collapsedProjects` (only what a
-  human collapsed) and hides only quiet rows (`AppState.treeShows`: rank ≤ 2, the selected row and the last opened
-  one stay). `Views/List/TreeListAnchor` keeps the selected session in place when rows change above it. The guide
-  line (`ProjectTreeGuide`) is drawn in the row content by `Views/List/TreeGuideLine`; while a row is swiped it
-  stays in place: a stand-in above the cell, at the cell's resting place, replaces it until the row is back. The
-  list lays swipe actions out from the cell's edge, and an agent's plate starts 33 pt into its cell, so for the
-  same swipe `Views/List/TreeSwipeActionsShift` moves the list's actions view by that inset while the leading actions
-  show: their pill stands 10 pt from the plate like the trailing one, clear of the guide. At the end of a header's
-  first line stand up to three buttons drawn over hidden placeholders (the header ignores its children for
-  VoiceOver): the pop-up terminal (`Views/List/TreeTerminalButton`, `tree.terminal.<name>`), the Recent Sessions
-  clock (`Views/List/TreeRecentButton`, `tree.recent.<name>`) and the note glyph (`tree.note-glyph.<name>`); their
-  geometry is in `Model/TreeHeaderButtonGeometry` with the sizes in `SessionListMetrics`.
+- **Project tree** (`Views/List/ProjectTreeList`, the only list layout): one list over the whole height, project headers
+  ordered with the pinned ones first (`RarogCore/PinnedProjects`, `rarog.pinnedProjects`, pinned from the header's
+  context menu through `ProjectTreeRows.pin`), each part by the alphabet of the app language (`CopyLocale`, numbers in
+  natural order), then the path, and under them agents oldest first, also Codex in a Rarog terminal. The header arrow is
+  a separate 44 pt button (`tree.toggle.<name>`); a header with agents collapses or expands without moving the route,
+  without agents it enters the project (`ProjectTreeHeaderModel.tap`). Collapsing remembers `rarog.collapsedProjects`
+  (only what a human collapsed) and hides only quiet rows (`AppState.treeShows`: rank ≤ 2, the selected row and the last
+  opened one stay). `Views/List/TreeListAnchor` keeps the selected session in place when rows change above it. The guide
+  line (`ProjectTreeGuide`) is drawn in the row content by `Views/List/TreeGuideLine`; while a row is swiped it stays in
+  place: a stand-in above the cell, at the cell's resting place, replaces it until the row is back. The list lays swipe
+  actions out from the cell's edge, and an agent's plate starts 33 pt into its cell, so for the same swipe
+  `Views/List/TreeSwipeActionsShift` moves the list's actions view by that inset while the leading actions show: their
+  pill stands 10 pt from the plate like the trailing one, clear of the guide. At the end of a header's first line stand
+  up to three buttons drawn over hidden placeholders (the header ignores its children for VoiceOver): the pop-up
+  terminal (`Views/List/TreeTerminalButton`, `tree.terminal.<name>`), the Recent Sessions clock
+  (`Views/List/TreeRecentButton`, `tree.recent.<name>`) and the note glyph (`tree.note-glyph.<name>`); their geometry is
+  in `Model/TreeHeaderButtonGeometry` with the sizes in `SessionListMetrics`.
 - **List** (`Views/List/SessionListView`): close by swipe or context menu without a question; closes of different
   sessions run in parallel (`RarogNavigation.closing` is a set). The swipe pill has no destructive role, so the row
   leaves only with the server's list snapshot: with the role UIKit deleted it at the tap and the list could crash
@@ -149,7 +204,9 @@ Behavior of the surfaces that the sections above do not describe:
   The status dot of a fresh unread result glows (a soft halo of its color breathes under the full-color dot, 1.8 s a
   cycle; plain under Reduce Motion): `SessionRowModel.freshResult` from `AppState.freshResult`, which leaves out a
   result marked unread by hand (the server's `markedUnseen`, and this device's `TurnControlState.manualUnread` until
-  that frame) and a frozen row; the session switcher's dot stays still. The footer (`Views/List/Footer/`) is a
+  that frame) and a frozen row; the session switcher's dot stays still. A received result the voice agent picked up
+  (`seenBy`) has the state word "discussed by voice" in place of "idle" (`RowStatus`), with the dot and dimming of a
+  received result; "working in the background" wins over it. The footer (`Views/List/Footer/`) is a
   floating glass card over the list (`safeAreaBar`, the list scrolls under it; geometry in `Model/ListFooterMetrics`, content in
   `Model/ListFooterCardModel`): on the left the account, under it the machine line ("Mac · tailnet") and the 5H and
   7D fields (percent, bar, the reset "in 2h 44m" or "in 2d · 11/14"); on the right, the height of the whole left
@@ -157,28 +214,36 @@ Behavior of the surfaces that the sections above do not describe:
   height. The card is not a control: one static accessibility element (`list.usage`, the spoken sentence, no hint),
   no tap, popover or pointer effect. The details are in the Usage sheet of the `/usage` app command (the limits'
   stale note, the machine section with metric details and its own stale note). The server update row, when shown,
-  is the card's first line and its one target (`list.serverUpdate`): it opens the Usage sheet with the update
-  command. Banners:
+  is the card's first line, in link ink, and its one target (`list.serverUpdate`): it opens the update steps
+  (`Views/List/Footer/ServerUpdateSheet`: versions, the command with a copy button, what it does). Banners:
   `Views/BannerStack`, column placement in `Model/BannerSlots`, the push invite at the end
   (`pushPromptVisible(in:global:now:)`).
 - **Navigation** (`Model/Navigation`, `RarogNavigation`): the right column (session, project without a session,
-  terminal), tab and project memory, the list collapse (Cmd+B and `HeaderListToggle`), the 5 s arming of "×", the
-  notice under the tab bar and the inspector. In the stack on the iPhone and in a narrow iPad window (`compact`)
-  `MainSplitView` binds `preferredCompactColumn` to the route (`compactShowsDetail`), not to the list selection,
-  because a terminal and a project without a session have no row. `RarogNavigation.post` announces the notice once.
-  The visit history for the session switcher is `SessionHistory` (RarogCore): the last 32 session ids on this device,
-  stored under `rarog.sessionHistory` in `NavigationPreferences.serverScoped`, so a server change clears it.
-  `RarogRootView` calls `RarogNavigation.noteSessionVisit` on every change of `listSelection` (a session screen, or a
-  Rarog terminal with an agent inside, also when the agent appears there); a repeat of the newest id writes nothing.
-  `recentSessions` reads up to 10, newest first, only ids the app knows.
+  terminal), tab and project memory, the list collapse (Cmd+B and `HeaderListToggle`), the 5 s arming of "×" (the
+  current tab's "×" and the arming card: `Model/TabClose`), the notice under the tab bar and the inspector. In the
+  stack on the iPhone and in a narrow iPad window (`compact`) `MainSplitView` binds `preferredCompactColumn` to the
+  route (`compactShowsDetail`), not to the list selection, because a terminal and a project without a session have no
+  row. While the Inbox stands there (`Navigation+Inbox`), the detail stack's root is the Inbox
+  (`Views/Inbox/InboxStackRoot`) and its path is `compactInboxPath`, so a session opened from a card is pushed above
+  the Inbox; the list does not select that session, because a new list selection makes the collapsed split pop the
+  detail stack. `RarogNavigation.post` announces the notice once. The visit history is `SessionHistory` (RarogCore):
+  the last 32 session ids on this device, stored under `rarog.sessionHistory` in `NavigationPreferences.serverScoped`,
+  so a server change clears it. `RarogRootView` calls `RarogNavigation.noteSessionVisit` on every change of
+  `listSelection` (a session screen, or a Rarog terminal with an agent inside, also when the agent appears there); a
+  repeat of the newest id writes nothing. `lastVisitedSession` reads the newest id the app still knows, for the list's
+  mark of the last visit.
 - **Session header** (`Views/Header/SessionHeader`): slot modifiers `HeaderTitleSlot`, `HeaderStatusSlot`,
   `HeaderTabsSlot`, `HeaderSessionSlot`; `HeaderMetrics` (macOS tests) holds the insets: the first tab mark, the
   context ring and the right edge of the pills stand 16 pt from the column edge, like the transcript text in Standard
-  spacing. The header
-  buttons are ONE toolbar item (an `HStack` every 2 pt), at most three on the phone (`HeaderTrailingIcons`): with
-  four, or with a title wider than `HeaderMetrics.phoneTitleMaxWidth`, the system hides the group in an overflow
-  menu that does not show it. `Header/HeaderIconButton` is a style of its own, because the iOS 26/27 toolbar draws
-  `Label` and `Image` itself and ignores `.font`.
+  spacing. The session and terminal "×" are not header buttons: they stand in the current tab
+  (`Views/Projects/TabCloseButton`, the arming card under the bar `Views/Projects/CloseArmCard`); only a terminal
+  without a known project directory, which has no tab bar, keeps its "×" in the icon group. The header
+  buttons are ONE toolbar item (an `HStack` every 2 pt), at most three (`HeaderTrailingIcons`): with four, or with
+  a title wider than `HeaderMetrics.phoneTitleMaxWidth`, the system hides the group in an overflow menu that does
+  not show it. The lit circle of a running voice conversation across sessions counts among them and stands first
+  where the list header is off screen; where it would be a fourth, Pop-Up Terminal gives way.
+  `Header/HeaderIconButton` is a style of its own, because the iOS 26/27 toolbar draws `Label` and `Image` itself
+  and ignores `.font`.
 - **Status line** (`SessionStatusBar`): the context ring and git on the left, the "N in background" and
   "↑ <release>" pills on the right; tapping git opens `GitDetailsPanel`, which fetches NOTHING (the rows come from the
   `git-status` frame through `GitChangesModel.rows(fresh:)`). With the inspector visible the background pill goes
@@ -220,9 +285,35 @@ Behavior of the surfaces that the sections above do not describe:
   finished (`FinishedTasks`, up to three finish notices from the transcript tail), scheduled tasks
   (`ScheduledTaskRows.rows` in the server's order, chosen under the panel's 30 s clock `ScheduledTasksClock` and on
   return to the foreground, so an expired one leaves without a frame), artifacts (`ArtifactRows.rows` in the server's
-  order; a live artifact is a link with `#no_universal_links`), pull requests (`PullRequestRows`) and the changes in
-  the directory as a
-  tree (`Model/ChangesTree`, rows of 26 pt, collapsible). The panel fetches nothing; only `DiffSheet` reads the diff.
+  order; a live artifact is a link with `#no_universal_links`), pull requests (`PullRequestRows`) and Files
+  (`Views/Inspector/InspectorFilesSection`): the whole file tree of the session directory, rows of 30 pt
+  (`FileTreeMetrics`), collapsible, with the Files / Changed only toggle (the glass capsule of the list filter,
+  `ListFilterBar`) and the search field under the header
+  (`Views/Inspector/InspectorFilesSearch`: the field is a `UITextField` with its own Esc key command); the store wiring
+  (mode, query per session, the index state through `FileSearchIndexMemo`, `setSearchActive`, result folds) is
+  `Views/Inspector/InspectorFilesContainer`, and `Model/FileSearchRunner` runs the search after a 150 ms pause, off the
+  main actor, one run at a time, the newest winning. `Model/FileTree` builds the rows from `FileTreeStore.snapshot` of RarogCore
+  (listings merged with the change markers, virtual rows for changed paths no listing carries, the two truncation
+  flags, and the fallback tree from the `git-status` frame); `Model/InspectorFiles` holds the rules of a row: the
+  tap, the long-press menu (Preview, Diff, Copy Path), the copied path, the ink and the VoiceOver label.
+  `Model/FileTree+Paths` builds the tree of given paths (Changed only, a search result: every directory open, no
+  listing awaited), and `Model/FileSearch` holds the file search: the paths searched (the server's file index, or the
+  loaded listings and the changes), the plain or regex match stopped by a newer query or a 250 ms budget, the result
+  of the first 500 hits and its notes; `Model/FileSearch+Index` maps the tree store's index state to the search's
+  (`FileSearchIndexMemo` builds the search index once per index the store holds). The Files mode and the `.*`
+  button are device preferences of `RarogInspector`. The panel
+  tells the tree store when it stands (`panelOpened(_:)` on appearing, `panelClosed()` on leaving, only while the
+  tree is still its own, because the panel is rebuilt per session) and hands it the directory toggles; only
+  `DiffSheet` reads a patch. Preview (`InspectorPanel.preview(_:)`): `Model/FilePreviewModel` fetches the file with
+  the limit from the session's latest listing (else its file index) and owns the copy until
+  `Views/Inspector/FilePreviewPresenter` shows it in QuickLook from the panel's own view controller (over the sheet
+  on iPhone, so closing returns to the panel);
+  `FilePreviewController` deletes the copy when the preview closes. Only the last tap shows; a copy of an older tap,
+  of a panel that left and of a refused presentation is deleted. `Model/FilePreviewType` gives a text file whose
+  extension QuickLook does not show (`router.ts`, `main.go`, `Makefile`, `config.yaml`, `styles.css`) a `.txt` copy
+  when its first 8 KB are UTF-8 without NUL; plain text and source code, HTML, XML, JSON, RTF, calendar events,
+  contacts, images and documents keep their extension. The title stays the real name. Over the limit, offline and
+  refused, the app's bubble says so and the tree stays.
   On iPhone the same view stands in a sheet (`InspectorPlacement.sheet`, `Views/Inspector/InspectorPanel+Sheet`):
   `RarogInspector.sheet` holds the session, `RarogNavigation.openInspectorSheet` sets its anchor (the header button
   goes through `toggleInspectorSheet`, at the top), and a change of
@@ -235,16 +326,19 @@ Behavior of the surfaces that the sections above do not describe:
   (`SheetPresentation`). The Ultracode row appears only for a model with `ModelChoice.ultracode`, and No sends an
   explicit `false`. Mode: a tap toggles `plan` ↔ `auto`.
 - **Toast** (`Model/ToastCenter`, in the environment from `RarogRootView`): one toast at a time; the 6 s timer and
-  the queued VoiceOver announcement start in the center, not in the view. Three placements (`ToastPlacement`): on the
+  the queued VoiceOver announcement start in the center, not in the view. Four placements (`ToastPlacement`): on the
   session screen with a transcript the toast stands ABOVE THE PROMPT inside the screen
   (`Session/SessionViewController+Toast`, 8 pt above the top of the foot, or above the Scroll to Bottom
   button), covering the last transcript lines, not the field or the keyboard; on other right-column screens it is an
   overlay at the bottom of the column (`Views/ToastHost`); while the Cmd+F/Cmd+G terminal window is open, the same
   overlay stands at the bottom of the window (`TerminalWindowToast`), because the sheet covers the column, and the
-  column overlay stays silent. Its center is the center of the column in the safe area. The lightest kind is a
-  confirmation (`notice(_:hold:)`, a check mark before the sentence, 2 s; the terminal's copy result): it never
-  replaces a session toast or a toast with an action (VoiceOver still hears it), only a plain notice or another
-  confirmation.
+  column overlay stays silent; while the phone's session panel sheet is open (`inspectorSheet`), the same overlay
+  stands at the bottom of the sheet (`Views/Inspector/InspectorPanel+Sheet`), so a refused file preview or a signal
+  of another session is seen there, and the session screen and the column under the sheet stay silent. An iPad,
+  whose panel is a column, never gets the sheet placement. Its center is the center of the column in the safe area.
+  The lightest kind is a confirmation (`notice(_:hold:)`, a check mark before the sentence, 2 s; the terminal's copy
+  result): it never replaces a session toast or a toast with an action (VoiceOver still hears it), only a plain
+  notice or another confirmation.
   The animation belongs to the toast alone (opacity and an 8 pt slide; opacity only with Reduce Motion). A tap removes
   it at once and opens the session only in the NEXT frame (`ToastHandoff`: `CATransaction.flush()`, then a one-shot
   `CADisplayLink`), so the toast is gone before the new screen is built; the opening does nothing if the human moved
@@ -309,7 +403,7 @@ Behavior of the surfaces that the sections above do not describe:
   Standard spacing), as wide as its content up to min(column − 2 × that margin, the bubble's cap); the "Prompts in This
   Session" popover lists the newest first.
 - **Global shortcuts** (`Views/RarogCommands`): Cmd+1…9 for sessions and terminals, Cmd+L, Cmd+N, Cmd+Shift+N,
-  Cmd+F, Cmd+G, Cmd+B, Cmd+I, Cmd+S, Shift+Cmd+S and the text size Cmd+=, Cmd+- and Cmd+0, published as a scene
+  Cmd+F, Cmd+G, Cmd+B, Cmd+I and the text size Cmd+=, Cmd+- and Cmd+0, published as a scene
   value (`focusedSceneValue`), so the tab number matches what the bar shows. Cmd+1…9 carries the tab id from the
   moment the menu was drawn. Cmd+X is not a menu command (the system Cut takes it) but a screen shortcut. Cmd+L
   accepts one call per 0.3 s (`acceptsPreviousProject`), because the menu can fire it twice in the same millisecond.
@@ -333,19 +427,24 @@ Behavior of the surfaces that the sections above do not describe:
   Relaxed stored per device, chosen in a section of the Text Size page; one token table for the gaps and the side
   margin of both modes. The session screen applies it in `Session/SessionViewController+Spacing`
   (`native/Rarog/docs/rarog-ui.md`, the "Transcript spacing" item).
-- **Session switcher (Cmd+S)** (`Switcher/`): Cmd+S or a tap on the current tab opens a window in the center with
-  up to 10 sessions, the one on screen and the ones visited last (`RarogNavigation.recentSessions`), newest at the top;
-  the window stays open after Cmd is released. `SessionSwitcher` holds the machine without UIKit (`SwitcherMachine`,
-  phases `idle` and `open`; `open` knows whether the window holds the keyboard; every opening selects the first row;
-  moves at most every 100 ms; `menuDigit` lets Cmd+1…9 of the menu reach the open window instead of the tabs),
-  `SessionSwitcherRows` the snapshot (the current session, then the history without it, cut to 10; frozen order, live
-  words and dots) and the digit key of a row (`SwitcherRows.digitKey`: 0–9 from the top, only with the keyboard),
+- **Session switcher** (`Switcher/`): only a tap on the current tab (`ProjectTabModel.tap`) opens a window in the
+  center with the tabs of the current project in the order of the bar, sessions and terminals; the window has no
+  keyboard shortcut and stays open until a row is picked or it is closed. `SessionSwitcher` holds the machine without
+  UIKit (`SwitcherMachine`, rows and selection as `ProjectTabRef`; phases `idle` and `open`; `open` knows whether the
+  window holds the keyboard; an opening needs a current tab and selects it; `tabsChanged` follows the bar while the
+  window stands, the selection staying on its tab; moves at most every 100 ms; `menuDigit` lets Cmd+1…9 of the menu
+  reach the open window instead of the tabs), `SessionSwitcherRows` the rows from the bar's list
+  (`RarogNavigation.stripTabs` → `SwitcherRows.rows`: tabs with a target only, a session row or a terminal row) and
+  the digits (`SwitcherRows.tab(forDigit:in:)` and `digitKey(for:digits:keyboard:)`: the bar's digits from
+  `ShortcutMenu.tabDigits`, 9 also the last tab, only with the keyboard), the jump goes through
+  `RarogNavigation.openTab`,
   `SwitcherKeyResponder` the window's first responder (the `SheetKeyboardAnchor` pattern: it takes the focus only with
   a hardware keyboard, remembers the previous responder weakly and gives it back after any close without a jump),
-  `SwitcherPresentationGate` keeps the shortcut silent while anything is presented, `SwitcherWatch` closes the open
-  window when the scene goes inactive or a presentation appears (asked every 250 ms), and `SessionSwitcherOverlay`
-  draws the window. With the window open, ↑/↓, S/Shift+S and Cmd+S/Shift+Cmd+S move the selection, Return goes, a
-  digit 0–9 (with or without Cmd) picks its row, Esc and Cmd+. close, Tab is swallowed and other keys without Cmd do
+  `SwitcherPresentationGate` keeps the tap silent while anything is presented, `SwitcherWatch` closes the open
+  window when the scene goes inactive or a presentation appears (asked every 250 ms) and hands it a hardware keyboard
+  connected while it stands (`GCKeyboardDidConnect` → `keyboardConnected`), and `SessionSwitcherOverlay` draws the
+  window. With the window open, ↑/↓ (with or without Cmd) move the selection, Return goes, a
+  digit 1–9 (with or without Cmd) picks its tab, Esc and Cmd+. close, Tab is swallowed and other keys without Cmd do
   nothing; the window closes when another responder takes
   the focus. Esc guards in the field, the card and the terminal stay as a safety net (`SessionSwitcher.absorbsEscape`
   is true while the window is open).

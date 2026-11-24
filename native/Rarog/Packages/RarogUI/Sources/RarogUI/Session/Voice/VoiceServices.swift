@@ -136,25 +136,4 @@ private final class SystemRecordingTrace {
       DictationTrace.systemEnd(segments: stream.segmentEnds, repeats: stream.repeats, tasks: stream.tasksOpened))
   }
 }
-
-/// Miejsce, które nagrywa: pole wiadomości (`ComposerDictation`) albo notatka projektu (`NoteDictation`).
-@MainActor
-protocol DictationHost: AnyObject {
-  /// Mikrofon przechodzi gdzie indziej: hipoteza staje się tekstem, nagranie w dół od razu.
-  func handOff()
-}
-
-/// Mikrofon jest JEDEN na apkę: start w jednym miejscu przejmuje go od poprzedniego, a przejęcie
-/// utrwala tekst poprzedniego miejsca.
-@MainActor
-final class DictationCenter {
-  static let shared = DictationCenter()
-
-  private weak var active: (any DictationHost)?
-
-  func claim(_ next: any DictationHost) {
-    if let previous = active, previous !== next { previous.handOff() }
-    active = next
-  }
-}
 #endif

@@ -41,9 +41,51 @@ final class MessageTextView: UITextView {
     set { super.accessibilityFrame = newValue }
   }
 
+  /// The buttons held at the last pointer press in this view (primary for a click, secondary for a right click).
+  private(set) var lastPointerButtons: UIEvent.ButtonMask = []
+  private var touchKind: UIGestureRecognizer?
+
   override init(frame: CGRect, textContainer: NSTextContainer?) {
     super.init(frame: frame, textContainer: textContainer)
-    addGestureRecognizer(TouchKindRecognizer { [weak self] pointer in self?.lastTouchWasPointer = pointer })
+    let recognizer = TouchKindRecognizer { [weak self] type, buttons in self?.touchBegan(type, buttons: buttons) }
+    touchKind = recognizer
+    addGestureRecognizer(recognizer)
+  }
+
+  private func touchBegan(_ type: UITouch.TouchType, buttons: UIEvent.ButtonMask) {
+    lastTouchWasPointer = type == .indirectPointer
+    lastPointerButtons = lastTouchWasPointer ? buttons : []
+    pointerOwner?.transcriptTouchBegan(type, in: self)
+  }
+
+  /// The screen above this field that runs the pointer selection across transcript rows; `nil` outside the session
+  /// screen (an Inbox card), where the field keeps every gesture of its own.
+  private var pointerOwner: TranscriptPointerSelecting? { MessageContentView.pointerOwner(from: self) }
+
+  /// Whether the pointer press that just began at `point` (in this field) belongs to the transcript's pointer
+  /// selection: only a pointer touch, and only where the screen above says the selection starts (a primary press on
+  /// the text of a transcript row) or owns the right click (a secondary press on its highlight). A finger or the pencil
+  /// always keeps the field's own selection.
+  func yieldsPointerPress(at point: CGPoint) -> Bool {
+    guard lastTouchWasPointer, let owner = pointerOwner else { return false }
+    return owner.pointerSelectionClaims(self, at: point, secondary: lastPointerButtons.contains(.secondary))
+  }
+
+  /// The field's own recognizers (the system's text selection, link taps, the right click menu, text drag) give way to
+  /// the pointer selection of the transcript when it claims the press, so one click and drag selects across messages
+  /// instead of inside one field. Hover (the text cursor shape) is never refused.
+  override func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+    if recognizer !== touchKind, !(recognizer is UIHoverGestureRecognizer),
+      yieldsPointerPress(at: recognizer.location(in: self))
+    {
+      return false
+    }
+    return super.gestureRecognizerShouldBegin(recognizer)
+  }
+
+  /// Tests set the kind of the last touch without a real touch event.
+  func recordTouchForTesting(_ type: UITouch.TouchType, buttons: UIEvent.ButtonMask = .primary) {
+    touchBegan(type, buttons: buttons)
   }
 
   @available(*, unavailable)
@@ -72,9 +114,9 @@ final class MessageTextView: UITextView {
 /// Rozpoznawacz, który niczego nie rozpoznaje: zapisuje rodzaj dotyku i od razu odpada,
 /// nie zabierając gestów systemowemu zaznaczaniu.
 private final class TouchKindRecognizer: UIGestureRecognizer {
-  private let record: (Bool) -> Void
+  private let record: (UITouch.TouchType, UIEvent.ButtonMask) -> Void
 
-  init(record: @escaping (Bool) -> Void) {
+  init(record: @escaping (UITouch.TouchType, UIEvent.ButtonMask) -> Void) {
     self.record = record
     super.init(target: nil, action: nil)
     cancelsTouchesInView = false
@@ -83,7 +125,7 @@ private final class TouchKindRecognizer: UIGestureRecognizer {
   }
 
   override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-    if let touch = touches.first { record(touch.type == .indirectPointer) }
+    if let touch = touches.first { record(touch.type, event.buttonMask) }
     state = .failed
   }
 

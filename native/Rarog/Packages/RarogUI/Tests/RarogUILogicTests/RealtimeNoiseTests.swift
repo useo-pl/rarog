@@ -78,7 +78,7 @@ extension RealtimeHarness {
   }
 
   /// The function outputs sent for `callId`.
-  fileprivate func outputs(_ callId: String) -> [String] {
+  func outputs(_ callId: String) -> [String] {
     socket.sent("conversation.item.create").compactMap { $0["item"] as? [String: Any] }
       .filter { $0["call_id"] as? String == callId }.compactMap { $0["output"] as? String }
   }

@@ -1,0 +1,12 @@
+{
+  "type": "inbox-head",
+  "head": {
+    "sessionId": "herdr-w2-p4",
+    "turnId": "sC9w4fNt7yRj2oEb5mKv8g",
+    "version": "o1y2UAg2HZSgzKgcU3Ktqs",
+    "kind": "decision",
+    "state": "waiting-question",
+    "at": "2026-10-03T08:14:00.000Z",
+    "dialog": "browser"
+  }
+}

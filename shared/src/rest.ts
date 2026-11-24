@@ -21,6 +21,12 @@ import { z } from 'zod';
 import { IROH_ENDPOINT_ID_RE, PAIRING_CODE_RE, irohRelayUrl } from './pairing-link.ts';
 import { sentenceRefSchema } from './sentences/index.ts';
 import {
+  FILE_ENTRY_KINDS,
+  FILE_TOO_LARGE_ERROR,
+  type FileEntry,
+  type FileIndex,
+  type FileListing,
+  type FileTooLargeBody,
   MAX_ANSWER_TEXT_CHARS,
   MAX_FILES_PER_MESSAGE,
   MAX_IMAGES_PER_MESSAGE,
@@ -29,9 +35,14 @@ import {
   TERM_ID_RE,
   fileAttachmentSchema,
   imageDataUrlSchema,
+  inboxHeadSchemaOf,
+  knownDialogIdSchema,
+  refuseReasonSchema,
+  sessionStateSchema,
   sessionSummarySchema,
   termListResponseSchema,
   transcriptMessageSchema,
+  waitingForSchema,
 } from './protocol.ts';
 
 /*
@@ -102,25 +113,26 @@ export type MessageSource = NonNullable<MessageBody['source']>;
 
 /**
  * `POST /api/sessions/:id/seen`. Without fields (`{}`, as the app sends it) a human viewed the result. `by:
- * "voice-agent"` with `stateSince` and `conversation` is the voice agent across sessions picking up the result it
- * read: `stateSince` and `conversation` (the token of `GET /api/companion/sessions` and of the turns route) come from
- * that read. The server accepts it only for a result standing in `waiting-input` with no decision card over it, whose
- * `stateSince` is the session's current one, in the engine conversation the session writes and its pane runs;
- * otherwise a 409 (`session.seen-result-changed`) and nothing changes. All three or none: a part is a 400, as is
- * another value of `by`.
+ * "voice-agent"` with `conversation` and `readMark` is the voice agent across sessions picking up the result it read:
+ * both come from one answer of the turns route (`companionTurnsSchema`). The server accepts it only for a result
+ * standing in `waiting-input` with no decision card over it, in the engine conversation the session writes and its
+ * pane runs, while the session's memory holds no message newer than the read and its `stateSince` is the one of the
+ * read; otherwise a 409
+ * (`session.seen-result-changed`) and nothing changes. All three or none: a part is a 400, as is another value of
+ * `by`. Other keys are dropped, as in every body schema that is not strict.
  *
  * With `RAROG_COMPANION_SESSIONS` off (or the voice agent off), a body with the three fields is a 503 like the other
  * routes of the mode across sessions (`docs/companion.md`, "Picking up a result").
  */
 export const seenBodySchema = z.object({
   by: z.literal('voice-agent').optional(),
-  stateSince: z.string().min(1).max(64).optional(),
   conversation: z.string().min(1).max(64).optional(),
+  readMark: z.string().min(1).max(64).optional(),
 }).refine((body) => {
-  const given = [body.by, body.stateSince, body.conversation].filter((field) => field !== undefined).length;
+  const given = [body.by, body.conversation, body.readMark].filter((field) => field !== undefined).length;
   return given === 0 || given === 3;
 }, {
-  message: 'by, stateSince and conversation come all three or none',
+  message: 'by, conversation and readMark come all three or none',
 });
 export type SeenBody = z.infer<typeof seenBodySchema>;
 /** Who picked up a result when it was not a human (`SeenBody.by`, `SessionSummary.seenBy`). */
@@ -858,13 +870,17 @@ export const companionTurnsCountSchema = z.string().regex(/^[1-9]$/u).transform(
  * messages of this response from 1 and is not the stream's `seq`). A turn starts at a human message that the app
  * shows as a turn. `conversation` is an opaque token of that conversation: the same while the server runs, another
  * for another conversation and after a server restart; it is not the engine's id. `stateSince` is the session's
- * `stateSince` at the read. `complete: false` = the read window starts inside the oldest returned turn, so its prompt
- * and its first messages are missing.
+ * `stateSince` at the read. `readMark` is an opaque name of the newest message the server's memory of the session held
+ * and of the session's `stateSince` when the route took the session for this read, before the file was read; the voice
+ * agent's pick-up of the result sends it back (`seenBodySchema`). An answer with no messages, or with a message cut
+ * to its start by the size limit, carries a mark that names no read, which no pick-up matches. `complete: false` =
+ * the read window starts inside the oldest returned turn, so its prompt and its first messages are missing.
  */
 export const companionTurnsSchema = z.object({
   messages: z.array(transcriptMessageSchema),
   conversation: z.string().min(1),
   stateSince: z.string(),
+  readMark: z.string().min(1).max(64),
   complete: z.boolean(),
 });
 export type CompanionTurns = z.infer<typeof companionTurnsSchema>;
@@ -951,3 +967,124 @@ export const COMPANION_SPEECH_UNCONFIGURED_ERROR = 'companion-speech-unconfigure
 export const COMPANION_SPEECH_THROTTLED_ERROR = 'companion-speech-throttled';
 /** 502: Soniox did not give a key (5xx, timeout, no connection, a reply without a key). */
 export const COMPANION_SPEECH_UPSTREAM_ERROR = 'companion-speech-upstream';
+
+// ---------------------------------------------------------------------------
+// Inbox: the cards with their text (`docs/implementation-spec.md`, "Inbox")
+// ---------------------------------------------------------------------------
+
+/**
+ * The decision a `decision` card waits for, as the session summary carries it: a permission or question card
+ * (`waitingFor`, and `requestId`, the `permId` or `qId` of that card in the session stream) or a dialog in the pane
+ * without a card (`herdrDialog`, `herdrDialogReason`). The pending card itself comes with the session stream.
+ */
+export const inboxCardDialogSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('permission'), waitingFor: waitingForSchema.optional(), requestId: z.string().min(1).optional(),
+  }),
+  z.object({
+    kind: z.literal('question'), waitingFor: waitingForSchema.optional(), requestId: z.string().min(1).optional(),
+  }),
+  z.object({
+    kind: z.literal('panel'), herdrDialog: knownDialogIdSchema.optional(),
+    herdrDialogReason: refuseReasonSchema.optional(),
+  }),
+]);
+export type InboxCardDialog = z.infer<typeof inboxCardDialogSchema>;
+
+/**
+ * One visible Inbox card with its text: the head of `inbox-head` (`protocol/inbox.ts`), whose `dialog` here is the
+ * whole {@link inboxCardDialogSchema} instead of its kind, plus `text`, the last message of the agent's turn (at most
+ * 12 000 Unicode scalars), and `truncated` when the text lost its start to that ceiling.
+ */
+export const inboxCardSchema = inboxHeadSchemaOf(sessionStateSchema).extend({
+  text: z.string(),
+  truncated: z.boolean(),
+  dialog: inboxCardDialogSchema.optional(),
+});
+export type InboxCardWire = z.infer<typeof inboxCardSchema>;
+
+/** 200 of `GET /api/inbox`: every visible card, newest first. */
+export const inboxListSchema = z.object({ cards: z.array(inboxCardSchema) });
+export type InboxList = z.infer<typeof inboxListSchema>;
+
+/** 200 of `GET /api/inbox/:sessionId`: the session's visible card; no `card` = the session has none now. */
+export const inboxCardResponseSchema = z.object({ card: inboxCardSchema.optional() });
+export type InboxCardResponse = z.infer<typeof inboxCardResponseSchema>;
+
+/**
+ * `POST /api/inbox/:sessionId/remove` and `/restore`: the turn and the version of the card the device shows (from its
+ * head). Another turn or version is a 409 {@link INBOX_CARD_CHANGED_ERROR} without effect.
+ */
+export const inboxActionBodySchema = z.object({
+  turnId: z.string().min(1).max(64),
+  version: z.string().min(1).max(64),
+});
+export type InboxActionBody = z.infer<typeof inboxActionBodySchema>;
+
+/**
+ * 200 of remove and restore. `changed: false` = the card already was removed (restored), nothing happened again.
+ * `receipt: "skipped"` = the card is removed (restored), but the receipt of the result it would give (remove) or take
+ * back (restore) did not happen, because no read confirmed the card's turn or the session moved meanwhile.
+ */
+export const inboxActionResponseSchema = z.object({
+  ok: z.literal(true),
+  changed: z.boolean(),
+  receipt: z.literal('skipped').optional(),
+});
+export type InboxActionResponse = z.infer<typeof inboxActionResponseSchema>;
+
+/** 409 of remove and restore: the session has no card of that turn and version now; nothing happened. */
+export const INBOX_CARD_CHANGED_ERROR = 'inbox-card-changed';
+/** 503 of every Inbox route: the Inbox is off on the server (`RAROG_INBOX=0`). */
+export const INBOX_DISABLED_ERROR = 'inbox-disabled';
+
+// ---------------------------------------------------------------------------
+// Session files: the listing of one directory, the index and the refusal of a file over the limit (`protocol/files.ts`)
+// ---------------------------------------------------------------------------
+
+/** One entry of {@link fileListingSchema}: `size` for files only, `ignored` only as `true`. */
+export const fileEntrySchema = z.object({
+  name: z.string().min(1),
+  kind: z.enum(FILE_ENTRY_KINDS),
+  size: z.number().int().nonnegative().optional(),
+  ignored: z.literal(true).optional(),
+});
+
+/** 200 of `GET /api/sessions/:id/files?dir=<rel>` ({@link FileListing}). */
+export const fileListingSchema = z.object({
+  dir: z.string(),
+  entries: z.array(fileEntrySchema),
+  truncated: z.boolean(),
+  maxBytes: z.number().int().positive(),
+});
+
+/** 200 of `GET /api/sessions/:id/files/index` ({@link FileIndex}). */
+export const fileIndexSchema = z.object({
+  paths: z.array(z.string().min(1)),
+  truncated: z.boolean(),
+  maxBytes: z.number().int().positive(),
+});
+
+/** 413 `file-too-large` of `GET /api/sessions/:id/files/raw?path=<rel>` ({@link FileTooLargeBody}). */
+export const fileTooLargeBodySchema = z.object({
+  error: z.literal(FILE_TOO_LARGE_ERROR),
+  message: z.string(),
+  messageRef: sentenceRefSchema.optional(),
+  size: z.number().int().nonnegative(),
+  maxBytes: z.number().int().positive(),
+});
+
+type _FileEntrySchemaMatchesType = z.infer<typeof fileEntrySchema> extends FileEntry ? true : never;
+type _FileEntryTypeMatchesSchema = FileEntry extends z.infer<typeof fileEntrySchema> ? true : never;
+type _FileListingSchemaMatchesType = z.infer<typeof fileListingSchema> extends FileListing ? true : never;
+type _FileListingTypeMatchesSchema = FileListing extends z.infer<typeof fileListingSchema> ? true : never;
+type _FileIndexSchemaMatchesType = z.infer<typeof fileIndexSchema> extends FileIndex ? true : never;
+type _FileIndexTypeMatchesSchema = FileIndex extends z.infer<typeof fileIndexSchema> ? true : never;
+type _TooLargeSchemaMatchesType = z.infer<typeof fileTooLargeBodySchema> extends FileTooLargeBody ? true : never;
+type _TooLargeTypeMatchesSchema = FileTooLargeBody extends z.infer<typeof fileTooLargeBodySchema> ? true : never;
+const _fileContract: [
+  _FileEntrySchemaMatchesType, _FileEntryTypeMatchesSchema, _FileListingSchemaMatchesType,
+  _FileListingTypeMatchesSchema, _FileIndexSchemaMatchesType, _FileIndexTypeMatchesSchema, _TooLargeSchemaMatchesType,
+  _TooLargeTypeMatchesSchema,
+] = [true, true, true, true, true, true, true, true];
+void _fileContract;

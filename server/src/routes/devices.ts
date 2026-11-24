@@ -20,7 +20,7 @@ import {
   sendNoContent,
 } from '../router.ts';
 import { sanitizeBuild, sanitizeLabel } from '../text.ts';
-import { SERVER_CAPABILITIES } from '../version.ts';
+import { serverCapabilities } from '../version.ts';
 import type { RouteContext, RouteRequest } from './context.ts';
 
 /** Pusty obiekt — ciało `POST /api/pairings` (kod wydaje serwer, klient niczego nie podaje). */
@@ -111,7 +111,7 @@ async function handlePair(
       id: identity.store.serverId,
       name: identity.serverName,
       version: config.version,
-      capabilities: [...SERVER_CAPABILITIES],
+      capabilities: serverCapabilities({ inbox: deps.inbox !== undefined, files: config.filesEnabled }),
       // Serwer iroh — ten sam co w `/api/version`; serwer bez nasłuchu iroh pisze `null`.
       iroh: deps.iroh ?? null,
     },

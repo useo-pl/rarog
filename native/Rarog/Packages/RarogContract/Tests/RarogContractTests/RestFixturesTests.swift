@@ -87,6 +87,14 @@ struct RestFixturesTests {
     "companionTurns": { try JSONDecoder().decode(CompanionTurns.self, from: $0) },
     // The voice agent's session catalog.
     "companionSessions": { try JSONDecoder().decode(CompanionSessions.self, from: $0) },
+    // Inbox: every visible card with its text, one card (or none), and the answer of remove and restore.
+    "inboxList": { try JSONDecoder().decode(InboxList.self, from: $0) },
+    "inboxCardResponse": { try JSONDecoder().decode(InboxCardResponse.self, from: $0) },
+    "inboxActionResponse": { try JSONDecoder().decode(InboxActionResponse.self, from: $0) },
+    // Session files: the listing of one directory, the index and the 413 of a file over the server's limit.
+    "fileListing": { try JSONDecoder().decode(FileListing.self, from: $0) },
+    "fileIndex": { try JSONDecoder().decode(FileIndex.self, from: $0) },
+    "fileTooLargeBody": { try JSONDecoder().decode(FileTooLargeBody.self, from: $0) },
   ]
 
   static func body(_ name: String) throws -> Data {
@@ -209,10 +217,17 @@ struct RestFixturesTests {
     let base = #""version":"1","protocolVersion":3,"serverStartId":"s""#
     #expect(throws: (any Error).self) { _ = try Self.version(#"{\#(base),"companionSessions":null}"#) }
     let turns = try Self.decode(CompanionTurns.self, "companion.turns.json")
-    #expect(turns.complete && !turns.conversation.isEmpty)
+    #expect(turns.complete && !turns.conversation.isEmpty && !turns.readMark.isEmpty)
     #expect(turns.messages.contains { $0.notice != nil } && turns.messages.contains { $0.promptBlocked != nil })
-    let empty = #"{"messages":[],"conversation":"","stateSince":"s","complete":true}"#
-    #expect(throws: (any Error).self) { _ = try JSONDecoder().decode(CompanionTurns.self, from: Data(empty.utf8)) }
+    for body in [
+      #"{"messages":[],"conversation":"","stateSince":"s","readMark":"m.0","complete":true}"#,
+      #"{"messages":[],"conversation":"c","stateSince":"s","readMark":"","complete":true}"#,
+      #"{"messages":[],"conversation":"c","stateSince":"s","complete":true}"#,
+    ] {
+      #expect(throws: (any Error).self, "\(body)") {
+        _ = try JSONDecoder().decode(CompanionTurns.self, from: Data(body.utf8))
+      }
+    }
     let refusal = try Self.decode(APIErrorBody.self, "error.companion-sessions-disabled.json")
     #expect(refusal.error == "companion-sessions-disabled")
     #expect(refusal.messageRef?.code == "rest.companion-sessions-disabled")
@@ -220,7 +235,7 @@ struct RestFixturesTests {
     let moved = try Self.decode(APIErrorBody.self, "error.conversation-changed.json")
     #expect(moved.error == "bad-state")
     #expect(moved.messageRef?.code == "session.conversation-changed")
-    // A pick-up by the voice agent of a result it did not read: the session's `stateSince` is another one.
+    // A pick-up by the voice agent of a result it did not read: the session's memory holds a newer message.
     let changed = try Self.decode(APIErrorBody.self, "error.seen-result-changed.json")
     #expect(changed.error == "bad-state")
     #expect(changed.messageRef?.code == "session.seen-result-changed")
@@ -358,6 +373,10 @@ struct RestFixturesTests {
     // Przerwanie: świeża karta sesji i los klawisza; odmowa — zdanie serwera.
     let interrupt = try Self.decode(InterruptResponse.self, "interrupt.json")
     #expect(interrupt.delivered == .yes && interrupt.session?.state == .waitingInput)
+    #expect(interrupt.returnedPrompt == nil)
+    // The prompt Claude Code handed back to its field after Esc, as the server knows it.
+    let handed = try Self.decode(InterruptResponse.self, "interrupt.returned-prompt.json")
+    #expect(handed.delivered == .yes && handed.returnedPrompt == "Refactor the parser and keep the tests green")
     #expect(try Self.decode(APIErrorBody.self, "error.interrupt-refused.json").message?.isEmpty == false)
     // Formularz nowej sesji: korzenie bez ścieżki, katalog projektu, ostatnie rozmowy.
     let roots = try Self.decode(DirListing.self, "fs.roots.json")
@@ -540,6 +559,8 @@ struct RestFixturesTests {
       (#"{"sessions":[{"engineSessionId":"a","cwd":"/x","mtime":"t","firstPrompt":"p"}]}"#, ResumableList.self),
       (#"{"ok":true,"delivered":"może"}"#, InterruptResponse.self),
       (#"{"ok":true,"session":null}"#, InterruptResponse.self),
+      (#"{"ok":true,"returnedPrompt":null}"#, InterruptResponse.self),
+      (#"{"ok":true,"returnedPrompt":7}"#, InterruptResponse.self),
       (#"{"parent":null,"entries":[],"truncated":false}"#, DirListing.self),
       // `degradedSince` jest wartością (`null` = zdrowy), nie brakiem pola.
       (#"{"enabled":false,"registered":false,"alerts":false}"#, ApnsStatus.self),

@@ -28,6 +28,9 @@ const CONV_C = '44444444-4444-4444-8444-444444444444';
 const CONV_D = '55555555-5555-4555-8555-555555555555';
 const STATE_SINCE = '2026-08-21T10:00:00.000Z';
 const LATER = '2026-08-21T10:05:00.000Z';
+/** The read mark of the stand-in manager's memory of a session (`FakeManager.readMarks`), and one after a message. */
+const MARK = 'memory.0';
+const NEWER_MARK = 'memory.7';
 
 /** What the stand-in reader answers: one human message of the conversation it was asked about, and its token. */
 const answerFor = (target: CompanionTurnsTarget): CompanionTurns => ({
@@ -37,6 +40,7 @@ const answerFor = (target: CompanionTurnsTarget): CompanionTurns => ({
   }],
   conversation: `token-${target.agentSessionId ?? 'none'}`,
   stateSince: target.stateSince,
+  readMark: target.readMark,
   complete: true,
 });
 
@@ -270,16 +274,19 @@ describe('companion turns: the gate', () => {
 });
 
 describe('companion turns: the answer', () => {
-  it('200 with the reader\'s answer; the reader gets the directory, current conversation, `stateSince` and count', async () => {
+  it('200 with the reader\'s answer; the reader gets the directory, current conversation, `stateSince`, read mark and '
+    + 'count', async () => {
     const h = await startHarness(ON);
     for (const count of [1, 2, 3]) {
       const res = await turns(h, 's1', `?count=${String(count)}`);
       expect(res.status).toBe(200);
       const body = companionTurnsSchema.parse(await res.json());
-      expect(body).toEqual(answerFor({ cwd: join(h.dir, 'projekt'), agentSessionId: CONV_A, stateSince: STATE_SINCE }));
+      expect(body).toEqual(answerFor({
+        cwd: join(h.dir, 'projekt'), agentSessionId: CONV_A, stateSince: STATE_SINCE, readMark: MARK,
+      }));
     }
     expect(h.reads).toEqual([1, 2, 3].map((count) => ({
-      target: { cwd: join(h.dir, 'projekt'), agentSessionId: CONV_A, stateSince: STATE_SINCE }, count,
+      target: { cwd: join(h.dir, 'projekt'), agentSessionId: CONV_A, stateSince: STATE_SINCE, readMark: MARK }, count,
     })));
   });
 
@@ -295,9 +302,13 @@ describe('companion turns: the answer', () => {
 
 describe('companion turns: a change while the reader is pending', () => {
   const project = (h: Harness): string => join(h.dir, 'projekt');
-  /** `/clear` in the pane during read `n`: the session writes `conversation` now, with a later `stateSince`. */
+  /**
+   * `/clear` in the pane during read `n`: the session writes `conversation` now, with a later `stateSince`, and its
+   * memory holds a newer message (the note of `/clear`).
+   */
   const clearTo = (h: Harness, conversation: string): void => {
     h.manager.changeConversation('s1', conversation);
+    h.manager.readMarks.set('s1', NEWER_MARK);
     const session = h.manager.sessions.get('s1');
     if (session !== undefined) h.manager.sessions.set('s1', { ...session, stateSince: LATER });
   };
@@ -308,19 +319,22 @@ describe('companion turns: a change while the reader is pending', () => {
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(companionTurnsSchema.parse(JSON.parse(text)))
-      .toEqual(answerFor({ cwd: project(h), agentSessionId: CONV_B, stateSince: LATER }));
+      .toEqual(answerFor({ cwd: project(h), agentSessionId: CONV_B, stateSince: LATER, readMark: NEWER_MARK }));
     expect(text).not.toContain(CONV_A);
     expect(h.reads.map((read) => read.target)).toEqual([
-      { cwd: project(h), agentSessionId: CONV_A, stateSince: STATE_SINCE },
-      { cwd: project(h), agentSessionId: CONV_B, stateSince: LATER },
+      { cwd: project(h), agentSessionId: CONV_A, stateSince: STATE_SINCE, readMark: MARK },
+      { cwd: project(h), agentSessionId: CONV_B, stateSince: LATER, readMark: NEWER_MARK },
     ]);
   });
 
-  it('the same conversation with a new `stateSince` → one read, sent with the `stateSince` taken with it', async () => {
+  it('the same conversation with a new `stateSince` and a newer message → one read, sent with the `stateSince` and '
+    + '`readMark` taken before it', async () => {
     const h = await startHarness({ ...ON, duringRead: (_n, hh) => { clearTo(hh, CONV_A); } });
     const res = await turns(h, 's1');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(answerFor({ cwd: project(h), agentSessionId: CONV_A, stateSince: STATE_SINCE }));
+    expect(await res.json()).toEqual(answerFor({
+      cwd: project(h), agentSessionId: CONV_A, stateSince: STATE_SINCE, readMark: MARK,
+    }));
     expect(h.reads).toHaveLength(1);
   });
 
@@ -350,7 +364,9 @@ describe('companion turns: a change while the reader is pending', () => {
     });
     const res = await turns(h, 's1');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(answerFor({ cwd: project(h), agentSessionId: CONV_C, stateSince: LATER }));
+    expect(await res.json()).toEqual(answerFor({
+      cwd: project(h), agentSessionId: CONV_C, stateSince: LATER, readMark: NEWER_MARK,
+    }));
     expect(h.reads.map((read) => read.target.agentSessionId)).toEqual([CONV_A, CONV_B, CONV_C]);
   });
 

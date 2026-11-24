@@ -1,0 +1,26 @@
+
+ ▐▛███▛█   Claude Code v2.1.330
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/project
+
+
+❯ ZESTAW-KONTROLNY-BASH: claude-md-default-link.
+
+  Thought for 1s, read 1 file
+
+⏺ Update(~/.claude/CLAUDE.md)
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Edit file
+ ../.claude/CLAUDE.md
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ 1  # Notes
+ 2 -old value
+ 2 +new value
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to make this edit to CLAUDE.md?
+ ❯ 1. Yes
+   2. Yes, and allow Claude to edit files in its ~/.claude folder for this session
+   3. No
+
+ Esc to cancel · Tab to amend

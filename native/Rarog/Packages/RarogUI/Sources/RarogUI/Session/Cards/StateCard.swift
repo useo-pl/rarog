@@ -14,9 +14,9 @@ struct StateCardView: View {
   /// Wynik akcji należy do karty, z której wyszła (`StateCardModel.key`): po zmianie stanu nie wraca.
   @State private var result: Result?
   @State private var busy: Busy?
-  /// Odświeżenie etykiety „×"/„Zamknij panel" po upływie uzbrojenia (5 s, wspólne z nagłówkiem).
+  /// Redraws the "×" or "Close Pane" label when the arming runs out (5 s, the arming shared with the tab's "×").
   @State private var armTick = 0
-  /// Fokus klawiatury na przycisku zamknięcia — jego utrata rozbraja (jak „×" nagłówka).
+  /// Keyboard focus on the close button: losing it disarms, as at the tab's "×".
   @FocusState private var closeFocused: Bool
 
   struct Result: Equatable {
@@ -104,9 +104,9 @@ struct StateCardView: View {
     }
   }
 
-  /// Zamknięcie: pierwsze naciśnięcie pyta (uzbrojenie wspólne z „×" nagłówka, 5 s), drugie zamyka
-  /// i prowadzi do ostatnio aktywnej siostry albo na listę. Fokus klawiatury (Tab, Full
-  /// Keyboard Access) schodzący z przycisku rozbraja — powrót na niego uzbraja od nowa.
+  /// The close: the first press asks (the arming shared with the tab's "×", 5 s), the second closes and goes to the
+  /// sister last active, else to the list. Keyboard focus (Tab, Full Keyboard Access) leaving the button disarms;
+  /// coming back to it arms anew.
   private func closeButton(_ card: StateCardModel, label: String) -> some View {
     let _ = armTick
     let armed = navigation.isCloseArmed(sessionId, now: Date())
@@ -149,11 +149,9 @@ struct StateCardView: View {
   // MARK: - Akcje
 
   private func close(_ card: StateCardModel) {
+    // The arming speaks when it arms (`RarogNavigation.requestClose`); the button says nothing itself.
     switch navigation.requestClose(sessionId, state: store.state, now: Date()) {
     case .armed:
-      if let session = store.state.sessions[sessionId] {
-        Announcer.shared.say(UICopy.closeArmed(session))
-      }
       Task {
         try? await Task.sleep(for: .seconds(RarogNavigation.closeArmWindow))
         armTick += 1

@@ -4,18 +4,18 @@ import SwiftUI
 
 // The filter segments over the session list: All · Needs You · Working · Unread as glyphs with their counts.
 // Membership and counts come from the core (`ListFilter`), the chosen segment from the navigation
-// (`Navigation+ListFilter.swift`); the container (`SessionListView`) puts the row in its top inset. Owner: list.
+// (`Navigation+ListFilter.swift`); the container (`SessionListView`) puts the row in its top inset, beside the Inbox
+// button, floating over the list. Owner: list.
 
-/// One row of segments under the navigation bar and the banners. It stands from the first frame: on the skeleton
-/// and on an empty list the segments are disabled and the counts muted, so the list appearing does not change the
-/// top inset. The active segment sits on a `surface2` plate with the block radius; the others have no background.
-/// The segments share the column's width, so the row fits without scrolling; it scrolls sideways only when even the
-/// glyphs do not fit, and never truncates.
+/// One glass capsule of segments under the navigation bar and the banners, floating over the list, which scrolls
+/// beneath it (`FilterGlass`). It stands from the first frame: on the skeleton and on an empty list the segments are
+/// disabled and the counts muted, so the list appearing does not change the top inset. The segments share one
+/// capsule, so they read as one control that picks one filter; the active segment sits on a capsule plate
+/// (`Palette.filterGlassPlate`). The segments share the capsule's width, so the row fits without scrolling; it
+/// scrolls sideways only when even the glyphs do not fit, and never truncates.
 struct ListFilterBar: View {
   let store: RarogStore
   let navigation: RarogNavigation
-  /// The column's background: the row is opaque, so rows scrolling under the top inset do not show through it.
-  let background: UIColor
 
   var body: some View {
     let state = store.state
@@ -28,23 +28,26 @@ struct ListFilterBar: View {
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
     }
-    .background(Color(uiColor: background))
-    // The navigation bar leaves empty space under the title, and the 44 pt targets air above the lower plates: the
-    // row moves up into that space, so the plates stand close under the title.
-    .padding(.top, -Self.rise)
     .accessibilityElement(children: .contain)
     .accessibilityLabel(UICopy.listFilterGroup)
     .accessibilityIdentifier("list.filter")
   }
 
   private func segments(_ state: AppState, ready: Bool, fill: Bool) -> some View {
-    HStack(spacing: 2) {
+    HStack(spacing: 0) {
       ForEach(ListFilter.allCases, id: \.self) { filter in
         segment(filter, count: state.listFilterCount(filter), ready: ready, fill: fill)
       }
     }
-    .padding(.horizontal, SessionListMetrics.plateEdge)
+    .background { FilterGlass(shape: Capsule()) }
   }
+
+  /// The gap between the glass's edge and a segment's plate. The segment's target includes it.
+  static let trackInset: CGFloat = 4
+  /// The plate's height; with the inset on both sides the glass and every target are 44 pt tall.
+  static let plateHeight: CGFloat = 36
+  /// The glass row's distance from the column's sides and from the navigation bar above it.
+  static let glassEdge: CGFloat = 12
 
   /// A segment is its glyph and its count; the word is what VoiceOver says and what the pointer shows in the app's
   /// own tip (`pointerTip`: the system `help` does not show on an iPad). Words did not fit the column without
@@ -67,22 +70,23 @@ struct ListFilterBar: View {
           .foregroundStyle(Color(uiColor: (active || hovered) && ready ? Palette.text : Palette.text2))
         Text(count, format: .number)
           .appFont(.subheadline.monospacedDigit())
-          .foregroundStyle(Color(uiColor: Self.countInk(filter, count: count, ready: ready)))
+          .foregroundStyle(Color(uiColor: Self.countInk(filter, count: count, ready: ready, active: active)))
       }
       .appFont(.subheadline.weight(active ? .semibold : .regular))
       .lineLimit(1)
       .fixedSize()
       .padding(.horizontal, 10)
       .padding(.vertical, 6)
-      .frame(maxWidth: fill ? .infinity : nil)
+      .frame(maxWidth: fill ? .infinity : nil, minHeight: Self.plateHeight)
       .background {
+        let plate = Color(uiColor: Palette.filterGlassPlate)
         if active {
-          RoundedRectangle.block.fill(Color(uiColor: Palette.surface2))
+          Capsule().fill(plate)
         } else if hovered {
-          RoundedRectangle.block.fill(Color(uiColor: Palette.surface2).opacity(HoverTokens.agentRowAlpha))
+          Capsule().fill(plate.opacity(HoverTokens.agentRowAlpha))
         }
       }
-      .frame(minHeight: SessionListMetrics.projectRowMinHeight)
+      .padding(Self.trackInset)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -105,13 +109,17 @@ struct ListFilterBar: View {
     }
   }
 
-  /// How far the row rises under the navigation bar.
-  static let rise: CGFloat = 12
+  /// How far the top inset (banners and this row) rises under the navigation bar: the bar leaves empty space under
+  /// the title; a larger rise put the glass against the bar. The container applies it to the whole inset, never to
+  /// this row alone: the row is opaque and would cover the bottom of a banner over it.
+  static let rise: CGFloat = 4
 
   /// The count's ink: Needs You in amber and Unread in the unread blue while they count something; All and Working
-  /// in secondary text; zero, the skeleton and an empty list muted.
-  static func countInk(_ filter: ListFilter, count: Int, ready: Bool) -> UIColor {
-    guard ready, count > 0 else { return Palette.muted2 }
+  /// in secondary text; zero, the skeleton and an empty list muted. The active segment's zero is secondary text:
+  /// `muted2` on the glass plate over a busy list falls under 4.5:1 (the disabled skeleton is exempt).
+  static func countInk(_ filter: ListFilter, count: Int, ready: Bool, active: Bool = false) -> UIColor {
+    guard ready else { return Palette.muted2 }
+    guard count > 0 else { return active ? Palette.text2 : Palette.muted2 }
     switch filter {
     case .needsYou: return Palette.wait
     case .unread: return Palette.tone(.unread)

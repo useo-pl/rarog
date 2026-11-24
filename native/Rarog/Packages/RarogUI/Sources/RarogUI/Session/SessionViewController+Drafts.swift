@@ -5,7 +5,7 @@ import UIKit
 // Trwały szkic pola wiadomości: tekst i niewysłane załączniki przeżywają nawigację
 // i zabicie apki. Zapis po krótkiej przerwie od ostatniej ZMIANY pola (pisanie, pasek, zmiana wykryta
 // w renderze: wysyłka czyści pole, odmowa je oddaje), przy wyjściu z ekranu i przy zejściu apki w tło;
-// regułę trzyma `DraftSaveSchedule`. Dyktowanie przy przejęciu mikrofonu woła `persistDraftNow()`.
+// regułę trzyma `DraftSaveSchedule`. Dyktowanie woła `persistDraftNow()` przy każdym końcu nagrania.
 // Właściciel: sterowanie sesją.
 
 extension SessionViewController {
@@ -49,7 +49,7 @@ extension SessionViewController {
     }
   }
 
-  /// Zapis od razu (wyjście z ekranu, tło, przejęcie mikrofonu, prompt oddany po przerwaniu).
+  /// Zapis od razu (wyjście z ekranu, tło, koniec nagrania dyktowania, prompt oddany po przerwaniu).
   func persistDraftNow() {
     turnChrome.draftSave?.cancel()
     turnChrome.draftSave = nil

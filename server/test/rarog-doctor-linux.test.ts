@@ -137,6 +137,8 @@ async function greenInstall(): Promise<void> {
   sb.set('active', '');
   sb.set('enabled', '');
   write(path.join(dataDir(), 'devices.json'), JSON.stringify({ version: 1, serverId: SERVER_ID, devices: [] }));
+  // A server has run with this directory, so its log exists (without a consent-without-a-hook line).
+  write(path.join(dataDir(), 'server.log'), '');
   // Kopia hooka zgodna z repo, bez gita: stan po `hooks install` niezależny od niezacommitowanych zmian w checkoutcie.
   mkdirSync(hookInstallDir(sb.homeDir), { recursive: true });
   for (const name of HOOK_INSTALL_FILES) {

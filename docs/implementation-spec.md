@@ -83,7 +83,10 @@ export type ServerEvent =
   | { type: 'usage'; sessionId: string; contextTokens: number; contextLimit: number }
   | { type: 'herdr-status'; available: boolean; agentCount: number; readOnly: boolean;
       canLaunch?: boolean; detail?: string }
-  | { type: 'notes'; cwd: string; empty: boolean };
+  | { type: 'notes'; cwd: string; empty: boolean }
+  | { type: 'inbox-heads'; heads: InboxHead[] }
+  | { type: 'inbox-head'; head: InboxHead }
+  | { type: 'inbox-removed'; sessionId: string; turnId: string };
 ```
 
 The message and card types (field comments in `protocol.ts`):
@@ -135,6 +138,7 @@ The message and card types (field comments in `protocol.ts`):
 Four frames are VOLATILE (`seq: null`, outside the ring buffer, no replay after a reconnect): `delta`, `activity`,
 `herdr-status` and `notes`. Their start state rides in the snapshots (`sessions-snapshot.herdrStatus`,
 `sessions-snapshot.notesCwds`, `transcript-snapshot.activity`), because iOS drops the SSE stream at every sleep. The
+three Inbox frames are volatile too and go only to a stream that asks for them ("Inbox"). The
 stream carries no push channel state: the app reads it per token from `POST /api/push/apns/status`.
 
 **Turn start and activity age** (`server/src/sessions/activity-clocks.ts`). `SessionSummary.turnSince` is the start
@@ -350,7 +354,7 @@ maps each file to an expectation:
   whole rejection matrix of `shared/test/decode.test.ts`, so a client in another language does not guess the boundary.
 
 `shared/test/sse-fixtures.test.ts` imports nothing from `server/` and enforces: manifest and directory match; each of
-the 16 types has `<type>.max.json`; each `DEGRADATIONS` item has a `degraded` frame; and every schema path (from
+the 20 types has `<type>.max.json`; each `DEGRADATIONS` item has a `degraded` frame; and every schema path (from
 `z.toJSONSchema(serverEventSchema)`, with one path per discriminated variant) occurs in some `ok` frame, so a new field
 without golden frames fails `pnpm run check`. `message.unicode` carries Polish letters, emoji outside the BMP and an
 escaped U+2028. The app reads the same files in `GoldenFramesTests` (`RarogContract`, the `swift-contract` step): an
@@ -499,7 +503,8 @@ gates stand in "Gates on every route".
   from the ring buffer, or one `transcript-snapshot` when the tail holds at least 2 messages (log line `sse: replay <n>
   messages → snapshot <kB> kB (session <id>)`). A cursor outside the ring buffer, without a prefix or with another
   `serverStartId` gets `transcript-snapshot` plus live frames. A snapshot has no `id:`; the first live frame moves the
-  client's cursor.
+  client's cursor. When a restart or "Resume" puts a new card under the id, every open stream of that id gets a
+  `transcript-snapshot` of the new card, and a cursor of the old card gets one too.
 - Stream headers: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`,
   `Connection: keep-alive`, `X-Accel-Buffering: no`; the body opens with `retry: 3000`, and a `ping` event (with a
   `: ping` comment) comes every 10 s (`hello.heartbeatMs`). Unless `RAROG_SSE_GZIP=0` (`docs/server-config.md`), the response also has
@@ -522,7 +527,8 @@ gates stand in "Gates on every route".
   `docs/companion.md`, "Sending from the conversation".
 - `POST /api/sessions/:id/permissions/:permId` and `POST /api/sessions/:id/answers/:qId` → 200, 409, 410 or 422
   ("Decision contract").
-- `POST /api/sessions/:id/interrupt` → 202 `{ok, session, delivered}` ("Esc fixes the state from the response").
+- `POST /api/sessions/:id/interrupt` → 202 `{ok, session, delivered, returnedPrompt?}`
+  ("Esc fixes the state from the response", "`returnedPrompt`: the prompt back in the field").
 - `POST /api/sessions/:id/queue/take-back {operationId}` → 200 `{items, incomplete?}`, 409 or 410 with the manager's
   sentence, 400 ("Queue take-back").
 - `POST /api/sessions/:id/close` → 200; `POST /api/sessions/:id/resume` → 200, or 409 when not resumable.
@@ -533,10 +539,13 @@ gates stand in "Gates on every route".
   `companion-timeout`. A new engine conversation while the question waits closes the response without a body. Demo
   mode has no route (404). Gate and process: `docs/companion.md`.
 - `GET /api/sessions/:id/companion/turns?count=1..3` (`companionTurnsCountSchema`) → 200
-  `{messages, conversation, stateSince, complete}` (`companionTurnsSchema`): the messages of the last 1–3 turns of the
-  engine conversation the session writes now, in the shape of the session stream (`seq` from 1 in this response),
-  an opaque token of that conversation (another one after `/clear`, `/resume` and after a server restart), the
-  session's `stateSince` and `complete: false` when the read window starts inside the oldest returned turn. Refusals:
+  `{messages, conversation, stateSince, readMark, complete}` (`companionTurnsSchema`): the messages of the last 1–3
+  turns of the engine conversation the session writes now, in the shape of the session stream (`seq` from 1 in this
+  response), an opaque token of that conversation (another one after `/clear`, `/resume` and after a server restart),
+  the session's `stateSince`, an opaque name of the newest message the server's memory of the session held and of its
+  `stateSince` before the read (`readMark`, for the pick-up of `POST …/seen`; an answer with no messages or with a
+  message trimmed to the ceiling of one message carries a fixed mark that names no read, which no pick-up meets) and
+  `complete: false` when the read window starts inside the oldest returned turn. Refusals:
   503 `companion-disabled` (`RAROG_COMPANION` off), 503 `companion-sessions-disabled` (`RAROG_COMPANION_SESSIONS`
   off), 400 for `count` outside 1–3 (`rest.companion-turns-count`), 404 for an unknown session and for a session that
   is not Claude Code in scope (`rest.companion-claude-only`). A new engine conversation during each of three reads
@@ -583,8 +592,9 @@ gates stand in "Gates on every route".
   `companionSpeech` and `apnsEnabled`, the optional `companionSessions` (only `true`, when the voice agent works and
   `RAROG_COMPANION_SESSIONS=1`; `docs/companion.md`, "Turns route"), `capabilities` (from `SERVER_CAPABILITIES` in
   `server/src/version.ts`: `device-auth`, `pair`, `pair-from-device`, `push-relay`, `push-e2e-v2`, `companion`,
-  `companion-sessions`), `system` (the server machine's
-  system from `process.platform`: `macos` for `darwin`, `linux`, `other` for anything else; the demo server says
+  `companion-sessions`, plus `inbox` while the Inbox is on, "Inbox", and `files` while the session file route is on,
+  "Session files"), `system` (the server machine's system from `process.platform`: `macos` for `darwin`, `linux`,
+  `other` for anything else; the demo server says
   `macos`) and `iroh` (`{endpointId, relay}` or `null`). `companionEnabled` says that the voice agent works
   (`RAROG_COMPANION=1`, the OpenAI key and the Soniox voice), `companionSpeech` is equal to it, and the capability
   `companion` says that the server knows the voice agent contract (`docs/companion.md`). The app calls the
@@ -795,14 +805,15 @@ workflows?, moreWorkflows?, limits?, mac?, updatedEpoch}`:
   effect is on the Mac, not in the response. The app does not call this route.
 - `POST /api/sessions/:id/seen` → 200 `{ok: true}`: "I viewed the result on the phone". The local marker is written at
   once, and `agent.focus` runs in the background only when `seen === false` (Rarog knows of a standing `done` in herdr);
-  its failure is not an error. The client calls it for a `waiting-input` session with `seen` other than `true`,
-  deduplicated by `id` + `stateSince`. In work states there is no result yet, so the server writes no marker and only
+  its failure is not an error. The client calls it for a `waiting-input` session with `seen` other than `true` or
+  with `seenBy`, deduplicated by `id` + `stateSince`. In work states there is no result yet, so the server writes no marker and only
   cancels the session's pending push notification (`notifier.seen`). The app's body is empty or `{}`; a body
-  `{by: "voice-agent", stateSince, conversation}` (`seenBodySchema`, all three fields or none, else 400
-  `bad-request`) is the voice agent's pick-up of the result it read: the same receipt plus `seenBy` on the row, only
-  for a session in `waiting-input` with no decision card waiting on it, at its current `stateSince` and in the engine
-  conversation of the token (else 409 `bad-state`, `session.seen-result-changed`, no effect), behind the flags of the
-  mode across sessions (503) and the scope of its session catalog (404). Rules and gate order: `docs/companion.md`,
+  `{by: "voice-agent", conversation, readMark}` (`seenBodySchema`, all three fields or none, else 400 `bad-request`;
+  both values from one answer of the turns route) is the voice agent's pick-up of the result it read: the same
+  receipt plus `seenBy` on the row, only for a session in `waiting-input` with no decision card waiting on it, in the
+  engine conversation of the token, with no message in its memory newer than `readMark` and the `stateSince` the mark
+  names (else 409 `bad-state`, `session.seen-result-changed`, no effect), behind the flags of the mode across
+  sessions (503) and the scope of its session catalog (404). Rules and gate order: `docs/companion.md`,
   "Picking up a result".
 - `POST /api/sessions/:id/unseen` → 200 `{ok: true}`: mark as unread; no body, only the local marker, no herdr call and
   no notification; without effect outside `waiting-input` with `seen: true` ("Viewed on the phone" below). The app
@@ -1108,6 +1119,57 @@ shows Restart and Send (`POST …/restart` with `{resend: {seq, id}}`, "Session 
 frames: `message.prompt-blocked*.json`, `transcript-snapshot.prompt-blocked.json`, and the summaries
 `session-changed.prompt-blocked.json` and `sessions-snapshot.prompt-blocked.json`.
 
+### Inbox
+
+The server keeps one Inbox card per open Claude Code session in scope: the last message of the agent's latest turn
+that ended with a result, waits for a decision or stopped (`server/src/inbox/`; the card rules stand in
+`docs/architecture.md`, "Inbox cards (`server/src/inbox/`)"). A Codex pane, a pane out of scope and a closed session
+have none. The capability `inbox` in `GET /api/version` and in the pairing response says the server has it.
+`RAROG_INBOX=0` (`docs/server-config.md`) removes the capability and the events, and every route below answers 503
+`inbox-disabled` (`rest.inbox-disabled`); `inbox.json` stays untouched. The demo has the same Inbox over its own
+sessions (below).
+
+- **Heads on the global stream.** Only a stream opened with `GET /api/stream?inbox=1` gets them: one
+  `inbox-heads {heads}` right after `sessions-snapshot`, with every visible card newest first, then
+  `inbox-head {head}` when a card becomes visible or its head changes, and `inbox-removed {sessionId, turnId}` when a
+  card the stream knows leaves the visible cards (removed on any device, the session closed or its conversation
+  changed). A head is `{sessionId, turnId, version, kind, state, at, dialog?}` (`shared/src/protocol/inbox.ts`),
+  without the text: `turnId` and `version` are opaque, a new `version` means a changed card to fetch (new text, kind
+  or dialog, or other buttons on its consent channel card); `kind` is `result`,
+  `decision` or `failed`; `state` is the session state when the card was read (the app hides the card in `starting`
+  and `running`); `dialog` (`permission`, `question` or `panel`) is on a decision card only. The three frames are
+  volatile (`seq: null`, no `id:`, outside the ring buffer); a stream that opens after a change gets it in
+  `inbox-heads`. A message during a turn sends no head, and a head that did not change sends nothing. A stream
+  without `inbox=1` gets none of them, so an app that does not ask sees nothing new. A client drops only a head it
+  cannot read (an unknown `kind`, `state` or `dialog`, `DEGRADATIONS['inbox.head']`) and keeps the rest of
+  `inbox-heads`, so a card kind the app does not know does not empty its Inbox; a malformed head still
+  rejects the frame, and a single unreadable `inbox-head` is ignored. The app's `GET /api/inbox` list drops an
+  unreadable card the same way.
+- `GET /api/inbox` → 200 `{cards}`: every visible card, newest first, as its head plus `text` (the last message of
+  the turn, at most 12,000 Unicode scalars, cut from the start) and `truncated`. `GET /api/inbox/:sessionId` → 200
+  `{card}`, or `{}` when the session has no visible card now; an unknown session → 404 `not-found`
+  (`rest.session-not-found`). The `dialog` of a decision card here is the decision the session summary describes
+  (`inboxCardDialogSchema` in `shared/src/rest.ts`): `{kind: permission | question, waitingFor?, requestId?}` or
+  `{kind: panel, herdrDialog?, herdrDialogReason?}`. `requestId` is the `permId` or `qId` of the card in the session
+  stream; the card itself, with its buttons, comes with the session stream. The routes never read the transcript,
+  because that read marks every consent channel card of the session as shown on a device, also the cards the answer
+  would not carry, and the next change of such a card then goes as `permission-settled`, which a client without the
+  card drops, instead of `permission-pending`.
+- `POST /api/inbox/:sessionId/remove` and `POST /api/inbox/:sessionId/restore` with `{turnId, version}` from the head
+  (`inboxActionBodySchema`) → 200 `{ok: true, changed}`. `changed: false` = the card already was removed (restored),
+  and nothing happened again. Another turn or version, or a session that moved while the card was read again → 409
+  `inbox-card-changed` (`rest.inbox-card-changed`) without effect; a failed write of `inbox.json` → 500 `internal`
+  (`rest.inbox-save-failed`) and the card stays; an unknown session → 404 `not-found`. Removing a `result` card of a
+  session in `waiting-input` receives the result like `POST /api/sessions/:id/seen` from the app (a receipt by a
+  person, with `agent.focus` for a standing `done`, "Presence, focus and seen"); removing a `decision` or `failed`
+  card only hides it. A restore takes back a receipt the removal gave (`POST …/unseen`). `receipt: "skipped"` = the
+  card is removed (restored), but its receipt did not happen (was not taken back), because no read confirmed the
+  card's turn or the session moved before the write landed. Every removal and restore reaches every `inbox=1` stream
+  as `inbox-removed` or `inbox-head`.
+- **Demo.** The cards come from the demo sessions' messages in the server's memory instead of conversation files
+  (`server/src/demo/inbox.ts`), and removals go to `inbox.json` of the demo data directory. A turn's identity there
+  comes from the times the seeds get at start, so a removal does not survive a demo restart.
+
 ## State machine: a pure function
 
 ```ts
@@ -1151,7 +1213,7 @@ export function transition(state: SessionState, ev: SmEvent): SessionState;
 
 ### Esc fixes the state from the response, not from the push
 
-`POST …/interrupt` answers `202 {ok: true, session, delivered}`, where `session` is a fresh `SessionSummary` after the
+`POST …/interrupt` answers `202 {ok: true, session, delivered, returnedPrompt?}`, where `session` is a fresh `SessionSummary` after the
 transition (already `waiting-input`, because the transition is synchronous), and sends one `escape` to the pane. In
 this section "push" means an SSE frame, not an APNs notification. An open session view learns of the interrupt from an
 SSE frame, but a silently dead stream reports no error, and `activity` is volatile, so the client would otherwise wait
@@ -1183,11 +1245,54 @@ progress, no driver) is an HTTP 4xx with a sentence, never a 202 body; the app k
 `#lastInterruptAtMs` with a 1000 ms window (`INTERRUPT_DEBOUNCE_MS`). An accepted send clears both and restores them when a gate rejects it
 (`suspendInterruptWindows`), so a refused send does not leave a fresh interrupt without its grace period.
 
+### `returnedPrompt`: the prompt back in the field
+
+On CLI 2.1.329 Esc puts the interrupted prompt back into Claude Code's prompt field only while the turn has shown no
+text and no tool yet (only the spinner or thinking), the field is empty and the CLI queue is empty; herdr reports
+`done` about 0.3 to 0.4 s after the key. Every other Esc ends the turn with "Interrupted · What should Claude do
+instead?" and leaves the field as it was, empty or with its draft, and a queued prompt starts at once as the next turn.
+
+Before the key the driver (`server/src/drivers/herdr/returned-prompt.ts`) reads the prompt field once (`visible` +
+`ansi`, `composerFieldView`) and waits for it at most `FIELD_READ_BEFORE_ESCAPE_MS` (250 ms); a read that does not
+answer in time proves nothing and the key goes at once. The read goes before the "Session paused" gate, so the gate
+stays the last check before the key. Esc leaves a draft in place, so a draft equal to the prompt would pass for
+a hand-back: only a field confirmed empty before the key lets the read after it prove one. After a delivered `escape`
+the driver reads the field every `PROMPT_FIELD_POLL_MS` for at most `RETURNED_PROMPT_WAIT_MS` (1.2 s). The bound
+races the read, so a screen read that never returns still answers in time. `returnedPrompt` carries the turn's
+prompt only when the whole field (not cut at the top, not a history entry, no dialog or form over it) equals that
+prompt without whitespace, the take-back's own-text rule (`showsTaken`).
+
+The turn's prompt is the text the driver last sent to an idle pane, or the newest human prompt of the conversation
+file (no notice, no command output, no image), taken right before the key; the answer is that text with its line
+breaks, not the screen text. The file's history, read when the driver attaches and after a move to another
+conversation, does not replace a prompt sent after that read began: the read can end after the send, and its entries
+are older. A prompt typed at the desk after the send still counts when it arrives as a new entry of the file. A move
+to another conversation drops the turn's prompt and the last answer.
+
+- No read and no field: a pane other than `claude`, Rarog's paste queue holding a prompt or an unsettled Enter, the
+  take-back holding the field, a dialog or permission card (a tool has shown), or no known prompt.
+- No read after the key and no field: a field before the key that is not confirmed empty (a draft, an unreadable or
+  late read, a dialog or form over it), or a key that did not go.
+- No field after the read: an empty field or only the start of the prompt at the bound, a whole field with other text
+  (a draft), a paste placeholder (`[Pasted text #1 +2 lines]` proves a line count, not the text), a newer send or
+  interrupt, another conversation, or a disposed driver.
+- A repeat of the request without a new key (the manager's debounce window) gets the last answer only while it is
+  fresh: no newer send or interrupt, the same conversation, a live driver.
+- One log line says that the prompt was handed back, without its text.
+
+The router asks `ManagerApi.returnedPrompt(id)` only when `delivered` is `'yes'`, so `'no'` and `'pending'` answer
+without a field read, and a delivered Esc that hands nothing back waits up to 1.2 s for its answer. The field is
+additive: absent means that no hand-back was proven. The golden files hold both cases (`interrupt.json`,
+`interrupt.returned-prompt.json`); the Swift type is `InterruptResponse.returnedPrompt` in `RarogContract`.
+
 ## Ring buffer
 
 `RingBuffer<T>` (`server/src/sessions/ring-buffer.ts`): capacity `DEFAULT_RING_CAPACITY` = 500, `push(t)→seq`
 (monotonic from 1), `since(seq)`, `tooOld(seq)` and helpers. A session caps it at `RING_MAX_BYTES` (4 MB), and a
 message larger than `MAX_MESSAGE_BYTES` (256 kB) is clipped. A `seq` is valid only within one `serverStartId`.
+A new card under an existing id (restart, "Resume") numbers on after the old card (`startSeq`): a cursor at or below
+the old card's last `seq` is `tooOld`, and the open streams of that id get a `transcript-snapshot` of the new card
+before its first frame.
 
 There is no session registry on disk: a `<dataDir>/sessions.json` found at start is moved to `sessions.json.bak`.
 Sessions come back after a restart from herdr's `agent.list`, with ids from `sessionIdFor(key)` (UUIDv5,
@@ -1224,7 +1329,7 @@ export interface SessionDriver {
   interrupt(): Promise<boolean>;   // not `async`, as above
   // optional: defersEcho, sendCommands, setMode, restartProbe, requestExit, blockedLeftover,
   // clearBlockedLeftover, checkHeldLeftover, noteCliWaiting, noteCliProcessStart, noteUltracodeRequest,
-  // takeBackQueue
+  // takeBackQueue, returnedPrompt
   dispose(): void;
 }
 ```
@@ -1317,6 +1422,8 @@ Source of truth: `server/src/sessions/manager-api.ts` (signatures, refusals and 
 - `resolvePermission(id, permId, decision, by, message?)`, `answerQuestion(id, qId, answers, notes?)`: gates throw
   synchronously; the result comes after the driver.
 - `interrupt(id)`: the promise says only whether the key reached the engine.
+- `returnedPrompt(id)`: the prompt Claude Code handed back to its field after the last delivered key, else `null`
+  ("`returnedPrompt`: the prompt back in the field").
 - `takeBackQueue(id, operationId)`: the queue take-back ("Queue take-back"); gates throw synchronously, a driver
   refusal rejects the promise.
 - `close(id, {closePanel?})`, `resume(id)`, `restart(id, {resend?})`.
@@ -1326,7 +1433,8 @@ Source of truth: `server/src/sessions/manager-api.ts` (signatures, refusals and 
 - `focus(id)` (moves someone else's terminal, so it obeys the send switch), `markSeen(id)`, `markUnseen(id)`.
 - `diff(id)`, `diffFiles(id)`, `diffFile(id, path)`.
 - `transcript(id)` (with `activity`, so a phone entering mid-turn does not see emptiness), `eventsSince(id, seq)`,
-  `onEvent(cb)` (one `(scope, seq, event)` subscription for SSE), `herdrStatus?()`.
+  `onEvent(cb)` (one `(scope, seq, event)` subscription for SSE), `onTranscriptReset?(cb)` (a new card under an
+  existing id; the hub sends the open streams of that id a snapshot), `herdrStatus?()`.
 
 Finished messages get a `seq` from the session's ring buffer; deltas get `seq: null`. `session-changed` and `state`
 go to the `'global'` scope and to the session scope.
@@ -1516,6 +1624,92 @@ Collectors in `server/src/git-diff.ts`, schemas in `shared/src/protocol/diff.ts`
 - A server without these routes answers 405 `method-not-allowed`. Demo: `demoDiffFiles()` and `demoDiffFile(path)`;
   the demo control (`/api/demo/control`) counts the requests and can hold, fail or lengthen a patch for diff window tests.
 - Each request that reached git logs `git: diff list|file <ms> ms`, without the path.
+
+## Session files
+
+`GET /api/sessions/:id/files?dir=<rel>` lists one directory of the session; `dir` is relative to the session
+directory (`session.cwd`), segments joined with `/`, and empty or missing means the session directory itself. Code:
+`server/src/files/` (the gate, the path rule, the listing, the labels, the download); types and schemas in
+`shared/src/protocol/files.ts` and `shared/src/rest.ts`. What the server never shows or sends and why:
+`docs/security-model.md`, "Session files: listing and download".
+
+- 200 `FileListing` = `{dir, entries: FileEntry[], truncated, maxBytes}`, `FileEntry` = `{name, kind: 'dir' | 'file',
+  size?, ignored?: true}`. `dir` echoes the request; `size` (bytes, from `lstat`) is set for files only. The server
+  reads the whole directory, sorts it with `compareFileEntries` (directories first, then by the lowercased name, then
+  by the name itself, both by UTF-16 code units) and cuts it to `MAX_FILE_ENTRIES` = 1000 with `truncated: true`.
+  `maxBytes` is `RAROG_FILES_MAX_MB` in bytes (50 MiB by default): the file size limit every listing announces.
+- Left out: a name that starts with a dot, `node_modules` in any letter case, a symlink, a special file (FIFO,
+  socket, device), a file with more than one hard link, an entry outside the work area (a macOS-protected folder of
+  home under the root `~`) and a name that is not valid UTF-8. A directory the server may not read (`EACCES`,
+  `EPERM`) gives an empty listing.
+- `ignored: true` marks an entry git ignores, from `git check-ignore` run in the listed directory, so a nested
+  repository or a submodule answers with its own rules. The label hides nothing: an ignored entry is listed like any
+  other. A git failure (outside a repository, a broken `.git`, a timeout) drops every label of the listing and keeps
+  the listing. A file git tracks is never labelled, even when a rule matches it. An empty directory runs no git.
+- Refusals `{error, message}` (codes in `shared/src/protocol/files.ts`): 400 `bad-path` (empty segment, `.` or `..`,
+  a leading or trailing `/`, NUL, over 4096 bytes); 400 `codex` (a Codex entry); 400 `out-of-scope` (a pane outside
+  the work area of `RAROG_HERDR_ROOTS`, a session directory outside it on disk, a session without a herdr pane);
+  404 `not-found` (the directory does not exist, the server never shows it, or it changed while it was read; one
+  answer, so it tells nothing apart); 404 `session-not-found` (unknown session); 405 for another method. The device is
+  checked again after the read, so a device unpaired meanwhile gets 401 and no listing.
+- `RAROG_FILES=0` (`docs/server-config.md`): the route answers 404 as an unknown route for every method, and
+  `GET /api/version` drops the `files` capability.
+- Demo: every demo session lists one fixed project from memory (`server/src/demo/files.ts`, `demoFileEntries`), with
+  no disk and no git; it agrees with the demo diff, and its `dist` directory is labelled ignored.
+
+`GET /api/sessions/:id/files/index` gives the paths of the session's files in one response, for the app's file
+search; the server matches no query. Code: `server/src/files/file-index.ts`; announced with the `file-index`
+capability.
+
+- 200 `FileIndex` = `{paths: string[], truncated, maxBytes}`. `paths` are regular files under the session directory,
+  relative to it, segments joined with `/`, in the order of a breadth-first walk: each directory's files in the order
+  of its listing, then its subdirectories in turn. `maxBytes` as in a listing, so a preview from a search result does
+  not wait for one.
+- Every walked directory is read by the listing above, so the index leaves out what a listing leaves out. A
+  directory whose listing is refused (swapped, gone) is skipped; a session directory refused that way is 404
+  `not-found`.
+- Scope from git: inside a repository, `git ls-files -z --cached --others --exclude-standard` run in the session
+  directory gives the files git does not ignore. The walk enters only directories above such a file and keeps only
+  such files; a nested repository or a submodule (a directory `ls-files` names but does not expand) is walked whole,
+  without the filter. Git only narrows: a path git names that the walk does not find is not in the index. Outside a
+  repository, or when git fails (a broken `.git`, a timeout, output over the read cap), every file the rule allows,
+  ignored ones too.
+- Names, one rule for files and directories, per listed directory: a name git gives goes to the entry with exactly
+  its bytes; otherwise to the one entry that no git name matched exactly and has the same name in NFC and lower case
+  (git on macOS composes decomposed names, and with `core.ignorecase` keeps a name renamed only in letter case under
+  its old spelling); with two or more such entries, to none. Only entries a git name goes to are walked or indexed,
+  and every path carries the name from the listing.
+- `truncated: true` when a directory had more than `MAX_FILE_ENTRIES` entries, or the walk stopped at a ceiling:
+  20 000 paths, 2 MiB of JSON body, or the soft budget of 3 s (the git read included), checked between two
+  directories.
+- One walk at a time per session directory: a request that comes while one runs gets its answer; a finished walk is
+  not kept. The gate runs for every request, and the device is checked again after the walk, per request.
+- Refusals as on the listing: 400 `codex` | `out-of-scope`; 404 `not-found`; 404 `session-not-found`; 405 for another
+  method; `RAROG_FILES=0` → 404 as an unknown route and no `file-index` capability.
+- Demo: the files of the fixed project from memory that its git does not ignore (no `dist`), with no disk and no git.
+
+`GET /api/sessions/:id/files/raw?path=<rel>` sends the bytes of one file of the session; `path` is relative to the
+session directory like `dir`. The query is decoded as a form, so `+` reads as a space and a plus goes as `%2B`. Code:
+`server/src/files/session-download.ts` (the open and the limit) and `server/src/files/send-file.ts` (the sender and
+the downloads in flight by device).
+
+- 200: `Content-Type: application/octet-stream`, `Content-Length` = the size from the `fstat` of the open descriptor,
+  `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, then exactly `Content-Length` bytes from that one
+  descriptor, read in pieces of 64 KiB at their own offsets (`exactReader` in `server/src/safe-read.ts`). Bytes
+  appended while the file is sent are not sent. A file that ends before `Content-Length` bytes (cut while it is
+  sent) gets its response destroyed: the client sees a body shorter than `Content-Length` and drops it. There is no
+  `Range`: every download sends the whole file.
+- 413 `file-too-large` = `{error, message, size, maxBytes}` (`FileTooLargeBody`): `size` from the same `fstat` is over
+  `maxBytes` (`RAROG_FILES_MAX_MB` in bytes, the value every listing announces); refused before the first byte, with
+  the descriptor closed. The sentence gives both in whole megabytes, the size rounded up.
+- Refusals as on the listing: 400 `bad-path` | `codex` | `out-of-scope`; 404 `not-found` (also a directory, a
+  symlink, a special file, a file with more than one hard link, a file swapped while it was opened); 404
+  `session-not-found`; 405 for another method; `RAROG_FILES=0` → 404 as an unknown route. A file git ignores is sent
+  like any other.
+- The device is checked again after the open and before the headers, so a device unpaired meanwhile gets 401 and no
+  byte. Unpairing a device destroys the responses of its downloads in flight and closes their files, over TCP and
+  over iroh; a client that goes away closes the file too.
+- Demo: the file of the fixed project from memory (`demoFileBytes`), with no disk call.
 
 ## Projects, directories and resumable sessions
 
@@ -1779,8 +1973,8 @@ and sends as `agent.prompt` to someone else's terminal. Detaching the driver doe
 - Resending a prompt a hook blocked: `SessionSummary.promptBlocked?: {seq, id}` names the notice and this block (`id`
   is a fresh `randomUUID()`), kept in RAM until the next send, a `user` entry, the restart's `/exit` or a detach. The
   body is `{resend: {seq: <integer>, id: <string>}}`, both fields required (no `id` → 400), carries no text, and the
-  client copies both fields unchanged; another `seq` or `id`, or a block that disappeared, gives 409, because after a
-  restart the transcript numbers from zero and `seq` alone is ambiguous. The driver clears the prompt field first
+  client copies both fields unchanged; another `seq` or `id`, or a block that disappeared, gives 409, because a new
+  server process numbers from 1 again and `seq` alone is ambiguous. The driver clears the prompt field first
   (`clearBlockedLeftover(engineSessionId)` → `empty`, `filled`, `unknown`, `busy`, `changed` or `stale`), and only
   `empty` lets the restart go on. Swift type: `SessionPromptBlocked`.
 

@@ -108,14 +108,51 @@ struct CompatibilityTests {
   func olderServerProtocolNamesUpdateCommand() throws {
     let compat = Compatibility.protocolMismatch(server: CoreLimits.protocolVersion - 1)
     #expect(compat.serverIsNewer == false)
-    let refusal = try #require(compat.permanentRefusal)
+    let refusal = try #require(compat.permanentRefusal(release: "1.0.1"))
     #expect(
       refusal == "Apka jest nowsza niż serwer — zaktualizuj serwer: npm i -g @rarog/server@latest && rarog update")
     #expect(refusal.hasSuffix(ServerRelease.installAndUpdateCommand))
     #expect(!refusal.contains("rarog restart"))
+    #expect(CoreCopy.updateServer(release: "1.0.1") == refusal)
     let english = L("core.updateServer", language: .en, ServerRelease.installAndUpdateCommand)
     #expect(
       english == "The app is newer than the server. Update the server: npm i -g @rarog/server@latest && rarog update")
+  }
+
+  /// The release scripts rewrite ``ServerRelease/version`` to a beta or a stable version, so the default refusal is
+  /// checked against an explicit call for that constant, not against the sentence of one channel.
+  @Test("older server protocol without a release argument: the refusal follows the channel of the shipped release")
+  func olderServerProtocolDefaultRelease() throws {
+    let compat = Compatibility.protocolMismatch(server: CoreLimits.protocolVersion - 1)
+    let refusal = try #require(compat.permanentRefusal)
+    #expect(refusal == compat.permanentRefusal(release: ServerRelease.version))
+    #expect(CoreCopy.updateServer == CoreCopy.updateServer(release: ServerRelease.version))
+    #expect(refusal.hasSuffix(ServerRelease.unknownServerCommand(release: ServerRelease.version)))
+  }
+
+  /// A beta app ships with a beta server, which `@latest` does not install, so the refusal names the beta channel.
+  @Test("older server protocol and a beta app: the refusal names the `@beta` chain with `--finish`")
+  func olderServerProtocolBetaApp() throws {
+    let compat = Compatibility.protocolMismatch(server: CoreLimits.protocolVersion - 1)
+    let betaChain = "npm i -g @rarog/server@beta && rarog update --finish"
+    let releases = ReleaseVersionCases.shared.beta
+    #expect(!releases.isEmpty)
+    for release in releases {
+      let refusal = try #require(compat.permanentRefusal(release: release))
+      #expect(refusal == "Apka jest nowsza niż serwer — zaktualizuj serwer: \(betaChain)", "\(release)")
+      #expect(CoreCopy.updateServer(release: release) == refusal)
+    }
+    #expect(
+      L("core.updateServer", language: .en, betaChain)
+        == "The app is newer than the server. Update the server: \(betaChain)")
+    let stableRefusal =
+      "Apka jest nowsza niż serwer — zaktualizuj serwer: npm i -g @rarog/server@latest && rarog update"
+    for release in ReleaseVersionCases.shared.stable {
+      #expect(compat.permanentRefusal(release: release) == stableRefusal, "\(release)")
+    }
+    let newer = Compatibility.protocolMismatch(server: CoreLimits.protocolVersion + 1)
+    #expect(newer.permanentRefusal(release: "1.2.0-beta.1") == CoreCopy.updateApp)
+    #expect(Compatibility.ok.permanentRefusal(release: "1.2.0-beta.1") == nil)
   }
 
   @Test("serwer z wyższym protokołem i próg buildu: „zaktualizuj apkę” jak dotąd; równy protokół: ok bez odmowy")

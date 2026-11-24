@@ -115,10 +115,13 @@ extension SessionViewController {
   }
 
   /// Obserwacja `ToastCenter.current`: każda zmiana pokazuje, podmienia albo gasi dymek.
+  /// While the phone's panel sheet of this session stands, the toast stands at the bottom of the sheet
+  /// (`ToastPlacement.inspectorSheet`) and this screen shows none; it reads only the sheet, not the app state, so
+  /// stream frames do not wake it.
   private func trackToast() {
     guard let center = toastChrome.center else { return }
     let toast = withObservationTracking {
-      center.current
+      toastChrome.navigation?.inspector.sheet == sessionId ? nil : center.current
     } onChange: { [weak self] in
       Task { @MainActor in self?.trackToast() }
     }

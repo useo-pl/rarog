@@ -3,52 +3,48 @@ import RarogContract
 import RarogCore
 import SwiftUI
 
-/// Ikony w prawym górnym rogu nagłówka sesji, JEDNĄ grupą: „Terminal w oknie" (to samo co Cmd+F),
-/// przełącznik prawego panelu (iPad tylko gdy panel się mieści, telefon zawsze przy sesji z panelem — arkusz),
-/// na ekranie terminala jego „⋯" i „×"
-/// (`TerminalHeaderButtons`) i „×" bieżącej sesji (przycisk `HeaderCloseButton` należy do projektów
-/// i zakładek). Osobne elementy paska narzędzi stałyby co
-/// 12 pt (odstęp systemu), grupa trzyma je co `HeaderMetrics.iconSpacing`. Które ikony
-/// stoją, mówi ``HeaderTrailingIcons`` (na telefonie najwyżej trzy). Wyłączony
-/// terminal mówi zdanie pod paskiem zakładek (`RarogNavigation.togglePopup`), jak skrót. The Recent Sessions clock
-/// stands in the project header of the list (`TreeRecentButton`), not here. Właściciel: sterowanie sesją.
+/// The icons in the top right corner of the session header, as ONE group: first the lit circle of a running voice
+/// conversation across sessions where the list header is off screen (`VoiceAgentSessionsHeaderCircle`; a tap ends
+/// the conversation), then "Pop-Up Terminal" (the same as Cmd+F),
+/// the right panel toggle (on the iPad only when the panel fits, on the phone at every session with a panel, as a
+/// sheet), and on the terminal screen its "⋯" (`TerminalHeaderButtons`). The session's and the terminal's "×" stand
+/// in the current tab (`TabCloseButton`), not here; only a terminal without a tab bar (no known project directory)
+/// keeps its "×" here. Separate toolbar items would stand 12 pt apart (the system spacing); the group keeps them
+/// `HeaderMetrics.iconSpacing` apart. ``HeaderTrailingIcons`` says which icons stand (on the phone three at most).
+/// A disabled terminal says its sentence under the tab bar (`RarogNavigation.togglePopup`), as the
+/// shortcut does. The Recent Sessions clock stands in the project header of the list (`TreeRecentButton`), not here.
+/// Owner: session control.
 struct HeaderSessionSlot: ViewModifier {
   let store: RarogStore
   /// Przyciski ekranu terminala na trasie (pokazane, gdy ekran jest podpięty).
   let terminal: TerminalChrome
   @Environment(RarogNavigation.self) private var navigation
-  @Environment(\.horizontalSizeClass) private var sizeClass
+  /// The voice conversation across sessions and its place (the root's `VoiceAgentSessionsBarSlot`).
+  @Environment(\.voiceAgentSessionsFeed) private var voiceSessions
 
   func body(content: Content) -> some View {
     let state = store.state
     // Ta sama bramka co Cmd+F w menu: przycisk stoi wszędzie tam, gdzie skrót ma projekt.
     let popup = navigation.canTogglePopup(state)
-    // Lista z pamięci podręcznej: bez „×" do świeżego stanu.
-    let closable = navigation.selectedSessionId.flatMap { state.sessions[$0] }.flatMap { session in
-      session.canClose && !state.listStale ? session : nil
-    }
-    // Wpis Codexa w terminalu Raroga ma „×" sesji (zamyka panel, a z nim powłokę): drugiego „×" obok nie ma.
     let terminalButtons = terminal.isAttached && navigation.terminalRoute(state) != nil
-    // Prawy panel: na iPadzie przycisk tylko tam, gdzie panel się mieści, na telefonie
-    // przy każdej sesji z panelem (arkusz). Na telefonie przy czterech ikonach „Terminal w oknie" schodzi do „⋯"
-    // terminala (``HeaderTrailingIcons``).
+    // The lit circle only where the list header is off screen: beside the list it stands there, once.
+    let circle = voiceSessions?.sessionHeaderCircle
+    // The right panel: on the iPad only where the panel fits, on the phone at every session with a panel (a sheet).
     let icons = HeaderTrailingIcons(
-      popup: popup, inspector: navigation.inspectorButtonShown(state, phone: PopoverLayout.sheetBar),
-      terminal: terminalButtons, sessionClose: closable != nil, compact: sizeClass == .compact)
+      voiceSessions: circle != nil, popup: popup,
+      inspector: navigation.inspectorButtonShown(state, phone: PopoverLayout.sheetBar),
+      terminal: terminalButtons, closeInCorner: navigation.terminalCloseInCorner(state))
     content
       .toolbar {
         if icons.count > 0 {
           ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: HeaderMetrics.iconSpacing) {
+              if let circle { VoiceAgentSessionsHeaderCircle(indicator: circle, navigation: navigation) }
               if icons.popup { terminalPopupButton }
               if icons.inspector { InspectorToggleButton(store: store, navigation: navigation) }
               if icons.terminalMenu {
                 TerminalHeaderButtons(
-                  chrome: terminal, closes: icons.terminalClose, machine: store.state.serverMachine,
-                  popup: icons.popupInMenu ? { navigation.togglePopup(.popup, state: store.state) } : nil)
-              }
-              if icons.sessionClose, let closable {
-                HeaderCloseButton(session: closable, store: store, navigation: navigation)
+                  chrome: terminal, closes: icons.terminalClose, machine: store.state.serverMachine)
               }
             }
           }
@@ -72,17 +68,16 @@ struct HeaderSessionSlot: ViewModifier {
   }
 }
 
-/// „⋯" (Kopiuj, Wklej, Historia) i „×" ekranu terminala w grupie ikon prawego rogu — to samo miejsce i ten sam
-/// cichy glif co „×" sesji. „×" dwa razy jak u sesji: pierwsze uzbraja „Na pewno?", drugie
-/// zamyka powłokę na Macu. Stan i akcje: ``TerminalChrome``.
+/// The terminal screen's "⋯" (Copy, Paste, History) in the icon group of the top right corner, and its "×" there only
+/// when the screen has no tab bar (``HeaderTrailingIcons/terminalClose``); otherwise the "×" stands in the current
+/// tab. The corner "×" takes two presses like the tab's: the first arms with "Sure?" in text, the second ends the
+/// shell on the server's machine. State and actions: ``TerminalChrome``.
 struct TerminalHeaderButtons: View {
   let chrome: TerminalChrome
-  /// `false` = „×" daje wpis sesji obok (Codex w terminalu Raroga).
+  /// The "×" stands here (a terminal without a tab bar).
   let closes: Bool
-  /// Słowo maszyny serwera w etykiecie uzbrojonego „×” (``AppState/serverMachine``).
+  /// The server machine's word in the armed "×"'s label (``AppState/serverMachine``).
   let machine: ServerMachine
-  /// „Terminal w oknie" w menu zamiast ikony w pasku (telefon, ``HeaderSessionSlot``); `nil` = bez pozycji.
-  var popup: (() -> Void)?
 
   var body: some View {
     Menu {
@@ -90,11 +85,6 @@ struct TerminalHeaderButtons: View {
       Button(UICopy.terminalPaste, systemImage: TerminalBarKey.paste.symbol) { chrome.paste() }
       Button(UICopy.terminalHistory, systemImage: TerminalBarKey.history.symbol) { chrome.history() }
         .disabled(!chrome.historyAvailable)
-      if let popup {
-        Divider()
-        Button(UICopy.shortcutPopupShell, systemImage: "macwindow") { popup() }
-          .accessibilityIdentifier("terminal.menu.popup")
-      }
     } label: {
       Label(UICopy.terminalMoreSpoken, systemImage: "ellipsis.circle")
     }

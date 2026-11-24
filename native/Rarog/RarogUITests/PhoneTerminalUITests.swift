@@ -89,8 +89,8 @@ final class PhoneTerminalUITests: XCTestCase {
     let gap = icons[0].frame.minX - title.frame.maxX
     XCTAssertGreaterThanOrEqual(gap, 12, "tytuł nie wchodzi w odstęp paska: \(title.frame)")
     // The ceiling keeps room for three icons (terminal screen: popup terminal, "⋯", "×"); the session screen shows
-    // two, so one target and its spacing (46 pt) stay free before them.
-    XCTAssertLessThan(gap, 30 + 46, "tytuł sięga sufitu: \(title.frame), ikona \(icons[0].frame)")
+    // one (its "×" stands in the current tab), so two targets and their spacing (2 × 46 pt) stay free before it.
+    XCTAssertLessThan(gap, 30 + 2 * 46, "tytuł sięga sufitu: \(title.frame), ikona \(icons[0].frame)")
     keep(app, "telefon-dlugi-tytul")
   }
 

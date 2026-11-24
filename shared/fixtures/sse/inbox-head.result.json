@@ -1,0 +1,11 @@
+{
+  "type": "inbox-head",
+  "head": {
+    "sessionId": "herdr-w1-p1",
+    "turnId": "tD0x5gPu8zSk3pFc6nLw9h",
+    "version": "VHKBEA007C97I6d4Vrq7oR",
+    "kind": "result",
+    "state": "waiting-input",
+    "at": "2026-10-03T08:19:57.000Z"
+  }
+}

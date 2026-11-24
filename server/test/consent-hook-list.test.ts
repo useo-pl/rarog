@@ -39,131 +39,14 @@ import {
   frontmatterEscapeLine, hookListVerdictKind, nodeHookListIo, parseClaudeArgs, sessionHookVerdict,
 } from '../src/herdr/dialogs/layer1/hook-list/hook-list.ts';
 import type {
-  HookListInput, HookListIo, HookListProcess, HookListStat, HookListVerdict,
+  HookListInput, HookListIo, HookListProcess, HookListVerdict,
 } from '../src/herdr/dialogs/layer1/hook-list/hook-list.ts';
 import type { HookCallDump } from '../src/herdr/dialogs/hook/contract.ts';
-import { hookCommand } from '../src/herdr/hook-commands.ts';
-
-const HOME = '/Users/u';
-const CLAUDE = `${HOME}/.claude`;
-const SESSION = '00000000-0000-4000-9000-0000000000e1';
-const PID = 4242;
-const CWD = '/w/repo/app';
-const NOW = Date.parse('2026-11-10T10:00:00.000Z');
-const ELAPSED_S = 3_600;
-/** Start procesu z `etime` i chwila zapisu rejestru (3 s po starcie). */
-const PROCESS_START = NOW - ELAPSED_S * 1_000;
-const REGISTRY_START = PROCESS_START + 3_000;
-/** Chwila zmiany plików sprzed startu sesji. */
-const OLD = PROCESS_START - 86_400_000;
-const RAROG = hookCommand(HOME);
-const MANAGED = '/Library/Application Support/ClaudeCode';
-const UST = '/etc/rarog-test/prod.json';
-
-const rarogLayer = (command = RAROG, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
-  hooks: { PermissionRequest: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: 86_400, ...extra }] }] },
-});
-const foreignLayer = (): Record<string, unknown> => rarogLayer('/usr/local/bin/inny-hook');
-
-interface Fake {
-  /** Pliki: ścieżka → treść. Katalogi wynikają ze ścieżek plików i z `dirs`. */
-  readonly files: Map<string, string>;
-  readonly dirs: Set<string>;
-  /** Dowiązania symboliczne: ścieżka → cel jak z `readlink` (bezwzględny albo względny wobec katalogu dowiązania). */
-  readonly links: Map<string, string>;
-  /** Chwila zmiany ścieżki (domyślnie {@link OLD}); dla dowiązania: zmiana samego dowiązania. */
-  readonly changed: Map<string, number>;
-  /** Błąd odczytu ścieżki (kod). */
-  readonly errors: Map<string, string>;
-  proc: HookListProcess | null;
-}
-
-function fake(over: { args?: string; cwd?: string } = {}): Fake {
-  const files = new Map<string, string>([
-    [`${CLAUDE}/sessions/${PID}.json`, JSON.stringify({
-      pid: PID, sessionId: SESSION, cwd: over.cwd ?? CWD, startedAt: REGISTRY_START,
-    })],
-  ]);
-  return {
-    files, dirs: new Set(), links: new Map(), changed: new Map(), errors: new Map(),
-    proc: { elapsedS: ELAPSED_S, args: over.args ?? `claude --settings ${UST}` },
-  };
-}
-
-function put(f: Fake, file: string, value: unknown): void {
-  f.files.set(file, typeof value === 'string' ? value : JSON.stringify(value));
-}
-
-function ioOf(f: Fake): HookListIo {
-  const fail = (p: string): void => {
-    const code = f.errors.get(p);
-    if (code !== undefined) throw Object.assign(new Error(code), { code });
-  };
-  const isDir = (p: string): boolean => f.dirs.has(p)
-    || [...f.files.keys(), ...f.dirs, ...f.links.keys()].some((one) => one.startsWith(`${p}/`));
-  /** Ścieżka po rozwiązaniu dowiązań atrapy (odczyt i lista katalogu idą za dowiązaniem jak system plików). */
-  const real = (p: string): string => {
-    let out = '/';
-    const queue = p.split('/').filter((one) => one !== '');
-    for (let hops = 0; queue.length > 0;) {
-      const here = path.join(out, queue.shift() ?? '');
-      const target = f.links.get(here);
-      if (target === undefined) {
-        out = here;
-        continue;
-      }
-      hops += 1;
-      if (hops > 40) return here;
-      if (path.isAbsolute(target)) out = '/';
-      queue.unshift(...target.split('/').filter((one) => one !== ''));
-    }
-    return out;
-  };
-  /** Wpis bez podążania za dowiązaniem. */
-  const entry = (p: string): HookListStat | null => {
-    const changedAt = f.changed.get(p) ?? OLD;
-    if (f.links.has(p)) return { kind: 'link', size: 0, changedAt };
-    const text = f.files.get(p);
-    if (text !== undefined) return { kind: 'file', size: Buffer.byteLength(text), changedAt };
-    return isDir(p) ? { kind: 'dir', size: 0, changedAt } : null;
-  };
-  return {
-    async lstat(p): Promise<HookListStat | null> {
-      fail(p);
-      return entry(p);
-    },
-    async readlink(p) {
-      fail(p);
-      const target = f.links.get(p);
-      if (target === undefined) throw Object.assign(new Error('EINVAL'), { code: 'EINVAL' });
-      return target;
-    },
-    async readFile(p) {
-      fail(p);
-      return f.files.get(real(p)) ?? null;
-    },
-    async readdir(p) {
-      fail(p);
-      const dir = real(p);
-      if (!isDir(dir)) return null;
-      const names = new Set<string>();
-      for (const one of [...f.files.keys(), ...f.dirs, ...f.links.keys()]) {
-        if (one.startsWith(`${dir}/`)) names.add(one.slice(dir.length + 1).split('/')[0] ?? '');
-      }
-      return [...names];
-    },
-    async ps(pid) {
-      return pid === PID ? f.proc : null;
-    },
-  };
-}
-
-function input(over: Partial<HookListInput> = {}): HookListInput {
-  return {
-    sessionId: SESSION, home: HOME, accepted: [RAROG], entry: { pid: PID, startedAt: REGISTRY_START }, cwds: [CWD],
-    platform: 'darwin', now: NOW, ...over,
-  };
-}
+import {
+  CLAUDE, CWD, HOME, MANAGED, NOW, OLD, PID, PROCESS_START, RAROG, REGISTRY_START, SESSION, UST, fake,
+  foreignLayer, input, ioOf, put, rarogLayer, sessionIo,
+} from './helpers/hook-list-io.ts';
+import type { Fake, SessionProcess } from './helpers/hook-list-io.ts';
 
 /** Scena z `--settings` z samym hookiem Raroga (jak sesje pomiarowe) i podanymi zmianami. */
 async function verdict(setup: (f: Fake) => void = () => {}, over: Partial<HookListInput> = {}): Promise<HookListVerdict> {
@@ -939,34 +822,13 @@ describe('lista hooków sesji (pamięć werdyktu)', () => {
     toolInput: {}, cwd: CWD, at: startedAt, inputSha256: '0', ...over,
   });
 
-  /** The session process: the registry entry gives `pid` and a start 3 s after `start`, `ps` the same process. */
-  interface SessionProcess {
-    pid: number;
-    start: number;
-    /** Runs once after the next `ps` answer is taken: a session restart in the middle of a read. */
-    afterPs?: () => void;
-  }
-
   /** `reads` counts the list's reads (one `ps` each), not the registry entry asked on every call. */
   function list(f: Fake, clock: { now: number }, proc: SessionProcess = { pid: PID, start: PROCESS_START }): {
     readonly hooks: ReturnType<typeof createSessionHookList>; readonly reads: { count: number };
     readonly verdicts: HookListVerdict[];
   } {
-    const reads = { count: 0 };
     const verdicts: HookListVerdict[] = [];
-    // Proces sesji starzeje się z zegarem testu (`etime` w pełnych sekundach).
-    const io: HookListIo = {
-      ...ioOf(f),
-      ps: async (pid) => {
-        reads.count += 1;
-        const answer = pid === proc.pid && f.proc !== null
-          ? { ...f.proc, elapsedS: Math.floor((clock.now - proc.start) / 1_000) } : null;
-        const after = proc.afterPs;
-        proc.afterPs = undefined;
-        after?.();
-        return answer;
-      },
-    };
+    const { io, reads } = sessionIo(f, clock, proc);
     const hooks = createSessionHookList({
       home: HOME, accepted: [RAROG], io, now: () => clock.now, platform: 'darwin',
       entry: async () => ({ pid: proc.pid, startedAt: proc.start + 3_000 }),

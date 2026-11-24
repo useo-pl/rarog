@@ -1,0 +1,7 @@
+{
+  "error": "internal",
+  "message": "Couldn't save the change to the Inbox.",
+  "messageRef": {
+    "code": "rest.inbox-save-failed"
+  }
+}

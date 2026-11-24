@@ -1,0 +1,22 @@
+{
+  "card": {
+    "sessionId": "demo-willow",
+    "turnId": "pX8n2cHq5zKe4uTy9bWa1f",
+    "version": "bIBuAIREwSMFhgbBviB9Mr",
+    "kind": "decision",
+    "state": "waiting-permission",
+    "at": "2026-10-04T09:56:00.000Z",
+    "text": "Running the notes tests now.",
+    "truncated": false,
+    "dialog": {
+      "kind": "permission",
+      "waitingFor": {
+        "kind": "permission",
+        "tool": "Bash",
+        "text": "npm test -- --run src/notes.test.ts",
+        "subject": "tool"
+      },
+      "requestId": "demo-perm-willow"
+    }
+  }
+}

@@ -147,6 +147,15 @@ export function npmUpdatePackArgs(current: string, latest: string, dir: string):
 }
 
 /**
+ * Arguments of `npm-cli.js` with which `rarog update --beta` downloads exactly `version`, the target it chose from the
+ * dist-tags, into `dir`, with its name and version as JSON. npm's release age gate holds an exact version back as it
+ * holds a range: not old enough is `ETARGET`.
+ */
+export function npmUpdateExactPackArgs(version: string, dir: string): readonly string[] {
+  return ['pack', `${RAROG_PACKAGE_NAME}@${version}`, '--ignore-scripts', '--json', '--pack-destination', dir];
+}
+
+/**
  * Arguments of `npm-cli.js` with which `rarog update` installs exactly the tarball `file` it checked: global,
  * without install scripts (the package needs none, and a release must not run code at install).
  */

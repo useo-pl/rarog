@@ -2,13 +2,13 @@
 import RarogCore
 import UIKit
 
-// Cmd+X na ekranie sesji: zamyka bieżącą zakładkę dwoma naciśnięciami, chyba że
-// w polu wiadomości jest zaznaczenie — wtedy zostaje systemowym „Wytnij". Właściciel: skróty.
+// Cmd+X on the session screen: closes the current tab in two presses, unless the message field holds a selection;
+// then it stays the system Cut. Owner: shortcuts.
 //
-// Skrót kontrolera ma pierwszeństwo przed edycją tekstu (pole wiadomości obsługuje Cmd+X samo
-// i nie oddaje go łańcuchowi respondera), więc przy zaznaczeniu w polu skrót sam woła systemowe
-// „Wytnij" pola — nie polegamy na tym, czy wyłączony skrót odda klawisz edytorowi. Stan
-// uzbrojenia („Na pewno?" na 5 s) żyje w nawigacji — ten sam, co przy „×" w nagłówku.
+// The controller's shortcut comes before text editing (the message field handles Cmd+X itself and does not pass it
+// up the responder chain), so with a selection in the field the shortcut calls the field's system Cut itself; we do
+// not rely on a disabled shortcut handing the key to the editor. The arming ("Sure?" for 5 s) lives in the
+// navigation, the same one as at the tab's "×".
 extension SessionViewController {
   var tabKeyCommands: [UIKeyCommand] {
     let close = UIKeyCommand(

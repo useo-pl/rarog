@@ -6,7 +6,8 @@
  * after it (joined, as after any draft at the desk), and a control command refuses. Without a move the flag clears
  * Rarog's leftover with the Esc pair. The driver runs on the fake client with the prompt field modelled.
  */
-import { appendFile } from 'node:fs/promises';
+import { appendFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { foreign } from '@rarog/shared/sentences';
 import type { FollowerFactory } from '../src/drivers/herdr/transcript.ts';
@@ -409,6 +410,26 @@ describe('herdr driver: a hook block entry of the conversation the pane left set
     const fx = await blockedSend(gate);
     gate.release();
     await waitFor(() => delivered(fx), 'block entry handled');
+    const field = idleField(fx, BLOCKED);
+    fx.driver.send(MESSAGE);
+    await waitFor(() => field.submitted.length === 1, 'prompt');
+    await quiet();
+    expect(pairs(fx)).toBe(1);
+    expect(field.submitted).toEqual([MESSAGE]);
+  });
+
+  it('the first send of the new conversation, blocked by a hook, is decided as before the move', async () => {
+    const fx = await makeDriver({ transcript: userLine('start'), deps: { modelConfirmPollMs: 5 } });
+    const other = join(dirname(fx.transcript), `${OTHER}.jsonl`);
+    await writeFile(other, '');
+    fx.emit({ type: 'session-changed', agentSessionId: OTHER });
+    await quiet();
+    fx.driver.send(BLOCKED);
+    await waitFor(() => fx.client.calls.some((call) => call.method === 'prompt'), 'prompt');
+    await quiet();
+    await appendFile(other, blockedLine(BLOCKED));
+    await waitFor(() => delivered(fx), 'block entry handled');
+    expect(fx.events.find((event) => event.type === 'prompt-blocked')).toMatchObject({ decided: true });
     const field = idleField(fx, BLOCKED);
     fx.driver.send(MESSAGE);
     await waitFor(() => field.submitted.length === 1, 'prompt');

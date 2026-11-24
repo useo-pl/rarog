@@ -66,7 +66,9 @@ skips `JSON.parse` for lines that cannot change the list.
 
 The driver event `scheduled-tasks` carries the whole list to the manager, which sets the card field: an empty list
 clears it and an empty array never travels. The app's list cache on the phone drops the field before it writes to
-disk (`security-model.md`, "Native client: what is stored on the iPad").
+disk (`security-model.md`, "Native client: what is stored on the iPad"). The app shows the list in the session
+inspector's Scheduled Tasks section (`design.md`, "Session inspector (iPad)") and as a clock at the end of
+the session's list row (`design.md`, "Native app list: project tree").
 
 The demo server (`pnpm run demo:server`) has a `scheduled-tasks` scenario (`server/src/demo/scenarios.ts`): a one-shot
 task due in 40 minutes and a recurring one every 30 minutes that ran 10 minutes ago, built from conversation entries

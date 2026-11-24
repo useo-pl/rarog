@@ -58,8 +58,10 @@ public enum TurnControlTiming {
 /// Wynik przerwania widziany przez klienta: trzy losy klawisza z drutu i odmowa Raroga,
 /// której w protokole nie ma — od rozróżnienia zależy następny ruch człowieka.
 public enum InterruptOutcome: Sendable, Equatable {
-  /// Klawisz poszedł do panelu — także brak `delivered` (starszy serwer).
-  case delivered
+  /// Klawisz poszedł do panelu — także brak `delivered` (starszy serwer). `returnedPrompt`: the prompt Claude Code
+  /// handed back to its own field, as the server reported it (`InterruptResponse.returnedPrompt`); `nil` = no
+  /// hand-back, and then the app's field stays as it is, as the terminal's does.
+  case delivered(returnedPrompt: String?)
   /// Panel nie przyjął Esc (`delivered: no` albo 5xx): droga wyjścia jest na Macu.
   case notDelivered
   /// Nie wiem: serwer przestał czekać albo sieć padła także po ponowieniu.
@@ -170,24 +172,6 @@ extension AppState {
     turnControl.interrupts[sessionId] != nil
   }
 
-  /// Ostatni prompt człowieka (JEDNA definicja dla Esc, paska i listy tur):
-  /// najnowszy wpis kolejki z tekstem (nie odmowa), a bez niego najnowsza wiadomość człowieka
-  /// z tekstem. Sam załącznik nie jest promptem, notka harnessu też nie.
-  public func lastPrompt(for sessionId: String) -> String {
-    let pending = outbox.last { entry in
-      guard entry.sessionId == sessionId, !entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        return false
-      }
-      if case .refused = entry.state { return false }
-      return true
-    }
-    if let pending { return pending.text }
-    for message in (transcripts[sessionId]?.messages ?? []).reversed() {
-      if let text = Self.promptText(message) { return text }
-    }
-    return ""
-  }
-
   /// Tekst promptu z wiadomości albo `nil`, gdy wiadomość promptem nie jest (nie człowiek, notka
   /// harnessu, sam załącznik).
   public static func promptText(_ message: TranscriptMessage) -> String? {
@@ -203,9 +187,12 @@ extension AppState {
   /// Wynik do zgłoszenia jako obejrzany: `stateSince` stojącego wyniku albo `nil`.
   /// Nie przy liście nieświeżej (strumień nie żyje), nie bez zalogowania i nie w trakcie tury —
   /// zerknięcie w transkrypt pracującej sesji nie jest odbiorem.
+  /// A result the voice agent picked up (`seenBy`) is received but not by a person: the person's receipt takes
+  /// `seenBy` away on the server, so the screen reports it like an unread result.
   public func seenTarget(_ sessionId: String) -> String? {
     guard auth == .loggedIn, global == .online, !sessionStale(sessionId), let session = sessions[sessionId] else { return nil }
-    guard session.state == .waitingInput, session.seen != true, !session.isUnsupported else { return nil }
+    let receivedByPerson = session.seen == true && session.seenBy == nil
+    guard session.state == .waitingInput, !receivedByPerson, !session.isUnsupported else { return nil }
     // Wynik oznaczony tu jako nieprzeczytany: ekran, który go akurat pokazuje, nie odbiera go z powrotem.
     guard !turnControl.manualUnread.contains(sessionId) else { return nil }
     return session.stateSince

@@ -1,0 +1,13 @@
+{
+  "error": "file-too-large",
+  "message": "This file has 51 MB. The server sends files up to 50 MB (RAROG_FILES_MAX_MB).",
+  "messageRef": {
+    "code": "rest.file-too-large",
+    "args": [
+      "51",
+      "50"
+    ]
+  },
+  "size": 52428801,
+  "maxBytes": 52428800
+}

@@ -123,6 +123,9 @@ enum AppEnvironment {
     UserDefaults.standard.removeObject(forKey: NavigationPreferences.inspectorChangesCollapsed)
     // A panel widened by a previous run would not start at the default width.
     UserDefaults.standard.removeObject(forKey: NavigationPreferences.inspectorWidth)
+    // The Files section starts on Files with `.*` off: a test that switched them and failed leaves the next one the tree.
+    UserDefaults.standard.removeObject(forKey: InspectorFilesPreferences.mode)
+    UserDefaults.standard.removeObject(forKey: InspectorFilesPreferences.regex)
     // Zwinięcie listy (Cmd+B, przycisk, system w pionie): test, który zwinął listę i padł przed jej rozwinięciem,
     // zostawiałby ją zwiniętą następnym klasom (`testListToggleKeepsPlace` po panelu).
     UserDefaults.standard.removeObject(forKey: NavigationPreferences.listCollapsed)
@@ -130,6 +133,8 @@ enum AppEnvironment {
     DictationTestMode.reset(defaults: .standard)
     // Agent głosowy: bez zgody i z domyślnym głosem.
     for key in VoiceAgentPreferences.keys { UserDefaults.standard.removeObject(forKey: key) }
+    // The locked-phone trial: off, as on a new device.
+    UserDefaults.standard.removeObject(forKey: LockedPhoneTrial.key)
     // Shortcuts changed in Settings: every test starts with ⌥⌘M and ⌥⌘V.
     for key in AppShortcutSettings.keys { UserDefaults.standard.removeObject(forKey: key) }
     // The app's text size (⌘+, ⌘-): every test starts with the system's size, or with the step it asks for

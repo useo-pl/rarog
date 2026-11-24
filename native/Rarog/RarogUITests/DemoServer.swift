@@ -286,7 +286,7 @@ enum DemoServer {
         continue
       }
       guard blind < 12 else { break }
-      fling(app, within: visibleListArea(app, list), up: blind < 6)
+      fling(app, within: freeListArea(app, list), up: blind < 6)
       blind += 1
     }
     return element
@@ -309,6 +309,28 @@ enum DemoServer {
       }
     }
     return CGRect(x: frame.minX, y: top, width: frame.width, height: max(0, bottom - top))
+  }
+
+  /// The visible part of the list without the controls that float over its rows: the filter capsule and Inbox at the
+  /// top, the jump pills at either end. A drag that starts on one of them does not move the list, and the pill
+  /// "1 session below" stands right above the footer, where a fling across the visible part starts.
+  @MainActor
+  private static func freeListArea(_ app: XCUIApplication, _ list: XCUIElement) -> CGRect {
+    let visible = visibleListArea(app, list)
+    var top = visible.minY
+    var bottom = visible.maxY
+    for id in ["list.filter", "list.inbox", "list.jump.above", "list.jump.below"] {
+      let control = app.descendants(matching: .any)[id].firstMatch
+      guard control.exists else { continue }
+      let frame = control.frame
+      guard frame.minX < visible.maxX, frame.maxX > visible.minX, frame.maxY > top, frame.minY < bottom else { continue }
+      if frame.midY < visible.midY {
+        top = max(top, frame.maxY)
+      } else {
+        bottom = min(bottom, frame.minY)
+      }
+    }
+    return CGRect(x: visible.minX, y: top, width: visible.width, height: max(0, bottom - top))
   }
 
   /// Przesunięcie treści (w punktach, dodatnie = w dół), po którym wiersz stoi w widocznej części.

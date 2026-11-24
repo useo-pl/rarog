@@ -431,9 +431,9 @@ struct DiagnosticsTraceLineTests {
       == "powrót do apki po 0 s: klawiatura=nikt, sprzętowa=nie")
   }
 
-  @Test("przerwanie: źródło gestu, wynik bez zdania serwera, czas od gestu do rozstrzygnięcia")
+  @Test("interrupt: the gesture's source, the result without the server's sentence or the handed-back prompt, the time")
   func interrupt() {
-    #expect(DiagnosticsTrace.interrupt(trigger: .escape, outcome: .delivered, milliseconds: 312)
+    #expect(DiagnosticsTrace.interrupt(trigger: .escape, outcome: .delivered(returnedPrompt: "Refactor the parser"), milliseconds: 312)
       == "przerwanie (Esc): klawisz doszedł po 312 ms")
     #expect(DiagnosticsTrace.interrupt(trigger: .stop, outcome: .refused("Sesja nie pracuje — zdanie serwera"), milliseconds: 40)
       == "przerwanie (Stop): odmowa Raroga po 40 ms")

@@ -10,10 +10,8 @@ import SwiftUI
 ///
 /// Odczyt przy każdym otwarciu, bez odpytywania: `GET /api/usage/details` raz (wynik trzyma arkusz) i odświeżenie
 /// limitów z paska statusu (`refreshUsageNow`), żeby 5 h i tydzień były z tej chwili. Esc zamyka arkusz.
-/// Ekran prezentuje go z `SessionViewController+UsageSheet`, a wiersz aktualizacji serwera w stopce listy
-/// (`ListFooter`;
-/// sama karta stopki nie jest kontrolką) — popoverem SwiftUI. Pod wierszami sekcja maszyny serwera, gdy serwer jest
-/// starszy niż wydany z apką. The machine section also carries the load from the list footer card: what each
+/// Ekran prezentuje go z `SessionViewController+UsageSheet`. Pod wierszami sekcja maszyny serwera; gdy serwer jest
+/// starszy niż wydany z apką, niesie też komendę aktualizacji. The machine section also carries the load from the list footer card: what each
 /// number means, no reading and the stale note with the machine's own reading time (`UsageSheet+Machine`).
 /// Właściciel: lista.
 struct UsageSheet: View {

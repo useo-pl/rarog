@@ -56,11 +56,11 @@ public enum TerminalKeyMap {
   public static let returnKey = "\r"
   public static let tab = "\t"
 
-  /// Litery Cmd, które zostają apce i systemowi (PWA `[bcfglnvxy]`, do tego S i U): B lista, C/V schowek,
-  /// F/G okna terminala, L poprzedni projekt, N nowa sesja/terminal, S przełącznik aktywnych sesji, U przeczytane /
-  /// nieprzeczytane (agent w terminalu Raroga), X zamknięcie zakładki (tu: terminala), Y historia. Kosztem jest Meta
-  /// tych liter z klawiatury sprzętowej — pigułka „Cmd" paska wysyła je dalej.
-  public static let appLetters: Set<String> = ["b", "c", "f", "g", "l", "n", "s", "u", "v", "x", "y"]
+  /// Cmd letters kept by the app and the system (the PWA's `[bcfglnvxy]`, plus U): B the list, C/V the clipboard,
+  /// F/G the terminal windows, L the previous project, N a new session or terminal, U read / unread (an agent in
+  /// a Rarog terminal), X closing the tab (here: the terminal), Y the history. The cost is Meta of these letters from
+  /// the hardware keyboard; the bar's "Cmd" pill sends them on. Every other letter with Cmd is Meta for the shell.
+  public static let appLetters: Set<String> = ["b", "c", "f", "g", "l", "n", "u", "v", "x", "y"]
 
   /// Home/End w kodowaniu SS3 — tak je zna `xterm-256color` w panelu herdr i tablica zsh użytkownika (CSI
   /// `ESC[H`/`ESC[F` w zsh NIE działa, zmierzone); nvim rozumie oba.

@@ -102,9 +102,13 @@ const K3: ReadonlyArray<readonly [string, ReviewRouteClass]> = [
   ['/api/push/live-activity/end', 'allow'],
   ['/api/sessions', 'allow'],
   ...[
-    'answers', 'close', 'commands', 'diff', 'focus', 'interrupt', 'messages', 'mode', 'model', 'permission',
+    'answers', 'close', 'commands', 'diff', 'files', 'focus', 'interrupt', 'messages', 'mode', 'model', 'permission',
     'permissions', 'restart', 'resume', 'seen', 'stream', 'unseen', 'uploads',
   ].map((akcja): readonly [string, ReviewRouteClass] => [`/api/sessions/demo-willow/${akcja}`, 'allow']),
+  ['/api/inbox', 'allow'],
+  ['/api/inbox/demo-willow', 'allow'],
+  ['/api/inbox/demo-willow/remove', 'allow'],
+  ['/api/inbox/demo-willow/restore', 'allow'],
   ['/api/demo/pairing', 'absent'],
   ['/api/sessions/demo-willow/companion/ask', 'absent'],
   ['/api/sessions/demo-willow/companion/turns', 'absent'],
@@ -127,7 +131,7 @@ describe('classifyReviewRoute: klasy tras', () => {
 
   it('podakcje sesji dziedziczą klasę akcji (`segments[3]`)', () => {
     for (const sciezka of [
-      '/api/sessions/demo-willow/diff/files', '/api/sessions/demo-willow/diff/file',
+      '/api/sessions/demo-willow/diff/files', '/api/sessions/demo-willow/diff/file', '/api/sessions/demo-willow/files/raw',
       '/api/sessions/demo-willow/uploads/x.png', '/api/sessions/demo-willow/permissions/p1',
       '/api/sessions/demo-willow/answers/q1',
     ]) expect(classifyReviewRoute(sciezka), sciezka).toBe('allow');
@@ -692,15 +696,17 @@ describe('inwentarz tras routera (pomocniczy, nie dowód izolacji)', () => {
     expect(opisRoznicy(KOD_TRAS)).toBe('');
   });
 
-  it('widzi trzy postaci dopasowania: 34 literały, segmenty terminala i 19 akcji sesji (z agentem głosowym)', () => {
+  it('widzi trzy postaci dopasowania: 35 literałów, segmenty terminala i Inboxa oraz 20 akcji sesji (z agentem głosowym)', () => {
     const { trasy } = inwentarzPlikow(KOD_TRAS);
     expect(trasy.has('/api/demo/pairing')).toBe(true);
     expect(trasy.has('/api/term/:id/history')).toBe(true);
     expect(trasy.has('/api/term/:id')).toBe(true);
-    expect([...trasy].filter((t) => t.startsWith('/api/sessions/:id/'))).toHaveLength(19);
+    expect([...trasy].filter((t) => t.startsWith('/api/sessions/:id/'))).toHaveLength(20);
     expect(trasy.has('/api/sessions/:id/companion')).toBe(true);
     expect(trasy.has('/api/sessions/:id/queue')).toBe(true);
-    expect([...trasy].filter((t) => !t.includes(':'))).toHaveLength(34);
+    expect([...trasy].filter((t) => !t.includes(':'))).toHaveLength(35);
+    expect([...trasy].filter((t) => t.startsWith('/api/inbox')).sort())
+      .toEqual(['/api/inbox', '/api/inbox/:id', '/api/inbox/:id/remove', '/api/inbox/:id/restore']);
     expect(trasy.has('/api/fs/mkdir')).toBe(true);
     expect(trasy.has('/api/companion/token')).toBe(true);
     expect(trasy.has('/api/companion/speech-token')).toBe(true);

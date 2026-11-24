@@ -63,7 +63,7 @@ final class EnglishSmokeUITests: XCTestCase {
     XCTAssertEqual(language.label, "Language")  // pairing.languageLabel
     XCTAssertEqual(language.value as? String, "English")  // pairing.languageValue
     if #available(iOS 27.0, *) {
-      try expectSpokenHint(of: language, "Opens Rarog settings")  // pairing.languageHint
+      try expectSpokenHint(of: language, in: app, "Opens Rarog settings")  // pairing.languageHint
     }
     let close = element(app, "settings.close")
     XCTAssertEqual(close.label, "Close Settings")  // pairing.settingsClose
@@ -92,22 +92,40 @@ final class EnglishSmokeUITests: XCTestCase {
   /// następnym stuknięciem, a po teście w każdym wypadku: przy włączonym następne testy bramki trafiałyby fokusem.
   @available(iOS 27.0, *)
   @MainActor
-  private func expectSpokenHint(of element: XCUIElement, _ hint: String) throws {
+  private func expectSpokenHint(of element: XCUIElement, in app: XCUIApplication, _ hint: String) throws {
     let voiceOver = XCUIDevice.shared.voiceOverService
     addTeardownBlock { @MainActor in
       if voiceOver.isEnabled { try? voiceOver.disable() }
     }
     try voiceOver.enable()
+    XCTAssertTrue(waitUntilSpeaking(voiceOver), "VoiceOver did not speak within 180 s after enable()")
     var spoken = ""
     for _ in 0..<5 where !spoken.contains(hint) {
       element.tap()
       Thread.sleep(forTimeInterval: 1)
+      XCTAssertEqual(
+        app.state, .runningForeground,
+        "the tap activated the row and opened system Settings: VoiceOver did not take the touch")
       spoken = (try? voiceOver.currentSpeech())?.utterance ?? ""
     }
     try voiceOver.disable()
     XCTAssertFalse(voiceOver.isEnabled, "VoiceOver wyłączony po sprawdzeniu")
     XCTAssertTrue(spoken.hasPrefix("\(element.label) \(element.value as? String ?? "") "), "mowa VoiceOvera: \(spoken)")
     XCTAssertTrue(spoken.contains(hint), "podpowiedź w mowie VoiceOvera: \(spoken)")
+  }
+
+  /// `enable()` returns before VoiceOver takes touch, and on a loaded Mac VoiceOver starts anywhere from 2 s to over
+  /// 90 s later. A tap before that activates the row instead of focusing it. VoiceOver is live once moving its focus
+  /// yields speech.
+  @available(iOS 27.0, *)
+  @MainActor
+  private func waitUntilSpeaking(_ voiceOver: XCUIVoiceOverService, timeout: TimeInterval = 180) -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+      if let output = try? voiceOver.moveForward(), !output.utterance.isEmpty { return true }
+      Thread.sleep(forTimeInterval: 1)
+    }
+    return false
   }
 
   @MainActor

@@ -84,15 +84,16 @@ transcript or the answer.
 
 ## Turns route
 
-`GET /api/sessions/:id/companion/turns?count=1..3` answers `{messages, conversation, stateSince, complete}`
+`GET /api/sessions/:id/companion/turns?count=1..3` answers `{messages, conversation, stateSince, readMark, complete}`
 (`companionTurnsSchema` and `companionTurnsCountSchema` in `shared/src/rest.ts`): the last turns of the engine
 conversation the session writes now, for the voice agent's mode across sessions. Code: `server/src/companion/turns.ts`,
 the route in `server/src/routes/sessions.ts`.
 
 - **Which file.** The file of the session's current engine conversation in the Claude Code store, as for the ask
-  route. No conversation yet, no file, or a new conversation without a prompt (`/clear` and nothing after it) gives
-  `messages: []` and `complete: true`. A new conversation is a new file, so nothing from before `/clear` leaves the
-  server this way, also when the pane reports `/clear` with an immediate prompt as `/resume`.
+  route. No conversation yet, no file, a file that cannot be read, or a new conversation without a prompt (`/clear`
+  and nothing after it) gives `messages: []`, `complete: true` and the `readMark` that names no read (below). A new
+  conversation is a new file, so nothing from before `/clear` leaves the server this way, also when the pane reports
+  `/clear` with an immediate prompt as `/resume`.
 - **Which messages.** The tail of the file goes through the steps the session's history takes on the way to the
   phone (`server/src/herdr/history-steps.ts`, then the message shape and byte ceiling of `server/src/sessions/session.ts`):
   the output mark of a local command is dropped, a prompt blocked by a hook is a `system` note with `promptBlocked`,
@@ -112,10 +113,32 @@ the route in `server/src/routes/sessions.ts`.
   conversation (`/clear`, `/resume` in the pane) gives another token. **A server restart changes every token.**
   A session before its first engine conversation has a token of its own.
 - **`stateSince`.** The session's `stateSince`, read together with the conversation before the file is read.
+- **`readMark`.** In an answer with messages, an opaque name (1–64 characters) of the newest message the server's
+  memory of the session holds and of the session's `stateSince`, taken together with the conversation and
+  `stateSince` in the same step, before the file is read (`Session.readMark` in `server/src/sessions/session.ts`).
+  Every message the session's transcript gets (a prompt, an agent message, a notice, history imported after
+  `/resume`) gives another mark, and so does every new `stateSince` (a state change, a history import that moves it
+  back); a session frame or a seen mark while the state stands does not. A card made again under the same id has a
+  mark of its own. The voice agent sends it back when it picks up the result ("Picking up a result"); a message or a
+  state change that reaches the session during or after the read gives the session another mark, so that pick-up is
+  refused and the agent reads again. An answer that did not read the session's result carries a fixed mark that
+  names no read (`NO_READ_MARK` in `server/src/companion/turns.ts`): it has no dot, while a session's mark has three
+  dot-separated parts, so no pick-up built from it is accepted. Two answers carry it:
+  - an answer with no messages, a failed read and a conversation with nothing to read alike;
+  - an answer with a message trimmed to the 256 KiB ceiling of one message: the message keeps its start and ends
+    with the trimmed mark, a text block with the `transcript.trimmed-mark` sentence (`hasTrimmedMessage`). The
+    history merges consecutive agent entries into one message, across the tool results between them, while the
+    server's memory of a live session gets them one by one. A long agent turn can thus keep its start in the answer
+    and lose its final result, which the memory holds. A trimmed message of an older returned turn counts too.
+
+  The other cuts of the read (the read window, the 500 messages, the cut to turns and the 4 MiB ceiling) drop the
+  oldest messages and keep the newest one, so they leave the session's mark in the answer; `complete: false` tells
+  that the oldest turn lost messages.
 - **A change during the read.** The route takes the session again after each read: another engine conversation by
   then (`/clear`, `/resume`) is read again, after three reads that each saw it change the response closes without a
-  body, and a session gone or out of scope gets the gate's 404; a response carries the token and `stateSince` of the
-  conversation it read (`server/src/companion/turns-settle.ts`). A device unpaired during the read gets 401 and no
+  body, and a session gone or out of scope gets the gate's 404; a response carries the token, `stateSince` and
+  `readMark` taken before the read of the conversation it read (`server/src/companion/turns-settle.ts`), or the mark
+  that names no read when it has no messages or a trimmed one. A device unpaired during the read gets 401 and no
   turns.
 
 The gate, in order:
@@ -261,11 +284,10 @@ because that key of a line already names a card's source.
 
 The voice agent's mode across sessions marks a result it read as received through the route the app calls when a
 person opens a session, `POST /api/sessions/:id/seen` (`docs/implementation-spec.md`, "Presence, focus
-and seen"), with the body `{by: "voice-agent", stateSince, conversation}` (`seenBodySchema` in `shared/src/rest.ts`).
-`stateSince` and `conversation` come from the read the agent picks up: the session's `stateSince` and the token of
-its engine conversation, as the catalogue row ("Session catalog") and the turns route ("Turns route") give them
-(1–64 characters each). The rule stands in `markSeen` and `pickUpMeetsResult` in `server/src/sessions/seen-marks.ts`,
-the gate in the route in `server/src/routes/sessions.ts`.
+and seen"), with the body `{by: "voice-agent", conversation, readMark}` (`seenBodySchema` in `shared/src/rest.ts`).
+`conversation` and `readMark` come from the turns read the agent picks up ("Turns route"), 1–64 characters each. The
+catalogue row has no mark, so a pick-up needs a turns read. The rule stands in `markSeen` and `pickUpMeetsResult` in
+`server/src/sessions/seen-marks.ts`, the gate in the route in `server/src/routes/sessions.ts`.
 
 - **The same receipt as a person's.** The session gets `seen: true`, its pending push notification is cancelled, and
   `agent.focus` clears the herdr `done` badge under the same condition and gates as for a person: only while herdr
@@ -280,15 +302,30 @@ the gate in the route in `server/src/routes/sessions.ts`.
     taken there would cover the turn's result;
   - no permission card, question or consent card in `pending` waits on the session. Such a card can arrive after the
     turn end without moving the state, so it can stand over a result in `waiting-input`;
-  - the `stateSince` is the session's current one. The check is equality, not order: a history import can move
-    `stateSince` back;
   - the token is the one of the engine conversation the session writes, and the pane runs that same conversation
     (`inReadConversation` in `server/src/sessions/companion-scope.ts`, the same check as for a send). `/clear` and
     `/resume` change the conversation without a change of state or `stateSince`, so the token is what tells the
     result of the new conversation from the one the agent read. A session without an engine conversation yet gets
-    the 409 for any token.
+    the 409 for any token;
+  - the session's current read mark is `readMark`: its memory holds no message newer than the read and its
+    `stateSince` is the one of the read. herdr's `working` shorter than the supervisor's grace never reaches the
+    session, so a short turn typed in the terminal can end with no change of state or `stateSince`; its messages are
+    what tells its result from the one the agent read. A turn whose `working` reaches the session moves
+    `stateSince`, which tells it before its messages reach the server. Two results stamped in the same millisecond
+    differ when the second one adds a message. A turns read that returned no messages read no result, and a turns
+    read with a message trimmed to the ceiling of one message can miss the newest result: the mark of both names no
+    read ("Turns route"), so their pick-up always gets the 409.
 
   The checks run in one synchronous step right before the receipt, with no `await` in between.
+- **Messages that arrive late.** The session's memory holds what the server followed from the conversation file: the
+  follower delivers a file entry in about 0.1 s, up to 2 s after a lost file system event, while herdr reports the
+  states of a turn on its own. A turn whose `working` reaches the session moves `stateSince`, so a pick-up built from
+  a read before that turn gets the 409, also after the turn's messages arrive. A turn that adds no message (a context
+  compaction alone) moves `stateSince` as well and gets the same 409: the server cannot tell it from a turn whose
+  messages are late, so the agent reads the session again. One case passes: a turn shorter than the supervisor's
+  `working` grace, whose messages are not in the session's memory yet, with the pick-up inside that gap. That turn
+  has changed neither the session's state nor its memory then, so the pick-up is accepted, and the receipt stays when
+  the messages arrive.
 - **A received result stays as it is.** A result that is received already (by a person, by herdr's `done → idle`,
   as an `idle` pane adopted at start, or by a pick-up before) gets 200 and no change: no `seenBy`, no session frame,
   no `agent.focus`.
@@ -302,14 +339,16 @@ the gate in the route in `server/src/routes/sessions.ts`.
 - **Restart.** The durable entry in `herdr-hidden.json` carries `by: "voice-agent"` (`SeenEntry` in
   `server/src/herdr/identity.ts`). A pane adopted after a Rarog restart gets `seenBy` back only when the entry's
   state number equals the pane's (`seenByOf`): another number may be another result. An entry without `by` loads as
-  a person's receipt, and so does an entry with an unknown `by`.
+  a person's receipt, and so does an entry with an unknown `by`. A server restart changes every conversation token,
+  so a pick-up built from a read before the restart gets the 409 whatever its `readMark`.
 - **An app that does not know the field.** `seenBy` is in `DEGRADATIONS` (`shared/src/decode.ts`): an unknown value
   drops the field and keeps the row, so the result reads as a person's receipt.
 
 The gate, in order, after the device credential (401):
 
-- A body with one or two of the three fields, a `by` other than `voice-agent`, or a `stateSince` or `conversation`
-  outside 1–64 characters: 400 `bad-request` (`rest.body-contract`), before any flag.
+- A body with one or two of the three fields, a `by` other than `voice-agent`, or a `conversation` or `readMark`
+  outside 1–64 characters: 400 `bad-request` (`rest.body-contract`), before any flag. Other keys drop out before
+  the check, `stateSince` too, so a body of `stateSince` alone is a person's receipt.
 - A body with the three fields: 503 `companion-disabled` when `RAROG_COMPANION` is not `1` or the voice agent module is
   missing, then 503 `companion-sessions-disabled` when `RAROG_COMPANION_SESSIONS` is not `1`. The flags come before
   the session lookup, so an unknown session id with a flag off gets the 503.
@@ -616,18 +655,22 @@ and both flags stop that too.
   whose screen the device does not have open; the prompt runs at once and cannot be taken back. What stops it on the
   server: the two flags (503 for a body marked as the agent's), the 409 for a session that moved to another
   conversation, every gate of the message route with its throttle (240 sends an hour for all sessions), and
-  `RAROG_HERDR_SEND=0`, which refuses every send. The owner's spoken confirmation lives in the app; the server does
-  not check it. The server cannot tell a body without the fields from a typed message: a paired device can send
-  prompts anyway, and the marking is the app's. The audit log names the agent's prompts with `sender`
-  ("Sending from the conversation").
+  `RAROG_HERDR_SEND=0`, which refuses every send. The owner's spoken confirmation lives in the app
+  ("Conversation across sessions"); the server does not check it. The server cannot tell a body without the fields
+  from a typed message: a paired device can send prompts anyway, and the marking is the app's. The audit log names
+  the agent's prompts with `sender` ("Sending from the conversation").
 - **A result marked as received.** With both flags the voice agent can mark the result it read as received
   ("Picking up a result"): the row carries `seen: true` and `seenBy`, the session's pending push notification is
   cancelled, and while herdr shows a standing `done` badge `agent.focus` switches the view of every attached herdr
   client on the Mac to that pane, behind the gates of the person's receipt (`RAROG_HERDR_SEEN_FOCUS=0`,
   `RAROG_HERDR_SEND=0`, read-only herdr). What stops it on the server: the two flags (503 for a body with `by`),
   the scope of the session catalog (404) and the 409 for anything but the result the agent read: a session outside
-  `waiting-input` or with a decision card waiting on it, another `stateSince`, or another engine conversation than
-  the one of the token. The body without `by` is the app's own receipt, which any paired device can send.
+  `waiting-input` or with a decision card waiting on it, another engine conversation than the one of the token, a
+  message in the session's memory newer than the turns read or another `stateSince` (another `readMark`), or a mark
+  from a turns read that returned no messages or a message trimmed to the ceiling of one message. A turn shorter
+  than the supervisor's `working` grace whose messages the server has not followed from the conversation file yet
+  is outside the mark ("Picking up a result"). The body without `by` is the app's own receipt, which any paired
+  device can send.
 - **Secret mask: a sieve, not a guarantee.** Before the answer leaves the server, common secret shapes (`sk-…`,
   GitHub tokens, AWS access key IDs, Slack tokens, `Bearer …`, `Rarog-Device …`) become `[secret]`; the rules stand
   in `shared/fixtures/companion/secret-shapes.json`. A secret in another shape reaches the phone as the session wrote
@@ -709,9 +752,25 @@ and both flags stop that too.
   as Soniox, with a note that the Rarog server sets that voice (there is no voice to choose), and under it a
   Reading Speed picker (`VoiceAgentSettings.speechSpeeds`: 1.0, 1.1, 1.2, 1.3; labels in the app language, "1,2×"
   in Polish, 1.0 marked normal). The choice applies from the next conversation; a stored speed outside the list
-  reads as 1.0. Consent and reading speed live in `UserDefaults` (`rarog.voiceAgent.consent`,
-  `rarog.voiceAgent.speechSpeed`) and survive Forget Server; a voice an older build stored under
-  `rarog.voiceAgent.voice` stays unread. Tests: `VoiceAgentSettingsTests`, `VoiceAgentSettingsModelTests`.
+  reads as 1.0. The voice conversation across sessions has a consent of its own, with its own text version
+  (`VoiceAgentSettings.sessionsConsentVersion`, `sessionsEnabled`, `acceptSessionsConsent`,
+  `withdrawSessionsConsent`). The two are stored apart, and turning the switch off leaves the mode's consent stored.
+  The mode's text adds to the voice agent's, so the mode runs only with both (`sessionsAllowed`); the conversation at
+  a session needs the voice agent's alone. Where the server offers the mode (`AppState.companionSessionsOffered`), the
+  page has a second switch, "Talk About All Sessions" (`VoiceAgentSettingsModel+Sessions.swift`), also while the
+  voice agent is off, so a mode's consent kept then can be removed: on opens the mode's consent page and stores nothing, its "Agree and
+  Turn On" stores the mode's consent and starts no conversation, Cancel leaves the switch off, and off removes the
+  mode's consent, so a running conversation across sessions ends as turned off. The mode's consent page
+  (`VoiceAgentConsentPage` with the mode's text, `voiceAgent.sessions.consent.*`) names only what the mode adds: to
+  OpenAI the list of sessions from all projects the server shares with the voice agent (names, states, the first
+  line of a dialog), the recent turns of the sessions the conversation asks about and the answers Rarog gives the
+  agent; to Soniox the text of the answers, session names and the text of prompts; and that the agent sends a prompt
+  to a session only on the user's word. The consents and the reading speed live in `UserDefaults` (`rarog.voiceAgent.consent`,
+  `rarog.voiceAgent.sessionsConsent`, `rarog.voiceAgent.speechSpeed`) and survive Forget Server; a voice an older
+  build stored under `rarog.voiceAgent.voice` stays unread. The last section of the page is the locked-phone trial
+  switch, "Keep Talking When Locked (Trial)" with a footnote that it is a trial for measuring (`LockedPhoneTrial`,
+  `VoiceAgentSettings.lockedPhoneTrial`, the one key `rarog.voiceAgent.lockedPhoneTrial`, off by default; "Locked
+  phone (trial)" below). Tests: `VoiceAgentSettingsTests`, `VoiceAgentSettingsModelTests`, `LockedPhoneTrialTests`.
 
 ### Conversation
 
@@ -782,7 +841,8 @@ and both flags stop that too.
   (`VoiceAgentToolText.closedField`), never the server's message or the sentence under the field. A key
   or a 401 that returns after a new login or a server change neither starts the conversation nor logs out. The
   conversation ends when the user logs out or unpairs, logs in again, opens another session, turns the feature off,
-  the app goes to the background, dictation starts outside the composer (a note), the message field goes away
+  the app goes to the background (with the locked-phone trial on, not once the conversation is ready:
+  "Locked phone (trial)"), dictation starts outside the composer (a note), the message field goes away
   (a state card or the decision dock),
   the user leaves the screen, or the session starts a new engine conversation (`transcript.repoint-clear`, `-resume`)
   (`VoiceAgentWatch`). `client.log` gets `voice-agent:` lines, never the conversation text: one ready line per
@@ -839,7 +899,10 @@ and both flags stop that too.
   interruption, and a reply ordered before the last interruption is cancelled with `response.cancel`. A
   `response.create` refused because a reply is still active is sent again after that reply's `response.done`.
   `send_prompt` without a prompt from `show_prompt`, in the same reply, or after the prompt left the field is a tool
-  error. An OpenAI limit ends the conversation without a retry.
+  error. A host tool that waits for the user's word in the same way gets the moment of its call
+  (`RealtimeToolTurn`): the reply that made it, the count of the user's kept utterances in this conversation
+  (noise and muted speech do not count), and whether one of them began after the last reading played out whole
+  (below). An OpenAI limit ends the conversation without a retry.
   `SonioxSpeech` (`SonioxSpeech.swift`, frames in `SonioxSpeechFrames.swift`) reads text aloud with Soniox
   text-to-speech. One socket per short-lived key (the key rides in the protocol
   list), one stream per utterance and one stream at a time, so the next utterance waits for `terminated` of the one
@@ -876,6 +939,60 @@ and both flags stop that too.
   is not created yet (or refused with `conversation_already_has_active_response`). The items of a reply created
   after the speech are deleted at its `response.done`. After the stream limit the item is fixed the same way to
   what Soniox said.
+  A host tool can have a text read aloud before its result (`RealtimeToolAction.workAndRead`,
+  `RealtimeConversation+Reading.swift`): its work ends either in the result or in a text and a function that turns
+  the reading's outcome into the result. Soniox reads exactly that text as a stream of its own, queued behind the
+  items already in the Soniox queue, so it plays after the audio queued before it and before the model's next
+  answer. The call's result goes to the model only at the reading's end, with one of two outcomes: played out whole
+  (Soniox ended the stream after audio, with no stream limit and no error on it, and the queue drained after that),
+  or not read (no audio, the stream limit, an error on its stream, no first audio or no end of the stream in time, the
+  playback lost by an engine restart, or no Soniox speech; what Soniox said of it plays out first). Once the
+  reading's own stream started (after the streams queued before it ended), the conversation waits 10 s for its first
+  audio (`SonioxSpeech.Timing.firstAudioLimit`); past it the stream gets Soniox `cancel` and the reading is not read.
+  Once the queue drained with the
+  reading's audio played and its stream not ended, the conversation waits 3 s for the end (the wait `SonioxSpeech`
+  gives a stream whose `terminated` does not come), started again at the next drain when more audio came; past it
+  the stream gets Soniox `cancel` and the reading is not read. An error on the reading's stream does not end the
+  conversation; a failure of the whole Soniox connection does. Speech over a reading, also one that waits for its
+  stream, goes through the noise window as over an answer: noise lets it go on, and the cut stops its stream with
+  Soniox `cancel` and drops the call with the other results in flight, so no result goes and the host hears `cut`.
+  While the window is open, the end of a reading (played out, or the playback lost) waits for the verdict: noise, or
+  the mute that closes the window, ends it then, once, and the cut drops it. A host may stop the reading itself
+  (`RealtimeConversation.stopReading`, the Inbox card's Edit and Send): the same cut at once, with no noise window;
+  without a reading in progress it does nothing. The end of the conversation during a
+  reading delivers nothing. A reading is no OpenAI conversation item: nothing
+  is fixed or deleted for it, and it never counts as an answer played out whole. Its characters and its audio count
+  in the Soniox total of the end line; a reading whose synthesis did not end when the conversation ends marks that
+  audio `~`, as an answer item does.
+  The conversation keeps a position on the input audio axis, the axis of `audio_start_ms`: the milliseconds of
+  microphone audio it appended to OpenAI's input buffer since the Realtime session started (audio before the
+  readiness gate and while muted is not appended, so it does not count). A reading that starts drops the mark. Only
+  the reading started last in the run places it, once it played out whole: an older reading that plays out whole
+  while a newer one runs places none, and a last one that is not read, is cut or still runs leaves none. The mark lies
+  by capture time. Microphone audio captured before the playback ended can still be on its way from the audio engine
+  when the app learns of the end, so the input handler carries the capture time of each tap buffer on the engine's
+  host clock (the tap's `AVAudioTime` host time, `nil` when not valid); at the end of the whole reading the
+  conversation notes the time on the same clock and the mark is pending. The first appended buffer captured at or
+  after that time places it at the input position after that buffer, rounded up to a whole millisecond, so it lies
+  after every sample captured before the playback ended; a buffer without a capture time, and muted input, never
+  place it. Each kept utterance while a mark stands, pending or placed, is compared with it: the utterance began
+  after the reading when the mark is placed and the `audio_start_ms` of its counted `speech_started` is greater than
+  the mark. A pending mark, an event without the time, a start that names another item, a `committed` without its
+  own `speech_started`, or no mark: not after. The moment of each tool call after that
+  (`RealtimeToolTurn.utteranceAfterReading`) says whether a kept utterance since the mark began after it. A new
+  conversation starts at position zero with no mark. This compares the app's count with the time OpenAI's VAD gives;
+  it is not a guarantee about OpenAI's clock. OpenAI's reference says `audio_start_ms` includes the 300 ms prefix
+  padding, so speech that starts within the padding after the reading's end counts as not after. `client.log` gets
+  `reading whole, mark pending` (`reading whole, no mark` for an older reading) or `reading not-read <code>`
+  (`no-audio`, `stream-limit`, `failed`, `stalled`, `no-first-audio`, `lost-playback`, `no-speech`, `cut`) per reading,
+  `reading mark <ms> ms` when the mark is placed, and `utterance start <ms> ms vs mark <ms> ms: after` (`none` for
+  the start, `pending` for the mark, `not-after` for the verdict) per kept utterance while a mark stands.
+  The conversation tells its host about the answers (`RealtimeConversation+Answer.swift`, `VoiceAgentHost.answer`):
+  `playedWhole` once per reply that spoke, called no tool and played out whole (every item's synthesis ended and the
+  queue drained after it, and the reply's `response.done` came), and `cut` at every barge-in and every lost playback.
+  A reply that calls a tool is a preamble and never counts; an item cut by the stream limit or one with no audio
+  keeps its reply from counting; a tool's reading never counts; noise over the answer is no cut. The session
+  screen's host ignores both events.
   `client.log` gets `tts start` and `tts end` per item, `tts cancel` per cancelled item, `tts first pcm` (from the
   end of the user's speech to the first Soniox PCM, apart from the time to the first audio), `tts error <code>`, a
   line per response with the characters that went out to Soniox (not text that waited in the queue and was
@@ -884,9 +1001,10 @@ and both flags stop that too.
   stream was cut. Never the text or the key.
   `VoiceChatAudio` (iOS): one `AVAudioEngine`, `.playAndRecord` with `.voiceChat`, the speaker, voice processing on
   input and output, 24 kHz in and out (from a multi-channel voice processing input, as on a Mac, channel 0 only: a
-  downmix of its discrete channels gives silence), the mixer connected to the speaker at the input sample rate when the two
-  differ (on a Mac voice processing fails to start otherwise), the playback volume on the player node (kept across a restart); a start that
-  returns after `stop()` or a newer start backs out (`RealtimeConversationTests`, `RealtimePlaybackTests`,
+  downmix of its discrete channels gives silence), each microphone chunk with the capture time of its tap buffer
+  (`RealtimeHostClock`), the mixer connected to the speaker at the input sample rate when the two differ (on a Mac
+  voice processing fails to start otherwise), the playback volume on the player node (kept across a restart); a
+  start that returns after `stop()` or a newer start backs out (`RealtimeConversationTests`, `RealtimePlaybackTests`,
   `RealtimeNoiseTests`, `RealtimeProjectionTests`, `VoiceAgentSessionTests`, `VoiceAgentDraftTests`; store
   side `VoiceAgentSessionStoreTests`; on a real session screen `VoiceAgentRowTests` and `VoiceAgentFieldTests`).
 - **Microphone and dictation.** During a voice agent conversation the composer microphone and the dictation shortcut
@@ -894,6 +1012,496 @@ and both flags stop that too.
 - **Diagnostics budget.** `RarogStore.trace(_:budget:)` gives the voice agent conversation lines their own budget of
   240 per hour (`TraceBudget`), and the end line of a conversation always passes
   (`native/Rarog/docs/rarog-core.md`, the diagnostics paragraph).
+
+### Conversation across sessions
+
+The voice conversation across sessions runs on the same conversation core with its own host,
+`VoiceAgentSessionsHost`, and its own owner above navigation, `VoiceAgentSessionsConversation`
+(`Session/Voice/Realtime/`). It has a consent of its own (Settings above). The root view (`RarogRootView`) builds
+the owner once with `live(store:)`, puts it in the environment and passes it the scene phase; the session list
+button starts it, and a lit circle in the header on screen (the list header, the session header or the Inbox's
+header) shows and ends it (below). Its tools are `list_sessions`,
+`read_sessions`, `discuss_session`, `ask_session`, `check_open_requests`, `show_prompt` and `send_prompt`. It changes
+two things on the server: the pick-up of a discussed session's result and a prompt the user confirmed (below).
+Tests: `VoiceAgentSessionsConversationTests`, `VoiceAgentSessionsHostTests`, `VoiceAgentSessionsHostPromptTests`,
+`VoiceAgentSessionsCheckTests`, `VoiceAgentDiscussionTests`.
+
+- **When it is offered.** `AppState.companionSessionsOffered(sonioxAllowed:)`: the voice agent is offered
+  (`AppState.voiceAgentOffered`, the rule behind `VoiceAgentAvailability`) and `/api/version` says
+  `companionSessions: true`.
+- **The owner.** One conversation across sessions at a time for the app. The owner does not depend on the viewed
+  session, so a change of the viewed session (list, session, list) keeps the conversation. A view reads `entry`,
+  `isActive`, `indicator` (Connecting while the opening list is read, then the conversation's states, after the end
+  its end sentence until `dismissNotice()`) and `prompt` (the prompt that waits for the user's word: the project, the
+  session name and the exact text; cleared when it is sent or dropped and when the conversation ends), and calls
+  `start()`, `end()`, `dismissNotice()` and `scene(_:)` with the scene phase.
+  `VoiceAgentSessionsConversation.live(store:)` builds it over the store, the device's voice agent settings, the
+  build's Soniox flag and the app's microphone. The owner going away (a new root for another server) ends its
+  conversation and tells the host.
+- **The list button.** A waveform glyph in the session list bar, before New Session and Settings
+  (`VoiceAgentSessionsListButton`, the quiet header glyph with a 44 pt target), labelled "Talk About All Sessions".
+  `VoiceAgentSessionsListAction` reads the owner: no button where the entry is `hidden`; at `consent` a tap opens the
+  consent sheet; at `start` a tap calls `start()`; while a conversation runs or its opening list is read, the lit
+  circle stands in its place (the list header, below) and a tap calls `end()`, also where the mode stopped being
+  offered and the conversation has not ended yet. The consent sheet (`VoiceAgentSessionsConsentSheet`, a form through
+  `SheetHost`, `AppSheet.voiceAgentSessionsConsent`) follows `VoiceAgentSessionsConsentFlow`: with the voice agent
+  turned off it shows the voice agent's consent page first ("Agree and Turn On" turns the voice agent on, as in
+  Settings), then the mode's; with the voice agent on, only the mode's. A mode's consent kept while the voice agent
+  was off is not asked again. "Agree and Start" stores the mode's consent, closes the sheet and starts the
+  conversation once; Cancel, the close button, Esc and the dismiss gesture close it with no start and store nothing
+  more. Tests: `VoiceAgentSessionsConsentFlowTests`, and the button and the flow over the owner in
+  `VoiceAgentSessionsConversationTests`. The list header ("AGENTS (N)") keeps room for the glyph or the lit circle
+  while either stands (`SessionListMetrics.headerMinWidth`, `voiceButton`).
+- **Where the state stands.** Three headers, decided by the root's slot with one rule
+  (`VoiceAgentSessionsPlacement` in `VoiceAgentSessionsBarPlacement.swift`), so a running conversation shows its lit
+  circle once, and an end sentence and a waiting prompt's card stay reachable once:
+  - where the session list's header is on screen, the list header carries the conversation (below); on iPad with
+    both columns the session header shows no circle;
+  - where it is not, the header of the screen on top of the detail column carries the lit circle: the session
+    header (below) on every route of `DetailView` (a session, a terminal, a project, the Inbox on iPad, a session
+    opened from an Inbox card; on iPhone and a narrow iPad window over the list, on iPad while the list column is
+    hidden), or the Inbox's own header at the root of the iPhone's stack (`InboxStackRoot`, below). Above the screen
+    stand only a waiting prompt's card and the end sentence's line, so the screen does not move while the
+    conversation only runs. The list column can be hidden only with a detail route standing. Sheets do not count:
+    the screen under them keeps its place.
+
+  The slot hands the conversation and its place to the views below as `voiceAgentSessionsFeed`. Tests:
+  `VoiceAgentSessionsBarPlacementTests` (the header of every layout and route, and that on each of them, with the
+  headers that stand on screen there, a running conversation shows one lit circle, an end one end sentence and a
+  waiting prompt one card).
+- **The session header.** Where the session header carries the conversation, the lit circle
+  (`VoiceAgentSessionsHeaderCircle` over `VoiceAgentSessionsLitCircle`) stands first in the header's icon group
+  (`HeaderSessionSlot`), with the list's look, tap (`VoiceAgentSessionsListAction`, which ends the conversation),
+  VoiceOver and pointer tip. The group holds at most three icons (`HeaderTrailingIcons`): with four the system hides
+  the whole group in the bar's overflow, which does not show it. So on a terminal screen without a tab bar (Pop-Up
+  Terminal, "⋯", "×") Pop-Up Terminal gives way while the conversation runs, and Cmd+F still opens the window; the
+  rule holds on iPad too. The title's ceiling already counts three icons, so a long title does not push the group
+  with the circle into the overflow. The icons beside the circle keep their places when it comes and goes. While a
+  prompt waits, its card stands above the screen alone, with the caption of the list header's strip ("Send the
+  prompt? · <project> · <name>"); after an end with a sentence, the end sentence's line of the list header's strip
+  (below) stands above the screen until a tap.
+- **The Inbox's header.** The Inbox at the root of the iPhone's stack (`InboxStackRoot`) has a header of its own,
+  the title "Inbox" with its count. While the conversation runs, the same lit circle (`VoiceAgentSessionsHeaderCircle`,
+  added by `InboxHeaderVoiceSlot`) stands after the title as the header's only trailing item, with the same tap,
+  VoiceOver and pointer tip. The title's ceiling on the phone's bar (`HeaderMetrics.phoneTitleMaxWidth`) keeps room
+  for it. The circle also stands in that header while a session opened from a card covers the Inbox (a stack shows
+  the top screen's bar alone), so it does not appear late when Back uncovers the Inbox. A waiting prompt's card and
+  the end sentence's line stand above the Inbox as above a session screen.
+- **The list header.** `VoiceAgentSessionsListHeader` decides what the list header shows
+  (`VoiceAgentSessionsHeader.swift`, `VoiceAgentSessionsListButton`). "AGENTS (N)" stands in every state. While a
+  conversation runs or its opening list is read, the waveform glyph's place holds the lit circle
+  (`VoiceAgentSessionsLitCircle`): a 32 pt circle filled with the state's tone (`VoiceStatusView.color`, connecting
+  until a state comes), centred in the glyph's 44 pt target, with five bars inside in the background colour, as the
+  message field's agent button and End on an Inbox card show a conversation. The bars follow the owner's `levels`
+  (the microphone while listening, the playing answer while answering) with the heights of `VoiceAgentBars` scaled to
+  the circle, and stand still for a state without motion and with reduced motion; only the bars' view reads the
+  levels, so their updates redraw nothing else. A tap on the circle ends the conversation
+  (`VoiceAgentSessionsListAction`). VoiceOver reads it as one button, "End voice conversation", with the state's
+  sentence as its value. New Session and Settings keep their places, and the list does not move. The circle and its
+  bars are colours clipped to a shape, not filled shapes: the list column's navigation bar on iPad draws a filled
+  SwiftUI shape white whatever its colour (iOS 27). While a prompt waits for the user's word, its card
+  (`VoiceAgentPromptCard`, on a block) stands in a strip under the header, above the banners and the list
+  filter (`VoiceAgentSessionsListStrip`); only then the list moves down. Its caption opens with the question in the
+  run tone, then, muted, the prompt's project and session name ("Send the prompt? · <project> · <name>"), and the
+  muted part truncates first. After an end with a sentence, the glyph comes back and the whole sentence stands in a
+  line of that strip (`VoiceAgentSessionsNoticeLine`), at least 44 pt high, with the dot in the state's tone; a tap
+  removes it (`dismissNotice()`). VoiceOver reads the line as "Voice conversation about all sessions" with the
+  sentence as its value, with a hint and an action that remove it.
+- **Above the screen.** Where the list header is not on screen, the root stacks above the split view
+  (`VoiceAgentSessionsBar.swift`: `VoiceAgentSessionsBarHost` over the owner, `VoiceAgentSessionsBarSlot`) what the
+  place puts there (`VoiceAgentSessionsPlacement.above`): nothing while the conversation only runs, the waiting
+  prompt's card while one waits (`VoiceAgentSessionsBar`, the card on a block), and after an end with a sentence the
+  same line as in the list header's strip, on the screen's background up to the top edge. The split view starts under
+  them, so they cover no navigation bar or control, and the screen under them keeps its identity when they come and
+  go. `VoiceAgentSessionsBarContent` decides what there is: nothing without a conversation and without an end
+  sentence; the state (`UICopy.voiceAgentStatus`, the source of the conversation at a session; Connecting while no
+  state has come) while a conversation runs or its opening list is read; after an end, its sentence, removed by a
+  tap. The prompt card (`VoiceAgentPromptCard`) shows the exact text the send sends, unchanged and without markdown,
+  on the strip's background; up to six lines show and the rest scrolls inside. A text past the six lines fades out
+  at the bottom edge, and its scroll indicator flashes when the card appears and when its text changes;
+  scrolled to the end, the fade lies over an empty margin, so the last line reads in full. The card has no buttons,
+  because the confirmation is spoken. VoiceOver reads it as one element, "Prompt to send:
+  project <project>, session <name>", with the whole text as its value. A sentence left by a logout
+  stays in the owner and shows after the next login, until a tap. No view names the discussed session. Tests:
+  `VoiceAgentSessionsBarContentTests`, the content over the owner in `VoiceAgentSessionsConversationTests`, and the
+  list header, its strip, the session header's and the Inbox header's circle, the prompt card and the end sentence's
+  line over the real split view in `VoiceAgentSessionsBarTests` (`RarogUIKitTests`).
+- **Entry.** `VoiceAgentSessionsEntry`: `hidden` where the mode is not offered, `consent` where the voice agent is
+  turned off or the mode's consent to its current text is missing (`VoiceAgentSettings.sessionsAllowed`), otherwise
+  `start`; `start()` returns `notOffered` or `consentNeeded` in the first two cases and builds nothing. The
+  conversation at a session does not read the mode's consent: without it the session button and ⌥⌘V work as
+  described above.
+- **Start.** Each start builds a new host. The host reads the catalog (`prepare()`, `RarogStore.loadCompanionSessions`)
+  and puts the opening list into the instructions in a `<sessions>` block; only then does the owner build the
+  `VoiceAgentSession` and start it, so no key is asked before the list. A start while a
+  conversation runs or its opening list is read builds nothing (`running`). In the background or without the server
+  connection no start begins: nothing is read, and the owner shows the end sentence of that reason. A refused
+  `prepare()` builds no conversation and asks for no key, and the owner shows an existing end sentence: not logged in
+  (also a catalog read the store answers as logged out or cancelled) as logged out, the mode not offered or
+  `companion-sessions-disabled` as turned off, a failed catalog read as unavailable. A second start after an end has a
+  new host: handles from `s1`, no reads, questions counted from 1. An end reason that the owner sees while the opening
+  list is read stops the start with its sentence, also when the reason is gone before the list arrives.
+- **One microphone.** A start takes the app's one microphone (`DictationCenter`,
+  `Session/Voice/DictationCenter.swift`) before it reads the opening list, also a start that is then refused: a
+  running conversation at a session ends, and so does dictation in the message field or in a project note. A
+  conversation at a session or dictation that starts while the opening list is read keeps the microphone, and the
+  start is given up with no sentence; one that starts while this conversation runs ends it
+  (`VoiceAgentSession.handOff`), with no end sentence.
+- **The list.** One row per catalog session the app has in its session list: a catalog row the app lacks and a
+  session outside the catalog give none, so such a session reaches the model in no form, not even as a count. A row
+  has a handle, the project, the name (the label, with `#n` for an identical project and name counted among the rows
+  only, so a namesake outside the catalog changes no number; `unnamed` without a label: the list's fallback is a
+  piece of the session id), the state from the selectors of the list dot (`finished`, `marked-unread`, `seen`,
+  `seen-by-voice`, `working`, `working-background`, `dialog`, `failed`, `other`), minutes since `stateSince`,
+  `asks_owner` from the catalog, and at a dialog its kind (`permission`, `plan`, `question`) and first line. Names,
+  the project and the dialog line pass `RealtimeSecretMask`, and a `<sessions`, `<transcript` or `<session-update`
+  tag written into them loses its `<`. `list_sessions` answers `{"sessions":[…]}`.
+- **Handles.** `s1`, `s2`… in the order sessions first appear in this conversation, never reused; a new session gets
+  the next one. The server's session id never goes to the model, to OpenAI or to `client.log`. A handle that is not on
+  the current list is a refusal, and nothing is read.
+- **The catalog before every tool.** Each tool call reads the catalog again (`RarogStore.loadCompanionSessions`) and
+  works on that list.
+- **Requests only while the mode holds.** Before every request (catalog, turns, question, prompt) and before its
+  answer goes to the model, a tool checks the end rules: after a logout, another login, the mode not offered, an end
+  reason its owner gives (`VoiceAgentSessionsHost.ownerReason`) or a read session's new conversation, and without an
+  opening list, it refuses and sends nothing.
+- **After the end.** The owner tells the host every end of its conversation, whatever ended it
+  (`VoiceAgentSessionsHost.conversationEnded()`): from the conversation's indicator once the conversation stops, at
+  the end action while the opening list is read, at a refused opening list and when the owner goes away. From then
+  on every tool refuses and sends nothing, a tool already in flight sends no further request and keeps no read (a
+  catalog answer that arrives after the end gives no handle), and the handles, the reads, the opening list and a
+  waiting prompt are dropped; a prompt send already in flight is not cancelled (below). A host serves one
+  conversation.
+- **`read_sessions`.** Takes `handles`, or a `filter`: `finished` (rows in that state) or `asks_owner`, at most three
+  sessions, newest `stateSince` first; `turns` (1–3, 3 by default) is the turns route's `count`
+  (`RarogStore.loadCompanionTurns`). Per session the result has a header (handle, project, name, state, minutes), a
+  note when the answer has no turns or starts inside a turn, and the turns in the form of the session projection. Each
+  line passes the mask before the budget counts it; one call has 15,000 characters, split evenly between its sessions,
+  and within a share the oldest turns give way to a note that names them, as in the session projection. A refused
+  turns read (404 as an unknown handle, `companion-sessions-disabled`, a failure) refuses the whole call and keeps
+  nothing. Each read leaves a record (`VoiceAgentSessionRead`): the answer's `conversation` and `readMark` as the
+  server sent them, and whether the answer had messages; a newer read of a session replaces it.
+- **The discussed session and the pick-up.** `discuss_session` with a handle, and a `read_sessions` call with
+  exactly one handle that read one session, make that session the discussed one; every other successful read clears
+  it (several handles, a filter, also a filter that picked one session). The instructions tell the model to call
+  `discuss_session` when it moves on to talk about one session, before it talks about it. `discuss_session` reads the
+  catalog like every tool; an unknown handle is refused with "Unknown handle. Use handles from the session list.", a
+  session not read in this conversation with "Read this session first; then call discuss_session again.", and either
+  changes nothing; success answers "The app shows this session as the one under discussion.". When the answer that
+  follows the pointing plays out whole (`playedWhole`, see "Conversation" above), the host picks up the session's
+  result: `RarogStore.pickUpCompanionResult` with the `conversation` and `readMark` of its newest read in this
+  conversation, as the server sent them (`POST /api/sessions/:id/seen` with `by: voice-agent`). A read or a
+  `discuss_session` that a cut overtook (speech between its start and its return) changes nothing: the conversation
+  drops its result, so it leaves no read record, makes no session the discussed one and keeps a pointing made after
+  the cut. That first whole answer uses the pointing, and so does a cut: the next whole answer picks up nothing
+  until the session is pointed at again; the session stays the discussed one. No pick-up for a read without
+  messages, after the end of the conversation or while an end rule holds, and none twice for one read: a newer read
+  of the session allows a new one. The outcome changes nothing in
+  the app, says nothing to the model and does not end the conversation; when the server accepts, its session frame
+  brings `seenBy`, and the list gives that session the state `seen-by-voice`. The rule: `VoiceAgentDiscussion`
+  (`VoiceAgentDiscussion.swift`); the host's part: `VoiceAgentSessionsHost+Discussion.swift`.
+- **`ask_session`.** A handle from the list and a question, through the question route as on the session screen, with
+  the same sentences for its outcomes; at most 30 questions per conversation, the 31st is refused.
+- **`check_open_requests`.** The thorough check whether sessions the user has looked at still wait for the user; the
+  instructions allow it only on the user's request. The first call only announces: it reads the catalog, picks the
+  rows in the state `seen` (not `seen-by-voice`), newest `stateSince` first, at most 10, and answers "The check
+  would ask <N> sessions the user has looked at, one by one, about 20 seconds each. Ask the user whether to start.".
+  No such row is a tool error and announces nothing; at the ceiling of 30 questions the call is refused with the
+  sentence of `ask_session`. The next call is the user's word only when the user heard the announcement and spoke
+  after it: an answer played out whole since the announcement (`playedWhole`, see "Conversation" above), the call
+  comes in another reply of the model, and the user has at least one kept utterance since the announcement (the
+  call's moment from the conversation, `RealtimeToolTurn`). Any other call is refused with a tool error that tells
+  the model the user has not agreed and to ask and wait. Either way the announcement is used up, so the next call
+  announces again. Speech before that whole answer drops the announcement, so the utterance that cut does not count
+  as the user's word: the conversation dropped the result before the model got it, or the user spoke over the
+  answer with it. The same holds for a cut during the call. The announcement also ends when the reply to the
+  user's answer plays out whole without the check, so a call that comes after it announces and reads the list
+  again. A call while a run is in flight is refused. The rule: `VoiceAgentCheck`
+  (`VoiceAgentSessionsHost+Check.swift`).
+  - **The run.** It reads the catalog, skips an announced session that left it or the state `seen`, and asks the
+    rest through the question route (`RarogStore.askCompanion`) one at a time, the next only after the answer to
+    the one before, with a fixed question: whether anything in the session still waits for the user (a question,
+    a decision or an approval never answered), in at most two sentences, or exactly "Nothing waits for the user.".
+    Each question counts toward the ceiling of 30, which the run shares with `ask_session` and checks before every
+    question, so a run asks at most what the ceiling leaves, and with none left it is refused with the ceiling
+    sentence. The result is plain text: per session a header with the handle,
+    project and name, then the answer's text through the secret mask with block tags neutralized, as in
+    `read_sessions`; a note on skipped sessions and a note with the cause of a stop close it.
+  - **Stops.** A refusal of the route ends the run with the answers it has and the cause: the subscription limit,
+    the timeout and a failure with the sentences of `ask_session`, `companion-busy` with a sentence of its own, the
+    mode off and a lost session too; the ceiling reached during the run gives the ceiling sentence. When the run
+    has no answer, the cause alone is the tool error. The end rules count before each question and after each answer.
+  - **Speech and the end.** The run is a task of the host's own. A cut (`answer(.cut)`) and the end of the
+    conversation cancel it: the question in flight is cancelled with its request (the store awaits the transport
+    inline, so the cancelled task cancels the URL task), and no further question goes out. A run that returns
+    answers clears the discussed session, like a read of several sessions, and leaves no read records.
+- **`show_prompt` and `send_prompt`.** The app reads the exact prompt aloud and sends it to the named session only
+  after the user confirmed in an utterance that began after the reading ended (`VoiceAgentSessionsHost+Prompt.swift`,
+  `VoiceAgentSessionsHost+PromptSend.swift`; every sentence for the model in `VoiceAgentSessionsHost+PromptText.swift`).
+  A sent prompt runs at once and cannot be taken back, so every doubt ends in a refusal with nothing sent, and a
+  prompt never goes out twice.
+  - **`show_prompt(handle, text)`.** The text is the argument trimmed. A send in flight refuses the call and keeps its
+    prompt. Any other call first, before its first `await`, drops the waiting prompt (the instructions tell the model
+    that a new `show_prompt` replaces it) and a waiting announcement of `check_open_requests`, and stamps its
+    response. It is then refused, with nothing shown or read and nothing waiting, for an empty text, a text over 1,000
+    characters, an end rule and a handle not on the list, and after the catalog read for a session with the same
+    project and name as another row (also rows the list numbers with `#n`) and for a session that waits on a dialog.
+    Otherwise it captures from the session's row the server's session id, the catalog's `conversation` token, the
+    project and the name, keeps the exact text and makes a new `clientMessageId`: the send uses only these values,
+    never a token read after the show. The prompt goes to the owner (`prompt`), the session becomes the discussed
+    one, and the conversation has Soniox read "Project <project>, session <name>: <text>"
+    (`UICopy.voiceAgentSessionsPromptReading`, `RealtimeToolResult.read`), so what is read, shown and sent is one
+    string. Played out whole, the prompt is marked
+    read and the model hears "The app showed the project, the session and the exact prompt and read them aloud to the
+    user. Ask only whether to send it."; not read (no audio, the stream limit, an error on its stream, a lost
+    playback), it stays unread and the model is told to call `show_prompt` again. A cut drops the call, so the prompt
+    stays unread, and the end of a reading whose prompt a newer `show_prompt` dropped changes nothing.
+  - **`send_prompt`.** The checks, in order: a send in flight is joined and its result returned (one request); no
+    prompt gives "No prompt waits. Call show_prompt first." (or the kept outcome, below); a call in the response of
+    its `show_prompt`, also while that call reads the catalog, gives "The user has not confirmed yet. Ask whether to
+    send it and wait for the answer."; a prompt not read whole (its reading cut, not read or still running) tells the
+    model to call `show_prompt` again; without a kept utterance that began after the reading's mark
+    (`RealtimeToolTurn.utteranceAfterReading`, "Conversation" above) the model hears "not confirmed"; a repeat after
+    an outcome that does not say whether the prompt arrived needs a kept utterance since that attempt. Then the
+    catalog is read again and the end rules are checked. A refusal there, a session that left the list, another
+    `conversation` token in the catalog than the captured one, a dialog on the session, or a session that did not work
+    at the show and works at the send drops the prompt with a sentence that names the cause, and nothing is sent.
+    Last comes `RarogStore.sendCompanionPrompt` with the captured session id, text, token and `clientMessageId` (the
+    server's side: "Sending from the conversation").
+  - **Outcomes.** `sent` gives "Sent." and `queued` a sentence that the prompt waits in the queue; both drop the
+    prompt. `conversationChanged` is a refusal, and the conversation ends as `session-cleared`, like a read session's
+    new conversation. `refused` drops the prompt and passes on the server's or the store's sentence. `loggedOut` drops
+    it and asks the core to check the end rules, which end the conversation. `timedOut`, `failed` and `cancelled` do
+    not say whether the prompt arrived: the prompt stays with the same `clientMessageId`, so a confirmed repeat is the
+    same message for the store and the server, and the sentence says the prompt may have arrived and must not be
+    prepared again unless the user asks.
+  - **A cut and the end.** Speech since the `send_prompt` call stops the send until the host hands the prompt to
+    the app's outbox: a cut during the catalog read sends nothing (`send refused (cut)`), and the prompt stays read
+    and waits for a clear word. A sound over a playing answer since the user's last kept utterance stops the send
+    too, whatever the app makes of it (`send refused (sound)`): a short no counts as noise in the window of
+    `RealtimeConversation+Noise.swift` and never reaches the model, so the host hears each window open with the
+    count of kept utterances and refuses a send confirmed by the utterance a sound followed, at the call and again
+    before the hand-off. The model is told to ask again, and a repeat needs a new kept utterance. A prompt the
+    outbox took is never cancelled by the host: the store answers
+    `cancelled` for a cancelled caller before it looks at the echo, so a cut leaves it to the outbox. The end of the
+    conversation drops a waiting prompt, unsent, and leaves a send in flight to the outbox too.
+  - **One consent at a time.** `show_prompt` drops a waiting announcement of `check_open_requests`, and an
+    announcement drops a waiting prompt. While a send is in flight `check_open_requests` is refused and announces
+    nothing (`check ended (sending)`): that send may end without saying whether the prompt arrived and keep its prompt.
+  - **The kept outcome.** The conversation drops tool results on a cut, so the host keeps the last send's outcome
+    with its session, token, text and id until an answer plays out whole with no cut since the call that returned it.
+    Until then `send_prompt` with no prompt waiting reports that outcome instead of "No prompt waits"; a
+    `show_prompt` of the same session, token and text reuses the old `clientMessageId` when the prompt went out or may
+    have, and its result says so; a `show_prompt` of other content notes how the last send ended. A result with such a
+    note counts as the outcome returned again, and so does the result of a `send_prompt` that joined the send and
+    got its outcome; a joined send refused before the outbox took it leaves an older outcome as it was. Of several
+    calls that returned the outcome, the one that started last counts.
+- **Refusals.** A refused or failed read and a tool refused by the end rules give the model a fixed sentence, never
+  the server's message; the one exception is the server's sentence of a refused prompt.
+- **End.** Each end shows an existing end sentence; a reason that a conversation at a session also has shows the
+  same sentence there. The end action (`end()`) shows none; during the opening read it ends the start: no
+  conversation is built, nothing of the list stays, and the host's catalog answer, when it arrives, logs
+  `start refused (ended)`. The app in the background (`scene(_:)`) ends it with the background sentence (with the
+  locked-phone trial on, only the start, the opening read and a conversation not yet ready), a logout as
+  logged out, another login as a changed server; the mode not offered, the mode's consent removed and the voice
+  agent turned off end it as turned off.
+  The lost server connection (`AppState.global` offline) ends it with "The conversation ended: the connection to the
+  server dropped." and the end line `ended closed (connection-lost)` in `client.log`. An audio interruption and a
+  Soniox failure end it with their sentences, and a conversation at a session or dictation that takes the
+  microphone with none. When a session read
+  in this conversation shows a new `conversation` token in a catalog or a turns answer, it ends as `session-cleared`,
+  with the sentence of a session that started a new conversation. A turns answer is compared when it arrives, before
+  the next session of the same read is asked. A new token of a session not read changes nothing. The owner's reasons
+  (the background, a missing consent, the lost connection) reach the host as `ownerReason`, so they end through
+  the core's end check with their reason. While a conversation runs or its opening list is read, each change of the
+  store's state or of the two consents checks the end rules, so a removed consent or a logout ends it without a
+  call from a view. A reason that comes while the opening list is read keeps the conversation from starting, with
+  its sentence.
+- **`client.log`.** `voice-agent:` lines with counts only, on the voice agent trace budget: `start with <n>
+  sessions`, `list <n> sessions`, `read <n> sessions, <m> reads in this conversation`, `question <n> of 30`, a refusal
+  with its code (`read refused (unknown-handle)`; an end rule gives `logged-out`, `server-changed`, `disabled`,
+  `not-started`, `conversation-changed`, the owner's reason as `background` or `connection-lost`, a removed consent
+  as `disabled`, or `ended` after the end; `discuss refused (not-read)` for a session not read), `discuss` per
+  accepted `discuss_session`, `check announced (<n>)`, `check <k> of <n>` per question of a run (`<n>`: the
+  sessions it asks after the skips and the ceiling) and `check ended (<code>)` (`done`, `limit`, `busy`, `timeout`,
+  `failed`, `off`, `unreachable`, `cut`, `ceiling`, `not-agreed`, `none`, `running` or an end rule's code as
+  above), a line when a read session changed its conversation, and per pick-up
+  `pick-up accepted` or `pick-up refused (<code>)` with `result-changed`, `off`, `unknown-session`, `logged-out`,
+  `cancelled`, `timeout` or `failed` (also a refusal of the app's mutation gate). The prompt pair writes
+  `prompt shown`, `prompt read whole`, `prompt not read`, `prompt refused (<code>)` (`sending`, `empty`, `too-long`,
+  `unknown-handle`, `ambiguous`, `dialog`, `newer`, `cut`, or a code of the catalog read or of an end rule as
+  above), `prompt dropped (check)`, `check ended (prompt)` when a `show_prompt` drops an announcement,
+  `send refused (<code>)` (`same-response`, `not-read`, `not-confirmed`, `no-new-utterance`, `no-prompt`, `dropped`,
+  `left`, `token-changed`, `dialog`, `working`, `cut`, `sound`, or a code of the catalog read or of an end rule),
+  `send joined`,
+  `send reported (<code>)` and `send ended (<code>)` with `sent`, `queued`, `conversation-changed`, `refused`,
+  `logged-out`, `timeout`, `failed` or `cancelled`. The core adds its own lines
+  and the end line with the cause of a close (`ended closed (background)`). The owner writes no line of its own.
+  Never a name, a handle's session, a path or text.
+
+### Conversation from an Inbox card
+
+A result card and a decision card of a session with a transcript carry the voice agent button in their bottom row (in
+the reply row of a result, in a row of its own under a decision); a failed card and a card of a session without a
+transcript (an agent in the Rarog terminal) have none (`InboxRules.takesVoice`). The button stands under the same
+conditions as on the session screen (the feature on, consent, a key route). The conversation is the session screen's
+conversation for the card's session: the same content, `ask_session` and status sentences (`VoiceAgentInboxHost`
+wraps `VoiceAgentSessionHost`), with the card's own prompt pair and prompt rules in place of the message field's
+(below). One card talks at a time: a tap on another card ends the running conversation and starts the new one, and
+the other buttons are dimmed meanwhile. While the card talks, its bottom row is the voice strip: the level bars, the
+state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog/docs/rarog-ui.md`).
+
+- **Start.** The tap sets the navigation's voice target, so the root view opens the card's transcript stream while
+  the Inbox stays on screen (`RarogNavigation.transcriptSessionId`). The stream opens without a cursor
+  (`RarogStore.refreshTranscript`), and the conversation starts only after that fresh `transcript-snapshot`; a
+  transcript the app already holds is not enough. No snapshot within 10 seconds ends the start as unavailable,
+  and a card that shows another turn meanwhile refuses it as a changed card.
+- **Prompt block.** `show_prompt` puts the prompt in the card's own prompt block, kept by the conversation's owner
+  (`InboxPromptBlock`), and the card's reply field stays as the person left it. The app reads the block's text
+  aloud exactly as written (a Soniox reading, as in the conversation across sessions), and the read-along gives the
+  heard prefix of the text while it plays (`RealtimeConversation+ReadAlong.swift`); the model does not read the
+  prompt itself. A prompt longer than 1000 characters (one Soniox stream) is refused. A new `show_prompt` replaces
+  the block while it reads or waits and starts its reading again; while the person edits it or a send is in flight,
+  `show_prompt` is refused. The block keeps the card's turn of the moment of `show_prompt`, and every send of it
+  answers that turn.
+- **Voice send.** `send_prompt` sends the block only when its reading played out whole, the person spoke after that
+  reading in a new utterance, the login of the start holds, and no send of this version went before. A reading cut
+  by the person's speech or not played out (no audio, the stream limit, a lost playback) leaves the block unsent by
+  voice; a new `show_prompt` reads it again. The send is the card's plain reply (`RarogStore.replyFromInbox`: an
+  ordinary send of the person, held to the turn the block keeps, without `expectedConversation` or `source`), so it
+  needs only `RAROG_COMPANION` with speech, not `RAROG_COMPANION_SESSIONS`, and the card stays in place.
+- **Edit and Send in the block.** Edit turns the block into its own text field with the agent's text, in place;
+  Cancel goes back to the agent's text. An edited text goes only with the block's Send, never by voice. Edit or
+  Send during the reading stops its audio at once, as speech over it would: the version counts as not heard whole
+  and `show_prompt` gives the model no result. The block's Send works in every phase but sending, and a blank
+  edited text sends nothing. The block stands on the card above the voice strip and lights the heard part of the text
+  while the app reads it (the heard prefix of the read-along); the conversation's owner holds it and its actions
+  (`edit()`, `editText(_:)`, `cancelEdit()`, `sendBlock()`).
+- **Outcome of a send.** Accepted or queued drops the block and shows "Sent to the session"; a refused text stands
+  again in the block with its reason, and its outbox entry is deleted; an entry kept in the transcript with Retry
+  drops the block. A card that changed before the send, and a text the outbox could not store, drop the block and
+  hand its text back. The outcome of an older send never changes a newer block.
+- **Hand-back.** The block's text (the person's edit, or else the agent's text) goes back at the end of the
+  conversation, and after a send outcome above that drops the block with its text: on top of the card's reply field
+  with the reason under it while the Inbox is on screen and the card has its field, answering the turn the card
+  shows then (the field writes the session's draft at once), otherwise into the session's draft. Never both. A send
+  in flight at the end keeps its text to its own recovery, the reply field's rule after ↑. The model hears these
+  rules in the card's own prompt instructions and tool descriptions (`RealtimePromptField.inboxReply`,
+  `RealtimeInstructions+InboxHost.swift`); the session screen's edit rule does not apply.
+- **Decision card.** It has no reply field: the conversation answers by voice, `show_prompt` refuses and
+  `send_prompt` refuses for lack of a prompt.
+- **End.** Besides the session screen's rules (logout, the feature off, background with its locked-phone trial
+  exception, `/clear` or `/resume` in the
+  card's session), the conversation ends when its card leaves the Inbox, when the Inbox closes and when another
+  session opens (`VoiceAgentInboxWatch`). An end sentence of a card no longer on screen shows as a notice.
+- **Owner.** `VoiceAgentInboxConversation` holds the one conversation of the Inbox screen, its target and the prompt
+  block (`VoiceAgentInboxConversation+Prompt.swift`); the reply fields (`InboxReplyHost`) take the block's text back
+  and the outcome of a send whose block is gone.
+
+### Locked phone (trial)
+
+- **Switch.** `LockedPhoneTrial` (`RarogCore/VoiceAgent/LockedPhoneTrial.swift`) is the one definition: one type,
+  one key (`rarog.voiceAgent.lockedPhoneTrial` in `UserDefaults`), off on a new device and in the UI test mode. It
+  belongs to the device like the consents. Off, every background rule of this document holds as written.
+- **Conversation in the background.** On, the background does not end a voice conversation that is ready (past its
+  readiness gate: the audio engine runs and OpenAI took the session, `VoiceAgentSession.isReady`), at a session, at
+  an Inbox card or across sessions; every other end rule holds. The background still refuses a start and ends what
+  has no open microphone yet: a conversation that connects, the opening read across sessions, a card that waits for
+  its snapshot. The one rule is `LockedPhoneTrial.keeps(running:)`; the session screen and the Inbox pass it to
+  `VoiceAgentWatch` as `keepsInBackground`, whose start check refuses the background whatever it says, and the owner
+  across sessions applies it in its own reasons. Tests: `LockedPhoneTrialTests`, `VoiceAgentWatchTests` and the
+  trial cases of `VoiceAgentSessionTests`, `VoiceAgentInboxTests` and `VoiceAgentSessionsConversationTests`.
+- **Dictation in the background.** On, the background does not end a message-field recording whose microphone
+  opened (`VoiceRecorder.microphoneOpened`, the same `LockedPhoneTrial.keeps(running:)`): its text keeps landing in
+  the same field, which is the session's draft. A recording still preparing (permission, key, microphone opening)
+  ends as with the trial off, and so does a note's recording. Its own limits still end it: a minute of silence and
+  the session limit (15 minutes when the server gives none). A kept recording that finishes in the background (those
+  limits, `DictationCenter.endFromLockScreen()`, a field that locks) holds a background task without the server
+  (`ComposerDictation.holdFinalization`) from its first finalizing view, which comes before the microphone closes,
+  until its last words are in the field and the disk confirmed the draft: the open microphone keeps the app running,
+  and once it stops nothing else does. A background entered while a recording finishes takes the same task, and so
+  does an end in the background that has no finalizing view (a stream that failed for good), for the draft write
+  alone. Every end of a message-field recording, with the trial on or off, hands the field to the session's draft
+  (the screen's `persistDraftNow`); a held background task ends once the disk ran that write
+  (`ComposerDrafts.written`). An end that a waiting Send takes writes no draft: the send emptied the field, and
+  the background task waits until that send has its answer (the message is stored in the queue, or its text is back
+  in the field and written to the draft). A field released with its screen mid-recording writes nothing. Each
+  message-field recording writes one `client.log` line when it ends,
+  `dictation: ended <reason>`, with one word and never the text: `stopped` (second tap), `send`, `field-locked`,
+  `background`, `hand-off` (screen left, microphone taken, or the field gone with its screen mid-recording), or for
+  a recording that ended by itself `silence`, `session-limit`, `interrupted`, `stream-failed`, `microphone`,
+  `dictation-failed`, `refused` (`DictationEndTrace`), `live-activity` for an end through
+  `DictationCenter.endFromLockScreen()` (the entry for an end button outside the app's screens, which no screen of
+  the app calls), and `ended` when none of these applies.
+  Tests: `DictationRouteTests` (the trial cases) and `DictationEndTraceTests`.
+- **Monitor.** `LockedPhoneMonitor` (`Session/Voice/LockedPhoneMonitor.swift`, no UIKit; the app's instance from
+  `LockedPhoneMonitor+Live.swift`) reads what records from the app's one microphone (`DictationCenter.use`: the kind,
+  conversation or dictation, and what of it lives, as the host reports it) and gets each scene phase from the app's
+  scene phase change. It starts no microphone, conversation or dictation. One rule, `evaluate()`, runs at
+  every change the microphone center reports (a claim, a start, an end, a host's deinit), at every scene change and
+  at every heartbeat: it holds the server connection while `LockedPhoneTrial.keeps(running:)` says yes for what
+  records, in the foreground too, and releases it when the answer turns no: the recording ended or its host went
+  away, or the trial is off. Only a changed answer reaches the tunnel. With the trial off it never holds.
+- **Heartbeat.** Every 30 s while the app is in the background and the hold stands, the monitor asks the server
+  once, `GET /api/version` through the current login's transport (`RarogStore.serverAnswers()`, which changes no
+  state and asks nothing while signed out), and writes a line when the answer comes, if the app is still in the same
+  background stay and the hold still stands. While a question is out, the next heartbeat writes `server=waiting`
+  and asks nothing more. Tests: `LockedPhoneMonitorTests`, `StoreLockedPhoneTests`.
+- **`client.log` lines.** On the voice agent budget, never any content; the prefix is `voice-agent` for a
+  conversation and `dictation` for a dictation. A scene change while something records writes
+  `<prefix>: background, trial on|off` or `<prefix>: foreground, trial on|off`, with the trial on or off; the
+  `inactive` step of a lock or an unlock writes nothing. With the trial off the screens end what records at the same
+  scene change, and nothing orders the monitor against them, so the background line may be missing. The heartbeat:
+  `<prefix>: background <s> s: audio=running|stopped openai=open|closed soniox=open|closed server=online|offline|waiting`;
+  `<s>` counts the seconds since the app left the foreground, at the moment of the line, on the clock of the system's
+  awake time (`ProcessInfo.systemUptime`, which Apple's page describes as the time the system has been awake since
+  its last restart); `audio` is a microphone frame within the last 2 s (`MicrophoneUse.frameWindow`); `openai` is
+  the conversation's Realtime socket (a dictation has none); `soniox` is the conversation's speech socket or the
+  dictation's stream on the Soniox route while it streams. `server=online` says the server answered that one
+  request, which in the background may itself open a new generation; the tunnel's own lines say whether the
+  generation stayed. Nothing records: no line.
+- **Voice Live Activity.** On, while something records, the app shows a second Live Activity beside the sessions
+  board: `VoiceActivityController` (`native/Rarog/Rarog/VoiceActivityController.swift`) reads the app's microphone
+  through `AppMicrophone` (RarogUI), and the views and the End button stand in `RarogActivity`. The Lock Screen
+  tile has three lines and End (Stop for a dictation): the kind ("Voice agent" or "Dictation") with a system timer,
+  a phase word and a subject line. The microphone center reports the phase (`MicrophonePhase`): a conversation is
+  "Working", "Listening", "Answering", "Reading the session", "Send the prompt?" while a prompt waits for a spoken
+  yes or no, or "Muted"; a dictation is "Dictating". It also reports the subject (`MicrophoneSubject`): "All
+  sessions" for a conversation across sessions that discusses no single session, else the session's project and
+  name joined by a dot, "One session" when the app cannot name it, and "Say yes or no" first while a prompt
+  waits. Names go through the voice agent's secret mask and are cut to 80 characters; no prompt, dictated text or
+  question reaches the state. One activity at most: requested once per recording, without a push type and with a
+  relevance score, which the board's content does not carry (Apple's documentation: the score orders an app's Live
+  Activities), updated when the kind, the phase or the subject changes and never for an equal state; a new phase or
+  subject keeps the timer, another kind starts it anew. It ends at once (`.immediate`) when nothing records or the
+  trial goes off; at launch every voice activity the system still shows ends (one a stopped process left). A refused
+  request writes one line, `voice-agent: live activity not started (<reason>)`, with the `voice-agent` prefix for
+  both kinds and the reason
+  `disabled` (Live Activities off for the app), `background` (the app not in the foreground), `limit` or `failed`,
+  and the next request waits until nothing records; a request the limit refused while the end of the activity
+  before it is on its way is tried once more after that end. End runs `EndVoiceActivityIntent` in the app's process; its
+  handler, which the app installs at launch, calls `DictationCenter.endFromLockScreen()`, so a conversation ends as
+  with its end button and a dictation keeps its text in the field without sending. It writes
+  `voice-agent: ended from live activity` or `dictation: ended from live activity` (nothing when nothing records)
+  and ends every voice activity that stood when it was pressed, so a recording started meanwhile keeps its own; a
+  dictation that still finishes its text gets no new activity. Tests:
+  `VoiceActivityControllerTests`, `VoiceActivityViewTests`, `VoiceActivityAttributesTests`,
+  `VoiceActivityPresentationTests`.
+- **Server connection hold.** `TunnelCoordinator.holdForVoice(_:)` (`TunnelCoordinator+VoiceHold.swift`), asked for
+  by `LockedPhoneMonitor`, is one background work that needs the server, under a reserved identifier and without a
+  system task, so only its release ends it. While it lives, the tunnel keeps its generation as it does for any
+  background work, and in the background a request may open a new generation. In the foreground it changes nothing.
+  Released in the background within the 8 s grace of that stay, the generation goes back to that grace; released
+  after the grace deadline, or after the system expired the tunnel's grace task, it closes at once. Tests: the voice
+  hold cases of `TunnelCoordinatorTests`.
+- **Background mode.** The app declares `UIBackgroundModes: audio` (`native/Rarog/Info.plist`), the only part of
+  the trial outside the switch. Apple's documentation says that with this background mode an app's audio continues
+  when people switch to another app or lock the device (AVFoundation, "Configuring your app for media playback"),
+  and that the `record` and `playAndRecord` audio session categories can record in the background (Human Interface
+  Guidelines, "Playing audio"). Dictation records in `record` (`MicrophoneCapture`), the conversation in
+  `playAndRecord` with the `voiceChat` mode (`VoiceChatAudio`), and the app activates its audio session only for a
+  conversation or a dictation the user started. Whether the sockets, the timers and the server connection live on a
+  locked phone is what the monitor's lines measure.
 
 ### UI tests
 
@@ -907,7 +1515,8 @@ and both flags stop that too.
 
 ### Source directories
 
-- `native/Rarog/Packages/RarogCore/Sources/RarogCore/VoiceAgent/` — voice agent settings: consent, voice choice.
+- `native/Rarog/Packages/RarogCore/Sources/RarogCore/VoiceAgent/` — voice agent settings: consent, voice choice,
+  the locked-phone trial switch.
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Session/Voice/Realtime/` — voice agent: session projection, secret
   mask, OpenAI Realtime client, the voice chat audio engine, the tools wired to the store, the end-of-conversation
   rules, the composer button with its bars and the states of the status row.

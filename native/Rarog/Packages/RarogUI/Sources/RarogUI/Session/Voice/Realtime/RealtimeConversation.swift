@@ -20,7 +20,9 @@ import RarogContract
 //
 // The app orders the answer (`create_response: false`): after `input_audio_buffer.committed` first the host's new
 // content (`conversation.item.create`), then `response.create`. The tool results of an answer go after its
-// `response.done`, together, with one `response.create`. The OpenAI limit ends the conversation without a retry.
+// `response.done`, together, with one `response.create`. A tool may have a text read aloud first; its result then
+// waits for the reading's end (`RealtimeConversation+Reading.swift`). The OpenAI limit ends the conversation without
+// a retry.
 //
 // The conversation has no captions and no copy: its host's screen shows its state (`VoiceAgentIndicator`; the
 // session screen in the status row of the message field) and its levels (`RealtimeConversation+Levels.swift`).
@@ -47,6 +49,13 @@ final class RealtimeConversation {
   var starting = StartState()
   private var audioTask: Task<Void, Never>?
   private var socket: (any VoiceSocket)?
+  /// The Realtime socket to OpenAI is open (a remote close ends the conversation, so it reads `false` only around
+  /// the end).
+  var socketOpen: Bool { socket != nil }
+  /// The Soniox speech socket of this run is open.
+  var speechOpen: Bool { tts.client?.isOpen == true }
+  /// The clock time of the last microphone frame of this run, muted or not.
+  private var lastInputAt: TimeInterval?
   /// Model, który serwer Raroga związał z kluczem krótkim (porównanie z `session.created`).
   private var keyModel: String?
   /// `session.update` wysłane, `session.updated` jeszcze nie.
@@ -100,6 +109,9 @@ final class RealtimeConversation {
   var promptVersion = 0
   var promptResponse: String?
   var committedSincePrompt = 0
+  /// Kept utterances of the user in this run (noise and muted speech do not count): a host tool that waits for the
+  /// user's word compares it (`RealtimeToolTurn`).
+  var utterances = 0
 
   // Odtwarzanie: oś próbek silnika (`playedSamples`), na której leżą elementy odpowiedzi.
   // Playback and barge-in: `RealtimeConversation+Playback.swift`.
@@ -113,6 +125,10 @@ final class RealtimeConversation {
   var usage = UsageLog(startedAt: 0)
   /// Soniox speech of this run (`RealtimeConversation+Speech.swift`).
   var tts = SpeechState()
+  /// What the host learns about the answers of this run (`RealtimeConversation+Answer.swift`).
+  var answers = AnswerLog()
+  /// Tools' readings of this run (`RealtimeConversation+Reading.swift`).
+  var readings = ReadingState()
 
   init(dependencies: Dependencies, content: Content, handlers: Handlers) {
     self.dependencies = dependencies
@@ -151,6 +167,9 @@ final class RealtimeConversation {
     socket = nil
     stopSpeech()
     closeBargeInWindow()
+    // The total sees the readings still in synthesis before they go.
+    let spoken = speechTotal
+    dropReadings()
     unstartedWork = []
     resultsAfterNoise = nil
     dependencies.audio.stop()
@@ -165,7 +184,7 @@ final class RealtimeConversation {
     var line = usage.ended(reason, now: dependencies.scheduler.now, ordered: !orderedResponses.isEmpty)
     if case var .ended(summary) = line {
       summary.detail = detail
-      summary.spoken = speechTotal
+      summary.spoken = spoken
       line = .ended(summary)
     }
     handlers.diagnostic(line)
@@ -200,6 +219,7 @@ final class RealtimeConversation {
     promptVersion = 0
     promptResponse = nil
     committedSincePrompt = 0
+    utterances = 0
     fieldPrompt = nil
     cursor = dependencies.audio.playedSamples
     items = [:]
@@ -208,6 +228,15 @@ final class RealtimeConversation {
     speechStoppedAt = nil
     usage = UsageLog(startedAt: dependencies.scheduler.now)
     tts = SpeechState()
+    answers = AnswerLog()
+    readings = ReadingState()
+    lastInputAt = nil
+  }
+
+  /// A microphone frame of this run came within `seconds` by the conversation's clock.
+  func inputFresh(within seconds: TimeInterval) -> Bool {
+    guard let lastInputAt else { return false }
+    return dependencies.scheduler.now - lastInputAt < seconds
   }
 
   func current(_ generation: Int) -> Bool {
@@ -274,8 +303,9 @@ final class RealtimeConversation {
       sessionConfigured()
     case let .error(error):
       handle(error)
-    case let .speechStarted(_, audioStartMs):
+    case let .speechStarted(itemId, audioStartMs):
       guard speechStartCounts() else { return }
+      noteSpeechStart(item: itemId, ms: audioStartMs)
       // The server sends a noise's `committed` before any later `speech_started`: it is not coming now.
       releaseResultsAfterNoise()
       usage.speechStarted()
@@ -290,12 +320,13 @@ final class RealtimeConversation {
       if noiseOverAnswer(endMs: audioEndMs) { return }
       speechStoppedAt = dependencies.scheduler.now
     case let .committed(itemId):
+      let start = takeSpeechStart()
       guard commitCounts(itemId) else {
         // A noise item left the conversation: the tool results that waited for it go now.
         releaseResultsAfterNoise()
         return
       }
-      committed()
+      committed(itemId, start: start)
     case let .responseCreated(id):
       responseCreated(id)
     case let .textDelta(responseId, itemId, text):
@@ -354,13 +385,16 @@ final class RealtimeConversation {
         guard let self, self.current(generation) else { return }
         self.handlers.diagnostic(.audioStarted(format: format))
       },
-      input: { [weak self] pcm in
+      input: { [weak self] pcm, capturedAt in
+        guard let self, self.current(generation) else { return }
+        self.lastInputAt = self.dependencies.scheduler.now
         // Before the readiness gate, and muted: the engine runs (playback, echo cancellation), but nothing goes out
         // or counts.
-        guard let self, self.current(generation), self.audioRunning, !self.muted else { return }
+        guard self.audioRunning, !self.muted else { return }
         self.usage.input(pcm)
         self.meter.input(pcm)
         self.send(RealtimeClientEvent.appendAudio(pcm))
+        self.inputAppended(pcm, capturedAt: capturedAt)
       },
       playbackStarted: { [weak self] latency in
         guard let self, self.current(generation) else { return }
@@ -410,10 +444,13 @@ final class RealtimeConversation {
 
   // MARK: - Wypowiedź i odpowiedź
 
-  /// The utterance is closed: the host's new content as a conversation item, then the answer is ordered.
-  private func committed() {
+  /// The utterance is closed: the host's new content as a conversation item, then the answer is ordered. `start`: its
+  /// `speech_started`, for the mark of the last reading (`RealtimeConversation+Reading.swift`).
+  private func committed(_ itemId: String?, start: SpeechStart?) {
     guard audioRunning else { return }
     if fieldPrompt != nil { committedSincePrompt += 1 }
+    utterances += 1
+    compareUtterance(itemId, start: start)
     if speechStoppedAt == nil { speechStoppedAt = dependencies.scheduler.now }
     syncContent()
     // The fixes of an interrupted response go first (`RealtimeConversation+SpeechBargeIn.swift`).

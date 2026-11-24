@@ -8,6 +8,7 @@ import { projectsWithNotes } from '../notes/store.ts';
 import type { Logger } from '../router.ts';
 import type { ManagerApi } from '../sessions/manager-api.ts';
 import { SseHub } from '../sse.ts';
+import type { SseInbox } from '../sse.ts';
 
 export interface HubDeps {
   readonly config: RarogConfig;
@@ -18,11 +19,13 @@ export interface HubDeps {
   readonly demoNotes: DemoNotes | undefined;
   /** Number of open streams after every change (the PR status reads only while a client is connected). */
   readonly onClientCount?: (count: number) => void;
+  /** The Inbox heads (`InboxHeads`); missing = no Inbox (`RAROG_INBOX=0`). */
+  readonly inbox?: SseInbox;
 }
 
 /** The hub, not started yet: `main()` calls `start()`. */
 export function createSseHub(deps: HubDeps): SseHub {
-  const { config, manager, serverStartId, log, demoNotes, onClientCount } = deps;
+  const { config, manager, serverStartId, log, demoNotes, onClientCount, inbox } = deps;
   return new SseHub({
     manager, serverStartId, protocolVersion: PROTOCOL_VERSION,
     // Linia `sse: powtórka … → snapshot` — koszt bajtów zamiany powtórki na snapshot.
@@ -30,6 +33,7 @@ export function createSseHub(deps: HubDeps): SseHub {
     // Stream compression with gzip, only for a client with `Accept-Encoding: gzip`; on unless `RAROG_SSE_GZIP=0`.
     gzip: config.sseGzip,
     ...(onClientCount === undefined ? {} : { onClientCount }),
+    ...(inbox === undefined ? {} : { inbox }),
     // Próg builda apki natywnej; brak w configu = brak pola w `hello`.
     ...(config.minClientBuild === undefined ? {} : { minClientBuild: config.minClientBuild }),
     /*

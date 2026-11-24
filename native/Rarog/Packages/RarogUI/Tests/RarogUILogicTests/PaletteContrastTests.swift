@@ -225,6 +225,27 @@ struct PaletteContrastTests {
     #expect(PaletteTokens.noteInk.dark != PaletteTokens.muted2.dark && PaletteTokens.noteInk.light != PaletteTokens.muted2.light)
   }
 
+  @Test("filter glass: every segment ink ≥ 4.5:1 over the glass's worst case and on its plate; Inbox badge digit ≥ 4.5:1")
+  func filterGlassInks() {
+    let inks = [PaletteTokens.text, PaletteTokens.text2, PaletteTokens.muted2, PaletteTokens.wait, PaletteTokens.new]
+    let alpha = PaletteTokens.filterGlassPlateAlpha
+    let worst = PaletteTokens.Pair(dark: PaletteTokens.footerCardWorstDark, light: PaletteTokens.footerCardWorstLight)
+    let plate = PaletteTokens.Pair(
+      dark: PaletteTokens.over(PaletteTokens.filterGlassPlate.dark, alpha: alpha.dark, on: worst.dark),
+      light: PaletteTokens.over(PaletteTokens.filterGlassPlate.light, alpha: alpha.light, on: worst.light))
+    // `muted2` never stands on the plate of a ready list: the active segment's zero is `text2` (`countInk`).
+    for (ground, onPlate) in [(worst, false), (plate, true)] {
+      for ink in inks where !(onPlate && ink == PaletteTokens.muted2) {
+        let ratio = contrast(ink, on: ground)
+        #expect(ratio.dark >= 4.5 && ratio.light >= 4.5, "\(ink) on \(ground): \(ratio)")
+      }
+    }
+    let shows = contrast(plate, on: worst)
+    #expect(shows.dark >= 1.1 && shows.light >= 1.05, "plate on the glass: \(shows)")
+    let badge = contrast(PaletteTokens.inboxBadgeInk, on: PaletteTokens.inboxBadge)
+    #expect(badge.dark >= 4.5 && badge.light >= 4.5, "badge digit: \(badge)")
+  }
+
   /// Kafelek skrótu na zakładce niesie stan („ladder”). Audyt UI tej cyfry nie
   /// zmierzy sam (glif za drobny, antyaliasing brał za atrament), więc kontrast pilnuje ten test, a audyt ma na cyfrę
   /// jawny wyjątek. Tło paska to `background`; kafelek bieżącej zakładki stoi na płytce, ale jest kryjący (kolor
@@ -327,6 +348,21 @@ struct PaletteContrastTests {
     #expect(sibling.dark >= 4.5 && sibling.light >= 4.5, "\(sibling)")
   }
 
+  /// The "×" of the current tab stands on its plate: at rest in `muted2`, armed in `err` on the `err` wash laid over
+  /// the plate (`TabTokens.closeArmedWashAlpha`). The glyph reads like a label, so both keep 4.5:1.
+  @Test("current tab “×”: at rest and armed (`err` on the `err` wash over the plate) ≥ 4.5:1 in both themes")
+  func tabCloseGlyph() {
+    let rest = contrast(PaletteTokens.muted2, on: TabTokens.plate)
+    #expect(rest.dark >= 4.5 && rest.light >= 4.5, "“×” at rest: \(rest)")
+    let wash = TabTokens.composite(PaletteTokens.err, TabTokens.closeArmedWashAlpha, on: TabTokens.plate)
+    let armed = contrast(PaletteTokens.err, on: wash)
+    print("armed “×”: wash #\(String(wash.dark, radix: 16)) / #\(String(wash.light, radix: 16)), \(armed)")
+    #expect(armed.dark >= 4.5 && armed.light >= 4.5, "armed “×”: \(armed)")
+    // The wash has to show: it says the next press closes, beside the glyph's color.
+    let stands = contrast(wash, on: TabTokens.plate)
+    #expect(stands.dark >= 1.1 && stands.light >= 1.1, "the wash on the plate: \(stands)")
+  }
+
   /// Znak siostry stoi w kryciu `TabTokens.markAlpha` nad tłem paska. Przydymiona zieleń w 70 % dawała w jasnym
   /// ~2,15:1, poniżej 3:1 dla elementu stanu, więc jej znak u siostry jest kryjący.
   @Test("znak „czeka na zadanie w tle” u siostry (current: false): ≥ 3:1 nad tłem paska w rzeczywistym kryciu")
@@ -366,9 +402,11 @@ struct PaletteContrastTests {
     #expect(ink.dark != PaletteTokens.wait.dark && ink.light != PaletteTokens.wait.light, "nie bursztyn stanu „czeka”")
   }
 
-  @Test("link: stonowany niebieski ≥ 4,5:1 na tle transkryptu, dymku człowieka i bloku kodu, w obu motywach")
+  @Test("link: stonowany niebieski ≥ 4,5:1 na tle transkryptu, dymku człowieka, bloku kodu i stopki listy, w obu motywach")
   func linkInkAA() {
-    for background in [PaletteTokens.background, PaletteTokens.userPlate, PaletteTokens.codeBlockFill] {
+    // The list footer's update row stands on the footer glass: its worst case.
+    let footer = PaletteTokens.Pair(dark: PaletteTokens.footerCardWorstDark, light: PaletteTokens.footerCardWorstLight)
+    for background in [PaletteTokens.background, PaletteTokens.userPlate, PaletteTokens.codeBlockFill, footer] {
       let ratio = contrast(PaletteTokens.linkInk, on: background)
       #expect(ratio.dark >= 4.5 && ratio.light >= 4.5, "na \(background): \(ratio)")
     }
@@ -606,5 +644,17 @@ struct PaletteContrastTests {
     #expect(second.dark < quiet.dark && second.light < quiet.light, "\(second) wobec `muted` \(quiet)")
     #expect(PaletteTokens.borderAlphaHigh.dark < HoverTokens.outlineStroke)
     #expect(PaletteTokens.borderAlphaHigh.light < HoverTokens.outlineStroke)
+  }
+
+  @Test("voice strip of an Inbox card: the state's ink ≥ 3:1 on its own tint over `surface` (15 pt semibold)")
+  func inboxVoiceStripInk() {
+    for tone in [PaletteTokens.wait, PaletteTokens.run, PaletteTokens.new, PaletteTokens.err] {
+      let alpha = InboxVoiceStripState.tintAlpha
+      let tint = PaletteTokens.Pair(
+        dark: PaletteTokens.over(tone.dark, alpha: alpha, on: PaletteTokens.surface.dark),
+        light: PaletteTokens.over(tone.light, alpha: alpha, on: PaletteTokens.surface.light))
+      let ratio = contrast(tone, on: tint)
+      #expect(ratio.dark >= 3 && ratio.light >= 3, "\(tone): \(ratio)")
+    }
   }
 }

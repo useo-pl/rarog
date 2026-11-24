@@ -1,0 +1,17 @@
+{
+  "dir": "src",
+  "entries": [
+    {
+      "name": "App.vue",
+      "kind": "file",
+      "size": 30
+    },
+    {
+      "name": "index.ts",
+      "kind": "file",
+      "size": 24
+    }
+  ],
+  "truncated": true,
+  "maxBytes": 52428800
+}

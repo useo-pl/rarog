@@ -267,17 +267,19 @@ struct CardsTests {
     }
   }
 
-  @Test("„Zamknij panel” / „×” karty stanu: fokus klawiatury schodzący z przycisku rozbraja")
+  @Test("the state card's “Close Pane” / “×”: keyboard focus leaving the button disarms")
   func stateCardCloseDisarmsOnBlur() throws {
-    // Fokus na „Zamknij panel w herdr" → pierwsza aktywacja uzbraja → Tab gdzie indziej → powrót
-    // w 5 s nie może zamknąć panelu: utrata fokusu rozbraja jak „×" nagłówka (`HeaderCloseButton`).
-    // Zachowanie fokusu (Full Keyboard Access) sprawdza się ręcznie — tu pilnujemy podpięcia.
+    // Focus on "Close Pane in herdr" → the first activation arms → Tab elsewhere → coming back within 5 s must not
+    // close the pane: losing focus disarms, as at the tab's "×" (`TabCloseButton`). The focus behavior (Full Keyboard
+    // Access) is checked by hand; here we guard the wiring.
     let card = try String(contentsOf: ApprovalGateTests.sourceFile("Session/Cards/StateCard.swift"), encoding: .utf8)
     #expect(card.contains("@FocusState private var closeFocused: Bool"))
     #expect(card.contains(".focused($closeFocused)"))
     #expect(card.contains("if wasFocused, !isFocused { navigation.disarmClose() }"))
-    let header = try String(contentsOf: ApprovalGateTests.sourceFile("Views/Projects/ProjectTabBar.swift"), encoding: .utf8)
-    #expect(header.contains("if wasFocused, !isFocused { navigation.disarmClose() }"), "wzorzec z nagłówka")
+    let tab = try String(contentsOf: ApprovalGateTests.sourceFile("Views/Projects/TabCloseButton.swift"), encoding: .utf8)
+    #expect(tab.contains(".focused($focused)") && tab.contains("if wasFocused, !isFocused { blur() }"), "the tab's pattern")
+    let slot = try String(contentsOf: ApprovalGateTests.sourceFile("Views/Header/HeaderTabsSlot.swift"), encoding: .utf8)
+    #expect(slot.contains("closeBlur: { navigation.disarmClose() }"), "the tab's blur disarms")
   }
 
   @Test("pole znika przy karcie stanu i przy sesji nieznanej")

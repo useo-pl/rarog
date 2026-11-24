@@ -73,6 +73,10 @@
  * process (the desk fallback sends such a request back at once, `layer1/desk.ts`), transient (read again after
  * {@link HOOK_LIST_TRANSIENT_RETRY_MS}, sooner than the desk fallback's 10 s) or neither (kept as long as a durable one,
  * but the request waits the 10 s).
+ *
+ * The same read also runs over the current content ({@link currentSessionHooks}): no start check, so `changed` never
+ * stops it, and it hands over the settings layers it read. The session facts (`session-facts.ts`) read
+ * `disableAllHooks`, `allowManagedHooksOnly` and Rarog's entry from those layers; the verdict above ignores them.
  */
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -116,10 +120,15 @@ const TRANSIENT_CODES: ReadonlySet<string> = new Set([
 /** Kind of a negative verdict; `other` = a code on neither list, kept like a durable one but without its release. */
 export type HookListVerdictKind = 'durable' | 'transient' | 'other';
 
-/** Kind of a negative verdict's `why` by its code, the part before the first `:`. */
-export function hookListVerdictKind(why: string): HookListVerdictKind {
+/** The code of a negative verdict's `why`: the part before the first `:`. */
+export function hookListWhyCode(why: string): string {
   const at = why.indexOf(':');
-  const code = at < 0 ? why : why.slice(0, at);
+  return at < 0 ? why : why.slice(0, at);
+}
+
+/** Kind of a negative verdict's `why` by its code ({@link hookListWhyCode}). */
+export function hookListVerdictKind(why: string): HookListVerdictKind {
+  const code = hookListWhyCode(why);
   if (DURABLE_CODES.has(code)) return 'durable';
   return TRANSIENT_CODES.has(code) ? 'transient' : 'other';
 }
@@ -353,28 +362,63 @@ function mentionsEvent(value: unknown, depth = 0): boolean {
   return false;
 }
 
-/** Wpisy `PermissionRequest` warstwy: tylko komendy z `accepted`; inaczej powód. */
-function foreignHookOf(layer: Record<string, unknown>, accepted: readonly string[]): string | null {
+/**
+ * The layer's `PermissionRequest` handlers in file order; `'hooks-shape'` stands where the entry stops having the
+ * documented shape, and the walk ends there.
+ */
+function* permissionHandlers(layer: Record<string, unknown>): Generator<Record<string, unknown> | 'hooks-shape'> {
   const hooks = layer['hooks'];
-  if (hooks === undefined) return null;
-  if (hooks === null || typeof hooks !== 'object' || Array.isArray(hooks)) return 'hooks-shape';
+  if (hooks === undefined) return;
+  if (hooks === null || typeof hooks !== 'object' || Array.isArray(hooks)) {
+    yield 'hooks-shape';
+    return;
+  }
   const groups = (hooks as Record<string, unknown>)[HOOK_PERMISSION_EVENT];
-  if (groups === undefined) return null;
-  if (!Array.isArray(groups)) return 'hooks-shape';
+  if (groups === undefined) return;
+  if (!Array.isArray(groups)) {
+    yield 'hooks-shape';
+    return;
+  }
   for (const group of groups) {
-    if (group === null || typeof group !== 'object' || Array.isArray(group)) return 'hooks-shape';
-    const handlers = (group as Record<string, unknown>)['hooks'];
-    if (!Array.isArray(handlers)) return 'hooks-shape';
+    const handlers = group === null || typeof group !== 'object' || Array.isArray(group)
+      ? undefined : (group as Record<string, unknown>)['hooks'];
+    if (!Array.isArray(handlers)) {
+      yield 'hooks-shape';
+      return;
+    }
     for (const handler of handlers) {
-      if (handler === null || typeof handler !== 'object' || Array.isArray(handler)) return 'hooks-shape';
-      const h = handler as Record<string, unknown>;
-      const args = h['args'];
-      const command = h['command'];
-      if (h['type'] !== 'command' || typeof command !== 'string' || !accepted.includes(command)) return 'foreign';
-      if (args !== undefined && !(Array.isArray(args) && args.length === 0)) return 'foreign';
+      if (handler === null || typeof handler !== 'object' || Array.isArray(handler)) {
+        yield 'hooks-shape';
+        return;
+      }
+      yield handler as Record<string, unknown>;
     }
   }
+}
+
+/** Rarog's handler: a `command` hook with a command from `accepted` and no `args`. */
+function isRarogHandler(h: Record<string, unknown>, accepted: readonly string[]): boolean {
+  const args = h['args'];
+  const command = h['command'];
+  return h['type'] === 'command' && typeof command === 'string' && accepted.includes(command)
+    && (args === undefined || (Array.isArray(args) && args.length === 0));
+}
+
+/** Wpisy `PermissionRequest` warstwy: tylko komendy z `accepted`; inaczej powód. */
+function foreignHookOf(layer: Record<string, unknown>, accepted: readonly string[]): string | null {
+  for (const h of permissionHandlers(layer)) {
+    if (h === 'hooks-shape') return 'hooks-shape';
+    if (!isRarogHandler(h, accepted)) return 'foreign';
+  }
   return null;
+}
+
+/** Whether the layer holds Rarog's `PermissionRequest` handler ({@link isRarogHandler}), beside anything else. */
+export function rarogHookIn(layer: Record<string, unknown>, accepted: readonly string[]): boolean {
+  for (const h of permissionHandlers(layer)) {
+    if (h !== 'hooks-shape' && isRarogHandler(h, accepted)) return true;
+  }
+  return false;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -558,12 +602,21 @@ class Reader {
   }
 }
 
-/** Warstwa ustawień: `certain` opisane przy {@link collect}. */
-interface Layer {
-  readonly name: string;
+/**
+ * Tier of a settings layer: managed, `--settings`, user (`~/.claude/settings.json` and `settings.local.json`),
+ * project (`.claude/settings.json`) and local (`.claude/settings.local.json`). The name stands in the `why` of a layer.
+ */
+export type HookListLayerTier = 'managed' | 'flag' | 'user' | 'project' | 'local';
+
+/** Warstwa ustawień: `certain` opisane przy {@link readLayers}. */
+export interface HookListLayer {
+  readonly name: HookListLayerTier;
   readonly value: Record<string, unknown>;
   readonly certain: boolean;
+  /** The file the layer was read from, as the read named it; `null` for JSON given in the `--settings` argument. */
+  readonly file: string | null;
 }
+type Layer = HookListLayer;
 
 /** Katalog i wszystkie wyżej, od niego do korzenia. */
 function upwards(dir: string): string[] {
@@ -577,19 +630,87 @@ function upwards(dir: string): string[] {
   }
 }
 
+/** The negative verdict of a read that threw. */
+function verdictOf(err: unknown): { readonly ok: false; readonly why: string } {
+  if (err instanceof HookListNoProof) return { ok: false, why: err.message };
+  const code = (err as { code?: unknown }).code;
+  return { ok: false, why: `io:${typeof code === 'string' ? code : 'error'}` };
+}
+
 /** Werdykt listy hooków jednej sesji z jednego odczytu (opis modułu). */
 export async function sessionHookVerdict(input: HookListInput, io: HookListIo): Promise<HookListVerdict> {
   try {
-    await collect(input, io);
+    await scanHooks(await readLayers(input, io, false), input, io);
     return { ok: true };
   } catch (err) {
-    if (err instanceof HookListNoProof) return { ok: false, why: err.message };
-    const code = (err as { code?: unknown }).code;
-    return { ok: false, why: `io:${typeof code === 'string' ? code : 'error'}` };
+    return verdictOf(err);
   }
 }
 
-async function collect(input: HookListInput, io: HookListIo): Promise<void> {
+/** The read over the current content: its verdict and the settings layers it read. */
+export interface CurrentSessionHooks {
+  /** The verdict without the start check: never `changed` or `marketplace-changed`. */
+  readonly verdict: HookListVerdict;
+  /** Every settings layer, or `null` when the read stopped before the last of them. */
+  readonly layers: readonly HookListLayer[] | null;
+  /** `--setting-sources` anywhere in the arguments ({@link ClaudeArgs.settingSources}); `false` without layers. */
+  readonly settingSources: boolean;
+}
+
+/**
+ * The same read as {@link sessionHookVerdict} over the files as they are now: a file, link or marketplace refresh at or
+ * after the session start does not stop it, so past a `changed` it still says whether a foreign hook stands anywhere.
+ */
+export async function currentSessionHooks(input: HookListInput, io: HookListIo): Promise<CurrentSessionHooks> {
+  let read: LayerRead | null = null;
+  try {
+    read = await readLayers(input, io, true);
+    await scanHooks(read, input, io);
+    return { verdict: { ok: true }, layers: read.layers, settingSources: read.settingSources };
+  } catch (err) {
+    return { verdict: verdictOf(err), layers: read?.layers ?? null, settingSources: read?.settingSources ?? false };
+  }
+}
+
+/** The settings layers of one read and what the hook scan after them needs. */
+interface LayerRead {
+  readonly reader: Reader;
+  /** `<home>/.claude`. */
+  readonly claude: string;
+  readonly layers: readonly Layer[];
+  /** Directories whose `.claude` holds local settings and definitions: every `cwd` and main checkout, and above. */
+  readonly localDirs: ReadonlySet<string>;
+  /** A change at or after this moment means `changed`: the session start, `Infinity` over the current content. */
+  readonly changedFrom: number;
+  readonly settingSources: boolean;
+}
+
+/**
+ * `cwd` of the CLI registry file of the session process, or `null` when the file is missing, does not parse or names
+ * another session. The CLI rewrites the file while the process lives (`status`, `updatedAt`, CLI 2.1.321), so its change
+ * is not a change of hooks and it skips the start check.
+ */
+export async function sessionRegistryCwd(
+  io: HookListIo, home: string, pid: number, sessionId: string,
+): Promise<string | null> {
+  const registryText = await io.readFile(path.join(home, DISK_LAYOUT.configDir, 'sessions', `${pid}.json`));
+  let registryFile: unknown = null;
+  try {
+    registryFile = registryText === null ? null : JSON.parse(registryText) as unknown;
+  } catch {
+    registryFile = null;
+  }
+  const registryRecord = registryFile !== null && typeof registryFile === 'object' && !Array.isArray(registryFile)
+    ? registryFile as Record<string, unknown> : null;
+  const registryCwd = registryRecord?.['cwd'];
+  return registryRecord?.['sessionId'] !== sessionId || typeof registryCwd !== 'string' ? null : registryCwd;
+}
+
+/**
+ * The session process, its arguments and every settings layer (module header), up to the hook scan; `current` turns
+ * the start check off ({@link currentSessionHooks}).
+ */
+async function readLayers(input: HookListInput, io: HookListIo, current: boolean): Promise<LayerRead> {
   if (input.platform !== 'darwin') throw new HookListNoProof('platform');
   const entry = input.entry;
   if (entry === null) throw new HookListNoProof('no-registry-entry');
@@ -604,25 +725,13 @@ async function collect(input: HookListInput, io: HookListIo): Promise<void> {
   }
   const args = parseClaudeArgs(proc.args);
   if ('why' in args) throw new HookListNoProof(args.why);
-  const reader = new Reader(io, startLow);
+  const changedFrom = current ? Number.POSITIVE_INFINITY : startLow;
+  const reader = new Reader(io, changedFrom);
   const claude = path.join(input.home, DISK_LAYOUT.configDir);
 
-  // Plik rejestru sesji: `cwd` sesji i ta sama sesja pod tym pidem. CLI przepisuje go w trakcie życia procesu (pola
-  // `status` i `updatedAt`, CLI 2.1.321), więc jego zmiana nie jest zmianą hooków i nie przechodzi przez sprawdzenie
-  // startu.
-  const registryText = await io.readFile(path.join(claude, 'sessions', `${entry.pid}.json`));
-  let registryFile: unknown = null;
-  try {
-    registryFile = registryText === null ? null : JSON.parse(registryText) as unknown;
-  } catch {
-    registryFile = null;
-  }
-  const registryRecord = registryFile !== null && typeof registryFile === 'object' && !Array.isArray(registryFile)
-    ? registryFile as Record<string, unknown> : null;
-  const registryCwd = registryRecord?.['cwd'];
-  if (registryRecord?.['sessionId'] !== input.sessionId || typeof registryCwd !== 'string') {
-    throw new HookListNoProof('registry-file');
-  }
+  // Plik rejestru sesji: `cwd` sesji i ta sama sesja pod tym pidem.
+  const registryCwd = await sessionRegistryCwd(io, input.home, entry.pid, input.sessionId);
+  if (registryCwd === null) throw new HookListNoProof('registry-file');
   const cwds = [...new Set([registryCwd, ...input.cwds])];
   if (cwds.some((cwd) => !path.isAbsolute(cwd))) throw new HookListNoProof('cwd');
 
@@ -631,9 +740,9 @@ async function collect(input: HookListInput, io: HookListIo): Promise<void> {
   // w `enabledPlugins` wyłącza wtyczkę): `--settings` i `settings.json` użytkownika, gdy argumenty nigdzie nie mają
   // `--setting-sources`.
   const layers: Layer[] = [];
-  const addLayer = async (name: string, file: string, certain = false): Promise<void> => {
+  const addLayer = async (name: HookListLayerTier, file: string, certain = false): Promise<void> => {
     const value = await reader.layer(file);
-    if (value !== null) layers.push({ name, value, certain });
+    if (value !== null) layers.push({ name, value, certain, file });
   };
 
   // Managed (macOS): preferencje MDM (systemowe i per użytkownik) = brak dowodu; pliki, katalog dopisków, kopia
@@ -659,11 +768,11 @@ async function collect(input: HookListInput, io: HookListIo): Promise<void> {
   // `--settings`.
   for (const one of args.settings) {
     if (one.kind === 'inline') {
-      layers.push({ name: 'flag', value: one.json as Record<string, unknown>, certain: true });
+      layers.push({ name: 'flag', value: one.json as Record<string, unknown>, certain: true, file: null });
     } else {
       const value = await reader.layer(one.path);
       if (value === null) throw new HookListNoProof('settings-file');
-      layers.push({ name: 'flag', value, certain: true });
+      layers.push({ name: 'flag', value, certain: true, file: one.path });
     }
   }
 
@@ -685,7 +794,12 @@ async function collect(input: HookListInput, io: HookListIo): Promise<void> {
   for (const dir of [...localDirs].sort()) {
     await addLayer('local', path.join(dir, DISK_LAYOUT.configDir, DISK_LAYOUT.localSettings));
   }
+  return { reader, claude, layers, localDirs, changedFrom, settingSources: args.settingSources };
+}
 
+/** Hook entries of the layers, then plugins and definitions (module header): throws at the first doubt. */
+async function scanHooks(read: LayerRead, input: HookListInput, io: HookListIo): Promise<void> {
+  const { reader, claude, layers, localDirs, changedFrom } = read;
   for (const layer of layers) {
     const foreign = foreignHookOf(layer.value, input.accepted);
     if (foreign !== null) throw new HookListNoProof(`${foreign}:${layer.name}`);
@@ -727,7 +841,7 @@ async function collect(input: HookListInput, io: HookListIo): Promise<void> {
       if (await reader.stable(installPath) === null) throw new HookListNoProof(`plugin-missing:${id}`);
       await reader.tree(installPath, [PLUGIN_IN_USE_DIR]);
     }
-    await checkMarketplaceEntry(reader, { plugins, id, marketplaces, startLow });
+    await checkMarketplaceEntry(reader, { plugins, id, marketplaces, startLow: changedFrom });
   }
   await syncedTrees(io, reader, path.join(plugins, SYNCED_DIR));
 
@@ -862,7 +976,10 @@ async function checkMarketplaceEntry(reader: Reader, ctx: {
   } else if (kind === 'directory' || kind === 'file') {
     if (source['path'] !== location) throw new HookListNoProof(`marketplace-source:${market}`);
     const updated = typeof record['lastUpdated'] === 'string' ? Date.parse(record['lastUpdated']) : Number.NaN;
-    if (!Number.isFinite(updated) || updated >= startLow) throw new HookListNoProof(`marketplace-changed:${market}`);
+    // Over the current content (`startLow` infinite) the refresh time does not matter, also when it is unknown.
+    if (Number.isFinite(startLow) && (!Number.isFinite(updated) || updated >= startLow)) {
+      throw new HookListNoProof(`marketplace-changed:${market}`);
+    }
     // `file`: sam plik marketplace'u, korzeń dwa katalogi wyżej (`<korzeń>/.claude-plugin/marketplace.json`).
     catalogFile = kind === 'directory' ? path.join(location, defaultFile) : location;
     localRoot = kind === 'directory' ? location : path.dirname(path.dirname(location));
@@ -941,12 +1058,12 @@ export interface SessionHookListOptions {
 }
 
 /** How long a negative verdict lives before the next read: transient ones shorter ({@link hookListVerdictKind}). */
-function retryOf(why: string): number {
+export function hookListRetryMs(why: string): number {
   return hookListVerdictKind(why) === 'transient' ? HOOK_LIST_TRANSIENT_RETRY_MS : HOOK_LIST_RETRY_MS;
 }
 
 /** The session process a verdict was read for: registry pid and start; `''` without a registry entry. */
-function processOf(entry: HookListSessionEntry | null): string {
+export function sessionProcessKey(entry: HookListSessionEntry | null): string {
   return entry === null ? '' : `${String(entry.pid)}@${String(entry.startedAt ?? '')}`;
 }
 
@@ -1003,8 +1120,8 @@ export function createSessionHookList(options: SessionHookListOptions): SessionH
       sessionId, home: options.home, accepted: options.accepted, entry, cwds: [...cwds],
       platform: options.platform ?? process.platform, now: at,
     }, io);
-    const proc = processOf(entry);
-    if (processOf(await options.entry(sessionId)) !== proc) return null;
+    const proc = sessionProcessKey(entry);
+    if (sessionProcessKey(await options.entry(sessionId)) !== proc) return null;
     const before = cache.get(sessionId)?.verdict;
     const done: CachedVerdict = { at, proc, cwds, verdict };
     cache.set(sessionId, done);
@@ -1023,14 +1140,14 @@ export function createSessionHookList(options: SessionHookListOptions): SessionH
     const cwds = new Set(asked.map((dump) => dump.cwd));
     const newest = Math.max(...asked.map((dump) => dump.startedAt));
     const entry = await options.entry(sessionId);
-    const proc = processOf(entry);
+    const proc = sessionProcessKey(entry);
     const cached = cache.get(sessionId);
     // An `ok` over a wider scope holds for a narrower one; a negative verdict may come from a `cwd` this call does not
     // ask about, so it holds only for the very same scope.
     const fresh = cached !== undefined && cached.proc === proc && [...cwds].every((cwd) => cached.cwds.has(cwd))
       && (cached.verdict.ok
         ? cached.at >= newest
-        : cached.cwds.size === cwds.size && clock() - cached.at < retryOf(cached.verdict.why));
+        : cached.cwds.size === cwds.size && clock() - cached.at < hookListRetryMs(cached.verdict.why));
     let found = fresh ? cached : null;
     if (found === null) {
       // One read per process and scope at a time; a call for another process or `cwd` does not wait for this one.

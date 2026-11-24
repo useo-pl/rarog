@@ -8,6 +8,7 @@
  *   przy otwarciu ich nie odcina), zabija pytania agenta głosowego w locie, zdejmuje urządzenie z połączeń iroh
  *   (`revokeDevice`: połączenie bez urządzenia traci limity uwierzytelnionego i ochronę przed wyparciem) i kasuje
  *   tokeny APNs urządzenia — po wcześniejszym zakończeniu jego Live Activity, póki token aktywności jest znany.
+ *   It also cuts the device's session file downloads in flight: each response is destroyed and its file closed.
  * - {@link devicePairedNotifier}: po sparowaniu pozostałe AKTYWNE urządzenia dostają push `device-paired`;
  *   tylko tokeny zarejestrowane kluczem urządzenia (`deviceId`), bo „urządzenie” = rekord z parowania,
  *   a `alerts: true` filtruje sink. Best-effort — trwały ślad niesie `GET /api/devices`.
@@ -27,6 +28,8 @@ export interface DeactivationTargets {
   readonly term?: { closeOwner(owner: string): number } | undefined;
   /** Voice agent: kills the device's questions in flight; the route closes their responses. */
   readonly companion?: { closeOwner(owner: string): number } | undefined;
+  /** Session file downloads in flight (`files/send-file.ts`): destroys their responses and closes their files. */
+  readonly files?: { closeOwner(owner: string): number } | undefined;
   readonly apns?: {
     readonly devices: Pick<ApnsDeviceStore, 'list' | 'removeOwnedBy'>;
     readonly liveActivity: Pick<LiveActivityController, 'forgetDevice'>;
@@ -42,6 +45,7 @@ export function attachDeactivation(store: DeviceStore, targets: DeactivationTarg
       const streams = targets.hub.closeOwner(id);
       const sockets = targets.term?.closeOwner(id) ?? 0;
       const questions = targets.companion?.closeOwner(id) ?? 0;
+      const downloads = targets.files?.closeOwner(id) ?? 0;
       revokeDevice(id);
       let tokens = 0;
       const apns = targets.apns;
@@ -52,7 +56,8 @@ export function attachDeactivation(store: DeviceStore, targets: DeactivationTarg
         tokens = apns.devices.removeOwnedBy(id).length;
       }
       targets.log(`devices: ${id} revoked (${by}) — streams: ${String(streams)},`
-        + ` consoles: ${String(sockets)}, APNs tokens: ${String(tokens)}, voice agent: ${String(questions)}`);
+        + ` consoles: ${String(sockets)}, APNs tokens: ${String(tokens)}, voice agent: ${String(questions)},`
+        + ` file downloads: ${String(downloads)}`);
     }
   });
 }

@@ -19,8 +19,6 @@ public struct ProjectGroup: Sendable, Equatable, Identifiable {
   public let name: String
   /// Sesje projektu od najstarszej (`createdAt`) — kolejność zakładek, stała przy zmianach stanu.
   public let sessions: [SessionSummary]
-  /// Ostatnia aktywność: ostatnio aktywna sesja projektu.
-  public let activityAt: Date?
 
   public var id: String { cwd }
 
@@ -97,28 +95,24 @@ extension AppState {
   /// Ostatnie projekty z historii CLI (`catalog.recent`) stoją wyłącznie w oknie nowej sesji, więc projekt znika
   /// z listy w tej samej aktualizacji stanu, w której znika jego ostatnia sesja.
   ///
-  /// Kolejność: DOBA ostatniej aktywności malejąco, w obrębie doby alfabet polski z liczbami
-  /// naturalnie („rarog2" przed „rarog10"), remis rozstrzyga ścieżka. Doba, nie znacznik czasu:
-  /// projekt skacze w górę najwyżej raz na dobę, a w trakcie pracy w dwóch projektach nic nie
-  /// mruga. Granicą jest północ TEGO, kto patrzy (`calendar`).
-  public func projectGroups(calendar: Calendar = .current) -> [ProjectGroup] {
+  /// Order: projects in `pinned` first, then the rest; in both parts the project name alphabetically in the app
+  /// language, numbers compared naturally ("rarog2" before "rarog10"), and the path breaks a tie. Activity and agent
+  /// state never move a project, so the list does not reorder itself while the human looks at it. A pinned project
+  /// without sessions has no group, like any other.
+  public func projectGroups(pinned: PinnedProjects = PinnedProjects()) -> [ProjectGroup] {
     var byCwd: [String: [SessionSummary]] = [:]
     for session in sessions.values {
       byCwd[ProjectPath.normalized(session.cwd), default: []].append(session)
     }
     let groups: [ProjectGroup] = byCwd.map { cwd, members in
       let ordered = Self.byAge(members)
-      let last = Self.lastActive(ordered)
-      return ProjectGroup(
-        cwd: cwd, name: ordered.first?.title ?? ProjectPath.name(cwd), sessions: ordered,
-        activityAt: last.flatMap { ISOTime.parse($0.lastActivityAt) })
+      return ProjectGroup(cwd: cwd, name: ordered.first?.title ?? ProjectPath.name(cwd), sessions: ordered)
     }
     // Kolejność nazw według języka apki: ta sama reguła porządku co tekst, który widać.
     let locale = CopyLocale.current
     return groups.sorted { a, b in
-      let dayA = a.activityAt.map { calendar.startOfDay(for: $0) }
-      let dayB = b.activityAt.map { calendar.startOfDay(for: $0) }
-      if dayA != dayB { return (dayA ?? .distantPast) > (dayB ?? .distantPast) }
+      let (pinnedA, pinnedB) = (pinned.contains(a.cwd), pinned.contains(b.cwd))
+      if pinnedA != pinnedB { return pinnedA }
       let byName = a.name.compare(b.name, options: [.numeric], range: nil, locale: locale)
       if byName != .orderedSame { return byName == .orderedAscending }
       return a.cwd < b.cwd

@@ -1,0 +1,7 @@
+{
+  "error": "inbox-card-changed",
+  "message": "This Inbox card changed in the meantime, so nothing happened.",
+  "messageRef": {
+    "code": "rest.inbox-card-changed"
+  }
+}

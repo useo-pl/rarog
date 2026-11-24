@@ -282,6 +282,19 @@ public struct AppState: Sendable, Equatable {
   /// `Reducer+QueueTakeBack`; the action is `RarogStore+QueueTakeBack`.
   public internal(set) var queueTakeBack = QueueTakeBackState()
 
+  /// Inbox cards: heads, texts, removals with their Undo, held cards. Changed only by `Reducer+Inbox`; the actions
+  /// and reads are `RarogStore+Inbox`.
+  public internal(set) var inbox = InboxState()
+
+  /// The prompt of each voice agent's entry an echo settled, by entry id (``echoed`` holds the echo's `seq`): a repeat
+  /// of that id answers from it only for the same session, text and token. Changed only by `Reducer+Send`.
+  var echoedPrompts: [UUID: CompanionPrompt] = [:]
+
+  /// An accepted entry → the moment its countdown last started without a 202 (its session's stream came online, or
+  /// its wait for that stream ended): the countdown after the 202 counts from it, and a check scheduled before it
+  /// changes nothing. A new 202 clears it. Changed only by `Reducer+Send`.
+  var unconfirmedOpenings: [UUID: Date] = [:]
+
   public init(clientBuild: Int) {
     self.clientBuild = clientBuild
   }

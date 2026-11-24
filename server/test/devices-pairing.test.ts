@@ -762,6 +762,22 @@ describe('odpięcie zamyka trwające połączenia i kasuje tokeny APNs', () => {
     h.store.revoke(phone.id, 'admin');
     expect(h.apns.list().map((r) => r.token)).toEqual(['b'.repeat(64)]);
   });
+
+  it('the file downloads of the device are stopped, and their count ends the log line', async () => {
+    const h = await start();
+    const phone = await firstDevice(h);
+    const stopped: string[] = [];
+    const lines: string[] = [];
+    attachDeactivation(h.store, {
+      pairing: h.pairing, hub: { closeOwner: () => 0 },
+      files: { closeOwner: (owner) => { stopped.push(owner); return 2; } },
+      log: (line) => { lines.push(line); },
+    });
+    h.store.revoke(phone.id, 'admin');
+    expect(stopped).toEqual([phone.id]);
+    expect(lines.filter((line) => line.startsWith(`devices: ${phone.id} revoked (admin)`) && line.endsWith('file downloads: 2')))
+      .toHaveLength(1);
+  });
 });
 
 describe('revoking a device revokes the devices paired through it', () => {

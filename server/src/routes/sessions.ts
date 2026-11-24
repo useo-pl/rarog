@@ -1,7 +1,7 @@
 /**
  * Session routes: start a session (`POST /api/sessions`) and the actions under `/api/sessions/:id/` (stream, diff,
- * commands, uploads, messages, queue take-back, interrupt, close, resume, restart, focus, seen, unseen, model, mode,
- * permission, permissions, answers, companion).
+ * files, commands, uploads, messages, queue take-back, interrupt, close, resume, restart, focus, seen, unseen, model,
+ * mode, permission, permissions, answers, companion).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
@@ -19,6 +19,11 @@ import type { MessageAccepted } from '@rarog/shared/rest';
 import { type OwnText, say } from '@rarog/shared/sentences';
 import { redact } from '../auth/index.ts';
 import type { CompanionRefusal, CompanionTarget } from '../companion/ask.ts';
+import type { CompanionEntry } from '../companion/catalog.ts';
+import { sendDownload } from '../files/send-file.ts';
+import type { FileDownloadAnswer } from '../files/session-download.ts';
+import type { FileIndexAnswer } from '../files/file-index.ts';
+import type { FileListingAnswer } from '../files/session-files.ts';
 import { conversationToken } from '../companion/conversation.ts';
 import { type TurnsTake, readSettledTurns } from '../companion/turns-settle.ts';
 import type { ResolveResult } from '../permissions.ts';
@@ -266,6 +271,97 @@ export async function routeSessions(
     }
 
     /*
+     * GET /api/sessions/:id/files?dir=<rel> → one directory of the session (`files/session-files.ts`): the gate of the
+     * file routes, the listing, git's `ignored` labels. With `RAROG_FILES=0` the route does not exist: 404 as an
+     * unknown route for every method. An unknown session is 404 `session-not-found`, as on the diff routes, so the
+     * app does not read it as a directory gone (`not-found`). The device is checked again after the read.
+     */
+    if (action === 'files' && segments.length === 4) {
+      if (!config.filesEnabled) {
+        sendError(res, 404, 'not-found', say('rest.endpoint-not-found'));
+        return true;
+      }
+      if (method !== 'GET') return methodNotAllowed(res, 'GET');
+      let listing: FileListingAnswer;
+      try {
+        listing = await manager.listFiles(sessionId, url.searchParams.get('dir') ?? '', config.filesMaxBytes);
+      } catch (err) {
+        const status = diffErrorStatus(err);
+        if (status === 500) log.error(`manager action failed: ${redact(err, secrets)}`);
+        if (!res.headersSent) sendFailure(res, status, err, 'diff');
+        return true;
+      }
+      if (!recheckDevice(req, res, 'while listing the files of')) return true;
+      if (listing.ok) sendJson(res, 200, listing.value);
+      else sendError(res, listing.refusal.status, listing.refusal.code, listing.refusal.sentence);
+      return true;
+    }
+
+    /*
+     * GET /api/sessions/:id/files/index → the paths of the session's files (`files/file-index.ts`): the gate of the
+     * file routes, then a walk of the session directory by the rule of the listing, narrowed by git. Off with
+     * `RAROG_FILES=0` like the listing. Requests during a walk of the same directory get its answer; the device is
+     * checked again after it, per request.
+     */
+    if (action === 'files' && segments.length === 5 && segments[4] === 'index') {
+      if (!config.filesEnabled) {
+        sendError(res, 404, 'not-found', say('rest.endpoint-not-found'));
+        return true;
+      }
+      if (method !== 'GET') return methodNotAllowed(res, 'GET');
+      let index: FileIndexAnswer;
+      try {
+        index = await ctx.fileIndex.index(sessionId, config.filesMaxBytes, manager.filesPort());
+      } catch (err) {
+        const status = diffErrorStatus(err);
+        if (status === 500) log.error(`manager action failed: ${redact(err, secrets)}`);
+        if (!res.headersSent) sendFailure(res, status, err, 'diff');
+        return true;
+      }
+      if (!recheckDevice(req, res, 'while indexing the files of')) return true;
+      if (index.ok) sendJson(res, 200, index.value);
+      else sendError(res, index.refusal.status, index.refusal.code, index.refusal.sentence);
+      return true;
+    }
+
+    /*
+     * GET /api/sessions/:id/files/raw?path=<rel> → the bytes of one file of the session: the gate and the path rule
+     * of the listing and the limit before any byte (`files/session-download.ts`, 413 with `size` and `maxBytes`), then
+     * exactly `Content-Length` bytes from one descriptor (`files/send-file.ts`). Off with `RAROG_FILES=0` like the
+     * listing. The device is checked again after the open and the download is registered under it with no `await` in
+     * between, so a device unpaired from then on cuts the response; every exit after the open closes the file.
+     */
+    if (action === 'files' && segments.length === 5 && segments[4] === 'raw') {
+      if (!config.filesEnabled) {
+        sendError(res, 404, 'not-found', say('rest.endpoint-not-found'));
+        return true;
+      }
+      if (method !== 'GET') return methodNotAllowed(res, 'GET');
+      let answer: FileDownloadAnswer;
+      try {
+        answer = await manager.openFile(sessionId, url.searchParams.get('path') ?? '', config.filesMaxBytes);
+      } catch (err) {
+        const status = diffErrorStatus(err);
+        if (status === 500) log.error(`manager action failed: ${redact(err, secrets)}`);
+        if (!res.headersSent) sendFailure(res, status, err, 'diff');
+        return true;
+      }
+      if (!recheckDevice(req, res, 'while opening a file of')) {
+        if (answer.ok) await answer.value.close().catch(() => {});
+        return true;
+      }
+      if (!answer.ok) {
+        const { refusal } = answer;
+        sendError(res, refusal.status, refusal.code, refusal.sentence, 'extra' in refusal ? refusal.extra : undefined);
+        return true;
+      }
+      await sendDownload(res, answer.value, {
+        owner, downloads: ctx.fileDownloads, log: (line) => { log.info(`${line} (session ${sessionId})`); },
+      });
+      return true;
+    }
+
+    /*
      * GET /api/sessions/:id/commands — slash-komendy, które Rarog przepuści w tej sesji: ta sama migawka
      * katalogu co strażnik wysyłki, z jej `revision`. Odczyt, więc GET i trasa
      * PRZED strażnikiem POST-a niżej — serwer bez tej trasy oddaje na nią 405 i apka czyta to jak pustą
@@ -279,14 +375,15 @@ export async function routeSessions(
     }
 
     /*
-     * GET /api/sessions/:id/companion/turns?count=1..3 → {messages, conversation, stateSince, complete}
+     * GET /api/sessions/:id/companion/turns?count=1..3 → {messages, conversation, stateSince, readMark, complete}
      * (`docs/companion.md`, "Turns route"): the last turns of the engine conversation the session writes now, for the
      * voice agent across sessions. Demo mode has no route (404 as unknown). The gate, in order: the voice agent (503
      * `companion-disabled`), the mode across sessions (503 `companion-sessions-disabled`), `count` (400), a Claude Code
-     * session in scope (404). The conversation and `stateSince` are taken together before each read and again after
-     * it (`companion/turns-settle.ts`): another conversation by then is read again, at most three reads, then the
-     * response closes without a body; a session gone or out of scope by then gets the gate's 404. The device is
-     * checked again before the answer, so a device unpaired during the read gets 401 and no turns.
+     * session in scope (404). The conversation, `stateSince` and the read mark of the session's memory are taken
+     * together before each read and again after it (`companion/turns-settle.ts`): another conversation by then is read
+     * again, at most three reads, then the response closes without a body; a session gone or out of scope by then gets
+     * the gate's 404. The device is checked again before the answer, so a device unpaired during the read gets 401 and
+     * no turns.
      */
     if (action === 'companion' && segments.length === 5 && segments[4] === 'turns') {
       if (config.demo) {
@@ -309,7 +406,7 @@ export async function routeSessions(
       }
       // The refusal is the step that sends it, so a take after the read answers exactly as the gate before it.
       const take = (): TurnsTake<() => void> => {
-        let target: CompanionTarget | null;
+        let target: CompanionEntry | null;
         try {
           target = manager.companionTarget(sessionId);
         } catch (err) {
@@ -325,7 +422,9 @@ export async function routeSessions(
           return { refused: () => { sendError(res, 404, 'not-found', say('rest.companion-claude-only')); } };
         }
         const stateSince = manager.get(sessionId)?.stateSince ?? '';
-        return { target: { cwd: target.cwd, agentSessionId: target.agentSessionId, stateSince } };
+        return {
+          target: { cwd: target.cwd, agentSessionId: target.agentSessionId, stateSince, readMark: target.readMark },
+        };
       };
       await readSettledTurns(ctx.companionTurns, take, count.data, (outcome) => {
         if (!recheckDevice(req, res, 'while reading voice agent turns for')) return;
@@ -464,6 +563,11 @@ export async function routeSessions(
          */
         const delivered = await waitForDelivery(manager.interrupt(sessionId), interruptWaitMs);
         /*
+         * Only a key that went can have handed the prompt back to Claude Code's field, so a `no` or `pending` answer
+         * waits for no field read. The read after a delivered key is bounded in the driver (`returned-prompt.ts`).
+         */
+        const returnedPrompt = delivered === 'yes' ? await manager.returnedPrompt(sessionId) : null;
+        /*
          * Odpowiedź niesie ŚWIEŻE `SessionSummary`, żeby widok po Esc nie czekał długo na stan.
          *
          * Przerwanie wychodzi natychmiast i `interrupt` przestawia stan SYNCHRONICZNIE,
@@ -475,9 +579,12 @@ export async function routeSessions(
          * `activity` jest ulotna (`seq === null`), więc replay po reconnekcie jej nie powtórzy.
          *
          * `ok: true` zostaje dla zgodności ze starszym klientem, który czyta sam status;
-         * `delivered` jest polem ADDYTYWNYM i taki klient je zignoruje.
+         * `delivered` jest polem ADDYTYWNYM i taki klient je zignoruje. `returnedPrompt` is additive as well and stands
+         * only when the field proved the hand-back.
          */
-        sendJson(res, 202, { ok: true, session: manager.get(sessionId), delivered });
+        sendJson(res, 202, {
+          ok: true, session: manager.get(sessionId), delivered, ...(returnedPrompt === null ? {} : { returnedPrompt }),
+        });
       });
     }
 
@@ -548,22 +655,24 @@ export async function routeSessions(
      * obsłużonej z telefonu. Dalej 200 i dalej natychmiastowe: fokus leci w TLE, a jego
      * niepowodzenie nie jest błędem tego wywołania (znacznik lokalny stoi tak czy inaczej).
      *
-     * The voice agent's pick-up (`docs/companion.md`, "Picking up a result"): the body `{by, stateSince, conversation}`
+     * The voice agent's pick-up (`docs/companion.md`, "Picking up a result"): the body `{by, conversation, readMark}`
      * (all three or none, else the 400 of the schema) meets the gate of the mode's other routes (503), then the
      * catalogue's scope (the 404 of the turns route), and the manager refuses with a 409 anything but the result the
-     * agent read (`markSeen` in `seen-marks.ts`: `waiting-input` with no decision card, the same `stateSince`, the
-     * conversation of the token), all with no `await` after the body. The token becomes a check of a conversation id
-     * as for a send. A body without `by` behaves as before with any flags.
+     * agent read (`markSeen` in `seen-marks.ts`: `waiting-input` with no decision card, the conversation of the token,
+     * the turns read's `readMark`: no newer message in the session's memory and the same `stateSince`), all with no
+     * `await` after the body.
+     * The token becomes a check of a conversation id as for a send. A body without `by` is a person's receipt with any
+     * flags.
      */
     if (action === 'seen' && segments.length === 4) {
       const body = await readValidatedBody(req, res, config, seenBodySchema);
       if (body === null) return true;
       const token = deps.conversationToken ?? conversationToken;
       const read = body.conversation;
-      const pickUp = body.by === undefined || body.stateSince === undefined || read === undefined
+      const pickUp = body.by === undefined || body.readMark === undefined || read === undefined
         ? undefined
         : {
-          by: body.by, stateSince: body.stateSince,
+          by: body.by, readMark: body.readMark,
           conversation: (agentSessionId: string | undefined) => token(agentSessionId) === read,
         };
       if (pickUp !== undefined && (!config.companionEnabled || deps.companion === undefined)) {

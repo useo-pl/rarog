@@ -1,0 +1,33 @@
+
+ ▐▛███▛█   Claude Code v2.1.330
+▝▜██████▀  Sonnet 5.5 · API Usage Billing
+ ▝▝   ▝▝   ~/project
+
+
+❯ ZESTAW-KONTROLNY-BASH: claude-md-auto-link.
+
+  Thought for 1s, read 1 file
+
+⏺ Update(~/.claude/CLAUDE.md)
+
+⏺ Auto mode can't check actions in this session. Its safety check runs on the server, and your requests go
+  through 127.0.0.1:60970, which doesn't pass it through. Actions that need the check now ask for your
+  approval. To work without these prompts, switch permission mode with Shift+Tab. To use auto mode, ask whoever
+  runs 127.0.0.1:60970 to pass Claude Code's server-side safety check through:
+  https://code.claude.com/docs/en/permission-modes#server-side-classifier-review
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Edit file
+ ../.claude/CLAUDE.md
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ 1  # Notes
+ 2 -old value
+ 2 +new value
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Auto mode can't check actions in this session, so this one needs your approval
+
+ Do you want to make this edit to CLAUDE.md?
+ ❯ No
+   Yes
+
+ Esc to cancel · Tab to amend

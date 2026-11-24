@@ -5,7 +5,7 @@
 # Nic tutaj nie dotyka serwera na 8930: typecheck i testy czytają źródła, więc równoległa sesja
 # agenta może puścić bramkę w worktree.
 #
-#   bash scripts/check.sh [--strict]
+#   bash scripts/check.sh [--strict] [--no-tests]
 #
 # Kroki warunkowe (plik prywatnych literałów, `swift-contract`, relay, `git diff --check` bez `.git`, ShellCheck,
 # TOML, zizmor) bez swojego narzędzia mówią „skipped" i bramka jest zielona z listą pominięć w ostatniej linii.
@@ -14,13 +14,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# `--no-tests` leaves out the root vitest run and nothing else: the caller runs the tests itself (the publish gate
+# runs them on a file list). It is not a skipped step, so `--strict` does not turn it into exit 3.
 STRICT=0
+NO_TESTS=0
 if [[ "${RAROG_CHECK_STRICT:-}" == 1 ]]; then STRICT=1; fi
 for arg in "$@"; do
   case "$arg" in
     --strict) STRICT=1 ;;
+    --no-tests) NO_TESTS=1 ;;
     *)
-      echo "usage: scripts/check.sh [--strict] (unknown argument: $arg)" >&2
+      echo "usage: scripts/check.sh [--strict] [--no-tests] (unknown argument: $arg)" >&2
       exit 2
       ;;
   esac
@@ -57,9 +61,11 @@ if [[ $STRICT == 1 ]]; then export RAROG_REQUIRE_PRIVATE_LITERALS=1; fi
 echo "== typecheck"
 pnpm run typecheck
 echo "== test"
-# `RAROG_CHECK_TEST_REPORT=<plik>`: ta sama komenda z dodatkowym raportem JSON vitest, z którego narzędzie
-# sprawdzające bramkę czyta liczby testów per plik (`docs/publishing.md`, „check.sh --strict”).
-if [[ -n "${RAROG_CHECK_TEST_REPORT:-}" ]]; then
+# `RAROG_CHECK_TEST_REPORT=<file>`: the same command with an extra vitest JSON report, test counts per file
+# (`docs/publishing.md`, "`check.sh --strict`").
+if [[ $NO_TESTS == 1 ]]; then
+  echo "test: not run (--no-tests)"
+elif [[ -n "${RAROG_CHECK_TEST_REPORT:-}" ]]; then
   pnpm test --reporter=default --reporter=json --outputFile.json="$RAROG_CHECK_TEST_REPORT"
 else
   pnpm test

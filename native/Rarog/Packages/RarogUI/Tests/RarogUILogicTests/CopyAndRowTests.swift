@@ -171,6 +171,22 @@ struct SessionRowTests {
     #expect(unread.status.text == "gotowe" && unread.status.tone == .unread && !unread.quiet)
   }
 
+  /// Catches a result the voice agent picked up reading as one a person read, and the voice word leaking onto a row
+  /// without `seenBy` or over the background work overlay.
+  @Test("a result the voice agent picked up: its own state word, the tone and dimming of a received result")
+  func discussedByVoice() {
+    let picked = #""seen":true,"seenBy":"voice-agent""#
+    let row = SessionRowModel(Sample.session(state: "waiting-input", extra: picked), ordinal: nil)
+    let seen = SessionRowModel(Sample.session(state: "waiting-input", extra: #""seen":true"#), ordinal: nil)
+    #expect(row.status.text == "omówiona głosem")
+    #expect(L("list.discussedByVoice", language: .en) == "discussed by voice")
+    #expect(row.status.tone == seen.status.tone && row.quiet && row.section == seen.section)
+    #expect(seen.status.text == "bezczynna", "without seenBy the row says what a person's receipt says")
+    let working = SessionRowModel(Sample.session(
+      state: "waiting-input", extra: picked + #","backgroundTasks":[{"id":"t","kind":"command"}]"#), ordinal: nil)
+    #expect(working.status.text == "pracuje w tle", "background work wins")
+  }
+
   @Test("zadanie w tle po turze: barwa pracy i „pracuje w tle”")
   func background() {
     let session = Sample.session(state: "waiting-input", extra: #""seen":true,"backgroundTasks":[{"id":"t","kind":"command"}]"#)

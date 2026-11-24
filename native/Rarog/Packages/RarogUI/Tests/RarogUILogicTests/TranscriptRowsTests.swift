@@ -226,6 +226,9 @@ struct TranscriptRowsTests {
   @Test("202 bez echa: wpis w locie bez statusu, po 15 s „Nie potwierdzono” z Ponów/Odrzuć")
   func acceptedWithoutEcho() {
     var state = Sample.state(session: Sample.session())
+    // The session screen's stream is open: without it the entry's deadline waits (`AppState.waitsForOpenStream`).
+    state.viewedSessionId = "s1"
+    state.sessionStream = .online
     let entry = OutboxEntry(sessionId: "s1", text: "czy doszło?", createdAt: Sample.now)
     state.apply(.outboxEnqueued(entry), now: Sample.now)
     state.apply(.outboxAccepted(entry.id, at: Sample.now), now: Sample.now)

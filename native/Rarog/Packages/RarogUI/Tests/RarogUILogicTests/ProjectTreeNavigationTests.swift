@@ -39,7 +39,7 @@ private func mirror(_ navigation: RarogNavigation, into state: inout AppState) {
 /// Agenci pod nagłówkami, w kolejności drzewa.
 @MainActor
 private func shown(_ state: AppState, _ navigation: RarogNavigation) -> [String] {
-  state.projectTree(collapsed: navigation.collapsedProjects, calendar: Sample.calendar).compactMap {
+  state.projectTree(collapsed: navigation.collapsedProjects).compactMap {
     if case let .session(session) = $0.kind { return session.id }
     return nil
   }

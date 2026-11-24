@@ -86,7 +86,7 @@ struct AppShortcutTests {
   func registrationsFromDefinition() throws {
     let commands = try Self.code("Views/RarogCommands.swift")
     for shortcut in [AppShortcut.newSession, .newTerminal, .toggleList, .toggleInspector, .previousProject,
-                     .nextSession, .previousSession, .toggleRead, .popupShell, .popupLazygit, .note, .textBigger,
+                     .toggleRead, .popupShell, .popupLazygit, .note, .textBigger,
                      .textSmaller, .textActualSize] {
       #expect(commands.contains(".keyboardShortcut(AppShortcut.\(shortcut).keyboardShortcut)"), "menu: \(shortcut)")
     }
@@ -113,7 +113,7 @@ struct AppShortcutTests {
     ("Views/NewSession/NewSessionListButton.swift", ".shortcutTip(UICopy.newSessionTitle, .newSession)"),
     ("Views/Projects/ProjectTabBar.swift", "ShortcutTipLine(UICopy.newSessionTitle, .newSession)"),
     ("Views/Projects/ProjectTabBar.swift", "ShortcutTipLine(UICopy.newTerminal, .newTerminal)"),
-    ("Views/Projects/ProjectTabBar.swift", ".shortcutTip(UICopy.closeLabel(session), .closeTab)"),
+    ("Views/Projects/TabCloseButton.swift", ".shortcutTip(model.label, .closeTab)"),
     ("Views/Header/HeaderTitleSlot.swift", ".shortcutTip(label, .toggleList)"),
     ("Views/Inspector/InspectorToggleButton.swift", ".shortcutTip(UICopy.inspectorButton, .toggleInspector)"),
     ("Views/SessionControl/HeaderSessionSlot.swift", ".shortcutTip(UICopy.shortcutPopupShell, .popupShell)"),
@@ -155,6 +155,8 @@ struct AppShortcutTests {
       ("Views/List/TreeTerminalButton.swift", ".pointerTip(UICopy.shortcutPopupShell)"),
       ("Views/Settings/SettingsSheet.swift", ".pointerTip(UICopy.settingsTitle)"),
       ("Views/List/ListFilterBar.swift", ".pointerTip(label)"),
+      ("Views/Inbox/InboxButton.swift", ".pointerTip(UICopy.inboxTitle)"),
+      ("Views/List/SessionRow.swift", ".pointerTip(tip)"),
     ]
     for (file, fragment) in tips {
       let code = try Self.code(file)

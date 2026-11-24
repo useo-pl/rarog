@@ -1,4 +1,4 @@
-// 17 typów ramek SSE — lustro `serverEventSchema` z `shared/src/protocol.ts`. Nieznany `type`
+// 20 typów ramek SSE — lustro `serverEventSchema` z `shared/src/protocol.ts`. Nieznany `type`
 // ramki to odrzucenie (reguła forward-compat: stary klient ignoruje ramkę, której nie zna).
 
 /// Ramka SSE po zdekodowaniu. Payload nie niesie pola `type` — wyznacza je przypadek.
@@ -23,6 +23,9 @@ public enum ServerEvent: Sendable, Equatable, Codable {
   case usage(UsageEvent)
   case herdrStatus(HerdrStatusEvent)
   case notes(NotesEvent)
+  case inboxHeads(InboxHeadsEvent)
+  case inboxHead(InboxHeadEvent)
+  case inboxRemoved(InboxRemovedEvent)
 
   /// Wartości pola `type` na drucie, po jednej na przypadek.
   public enum WireType: String, ContractEnum {
@@ -43,6 +46,9 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case usage
     case herdrStatus = "herdr-status"
     case notes
+    case inboxHeads = "inbox-heads"
+    case inboxHead = "inbox-head"
+    case inboxRemoved = "inbox-removed"
   }
 
   public var wireType: WireType {
@@ -64,6 +70,9 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case .usage: .usage
     case .herdrStatus: .herdrStatus
     case .notes: .notes
+    case .inboxHeads: .inboxHeads
+    case .inboxHead: .inboxHead
+    case .inboxRemoved: .inboxRemoved
     }
   }
 
@@ -91,6 +100,9 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case .usage: self = .usage(try UsageEvent(from: decoder))
     case .herdrStatus: self = .herdrStatus(try HerdrStatusEvent(from: decoder))
     case .notes: self = .notes(try NotesEvent(from: decoder))
+    case .inboxHeads: self = .inboxHeads(try InboxHeadsEvent(from: decoder))
+    case .inboxHead: self = .inboxHead(try InboxHeadEvent(from: decoder))
+    case .inboxRemoved: self = .inboxRemoved(try InboxRemovedEvent(from: decoder))
     }
   }
 
@@ -113,6 +125,9 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case let .usage(event): try event.encode(to: encoder)
     case let .herdrStatus(event): try event.encode(to: encoder)
     case let .notes(event): try event.encode(to: encoder)
+    case let .inboxHeads(event): try event.encode(to: encoder)
+    case let .inboxHead(event): try event.encode(to: encoder)
+    case let .inboxRemoved(event): try event.encode(to: encoder)
     }
     var c = encoder.container(keyedBy: CodingKeys.self)
     try c.encode(wireType, forKey: .type)

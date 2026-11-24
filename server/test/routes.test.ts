@@ -23,6 +23,8 @@ import { PROTOCOL_VERSION } from '@rarog/shared';
 import { loadConfig } from '../src/config.ts';
 import { type Logger, createRouter } from '../src/router.ts';
 import { SseHub } from '../src/sse.ts';
+import type { InboxActionResult } from '../src/inbox/index.ts';
+import type { InboxRoutesPort } from '../src/routes/inbox.ts';
 import type { TermFeature } from '../src/term/index.ts';
 import { FakeManager, makeSummary } from './fake-manager.ts';
 import { type TestDevice, createTestDevice } from './helpers/urzadzenie.ts';
@@ -65,6 +67,10 @@ const GROUPS: Readonly<Record<string, Group>> = {
     // Padded, so the body is still arriving after the first 5 bytes (the schema takes an empty object only).
     body: { method: 'POST', path: '/api/pairings', body: `{}${' '.repeat(16)}` },
   },
+  inbox: {
+    paths: ['/api/inbox', '/api/inbox/s1', '/api/inbox/s1/remove', '/api/inbox/s1/restore'],
+    body: { method: 'POST', path: '/api/inbox/s1/remove', body: { turnId: 't1', version: 'v1' } },
+  },
   limits: {
     paths: ['/api/usage', '/api/usage/details'],
     body: null,
@@ -88,8 +94,9 @@ const GROUPS: Readonly<Record<string, Group>> = {
     paths: [
       '/api/sessions',
       ...[
-        'answers/q1', 'close', 'commands', 'companion/ask', 'diff', 'diff/files', 'focus', 'interrupt', 'messages',
-        'mode', 'model', 'permission', 'permissions/p1', 'restart', 'resume', 'seen', 'stream', 'unseen', 'uploads/x.png',
+        'answers/q1', 'close', 'commands', 'companion/ask', 'diff', 'diff/files', 'files', 'files/raw', 'focus',
+        'interrupt', 'messages', 'mode', 'model', 'permission', 'permissions/p1', 'restart', 'resume', 'seen', 'stream',
+        'unseen', 'uploads/x.png',
       ].map((action) => `/api/sessions/s1/${action}`),
     ],
     body: { method: 'POST', path: '/api/sessions/s1/messages', body: { text: 'hello' } },
@@ -102,6 +109,8 @@ interface Harness {
   readonly manager: FakeManager;
   readonly termCalls: string[];
   readonly presenceCalls: string[];
+  /** Remove and restore calls that reached the Inbox stub. */
+  readonly inboxCalls: string[];
   close(): Promise<void>;
 }
 
@@ -112,6 +121,17 @@ afterEach(async () => {
   for (const h of open.splice(0)) await h.close();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
+
+/** An Inbox stub without cards that records remove and restore: a body route must not reach it after unpairing. */
+function stubInbox(calls: string[]): InboxRoutesPort {
+  const done = (what: string) => (sessionId: string): Promise<InboxActionResult> => {
+    calls.push(`${what} ${sessionId}`);
+    return Promise.resolve({ kind: 'done', changed: true });
+  };
+  return {
+    visibleCards: () => [], card: () => null, removed: () => false, remove: done('remove'), restore: done('restore'),
+  };
+}
 
 /** A terminal stub that records calls: a body route must not reach it after the device is unpaired. */
 function stubTerm(calls: string[]): TermFeature {
@@ -137,9 +157,10 @@ async function start(): Promise<Harness> {
   hub.start();
   const termCalls: string[] = [];
   const presenceCalls: string[] = [];
+  const inboxCalls: string[] = [];
   const server = http.createServer(createRouter({
     config, manager, hub, serverStartId: 'start-1', startedAtMs: Date.now(), logger: silent,
-    devices: device.identity, term: stubTerm(termCalls),
+    devices: device.identity, term: stubTerm(termCalls), inbox: stubInbox(inboxCalls),
     presence: { note: (clientId: string) => { presenceCalls.push(clientId); } } as never,
   }));
   await new Promise<void>((resolve, reject) => {
@@ -148,7 +169,7 @@ async function start(): Promise<Harness> {
   });
   const h: Harness = {
     base: `http://127.0.0.1:${String((server.address() as AddressInfo).port)}`,
-    device, manager, termCalls, presenceCalls,
+    device, manager, termCalls, presenceCalls, inboxCalls,
     close: async () => {
       hub.closeAll();
       server.closeAllConnections();
@@ -258,6 +279,7 @@ describe('grupy tras: bramka routera przed każdą grupą', () => {
         expect(h.manager.calls.filter((c) => c.method === 'sendMessage')).toEqual([]);
         expect(h.termCalls).toEqual([]);
         expect(h.presenceCalls).toEqual([]);
+        expect(h.inboxCalls).toEqual([]);
       });
 
       it(`${name}: ta sama trasa bez odpięcia przechodzi bramkę (kontrola próbki)`, async () => {

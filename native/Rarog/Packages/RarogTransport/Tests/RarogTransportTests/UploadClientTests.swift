@@ -54,7 +54,8 @@ struct UploadClientTests {
     let error = await #expect(throws: TransportError.self) {
       try await harness.client.uploadImage(sessionId: "s1", file: "1-0123456789abcdef.png")
     }
-    #expect(error == .http(APIFailure(status: 404, code: "not-found", message: "R:rest.image-not-found")))
+    #expect(error == .http(APIFailure(
+      status: 404, code: "not-found", message: "R:rest.image-not-found", sentenceCode: "rest.image-not-found")))
   }
 
   @Test("401 klucza → błąd typowany i odmowa w zatrzasku; o wylogowaniu decyduje magazyn (spóźniona miniatura)")

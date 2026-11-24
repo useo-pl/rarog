@@ -105,13 +105,14 @@ struct StoreOutboxTests {
     #expect(files(outbox).isEmpty)
   }
 
-  @Test("restart apki: wpis „w locie” wraca jako „Nie potwierdzono”, zepsuty plik nie przewraca startu")
+  @Test("app restart: an entry in flight comes back Not confirmed, an accepted one waits; a broken file is skipped")
   func restoreAfterRestart() async throws {
     let outbox = temporaryOutbox()
     let persistence = OutboxPersistence(directory: outbox)
+    let acceptedAt = Date().addingTimeInterval(-40)
     let queued = OutboxEntry(sessionId: "s1", text: "w locie", createdAt: Date().addingTimeInterval(-60))
     let sent = OutboxEntry(sessionId: "s1", text: "przyjęta", createdAt: Date().addingTimeInterval(-50),
-                           state: .sent(acceptedAt: Date().addingTimeInterval(-40)))
+                           state: .sent(acceptedAt: acceptedAt))
     try await persistence.save(queued)
     try await persistence.save(sent)
     try Data("{zepsuty".utf8).write(to: outbox.appending(path: "zepsuty.json"))
@@ -119,11 +120,12 @@ struct StoreOutboxTests {
     let (store, _) = makeStore(outbox: outbox)
     await store.start()
     #expect(store.state.outbox.map(\.text) == ["w locie", "przyjęta"])
-    #expect(store.state.outbox.map(\.state) == [.unconfirmed, .unconfirmed])
+    // At start no session stream is open, so the accepted entry waits for its session's opening, past its 15 s too.
+    #expect(store.state.outbox.map(\.state) == [.unconfirmed, .sent(acceptedAt: acceptedAt)])
   }
 
   // `fastTiming`: one second = 10 ms (text 15 s → 150 ms, attachments 120 s → 1200 ms).
-  @Test("app restart 30 s after 202: attachment entry stays `.sent`, `.unconfirmed` 120 s after 202; text keeps 15 s")
+  @Test("app restart: accepted entries wait for the stream; on opening text gets 15 s and an attachment 120 s")
   func restoreUsesAttachmentDeadline() async throws {
     let outbox = temporaryOutbox()
     let persistence = OutboxPersistence(directory: outbox)
@@ -150,12 +152,16 @@ struct StoreOutboxTests {
     let (store, _) = makeStore(outbox: outbox)
     await store.start()
     let byText = { (name: String) in store.state.outbox.first { $0.text == name }?.state }
-    #expect(byText("photo 130 s") == .unconfirmed, "past the attachment deadline at restore")
-    #expect(byText("text 30 s") == .unconfirmed, "text keeps the 15 s deadline")
-    #expect(byText("photo 30 s")?.isSent == true, "30 s after 202 an attachment entry still waits for the echo")
-    await until("unconfirmed") { byText("photo 30 s") == .unconfirmed }
-    // 202 was 0.3 s (≙ 30 s) before `base`, so the 1.2 s deadline ends about 0.9 s after it.
-    #expect(Date().timeIntervalSince(base) >= 0.85)
+    #expect(byText("photo 130 s")?.isSent == true, "past the attachment deadline, but no stream is open")
+    #expect(byText("text 30 s")?.isSent == true, "past the text deadline, but no stream is open")
+    #expect(byText("photo 30 s")?.isSent == true)
+    let opened = Date()
+    store.dispatch(.viewSession("s1"))
+    store.dispatch(.streamOpened(.session(id: "s1"), resumedWithCursor: false))
+    await until("text unconfirmed") { byText("text 30 s") == .unconfirmed }
+    #expect(byText("photo 130 s")?.isSent == true, "an attachment entry gets 120 s from the opening")
+    await until("attachments unconfirmed") { byText("photo 30 s") == .unconfirmed && byText("photo 130 s") == .unconfirmed }
+    #expect(Date().timeIntervalSince(opened) >= 1.15, "the 1.2 s deadline counts from the opening")
   }
 
   @Test("start agenta: wysyłka i „Ponów” nic nie wysyłają; wpis czeka na `waiting-input`")
@@ -210,6 +216,203 @@ struct StoreOutboxTests {
     #expect(await store.send(text: "tak", to: "s1") == .blocked(.decisionPending))
     #expect(store.state.outbox.isEmpty)
     #expect(transport.read { $0.messages.isEmpty })
+  }
+
+  @Test("a send to a session never opened: no Not confirmed after the deadline; opening it reconciles the echo")
+  func neverOpenedSessionWaitsForItsTranscript() async throws {
+    let (store, transport) = makeStore()
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s1", state: "waiting-input"))]}"#)
+    await until("list") { store.state.sessionsLoaded && store.state.compat == .ok }
+    guard case let .accepted(id) = await store.send(text: "Ship it", to: "s1") else {
+      Issue.record("not accepted")
+      return
+    }
+    try await Task.sleep(for: fastTiming.unconfirmedAfter * 3)
+    #expect(store.state.outbox.first?.state.isSent == true, "accepted, still waiting for its echo")
+    store.openSession("s1")
+    await until("session stream") { transport.streamCalls.contains { $0.scope == .session(id: "s1") } }
+    let echo = #"""
+      {"seq":1,"role":"user","blocks":[{"type":"text","text":"Ship it"}],"at":"\#(ISOTime.string(Date()))",
+      "clientMessageId":"\#(id.uuidString.lowercased())"}
+      """#
+    transport.push(.session(id: "s1"), json: #"""
+      {"type":"transcript-snapshot","sessionId":"s1","messages":[\#(echo)],"pendingPermissions":[],"pendingQuestions":[]}
+      """#)
+    await until("reconciled") { store.state.outbox.isEmpty }
+  }
+
+  // A session in a Rarog terminal (`termId`) has no transcript, so its stream never opens and no echo can come.
+
+  @Test("an accepted entry of a session in a Rarog terminal gets Not confirmed after the deadline")
+  func terminalSessionEntryGetsTheDeadline() async throws {
+    let (store, transport) = makeStore()
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    let hosted = Frames.summary("s1", state: "waiting-input", extra: #","termId":"0123456789abcdef""#)
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(hosted)]}"#)
+    await until("list") { store.state.sessionsLoaded && store.state.compat == .ok }
+    guard case .accepted = await store.send(text: "Ship it", to: "s1") else {
+      Issue.record("not accepted")
+      return
+    }
+    await until("unconfirmed", timeout: .seconds(2)) { store.state.outbox.first?.state == .unconfirmed }
+  }
+
+  @Test("app restart: accepted entries, in the CLI queue or not, of a session in a Rarog terminal get Not confirmed")
+  func restoreOfTerminalSessionEntries() async throws {
+    let outbox = temporaryOutbox()
+    let persistence = OutboxPersistence(directory: outbox)
+    let acceptedAt = Date().addingTimeInterval(-1)
+    let typed = OutboxEntry(
+      sessionId: "s1", text: "typed", createdAt: acceptedAt, state: .sent(acceptedAt: acceptedAt))
+    var queued = OutboxEntry(
+      sessionId: "s1", text: "queued", createdAt: acceptedAt, state: .sent(acceptedAt: acceptedAt))
+    queued.queuedAt = acceptedAt
+    try await persistence.save(typed)
+    try await persistence.save(queued)
+    let (store, transport) = makeStore(outbox: outbox)
+    await store.start()
+    #expect(store.state.outbox.allSatisfy { $0.state.isSent }, "no session is known yet")
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    // A working session: the CLI queue's idle period does not open, only its cap ends the wait.
+    let hosted = Frames.summary("s1", state: "running", extra: #","termId":"0123456789abcdef""#)
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(hosted)]}"#)
+    await until("unconfirmed", timeout: .seconds(2)) { store.state.outbox.allSatisfy { $0.state == .unconfirmed } }
+  }
+
+  @Test("a session that moves into a Rarog terminal after its countdown ran out: its accepted entry gets Not confirmed")
+  func sessionMovedIntoATerminal() async throws {
+    let (store, transport) = makeStore()
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s1", state: "waiting-input"))]}"#)
+    await until("list") { store.state.sessionsLoaded && store.state.compat == .ok }
+    guard case .accepted = await store.send(text: "Ship it", to: "s1") else {
+      Issue.record("not accepted")
+      return
+    }
+    try await Task.sleep(for: fastTiming.unconfirmedAfter * 3)
+    #expect(store.state.outbox.first?.state.isSent == true, "waiting for the stream's opening")
+    let hosted = Frames.summary("s1", state: "waiting-input", extra: #","termId":"0123456789abcdef""#)
+    transport.push(.global, json: #"{"type":"session-changed","session":\#(hosted)}"#)
+    await until("unconfirmed", timeout: .seconds(2)) { store.state.outbox.first?.state == .unconfirmed }
+  }
+
+  @Test("a session that leaves its Rarog terminal before the deadline waits again; back in it, the deadline restarts")
+  func sessionLeavesAndReentersATerminal() async throws {
+    let (store, transport) = makeStore()
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    let plain = Frames.summary("s1", state: "waiting-input")
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(plain)]}"#)
+    await until("list") { store.state.sessionsLoaded && store.state.compat == .ok }
+    guard case .accepted = await store.send(text: "Ship it", to: "s1") else {
+      Issue.record("not accepted")
+      return
+    }
+    try await Task.sleep(for: fastTiming.unconfirmedAfter * 2)
+    let hosted = Frames.summary("s1", state: "waiting-input", extra: #","termId":"0123456789abcdef""#)
+    transport.push(.global, json: #"{"type":"session-changed","session":\#(hosted)}"#)
+    transport.push(.global, json: #"{"type":"session-changed","session":\#(plain)}"#)
+    await until("out of the terminal") { store.state.sessions["s1"]?.termId == nil }
+    try await Task.sleep(for: fastTiming.unconfirmedAfter * 3)
+    #expect(store.state.outbox.first?.state.isSent == true, "a session with a transcript waits for its stream")
+    transport.push(.global, json: #"{"type":"session-changed","session":\#(hosted)}"#)
+    await until("unconfirmed", timeout: .seconds(2)) { store.state.outbox.first?.state == .unconfirmed }
+  }
+
+  // A session off a fresh list never opens its stream again, so no echo can come for its accepted entries.
+
+  @Test("an accepted entry of a never-opened session a fresh list no longer has gets Not confirmed, on disk too")
+  func sessionLeavesTheList() async throws {
+    let outbox = temporaryOutbox()
+    let (store, transport) = makeStore(outbox: outbox)
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s1"))]}"#)
+    await until("list") { store.state.sessionsLoaded && store.state.compat == .ok }
+    guard case .accepted = await store.send(text: "Ship it", to: "s1") else {
+      Issue.record("not accepted")
+      return
+    }
+    try await Task.sleep(for: fastTiming.unconfirmedAfter * 2)
+    #expect(store.state.outbox.first?.state.isSent == true, "the countdown ran out while waiting for the stream")
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s2"))]}"#)
+    await until("unconfirmed", timeout: .seconds(2)) { store.state.outbox.first?.state == .unconfirmed }
+    _ = try await store.persistInOrder { _ in }
+    let saved = await OutboxPersistence(directory: outbox).loadAll().entries
+    #expect(saved.map(\.state) == [.unconfirmed])
+  }
+
+  @Test("app restart: accepted entries, in the CLI queue or not, of a session off the fresh list get Not confirmed")
+  func restoreOfEntriesOfAnUnlistedSession() async throws {
+    let outbox = temporaryOutbox()
+    let persistence = OutboxPersistence(directory: outbox)
+    let acceptedAt = Date().addingTimeInterval(-1)
+    let typed = OutboxEntry(
+      sessionId: "s1", text: "typed", createdAt: acceptedAt, state: .sent(acceptedAt: acceptedAt))
+    var queued = OutboxEntry(
+      sessionId: "s1", text: "queued", createdAt: acceptedAt, state: .sent(acceptedAt: acceptedAt))
+    queued.queuedAt = acceptedAt
+    try await persistence.save(typed)
+    try await persistence.save(queued)
+    let (store, transport) = makeStore(outbox: outbox)
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    try await Task.sleep(for: fastTiming.unconfirmedAfter * 2)
+    #expect(store.state.outbox.count == 2 && store.state.outbox.allSatisfy { $0.state.isSent }, "no list yet")
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s2"))]}"#)
+    await until("unconfirmed", timeout: .seconds(2)) { store.state.outbox.allSatisfy { $0.state == .unconfirmed } }
+  }
+
+  @Test(
+    "a 202, plain or queued, after a fresh list dropped the session: Not confirmed; Retry repeats the same id",
+    arguments: [false, true])
+  func acceptedAfterTheSessionLeftTheList(queued: Bool) async throws {
+    let (store, transport) = makeStore()
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    let listed = #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s1"))]}"#
+    transport.push(.global, json: listed)
+    await until("list") { store.state.sessionsLoaded && store.state.compat == .ok }
+    let valve = Valve()
+    transport.set {
+      $0.replyQueued = queued
+      $0.onSendAsync = { _, _ in await valve.wait() }
+    }
+    let sending = Task { await store.send(text: "Ship it", to: "s1") }
+    await until("request in flight") { transport.read { $0.messages.count } == 1 }
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s2"))]}"#)
+    await until("off the list") { store.state.sessions["s1"] == nil }
+    await valve.release()
+    guard case let .accepted(id) = await sending.value else {
+      Issue.record("not accepted")
+      return
+    }
+    #expect(store.state.outbox.first?.state.isSent == true)
+    await until("unconfirmed", timeout: .seconds(3)) { store.state.outbox.first?.state == .unconfirmed }
+
+    // The session is back and the server knows the id: Retry sends the same one, nothing new reaches the session.
+    transport.push(.global, json: listed)
+    await until("back on the list") { store.state.sessions["s1"] != nil }
+    transport.set {
+      $0.onSendAsync = nil
+      $0.sendReply = #"{"ok":true,"clientMessageId":"\#(id.uuidString.lowercased())","replayed":true}"#
+    }
+    #expect(await store.retry(id) == .accepted(id))
+    let ids = transport.read { $0.messages.map(\.body.clientMessageId) }
+    #expect(ids == [id.uuidString.lowercased(), id.uuidString.lowercased()])
+    #expect(store.state.outbox.allSatisfy { $0.id == id }, "the same entry, no second one")
   }
 }
 

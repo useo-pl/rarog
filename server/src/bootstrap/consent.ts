@@ -5,18 +5,24 @@
  * itself starts there, after `listen`.
  */
 import { stat } from 'node:fs/promises';
-import { basename, dirname } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { createConsentHandler, redact, startConsentSocket } from '../auth/index.ts';
 import type { ConsentAdminControl, ConsentSocket } from '../auth/index.ts';
 import { defaultStoreRoot } from '../cli-store.ts';
+import type { CliVersionReader } from '../cli-version.ts';
 import type { RarogConfig } from '../config.ts';
+import { inWorkAreaOnDisk } from '../config/work-area.ts';
 import type { ConsentObserveRequest } from '../drivers/herdr-driver.ts';
+import { hookChildRunning, statuslineFreshness } from '../drivers/herdr/consent-no-hook-io.ts';
+import type { ConsentNoHookSources } from '../drivers/herdr/consent-no-hook.ts';
 import { createConsentEvidenceReview, createConsentEvidenceScanner } from '../herdr/consent-evidence.ts';
 import { consentStep } from '../herdr/consent-step.ts';
 import type { SubagentObservation } from '../herdr/consent-subagent.ts';
 import { consentChannelOpen } from '../herdr/dialogs/hook/contract.ts';
 import type { ConsentTurnFacts } from '../herdr/dialogs/layer1/bind.ts';
-import { CONSENT_HOLDING_STATES } from '../herdr/dialogs/layer1/contract.ts';
+import type { HookListSessionEntry } from '../herdr/dialogs/layer1/hook-list/hook-list.ts';
+import { createSessionFacts } from '../herdr/dialogs/layer1/hook-list/session-facts.ts';
+import { CONSENT_HOLDING_STATES, CONSENT_POOL_MAX } from '../herdr/dialogs/layer1/contract.ts';
 import { createConsentCycle } from '../herdr/dialogs/layer1/cycle.ts';
 import type { ConsentCycle, ConsentSessionRevokeCause } from '../herdr/dialogs/layer1/cycle.ts';
 import type { ConsentModeControl, ConsentModeSource } from '../herdr/dialogs/layer1/mode.ts';
@@ -32,8 +38,11 @@ import {
 import type { ConsentRegistry } from '../herdr/dialogs/layer1/registry.ts';
 import { createRefusalDumper } from '../herdr/dialogs/refusals.ts';
 import type { AliveWriter } from '../herdr/dialogs/shadow/alive.ts';
+import { scanCallDumps, scanMarkers } from '../herdr/dialogs/shadow/files.ts';
 import { psLiveness } from '../herdr/dialogs/shadow/liveness.ts';
 import type { ProcessLiveness } from '../herdr/dialogs/shadow/liveness.ts';
+import { HOOK_INSTALLED_SCRIPT_REL, hookCommand } from '../herdr/hook-commands.ts';
+import { defaultStatuslineRoot } from '../herdr/statusline.ts';
 import { TRANSCRIPT_EXT, locateTranscript } from '../herdr/transcript-path.ts';
 import type { Logger } from '../router.ts';
 import type { ConsentManagerCard, ConsentManagerChannel } from '../sessions/manager.ts';
@@ -100,6 +109,100 @@ export async function observeConsent(
     ...(subagents === null ? {} : { subagentTurns: (requests) => subagents.read(sessionId, requests) }),
     ...(subagents === null || hidden === null ? {} : { hidden }),
   }));
+}
+
+/**
+ * The session process of an engine session for the session hook list: the one live entry of the CLI registry (pid and
+ * start); `null` without a registry read, with an unreadable pid, an unlisted session or more than one entry.
+ */
+export function consentSessionEntry(
+  cliVersionReader: CliVersionReader,
+): (engineSessionId: string) => Promise<HookListSessionEntry | null> {
+  return async (engineSessionId) => {
+    const read = await cliVersionReader({ registryOnly: true });
+    if (read.registry === null || (read.unreadablePids ?? 0) > 0) return null;
+    if (read.unlistedSessions?.has(engineSessionId) === true) return null;
+    const entries = read.registry.get(engineSessionId);
+    const entry = entries?.length === 1 ? entries[0] : undefined;
+    return entry === undefined ? null
+      : { pid: entry.pid, ...(entry.startedAt === undefined ? {} : { startedAt: entry.startedAt }) };
+  };
+}
+
+/** Record states of a request the hook still waits on: anything later is answered or settled. */
+const CONSENT_UNSETTLED_STATES: ReadonlySet<string> = new Set(['pending', 'deciding', 'sent']);
+
+/**
+ * Whether a trace of Rarog's `PermissionRequest` hook stands for the session (the consent-without-hook detector,
+ * `drivers/herdr/consent-no-hook.ts`): a live registration accepted at or after `since` (ms of the epoch, the end of
+ * the previous dialog episode), a channel card holding a dialog, a request of the channel pool (dump or request
+ * marker) without an exit whose record is not settled, a pool past its cap, a per-call dump on disk whose record is
+ * not settled (the hook deletes it on every exit, so it stands while the hook lives), or a request marker on disk the
+ * pool has not taken whose record is not settled; an incomplete read of the dumps or markers counts too. Settled
+ * records, and dumps and requests under them, are no trace. Throws on a read error of the dump or marker directory.
+ */
+export function consentHookTrace(link: ConsentLink, dataDir: string, sessionId: string, since: number): boolean {
+  const { cycle, registry } = link;
+  if (registry?.entries().some((entry) => entry.sessionId === sessionId && entry.acceptedAt >= since) === true) {
+    return true;
+  }
+  // Without the cycle there is no record to settle a request: every request counts.
+  const open = (key: string): boolean => {
+    const record = cycle?.record(sessionId, key) ?? null;
+    return record === null || CONSENT_UNSETTLED_STATES.has(record.state);
+  };
+  if (cycle !== null) {
+    if (cycle.cards(sessionId).some((card) => (CONSENT_HOLDING_STATES as readonly string[]).includes(card.state))) {
+      return true;
+    }
+    const pool = cycle.pool(sessionId);
+    if (pool.overflow) return true;
+    if (pool.candidates.some((candidate) => candidate.exitAt === null && open(candidate.dump.key))) return true;
+  }
+  const dumps = scanCallDumps(dataDir, sessionId);
+  if (!dumps.complete || dumps.dumps.some((dump) => open(dump.key))) return true;
+  // Request markers the pool has not taken yet (written after the last channel observation). A marker under a dump
+  // key or a name the pool knows is decided above; a marker without a call key has no record that settles it.
+  const dumpKeys = new Set(dumps.dumps.map((dump) => dump.key));
+  const markers = scanMarkers(
+    dataDir, sessionId, (name) => dumpKeys.has(name) || cycle?.poolKnows(sessionId, name) === true, CONSENT_POOL_MAX,
+  );
+  return !markers.complete || markers.markers.some((marker) => marker.key === null || open(marker.key));
+}
+
+export interface ConsentNoHookOptions {
+  readonly link: ConsentLink;
+  readonly dataDir: string;
+  /** Home of the server's user: the hook copy and the settings the session facts read live under it. */
+  readonly home: string;
+  /** The work area roots (`RAROG_HERDR_ROOTS`), the ones the hook gets in `roots.json`. */
+  readonly roots: readonly string[];
+  /** The session process lookup of the session hook list ({@link consentSessionEntry}). */
+  readonly entry: (engineSessionId: string) => Promise<HookListSessionEntry | null>;
+  readonly proofGate: Pick<ConsentProofGate, 'current'>;
+}
+
+/** The sources of the consent-without-hook detector, shared by every driver of the process. */
+export function consentNoHookSources(options: ConsentNoHookOptions): ConsentNoHookSources {
+  const script = join(options.home, HOOK_INSTALLED_SCRIPT_REL);
+  const statuslineRoot = defaultStatuslineRoot();
+  // One instance per process, with the cache of its own; it reads like the session hook list and logs nothing.
+  const facts = createSessionFacts({ home: options.home, accepted: [hookCommand(options.home)], entry: options.entry });
+  return {
+    hookTrace: (sessionId, since) => {
+      try {
+        return consentHookTrace(options.link, options.dataDir, sessionId, since);
+      } catch {
+        return null;
+      }
+    },
+    facts,
+    hookRunning: (pid) => hookChildRunning(pid, script),
+    // The hook's rule (`scripts/hooks/work-area.mjs`): the text, then the path resolved one segment at a time.
+    outsideWorkArea: (cwd) => !inWorkAreaOnDisk(cwd, options.roots, options.home),
+    statusline: (sessionId) => statuslineFreshness(statuslineRoot, sessionId, Date.now()),
+    proofRules: (sessionId) => options.proofGate.current(sessionId),
+  };
 }
 
 /**

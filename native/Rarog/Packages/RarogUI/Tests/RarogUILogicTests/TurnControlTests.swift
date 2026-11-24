@@ -7,33 +7,61 @@ import Testing
 // Przerwanie na ekranie, Esc, „przerywa", strażnik braku „Pokaż w herdr", pasek promptu
 // i trwały szkic. Właściciel: sterowanie sesją.
 
-@Suite("przerwanie na ekranie: linia pod polem, czytnik, prompt do pustego pola")
+@Suite("interrupt on screen: the line under the field, VoiceOver, the prompt Claude Code handed back")
 struct InterruptPresentationTests {
-  @Test("sukces: linia gaśnie; prompt wraca wyłącznie do pustego pola, zajęte pole mówi dlaczego")
-  func delivered() {
-    let back = InterruptPresentation.make(.delivered, prompt: "napraw", fieldEmpty: true, machine: .mac)
-    #expect(back == InterruptPresentation(line: nil, isError: false, spoken: UICopy.interruptedRestored, restorePrompt: true))
-    let typing = InterruptPresentation.make(.delivered, prompt: "napraw", fieldEmpty: false, machine: .mac)
-    #expect(typing?.restorePrompt == false && typing?.spoken == UICopy.interruptedTyping && typing?.line == nil)
-    let none = InterruptPresentation.make(.delivered, prompt: "", fieldEmpty: true, machine: .mac)
-    #expect(none?.restorePrompt == false && none?.spoken == UICopy.interrupted)
+  @Test("delivered with a handed-back prompt: an empty or blank field holds it; typed text stays after it on its own line")
+  func handedBack() {
+    let handed = InterruptOutcome.delivered(returnedPrompt: "Refactor the parser")
+    let empty = InterruptPresentation.make(handed, field: "", machine: .mac)
+    #expect(empty == InterruptPresentation(
+      line: nil, isError: false, spoken: UICopy.interruptedRestored, field: "Refactor the parser", keptTextShift: nil))
+    #expect(InterruptPresentation.make(handed, field: "  \n", machine: .mac)?.field == "Refactor the parser")
+    let typed = InterruptPresentation.make(handed, field: "and the lexer", machine: .mac)
+    #expect(typed?.field == "Refactor the parser\nand the lexer")
+    #expect(typed?.keptTextShift == ("Refactor the parser\n" as NSString).length, "the cursor moves with the typed text")
+    #expect(typed?.spoken == UICopy.interruptedRestored && typed?.line == nil)
+    let wide = InterruptPresentation.make(.delivered(returnedPrompt: "Popraw ✅ test"), field: "x", machine: .mac)
+    #expect(wide?.keptTextShift == ("Popraw ✅ test\n" as NSString).length, "UTF-16 units, as the text view counts")
+  }
+
+  @Test("the cursor shift counts UTF-16 units, with an emoji ZWJ sequence and a surrogate pair in prompt and typed text")
+  func shiftWithEmoji() throws {
+    let prompt = "Fix 👩‍💻 then 𝔸"
+    let kept = "and 👨‍👩‍👧 too 😀"
+    let placed = InterruptPresentation.place(prompt, before: kept)
+    #expect(placed.text == "\(prompt)\n\(kept)")
+    let shift = try #require(placed.keptTextShift)
+    #expect(shift == ("\(prompt)\n" as NSString).length)
+    #expect(shift != "\(prompt)\n".count, "characters would move the cursor into the prompt line")
+    #expect((placed.text as NSString).substring(from: shift) == kept, "the typed text starts at the shift")
+    let shown = InterruptPresentation.make(.delivered(returnedPrompt: prompt), field: kept, machine: .mac)
+    #expect(shown?.field == placed.text && shown?.keptTextShift == shift, "the field uses the same placement")
+  }
+
+  @Test("delivered without a handed-back prompt: the field stays as it is, empty or typed")
+  func noHandBack() {
+    for field in ["", "and the lexer"] {
+      let shown = InterruptPresentation.make(.delivered(returnedPrompt: nil), field: field, machine: .mac)
+      #expect(shown == InterruptPresentation(line: nil, isError: false, spoken: UICopy.interrupted, field: nil, keptTextShift: nil))
+    }
   }
 
   @Test("odmowa panelu i bramki: czerwień z drogą wyjścia; „nie wiem” neutralne; zdanie serwera wygrywa")
   func refusals() {
-    #expect(InterruptPresentation.make(.notDelivered, prompt: "x", fieldEmpty: true, machine: .mac)
-      == InterruptPresentation(line: UICopy.interruptFailed(.mac), isError: true, spoken: UICopy.interruptFailed(.mac), restorePrompt: false))
-    let unsure = InterruptPresentation.make(.unsure, prompt: "x", fieldEmpty: true, machine: .mac)
-    #expect(unsure?.line == UICopy.interruptUnsure && unsure?.isError == false && unsure?.restorePrompt == false)
-    #expect(InterruptPresentation.make(.refused(nil), prompt: "x", fieldEmpty: true, machine: .mac)?.line == UICopy.interruptGate)
-    #expect(InterruptPresentation.make(.refused("herdr tylko do odczytu."), prompt: "x", fieldEmpty: true, machine: .mac)?.line
+    #expect(InterruptPresentation.make(.notDelivered, field: "", machine: .mac)
+      == InterruptPresentation(
+        line: UICopy.interruptFailed(.mac), isError: true, spoken: UICopy.interruptFailed(.mac), field: nil, keptTextShift: nil))
+    let unsure = InterruptPresentation.make(.unsure, field: "", machine: .mac)
+    #expect(unsure?.line == UICopy.interruptUnsure && unsure?.isError == false && unsure?.field == nil)
+    #expect(InterruptPresentation.make(.refused(nil), field: "", machine: .mac)?.line == UICopy.interruptGate)
+    #expect(InterruptPresentation.make(.refused("herdr tylko do odczytu."), field: "", machine: .mac)?.line
       == "herdr tylko do odczytu.")
   }
 
   @Test("gest bez żądania (bramka, nic do przerwania, wylogowanie): bez zmiany na ekranie")
   func silent() {
     for outcome in [InterruptOutcome.inFlight, .notAllowed, .loggedOut] {
-      #expect(InterruptPresentation.make(outcome, prompt: "x", fieldEmpty: true, machine: .mac) == nil)
+      #expect(InterruptPresentation.make(outcome, field: "", machine: .mac) == nil)
     }
   }
 
@@ -298,6 +326,38 @@ struct DraftPersistenceTests {
     #expect(reopened.take(for: "s1")?.text == "A\ns")
   }
 
+  @Test("a handed-back prompt without a screen: alone in an empty or blank draft, before a stored one, read after a restart")
+  func returnedPromptWithoutScreen() async throws {
+    let dir = directory()
+    let shelf = AttachmentShelf()
+    let drafts = ComposerDrafts(directory: dir, shelf: shelf)
+    drafts.saveReturnedPrompt("Refactor the parser", for: "empty")
+    drafts.persist(text: " \n", attachments: [], for: "blank")
+    let photo = try attachment("jpeg", kind: .image, name: "")
+    shelf.restore([photo], for: "typed")
+    drafts.persist(text: "s", attachments: [photo], for: "typed")
+    drafts.flush()
+    drafts.saveReturnedPrompt("Refactor the parser", for: "blank")
+    drafts.saveReturnedPrompt("Refactor the parser", for: "typed")
+    drafts.flush()
+
+    let reopened = ComposerDrafts(directory: dir, shelf: AttachmentShelf())
+    #expect(reopened.take(for: "empty")?.text == "Refactor the parser")
+    #expect(reopened.take(for: "blank")?.text == "Refactor the parser", "a blank draft counts as empty, as the field")
+    #expect(reopened.take(for: "typed")?.text == "Refactor the parser\ns")
+    #expect(reopened.restoreAttachments(for: "typed").map(\.id) == [photo.id], "the draft keeps its attachments")
+  }
+
+  @Test("a handed-back prompt without a screen goes before a failed send's text waiting in memory, which keeps its reason")
+  func returnedPromptOverWaitingText() {
+    let drafts = ComposerDrafts(directory: directory(), shelf: AttachmentShelf())
+    drafts.persist(text: "s", attachments: [], for: "s1")
+    drafts.flush()
+    drafts.save("B", note: "Why.", for: "s1")
+    drafts.saveReturnedPrompt("Refactor the parser", for: "s1")
+    #expect(drafts.take(for: "s1") == ComposerDrafts.Draft(text: "Refactor the parser\nB\ns", note: "Why."))
+  }
+
   @Test("a live screen takes only the texts waiting in memory, not the stored draft under them; a new one takes all")
   func takeWaiting() {
     let dir = directory()
@@ -311,6 +371,39 @@ struct DraftPersistenceTests {
     #expect(drafts.takeWaiting(for: "s1") == nil, "taken once")
     drafts.save("B3", note: nil, for: "s1")
     #expect(drafts.take(for: "s1")?.text == "B3\ns", "a screen that opens takes the stored draft too")
+  }
+
+  @Test("a field that read the draft before taking it over takes only the texts after its read, each once")
+  func takeWaitingAfterARead() async {
+    let drafts = ComposerDrafts(directory: directory(), shelf: AttachmentShelf())
+    drafts.persist(text: "s", attachments: [], for: "stored")
+    drafts.flush()
+    let fromDisk = drafts.peek(for: "stored")
+    #expect(fromDisk.draft == ComposerDrafts.Draft(text: "s", note: nil))
+    #expect(await drafts.saveTaken("A", for: "stored"))
+    #expect(drafts.takeWaiting(for: "stored", after: fromDisk) == ComposerDrafts.Draft(text: "A", note: nil))
+
+    drafts.save("B", note: "Why.", for: "waiting")
+    let waiting = drafts.peek(for: "waiting")
+    #expect(waiting.draft == ComposerDrafts.Draft(text: "B", note: "Why."))
+    #expect(drafts.takeWaiting(for: "waiting", after: waiting) == nil, "the field shows the waiting text already")
+    #expect(drafts.takeWaiting(for: "waiting") == nil, "and took it over")
+
+    drafts.save("C", note: "Why.", for: "late")
+    let late = drafts.peek(for: "late")
+    #expect(await drafts.saveTaken("A", for: "late"))
+    #expect(
+      drafts.takeWaiting(for: "late", after: late) == ComposerDrafts.Draft(text: "A", note: nil),
+      "the text the field read and its reason are not new")
+    drafts.save("D", note: "Again.", for: "late")
+    #expect(drafts.takeWaiting(for: "late", after: .held) == ComposerDrafts.Draft(text: "D", note: "Again."))
+
+    drafts.save("E", note: "Why.", for: "new reason")
+    let newReason = drafts.peek(for: "new reason")
+    #expect(await drafts.saveTaken("A", for: "new reason"))
+    drafts.save("F", note: "Again.", for: "new reason")
+    #expect(
+      drafts.takeWaiting(for: "new reason", after: newReason) == ComposerDrafts.Draft(text: "F\nA", note: "Again."))
   }
 
   @Test("załącznik, którego nie da się skopiować: tekst idzie na dysk, kopii w szkicu nie ma")

@@ -8,6 +8,13 @@ import RarogCore
 extension UICopy {
   static func voiceAgentTitle(language: CopyLanguage = .current) -> String { L("voiceAgent.title", language: language) }
   static func voiceAgentLead(language: CopyLanguage = .current) -> String { L("voiceAgent.lead", language: language) }
+  /// The locked-phone trial switch on the same page and its footnote.
+  static func voiceAgentLockedTrialTitle(language: CopyLanguage = .current) -> String {
+    L("voiceAgent.lockedTrial.title", language: language)
+  }
+  static func voiceAgentLockedTrialLead(language: CopyLanguage = .current) -> String {
+    L("voiceAgent.lockedTrial.lead", language: language)
+  }
 
   // MARK: Wiersz Ustawień
 

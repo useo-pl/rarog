@@ -35,7 +35,7 @@ export interface ReviewRoute {
 
 /** Akcje `/api/sessions/:id/<akcja>` (`segments[3]` w routerze): wszystkie dozwolone, podakcje dziedziczą klasę. */
 const SESSION_ACTIONS = [
-  'answers', 'close', 'commands', 'diff', 'focus', 'interrupt', 'messages', 'mode', 'model', 'permission',
+  'answers', 'close', 'commands', 'diff', 'files', 'focus', 'interrupt', 'messages', 'mode', 'model', 'permission',
   'permissions', 'queue', 'restart', 'resume', 'seen', 'stream', 'unseen', 'uploads',
 ] as const;
 
@@ -70,6 +70,11 @@ export const REVIEW_ROUTES: readonly ReviewRoute[] = [
   { route: '/api/push/live-activity/end', class: 'allow' },
   { route: '/api/sessions', class: 'allow' },
   ...SESSION_ACTIONS.map((action): ReviewRoute => ({ route: `/api/sessions/:id/${action}`, class: 'allow' })),
+  // Inbox cards of the demo sessions; a removal lands in `inbox.json` of the demo data directory.
+  { route: '/api/inbox', class: 'allow' },
+  { route: '/api/inbox/:id', class: 'allow' },
+  { route: '/api/inbox/:id/remove', class: 'allow' },
+  { route: '/api/inbox/:id/restore', class: 'allow' },
   // Kod parowania dla testów UI, który odpina wszystkie urządzenia: w trybie recenzji router go nie wydaje.
   { route: '/api/demo/pairing', class: 'absent' },
   // Agent głosowy: demo nie ma pliku rozmowy ani procesu `claude -p`, więc trasy nie ma także dla recenzenta.

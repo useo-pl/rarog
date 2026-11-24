@@ -174,6 +174,21 @@ describe('scripts/check.sh — kroki warunkowe i `--strict` (atrapa repo)', () =
     }
   });
 
+  it('`--strict --no-tests`: every step but vitest runs, exit 0, the tests are not counted as a skipped step', () => {
+    const repo = atrapa(true);
+    const res = repo.run(['--strict', '--no-tests'], { RAROG_PRIVATE_LITERALS: repo.literals(SYNTHETIC) });
+    expect(res.status, String(res.stderr)).toBe(0);
+    expect(res.stdout).toContain('== test\ntest: not run (--no-tests)\n');
+    expect(String(res.stdout).trimEnd().split('\n').at(-1)).toBe('check: green — production untouched');
+    const log = repo.log();
+    expect(log).not.toMatch(/^pnpm test/m);
+    for (const call of ['pnpm run typecheck', 'xcrun swift test', 'pnpm -C relay run typecheck', 'pnpm -C relay test',
+      'pnpm -C relay-auth run typecheck', 'pnpm -C relay-auth test', 'git diff --check', 'git diff --cached --check',
+      'shellcheck scripts/', 'python3 -I scripts/lib/toml-check.py', 'zizmor --offline --strict-collection .github']) {
+      expect(log, call).toContain(call);
+    }
+  });
+
   it('znalezisko zizmora przewraca bramkę kodem narzędzia, bez „zielono”', () => {
     const repo = atrapa(true);
     repo.failOn('zizmor', '*');
@@ -282,6 +297,8 @@ describe('Inwentarz pominięć testów (lista zamknięta)', () => {
     'server/test/fs-browse-work-area.test.ts': 1,
     'server/test/fs-mkdir.test.ts': 1,
     'server/test/git-konfiguracja-repo.test.ts': 1,
+    'server/test/file-index-repo.test.ts': 2,
+    'server/test/files-sciezka.test.ts': 1,
     'server/test/git-watch.test.ts': 2,
     'server/test/herdr-uploads-protected-dirs.test.ts': 1,
     'server/test/iroh-adapter.test.ts': 1,
@@ -298,6 +315,7 @@ describe('Inwentarz pominięć testów (lista zamknięta)', () => {
     'server/test/rarog-update-finish.test.ts': 1,
     'server/test/rarog-update.test.ts': 1,
     'server/test/repo-files.test.ts': 4,
+    'server/test/safe-read.test.ts': 2,
     'server/test/scripts-check.test.ts': 1,
     'server/test/scripts-ios-check-demo.test.ts': 6,
     'server/test/scripts-ios-demo.test.ts': 1,
@@ -305,6 +323,7 @@ describe('Inwentarz pominięć testów (lista zamknięta)', () => {
     'server/test/scripts-launchd.test.ts': 2,
     'server/test/sdk-install-live.test.ts': 1,
     'server/test/secret-input.test.ts': 1,
+    'server/test/session-files-repo.test.ts': 1,
     'server/test/setup-check.test.ts': 1,
     'server/test/setup-config.test.ts': 2,
     'server/test/setup-herdr-agent.test.ts': 4,
@@ -320,6 +339,8 @@ describe('Inwentarz pominięć testów (lista zamknięta)', () => {
   };
   /** Pliki z testami tylko-macOS (`skipIf(!IS_MAC)(macOnly(…))`). */
   const MAC_ONLY = [
+    'server/test/file-index-repo.test.ts',
+    'server/test/files-sciezka.test.ts',
     'server/test/git-konfiguracja-repo.test.ts',
     'server/test/live-activity-plist-guard.test.ts',
     'server/test/privacy-manifest-guard.test.ts',
@@ -329,10 +350,12 @@ describe('Inwentarz pominięć testów (lista zamknięta)', () => {
     'server/test/rarog-setup.test.ts',
     'server/test/rarog-update-finish.test.ts',
     'server/test/rarog-update.test.ts',
+    'server/test/safe-read.test.ts',
     'server/test/scripts-ios-check-demo.test.ts',
     'server/test/scripts-ios-lib.test.ts',
     'server/test/scripts-launchd.test.ts',
     'server/test/secret-input.test.ts',
+    'server/test/session-files-repo.test.ts',
     'server/test/setup-check.test.ts',
     'server/test/setup-config.test.ts',
     'server/test/setup-herdr-agent.test.ts',

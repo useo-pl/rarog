@@ -8,9 +8,27 @@ import UIKit
 extension SessionViewController {
   /// Mikrofon i wiersz stanu w polu wiadomości; po `buildComposer` (opakowuje jego `onSend`/`onEdit`).
   func buildVoice() {
-    // Przejęcie mikrofonu i wyjście z ekranu zapisują pole tą samą drogą co reszta szkicu (`+Drafts`).
-    dictation.install(in: composer, store: store) { [weak self] in self?.persistDraftNow() }
+    // Every end of a recording, a takeover of the microphone and leaving the screen write the field the same way as
+    // the rest of the draft (`+Drafts`); an end in the background waits (`dictationEndWait`) before its background
+    // work ends.
+    dictation.install(
+      in: composer, store: store, sessionId: sessionId, persistDraft: { [weak self] in self?.persistDraftNow() },
+      draftOnDisk: dictationEndWait())
     buildVoiceAgent()
+  }
+
+  /// What the background work of a recording's end waits for. A Send that end woke has its answer: the message is
+  /// stored in the queue, or its text is back in the field and goes to the draft. Then the disk ran the draft write.
+  /// The wait holds the send and the draft store, not this screen: it stands also when the screen went with the
+  /// recording.
+  func dictationEndWait() -> @MainActor () async -> Void {
+    { [weak self, turnChrome, drafts] in
+      if let send = turnChrome.fieldSend {
+        _ = await send.value
+        self?.persistDraftNow()
+      }
+      await drafts.written()
+    }
   }
 
   /// Ekran „Dyktowanie” jako arkusz, gdy trasa dyktowania pyta (brak wyboru, Soniox niedostępny).

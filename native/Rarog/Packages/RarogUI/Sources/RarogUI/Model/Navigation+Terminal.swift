@@ -87,7 +87,7 @@ extension RarogNavigation {
       let target = opening.slot == .first
         ? TerminalTarget.shell(cwd: opening.cwd, slot: 1) : TerminalTarget.newShell(cwd: opening.cwd)
       return target.map { TerminalRoute(key: opening.token.uuidString, target: $0, cwd: opening.cwd, opening: opening) }
-    case .project, nil:
+    case .project, .inbox, nil:
       return nil
     }
   }

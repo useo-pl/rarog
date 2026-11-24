@@ -104,6 +104,9 @@ const LAYER2_BLOCKS: readonly string[] = [
   'kontrolny/widok-help-2.1.322.txt',
   // Workflow approval in auto mode: the phase list stands above a choice without digits, so the block has none.
   'kontrolny/zatwierdzenie-workflow-auto-bez-kontroli-2.1.322.txt',
+  // `Edit` consent after Enter on "Auto mode can't check actions": the options No and Yes stand without digits.
+  'kontrolny/zgoda-bez-hooka-claude-md-auto-2.1.330.txt',
+  'kontrolny/zgoda-bez-hooka-claude-md-auto-link-2.1.330.txt',
   'measured/picker-effort-2.1.312-26kol.txt',
   'refusals/widok-help-2.1.310.txt',
   'refusals/widok-skills-2.1.310.txt',

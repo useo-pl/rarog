@@ -18,9 +18,11 @@
  *   otwarciu nie odcina strumienia, który już płynie,
  * - kompresja (`RAROG_SSE_GZIP`): gzip tylko przy włączonej fladze i `Accept-Encoding` z `gzip` o wadze większej
  *   od zera; bufor kompresora opróżniany po każdej ramce i każdym pingu, kompresor zamykany przy rozłączeniu
- *   i odpięciu urządzenia.
+ *   i odpięciu urządzenia,
+ * - Inbox heads go only to a global stream opened with `inbox=1` and only when the server keeps an Inbox: `inbox-heads`
+ *   right after `sessions-snapshot`, then the events of {@link SseInbox} as they come; a stream without it gets none.
  */
-import type { Block, ServerEvent, TranscriptMessage } from '@rarog/shared';
+import type { Block, InboxEventOf, InboxHeadOf, ServerEvent, SessionState, TranscriptMessage } from '@rarog/shared';
 import { HELLO_HEARTBEAT_MS, MAX_IMAGE_DATA_URL_BYTES } from '@rarog/shared';
 import { say } from '@rarog/shared/sentences';
 import { type Gzip, constants as zlibConstants, createGzip } from 'node:zlib';
@@ -150,9 +152,19 @@ export interface SseResponse {
   readonly writableLength?: number;
 }
 
+/** The Inbox heads the hub sends to streams that ask for them (`InboxHeads` in `server/src/inbox/`). */
+export interface SseInbox {
+  /** The visible cards' heads, newest first, for the start of a stream. */
+  heads(): InboxHeadOf<SessionState>[];
+  /** Listener of head changes; returns the function that detaches it. */
+  onEvent(listener: (event: InboxEventOf<SessionState>) => void): () => void;
+}
+
 interface SseClient {
   readonly id: number;
   readonly scope: SseScope;
+  /** A global stream opened with `inbox=1` on a server that keeps an Inbox: it gets the Inbox events. */
+  readonly inbox: boolean;
   readonly res: SseResponse;
   /** `deviceId` klucza, którym otwarto strumień; brak = strumień otwarty z pominięciem routera (testy). */
   readonly owner: string | undefined;
@@ -198,6 +210,8 @@ export interface SseHubOptions {
    * is above zero (`bootstrap/pr-status.ts`). Missing = nobody listens.
    */
   readonly onClientCount?: (count: number) => void;
+  /** The Inbox heads; missing = the server keeps no Inbox (`RAROG_INBOX=0`), so `inbox=1` gives nothing. */
+  readonly inbox?: SseInbox;
   /** Odstęp heartbeatu; w testach zwykle bardzo mały albo heartbeat wyłączony (`0`). */
   readonly heartbeatMs?: number;
   /** Injected timers: tests pass fakes so they do not wait for a real interval. */
@@ -286,6 +300,7 @@ export class SseHub {
   private readonly notesFor: ((cwds: readonly string[]) => readonly string[]) | undefined;
   private readonly logger: ((line: string) => void) | undefined;
   private readonly onClientCount: ((count: number) => void) | undefined;
+  private readonly inbox: SseInbox | undefined;
   private readonly gzipEnabled: boolean;
   private readonly createGzipFn: () => Gzip;
   /**
@@ -311,6 +326,7 @@ export class SseHub {
     this.notesFor = options.notesFor;
     this.logger = options.logger;
     this.onClientCount = options.onClientCount;
+    this.inbox = options.inbox;
     this.gzipEnabled = options.gzip ?? false;
     this.createGzipFn = options.createGzip ?? ((): Gzip => createGzip());
     this.heartbeatMs = options.heartbeatMs ?? HEARTBEAT_MS;
@@ -340,6 +356,8 @@ export class SseHub {
     if (this.started) return;
     this.started = true;
     this.manager.onEvent((scope, seq, ev) => { this.broadcast(scope, seq, ev); });
+    this.manager.onTranscriptReset?.((sessionId) => { this.resetTranscript(sessionId); });
+    this.inbox?.onEvent((event) => { this.broadcastInbox(event); });
     if (this.heartbeatMs > 0) {
       this.heartbeat = this.setIntervalFn(() => { this.sendHeartbeat(); }, this.heartbeatMs);
     }
@@ -410,6 +428,30 @@ export class SseHub {
   }
 
   /**
+   * A new card under an open session id: each open stream of that id gets a `transcript-snapshot` of the new card, which
+   * replaces the old card's list in the app. A push the server starts is not an opening of the transcript, so the
+   * snapshot is read with `peek` (no git refresh).
+   */
+  resetTranscript(sessionId: string): void {
+    for (const client of [...this.clients.values()]) {
+      if (client.scope === sessionId) this.sendTranscriptSnapshot(client, sessionId, undefined, true);
+    }
+  }
+
+  /**
+   * Sends an Inbox event to the global streams opened with `inbox=1`; an older app never asks, so it never gets one.
+   * Fleeting like `herdr-status`: no `id:`, nothing to replay, a stream that opens later gets `inbox-heads`.
+   */
+  broadcastInbox(event: InboxEventOf<SessionState>): void {
+    let frame: string | null = null;
+    for (const client of this.clients.values()) {
+      if (!client.inbox) continue;
+      frame ??= formatSseEvent(event, null, this.serverStartId);
+      this.writeRaw(client, frame);
+    }
+  }
+
+  /**
    * Dokłada do ramki `sessions-snapshot` pole `notesCwds` i odnotowuje, o czym klient już wie.
    *
    * OBECNOŚĆ pola jest JEDYNYM sygnałem „Rarog mówi o notatkach": brak = `RAROG_NOTES=0`.
@@ -454,9 +496,11 @@ export class SseHub {
   /**
    * Otwiera strumień globalny: `hello` + `sessions-snapshot`, potem live.
    * `Last-Event-ID` jest tu celowo ignorowany — snapshot listy jest tani i zawsze aktualny.
+   * `inbox`: the client asked for the Inbox heads (`inbox=1`); on a server with an Inbox `inbox-heads` follows the
+   * list and the stream gets the Inbox events from then on.
    */
-  openGlobal(res: SseResponse, owner?: string, acceptEncoding?: string): void {
-    const client = this.register('global', res, owner, acceptEncoding);
+  openGlobal(res: SseResponse, owner?: string, acceptEncoding?: string, inbox = false): void {
+    const client = this.register('global', res, owner, acceptEncoding, inbox && this.inbox !== undefined);
     this.send(client, {
       type: 'hello',
       protocolVersion: this.protocolVersion,
@@ -482,6 +526,10 @@ export class SseHub {
      * Liczy to `withNotes`, ta sama metoda co przy ramkach z managera — patrz `broadcast`.
      */
     this.send(client, this.withNotes(snapshot), null);
+    // The Inbox heads after the list (`inbox=1`), so the app knows every session a head names.
+    if (client.inbox && this.inbox !== undefined) {
+      this.send(client, { type: 'inbox-heads', heads: this.inbox.heads() }, null);
+    }
   }
 
   /**
@@ -575,9 +623,9 @@ export class SseHub {
    * kompresji albo `null`, gdy kompresor zamknął się przed opróżnieniem bufora; bez kompresji nie jest wołane.
    */
   private sendTranscriptSnapshot(
-    client: SseClient, sessionId: string, onFlushed?: (packed: number | null) => void,
+    client: SseClient, sessionId: string, onFlushed?: (packed: number | null) => void, peek = false,
   ): string {
-    const t = this.manager.transcript(sessionId);
+    const t = peek ? this.manager.transcript(sessionId, { peek: true }) : this.manager.transcript(sessionId);
     const event: ServerEvent = {
       type: 'transcript-snapshot',
       sessionId,
@@ -595,11 +643,11 @@ export class SseHub {
   }
 
   private register(
-    scope: SseScope, res: SseResponse, owner: string | undefined, acceptEncoding: string | undefined,
+    scope: SseScope, res: SseResponse, owner: string | undefined, acceptEncoding: string | undefined, inbox = false,
   ): SseClient {
     const id = this.nextClientId++;
     const gzip = this.gzipEnabled && acceptsGzip(acceptEncoding) ? this.createGzipFn() : undefined;
-    const client: SseClient = { id, scope, res, owner, gzip, bytesOut: 0, flushedBytes: 0 };
+    const client: SseClient = { id, scope, inbox, res, owner, gzip, bytesOut: 0, flushedBytes: 0 };
     res.writeHead(200, {
       ...SSE_HEADERS,
       // Przy włączonej kompresji odpowiedź zależy od `Accept-Encoding`; pośrednik nie ma jej podać innemu klientowi.

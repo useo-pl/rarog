@@ -1,17 +1,19 @@
 import XCTest
 
-/// Wygląd nagłówka sesji mierzony z pikseli zrzutu:
-/// - wcięcia rzędów: pierwszy tekst zakładek i linia gita zaczynają się 16 pt od lewej krawędzi kolumny,
-///   jak tekst transkryptu; prawą krawędź pigułek i pierścień kontekstu (demo ich
-///   nie ma) mierzy `HeaderChromeTests` w `RarogUIKitTests`;
-/// - jedna kreska: nagłówek oddziela od transkryptu kreska pod ostatnim rzędem — pod linią statusu,
-///   a pod paskiem zakładek tylko wtedy, gdy linii statusu nie ma;
-/// - ikony paska: ciche glify z celem dotyku 44 pt w skali średniej (≤ 18 pt, najszerszy ponad 16,5 pt);
-/// - zakładka bez znaku stanu przed etykietą: stan niesie kolor kafelka z cyfrą albo kwadracika,
-///   bieżąca stoi na płytce.
+/// The session header's look, measured from the screenshot's pixels:
+/// - row insets: the tabs' first text and the git line start 16 pt from the column's left edge, like the transcript's
+///   text; the pills' right edge and the context ring (the demo has none) are measured by `HeaderChromeTests` in
+///   `RarogUIKitTests`;
+/// - one divider: a line under the last row separates the header from the transcript, under the status line, and
+///   under the tab bar only when there is no status line;
+/// - the bar's icon: a quiet glyph with a 44 pt target at the medium scale (≤ 18.5 pt, over 16.5 pt); the session
+///   "×" in the current tab, 28 pt wide, keeps its place when armed;
+/// - a tab without a state mark before its label: the state is the color of the key tile or the square, the current
+///   tab stands on the plate.
 ///
-/// Demo: `demo-willow` ma gałąź i rozjazd (linia statusu stoi) i siostrę `demo-willow-parser`. Sesja bez
-/// linii statusu to świeża sesja z „+" w projekcie map-view (demo nie zna jej gita); test ją zamyka.
+/// Demo: `demo-willow` has a branch and divergence (the status line stands) and the sibling `demo-willow-parser`. A
+/// session without a status line is a fresh one from "+" in the map-view project (the demo does not know its git);
+/// the test closes it.
 final class HeaderChromeUITests: XCTestCase {
   /// Wspólne wcięcie treści ekranu sesji (tekst transkryptu).
   private static let inset: CGFloat = 16
@@ -96,37 +98,63 @@ final class HeaderChromeUITests: XCTestCase {
     XCTAssertTrue(shot.pixels.hasLine(atBottomOf: shot.column, background: shot.background), "kreska pod paskiem zakładek")
   }
 
-  /// Ikony paska („×", „Terminal w oknie"): ciche glify, cel dotyku ≥ 44 pt, skala średnia, najszerszy glif ≤ 18,5 pt
-  /// (zmierzone: okno „Terminal w oknie" 17,5 × 13,5 pt; w skali małej ≤ 16 pt, systemowe bez stylu 17–25 pt).
+  /// The bar's icon ("Pop-Up Terminal"): a quiet glyph, a touch target ≥ 44 pt, the medium scale, the glyph ≤ 18.5 pt
+  /// (measured: the "Pop-Up Terminal" window 17.5 × 13.5 pt; at the small scale ≤ 16 pt, system ones without a style
+  /// 17–25 pt). The session "×" is not in the corner: it stands in the current tab, an element of its own after the
+  /// label and the divider, 28 pt wide and as tall as the tab, with a quiet glyph. Armed, it keeps its place and width
+  /// and the card under the bar says what the next press does (it goes by itself after 5 s and closes nothing).
   @MainActor
   func testQuietToolbarIcons() throws {
     continueAfterFailure = true
     let app = try launchLoggedIn()
     let shot = try openSession(app, "demo-willow", "naglowek-ikony")
-    var widest: CGFloat = 0
-    for id in ["header.close", "header.terminalPopup"] {
-      let button = element(app, id)
-      XCTAssertTrue(button.exists, "\(id) w nagłówku")
-      guard button.exists else { continue }
-      let frame = button.frame
-      let ink = try XCTUnwrap(shot.pixels.ink(in: frame, background: shot.pixels.dominant(in: frame)), "glif \(id)")
-      print("nagłówek: \(id) cel \(frame.size), glif \(ink.size)")
-      widest = max(widest, ink.width, ink.height)
-      XCTAssertLessThanOrEqual(max(ink.width, ink.height), 18.5, "\(id): glif \(ink.size) w celu \(frame.size)")
-      XCTAssertGreaterThanOrEqual(min(frame.width, frame.height), 43.5, "\(id): cel dotyku \(frame.size)")
+    let popup = element(app, "header.terminalPopup")
+    XCTAssertTrue(popup.exists, "header.terminalPopup in the header")
+    if popup.exists {
+      let frame = popup.frame
+      let ink = try XCTUnwrap(shot.pixels.ink(in: frame, background: shot.pixels.dominant(in: frame)), "popup glyph")
+      print("header: header.terminalPopup target \(frame.size), glyph \(ink.size)")
+      XCTAssertLessThanOrEqual(max(ink.width, ink.height), 18.5, "popup: glyph \(ink.size) in target \(frame.size)")
+      XCTAssertGreaterThan(max(ink.width, ink.height), 16.5, "popup: glyph at the medium scale")
+      XCTAssertGreaterThanOrEqual(min(frame.width, frame.height), 43.5, "popup: touch target \(frame.size)")
     }
-    XCTAssertGreaterThan(widest, 16.5, "glify w skali średniej")
-    // Jedna grupa: cele stoją co 2 pt (runda 3, `HeaderMetrics.iconSpacing`; osobne elementy paska stały co 12 pt).
-    let frames = ["header.terminalPopup", "header.close"].map { element(app, $0).frame }
-    for (left, right) in zip(frames, frames.dropFirst()) {
-      XCTAssertEqual(right.minX - left.maxX, 2, accuracy: 0.5, "odstęp ikon nagłówka: \(left) → \(right)")
-    }
-    // Uzbrojone „×" mówi „Na pewno?" tekstem w tym samym miejscu paska (gaśnie samo po 5 s, nic nie zamyka).
+
     let close = element(app, "header.close")
+    let tab = element(app, "tab.demo-willow")
+    XCTAssertTrue(close.exists && tab.exists, "the current tab and its “×”")
+    let target = close.frame
+    let label = tab.frame
+    print("header: header.close target \(target), the tab's label \(label)")
+    XCTAssertEqual(target.width, 28, accuracy: 0.5, "“×”: 28 pt wide")
+    XCTAssertGreaterThanOrEqual(target.height, 43.5, "“×”: as tall as the tab")
+    XCTAssertEqual(target.midY, label.midY, accuracy: 0.5, "“×” in the tab's row")
+    // Between the label's button and the "×" stands only the 1 pt divider: two elements side by side.
+    XCTAssertEqual(target.minX - label.maxX, 1, accuracy: 0.6, "“×” right after the divider: \(label) → \(target)")
+    XCTAssertLessThan(target.maxX, popup.frame.minX, "the “×” is not in the corner")
+    let ink = try XCTUnwrap(shot.pixels.ink(in: target, background: shot.pixels.dominant(in: target)), "“×” glyph")
+    print("header: “×” glyph \(ink.size)")
+    XCTAssertLessThanOrEqual(max(ink.width, ink.height), 18.5, "“×”: quiet glyph \(ink.size)")
+
+    let restingCell = shot.pixels.dominant(in: target)
     close.tap()
-    XCTAssertTrue(wait(NSPredicate(format: "label BEGINSWITH 'Na pewno?'"), close, timeout: 3), "uzbrojone „×”")
-    _ = try capture(app, "naglowek-uzbrojone-zamkniecie")
-    XCTAssertLessThanOrEqual(close.frame.maxX, app.frame.maxX, "„Na pewno?” mieści się w pasku: \(close.frame)")
+    XCTAssertTrue(wait(NSPredicate(format: "label BEGINSWITH 'Na pewno?'"), close, timeout: 3), "armed “×”")
+    // Single reads, no waiting: everything up to the screenshot has to fit in the 5 s of the arming.
+    let card = element(app, "tabs.closeArmed")
+    XCTAssertTrue(card.exists, "the arming card")
+    let cardFrame = card.frame
+    let armedTarget = close.frame
+    let armedLabel = tab.frame
+    let bar = element(app, "tabs.bar").frame
+    let armed = try capture(app, "naglowek-uzbrojone-zamkniecie")
+    // The card stands under the bar: over the tab row it would hide the "×" the next press needs.
+    print("header: arming card \(cardFrame), bar bottom \(bar.maxY)")
+    XCTAssertGreaterThanOrEqual(cardFrame.minY, bar.maxY - 0.5, "the card under the bar: \(cardFrame), bar \(bar)")
+    XCTAssertFalse(cardFrame.intersects(armedTarget), "the card leaves the “×” visible: \(cardFrame)")
+    XCTAssertGreaterThan(
+      HeaderPixels.distance(armed.pixels.dominant(in: target), restingCell), 3, "armed: the `err` wash under the “×”")
+    XCTAssertEqual(armedTarget.minX, target.minX, accuracy: 0.5, "armed: the same place")
+    XCTAssertEqual(armedTarget.width, target.width, accuracy: 0.5, "armed: the same width")
+    XCTAssertEqual(armedLabel.width, label.width, accuracy: 0.5, "armed: the label keeps its width")
   }
 
   /// Kafelki skrótu Cmd na zakładkach (wybór użytkownika, w kolorze stanu): przy

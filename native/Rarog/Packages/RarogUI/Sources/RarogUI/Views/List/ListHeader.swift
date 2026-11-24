@@ -29,4 +29,33 @@ struct ListHeaderTitle: View {
   }
 }
 
+/// The list bar's one `.principal` item: "AGENTS (N)" at the leading edge, in every state of the voice conversation
+/// across sessions. It reads that conversation in its own body only for the room before New Session, where the
+/// waveform glyph or the lit circle stands (`VoiceAgentSessionsListButton`), so a change of the state redraws this
+/// line and not the list.
+struct ListHeaderLine: View {
+  let count: Int
+  /// The list column's width (`ListColumnGeometry`).
+  let columnWidth: CGFloat
+  @Environment(\.voiceAgentSessionsFeed) private var feed
+  @Environment(VoiceAgentSessionsConversation.self) private var owner: VoiceAgentSessionsConversation?
+
+  var body: some View {
+    let voiceButton = VoiceAgentSessionsListHeader.make(
+      content: feed?.content, action: owner.map(VoiceAgentSessionsListAction.of)
+    ).trailing != .none
+    HStack(spacing: 0) {
+      ListHeaderTitle(count: count)
+      Spacer(minLength: 0)
+    }
+    // Bez systemowego uchwytu pasek centrował ten element, kiedy mieścił się symetrycznie, i „AGENCI”
+    // odjeżdżało od lewej krawędzi (16 → 69 pt). Minimum szersze niż miejsce symetryczne trzyma go przy lewej.
+    // The minimum leaves room for the target of the waveform glyph or the lit circle while either stands.
+    .frame(
+      minWidth: SessionListMetrics.headerMinWidth(columnWidth: columnWidth, voiceButton: voiceButton),
+      idealWidth: 2_000,
+      maxWidth: .infinity)
+  }
+}
+
 #endif

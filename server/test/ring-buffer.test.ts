@@ -69,6 +69,26 @@ describe('RingBuffer — monotoniczność seq', () => {
   });
 });
 
+describe('RingBuffer — numbering that continues an earlier ring', () => {
+  it('starts after `startSeq`; a cursor at or below it is too old, a cursor of the new ring is servable', () => {
+    const buf = new RingBuffer<string>(10, { startSeq: 7 });
+    expect(buf.lastSeq).toBe(7);
+    // The last seq of the earlier ring: its events are not in this one, so the client needs a snapshot.
+    expect(buf.tooOld(7)).toBe(true);
+    expect(buf.tooOld(3)).toBe(true);
+    expect(buf.push('a')).toBe(8);
+    expect(buf.push('b')).toBe(9);
+    expect(buf.tooOld(7)).toBe(true);
+    expect(buf.tooOld(8)).toBe(false);
+    expect(buf.entriesSince(8)).toEqual([{ seq: 9, value: 'b' }]);
+  });
+
+  it('`startSeq` 0 keeps cursor 0 servable', () => {
+    const buf = new RingBuffer<string>(10, { startSeq: 0 });
+    expect(buf.tooOld(0)).toBe(false);
+  });
+});
+
 describe('RingBuffer — since()', () => {
   it('zwraca ogon po kursorze (kursor = ostatni odebrany seq)', () => {
     const buf = new RingBuffer<string>(10);

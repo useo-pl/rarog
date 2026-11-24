@@ -24,59 +24,78 @@ extension SessionViewController {
         let self, self.viewIfLoaded?.window != nil, self.presentedViewController == nil,
         let preview = ImagePreviewController(data: data, title: thumbnail.label)
       else { return }
-      self.present(ImagePreviewNavigation(preview: preview), animated: true)
+      self.present(PreviewPresentation.controller(for: preview), animated: true)
     }
   }
 }
 
-/// Rama podglądu: QuickLook w nawigacji apki. Pasek z „Zamknij" i skrót Esc żyją w procesie apki —
-/// QuickLook prezentowany sam (iPadOS 26) nie wystawia przycisku zamknięcia czytnikowi ani
-/// testom, a klawisze trafiają do jego procesu (zmierzone XCUITestem).
+/// How a QuickLook preview stands. On an iPad and an iPhone it is QuickLook alone, full screen: its own close button
+/// (exposed to VoiceOver and to UI tests) and its own Esc. On a Mac the iPad app gets the system Quick Look panel in a
+/// window of its own, with its own close button and Esc, and the controller only stands behind it, so there it stands
+/// in ``ImagePreviewNavigation``, which draws nothing.
+enum PreviewPresentation {
+  static func controller(for preview: RarogQuickLookController) -> UIViewController {
+    if ProcessInfo.processInfo.isiOSAppOnMac { return ImagePreviewNavigation(preview: preview) }
+    preview.modalPresentationStyle = .fullScreen
+    return preview
+  }
+}
+
+/// QuickLook of the app: the transcript photo and a file from the panel tree. QuickLook closes an image or a PDF on its
+/// own Esc and keeps a text file open (iPadOS, as in the Files app); an Esc that comes back to the app (as a key
+/// command or a bare press) closes the preview too.
+class RarogQuickLookController: QLPreviewController {
+  /// The preview itself is closing: its own dismissal, or the Mac frame's around it.
+  var isClosing: Bool { isBeingDismissed || navigationController?.isBeingDismissed == true }
+
+  override var keyCommands: [UIKeyCommand]? {
+    [UIKeyCommand(title: UICopy.previewClose, action: #selector(escapeKey), input: UIKeyCommand.inputEscape)]
+  }
+
+  override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    if presses.contains(where: { $0.key?.keyCode == .keyboardEscape }), close() { return }
+    super.pressesBegan(presses, with: event)
+  }
+
+  @objc private func escapeKey() {
+    close()
+  }
+
+  /// Closes the preview, unless it is already closing or a sheet of QuickLook (share) stands over it.
+  @discardableResult
+  private func close() -> Bool {
+    let shown = navigationController ?? self
+    guard !isClosing, shown.presentingViewController != nil, shown.presentedViewController == nil,
+      !shown.isBeingPresented
+    else { return false }
+    shown.dismiss(animated: true)
+    return true
+  }
+}
+
+/// The Mac frame of a preview (``PreviewPresentation``): a navigation controller that draws nothing, so the app stays
+/// visible under the system Quick Look panel. Closing the panel dismisses it, and its dismissal discards the copy.
 final class ImagePreviewNavigation: UINavigationController {
-  init(preview: ImagePreviewController) {
+  init(preview: QLPreviewController) {
     super.init(rootViewController: preview)
-    modalPresentationStyle = .fullScreen
-    preview.navigationItem.leftBarButtonItem = closeItem()
+    modalPresentationStyle = .overFullScreen
+  }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    view.alpha = 0
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) {
-    fatalError("init(coder:) nieużywany")
-  }
-
-  override var canBecomeFirstResponder: Bool { true }
-
-  override func viewDidAppear(_ animated: Bool) {
-    super.viewDidAppear(animated)
-    becomeFirstResponder()
-    // QuickLook ustawia własne przyciski przy pojawieniu się — „Zamknij" wraca, gdyby zniknął.
-    if let root = viewControllers.first, root.navigationItem.leftBarButtonItem == nil {
-      root.navigationItem.leftBarButtonItem = closeItem()
-    }
-  }
-
-  /// Esc z klawiatury sprzętowej zamyka podgląd jak „Zamknij" — o ile klawisz trafi do apki, a nie do
-  /// procesu QuickLook (XCUITest go tu nie dowozi; sprawdza się ręcznie na iPadzie).
-  override var keyCommands: [UIKeyCommand]? {
-    [UIKeyCommand(title: UICopy.previewClose, action: #selector(closePreview), input: UIKeyCommand.inputEscape)]
-  }
-
-  @objc private func closePreview() {
-    dismiss(animated: true)
-  }
-
-  private func closeItem() -> UIBarButtonItem {
-    let item = UIBarButtonItem(systemItem: .close, primaryAction: UIAction { [weak self] _ in self?.closePreview() })
-    item.accessibilityLabel = UICopy.previewClose
-    item.accessibilityIdentifier = "preview.close"
-    return item
+    fatalError("init(coder:) unused")
   }
 }
 
 /// QuickLook z jednym obrazkiem. QuickLook czyta wyłącznie pliki, więc bajty idą do pliku
 /// tymczasowego (ochrona danych pełna), który znika razem z kontrolerem. Źródło danych trzyma
 /// sam kontroler — `dataSource` jest słabą referencją.
-final class ImagePreviewController: QLPreviewController, QLPreviewControllerDataSource {
+final class ImagePreviewController: RarogQuickLookController, QLPreviewControllerDataSource {
   private let item: ImagePreviewItem
   private let fileURL: URL
 

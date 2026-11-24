@@ -53,10 +53,11 @@ enum VoiceAgentKey: Sendable, Equatable {
 /// answer and there is no OpenAI voice, so without Soniox there is no voice agent: an older server that announces
 /// only `companionEnabled` gets none. One rule for the button (``VoiceAgentEntry``), ⌥⌘V, the Settings row
 /// (`VoiceAgentSettingsModel.shown`) and the end of a running conversation (``VoiceAgentWatch``). A missing field or
-/// no answer from the server yet reads as false.
+/// no answer from the server yet reads as false. The rule itself stands in RarogCore
+/// (`AppState.voiceAgentOffered(sonioxAllowed:)`), so the mode across sessions builds on the same definition.
 enum VoiceAgentAvailability {
   static func offered(state: AppState, sonioxAllowed: Bool) -> Bool {
-    sonioxAllowed && state.capabilities?.companion == true && state.capabilities?.companionSpeech == true
+    state.voiceAgentOffered(sonioxAllowed: sonioxAllowed)
   }
 }
 
@@ -71,6 +72,9 @@ struct VoiceAgentWatch: Sendable, Equatable {
     var enabled: Bool
     var selected: String?
     var background: Bool
+    /// The background keeps this conversation: the locked-phone trial is on and the conversation runs past its
+    /// readiness gate (`LockedPhoneTrial.keeps(running:)` with `VoiceAgentSession.isReady`). A start is never kept.
+    var keepsInBackground: Bool
     /// The message field of the session screen is on screen. The status row and the button live in it, so
     /// without it the microphone would run without a visible indicator.
     var fieldShown: Bool
@@ -80,14 +84,15 @@ struct VoiceAgentWatch: Sendable, Equatable {
     var boundary: Int?
 
     init(
-      loggedIn: Bool, login: Int, enabled: Bool, selected: String?, background: Bool, fieldShown: Bool = true,
-      epoch: String?, boundary: Int?
+      loggedIn: Bool, login: Int, enabled: Bool, selected: String?, background: Bool,
+      keepsInBackground: Bool = false, fieldShown: Bool = true, epoch: String?, boundary: Int?
     ) {
       self.loggedIn = loggedIn
       self.login = login
       self.enabled = enabled
       self.selected = selected
       self.background = background
+      self.keepsInBackground = keepsInBackground
       self.fieldShown = fieldShown
       self.epoch = epoch
       self.boundary = boundary
@@ -95,14 +100,14 @@ struct VoiceAgentWatch: Sendable, Equatable {
 
     init(
       state: AppState, sessionId: String, login: Int, enabled: Bool, sonioxAllowed: Bool, selected: String?,
-      background: Bool, fieldShown: Bool = true
+      background: Bool, keepsInBackground: Bool = false, fieldShown: Bool = true
     ) {
       let transcript = state.transcripts[sessionId]
       self.init(
         loggedIn: state.auth == .loggedIn, login: login,
         enabled: enabled && VoiceAgentAvailability.offered(state: state, sonioxAllowed: sonioxAllowed),
-        selected: selected, background: background, fieldShown: fieldShown, epoch: transcript?.messagesEpoch,
-        boundary: transcript.flatMap { VoiceAgentWatch.boundary(in: $0.messages) })
+        selected: selected, background: background, keepsInBackground: keepsInBackground, fieldShown: fieldShown,
+        epoch: transcript?.messagesEpoch, boundary: transcript.flatMap { VoiceAgentWatch.boundary(in: $0.messages) })
     }
   }
 
@@ -117,6 +122,14 @@ struct VoiceAgentWatch: Sendable, Equatable {
     case background
     /// The message field went away (state card, decision dock, no session): the status row and the button with it.
     case fieldHidden
+    /// The app's stream to the server dropped (`AppState.global` offline): the conversation across sessions ends.
+    case connectionLost
+    /// The Inbox card of the conversation left the visible cards: removed, its session works, it stopped.
+    case cardGone
+    /// The Inbox card changed (another turn) while its conversation waited for the session's transcript.
+    case cardChanged
+    /// The Inbox left the screen (another screen, back to the list, the card's own session opened).
+    case inboxLeft
 
     /// Name in the end line of `client.log`.
     var traceName: String {
@@ -128,6 +141,10 @@ struct VoiceAgentWatch: Sendable, Equatable {
       case .disabled: "disabled"
       case .background: "background"
       case .fieldHidden: "field-hidden"
+      case .connectionLost: "connection-lost"
+      case .cardGone: "card-gone"
+      case .cardChanged: "card-changed"
+      case .inboxLeft: "inbox-left"
       }
     }
   }
@@ -137,19 +154,28 @@ struct VoiceAgentWatch: Sendable, Equatable {
 
   let sessionId: String
   private var start: Input
+  /// The first check (the start check) passed. Only a started conversation can be kept in the background: the start
+  /// check refuses the background whatever ``Input/keepsInBackground`` says, so nothing opens the microphone there.
+  private var started = false
 
   init(sessionId: String, start: Input) {
     self.sessionId = sessionId
     self.start = start
   }
 
-  /// Powód końca albo `nil`, gdy rozmowa trwa.
+  /// The end reason, or `nil` while the conversation goes on. The first call is the start check.
   mutating func check(_ input: Input) -> Reason? {
+    let reason = reason(input)
+    if reason == nil { started = true }
+    return reason
+  }
+
+  private mutating func reason(_ input: Input) -> Reason? {
     if !input.loggedIn { return .loggedOut }
     if input.login != start.login { return .serverChanged }
     if input.selected != sessionId { return .sessionChanged }
     if !input.enabled { return .disabled }
-    if input.background { return .background }
+    if input.background, !(started && input.keepsInBackground) { return .background }
     if !input.fieldShown { return .fieldHidden }
     // Restart serwera numeruje transkrypt od nowa: granica z nowej numeracji liczy się od niej.
     if input.epoch != start.epoch {
@@ -173,30 +199,37 @@ struct VoiceAgentWatch: Sendable, Equatable {
 /// Wyniki narzędzi dla modelu. Po angielsku, jak instrukcja: model mówi w języku rozmówcy sam.
 enum VoiceAgentToolText {
   static func ask(_ outcome: CompanionAskOutcome) -> String {
+    guard case let .answer(answer) = outcome else { return error(refusal(outcome)) }
+    var object: [String: Any] = ["answer": answer.answer, "found": answer.found]
+    if let prompt = answer.prompt { object["prompt"] = prompt }
+    return RealtimeClientEvent.encode(object)
+  }
+
+  /// The plain sentence of a question that brought no answer (`.answer` gives the sentence of a lost session).
+  static func refusal(_ outcome: CompanionAskOutcome) -> String {
     switch outcome {
-    case let .answer(answer):
-      var object: [String: Any] = ["answer": answer.answer, "found": answer.found]
-      if let prompt = answer.prompt { object["prompt"] = prompt }
-      return RealtimeClientEvent.encode(object)
     case .limit:
-      return error(
-        "The Claude subscription limit is reached, so the session cannot be checked now. Tell the user and do not retry.")
+      "The Claude subscription limit is reached, so the session cannot be checked now. Tell the user and do not retry."
     case .busy:
-      return error("Another question about this session is still being checked. Wait for it, then ask again.")
+      "Another question about this session is still being checked. Wait for it, then ask again."
     case .disabled:
-      return error("Questions about the session are turned off on the server. Tell the user.")
-    case .refused, .loggedOut, .cancelled:
-      return unreachable
+      "Questions about the session are turned off on the server. Tell the user."
+    case .answer, .refused, .loggedOut, .cancelled:
+      unreachableSentence
     case let .failed(code, _):
-      if code == "timeout" || code == "companion-timeout" {
-        return error("Checking the session took too long. Tell the user it can be asked again.")
-      }
-      return error("Checking the session failed. Tell the user it can be asked again.")
+      timedOut(code)
+        ? "Checking the session took too long. Tell the user it can be asked again."
+        : "Checking the session failed. Tell the user it can be asked again."
     }
   }
 
+  /// A failure code of the question route that means a timeout (the app's or the server's).
+  static func timedOut(_ code: String?) -> Bool { code == "timeout" || code == "companion-timeout" }
+
+  private static let unreachableSentence = "The app cannot reach the session now."
+
   /// The app lost the session (logout, unpairing, another server since the start): nothing was asked or sent.
-  static var unreachable: String { error("The app cannot reach the session now.") }
+  static var unreachable: String { error(unreachableSentence) }
 
   /// Why the message field does not take a send now, as a fixed name for the model. Never the sentence under the
   /// field: it can carry server text (the error detail of a session), and tool results go to OpenAI.
@@ -285,7 +318,7 @@ enum VoiceAgentToolText {
   }
 
   /// The refusal code of the server when it is an identifier (`bad-request`), otherwise a fixed name.
-  private static func refusalName(_ code: String?) -> String {
+  static func refusalName(_ code: String?) -> String {
     guard let code, (1...64).contains(code.count),
       code.allSatisfy({ ($0.isASCII && ($0.isLowercase || $0.isNumber)) || $0 == "-" || $0 == "_" || $0 == "." })
     else { return "unknown code" }
@@ -293,7 +326,7 @@ enum VoiceAgentToolText {
   }
 
   /// Name of the reason a session does not take messages, without content.
-  private static func blockName(_ block: SendBlock) -> String {
+  static func blockName(_ block: SendBlock) -> String {
     switch block {
     case .codex: "Codex session"
     case .unsupported: "unsupported session"

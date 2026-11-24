@@ -6,7 +6,8 @@ import SwiftUI
 // „Nowa sesja" w pasku listy. Prośbę o arkusz niesie `NewSessionPresenter` ze środowiska
 // (`Model/AppSheet.swift`), pokazuje `SheetHost`. Właściciel: sterowanie sesją.
 
-/// „Nowa sesja" w pasku listy, a za nią „Ustawienia” (`SettingsListButton`) — jednym elementem paska, cele co
+/// „Nowa sesja" w pasku listy, przed nią the voice conversation across sessions (`VoiceAgentSessionsListButton`, only
+/// where that mode is offered), a za nią „Ustawienia” (`SettingsListButton`) — jednym elementem paska, cele co
 /// `HeaderMetrics.iconSpacing` jak ikony prawego rogu nagłówka sesji. Dwa osobne elementy paska stałyby co odstęp
 /// systemu, za daleko od siebie. Przy zakazie zakładania przycisk jest przygaszony,
 /// ale klikalny: formularz mówi powód zdaniem serwera pod „Uruchom". Wygląd jak przyciski nagłówka sesji:
@@ -15,9 +16,12 @@ struct NewSessionListButton: ViewModifier {
   let store: RarogStore
   let navigation: RarogNavigation
   @Environment(NewSessionPresenter.self) private var presenter: NewSessionPresenter?
+  @Environment(VoiceAgentSessionsConversation.self) private var voiceSessions: VoiceAgentSessionsConversation?
 
-  /// The pencil glyph's shift from the centre of its target: level with the gear and 9 pt towards it. Moves only the
-  /// drawing; the 44 pt target stays in place.
+  /// The pencil glyph's shift from the centre of its target: level with the gear and, beside the gear alone, 9 pt
+  /// towards it. With the waveform before it the pencil stays centred, so the three glyphs stand one target and one
+  /// spacing apart; a shift towards the gear would widen the waveform's gap by as much as it narrows the gear's.
+  /// Moves only the drawing; the 44 pt target stays in place.
   static let glyphLift: CGFloat = 0
   static let glyphShift: CGFloat = 9
   /// The whole group's shift towards the trailing edge, targets included: the gear's ink stands in one column with
@@ -27,15 +31,18 @@ struct NewSessionListButton: ViewModifier {
 
   func body(content: Content) -> some View {
     let blocked = store.state.launchBlocked ? UICopy.launchBlocked(store.state.launchBlockedDetail) : nil
+    let shift = VoiceAgentSessionsListAction.shows(voiceSessions) ? 0 : Self.glyphShift
     content
       .toolbar {
         ToolbarItem(placement: .primaryAction) {
           HStack(spacing: HeaderMetrics.iconSpacing) {
+            // First, so the gear keeps its place in the column of the project headers' note glyph.
+            VoiceAgentSessionsListButton(navigation: navigation)
             Button {
               presenter?.openNewSession()
             } label: {
               Label(UICopy.newSessionTitle, systemImage: "square.and.pencil")
-                .offset(x: Self.glyphShift, y: -Self.glyphLift)
+                .offset(x: shift, y: -Self.glyphLift)
             }
             .buttonStyle(HeaderIconButtonStyle())
             .shortcutTip(UICopy.newSessionTitle, .newSession)

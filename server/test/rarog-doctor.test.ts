@@ -202,6 +202,8 @@ async function greenInstall(): Promise<void> {
     log: path.join(dataDir(), 'server.log'),
   }));
   write(path.join(dataDir(), 'devices.json'), JSON.stringify({ version: 1, serverId: SERVER_ID, devices: [] }));
+  // A server has run with this directory, so its log exists (without a consent-without-a-hook line).
+  write(path.join(dataDir(), 'server.log'), '');
   // Kopia hooka zgodna z repo, bez gita: stan po `hooks install` niezależny od niezacommitowanych zmian w checkoutcie.
   copyFromRepo(HOOK_INSTALL_FILES);
   write(userSettingsPath(dir), JSON.stringify({
@@ -755,6 +757,7 @@ describe.skipIf(!IS_MAC)(macOnly('rarog doctor na atrapach', 'launchd'), { timeo
     await greenInstall();
     const trial = path.join(dir, 'proba');
     write(path.join(trial, 'devices.json'), JSON.stringify({ version: 1, serverId: 'fedcba9876543210', devices: [] }));
+    write(path.join(trial, 'server.log'), '');
     // Konfiguracja mówi o porcie usługi; próba słucha na porcie serwera HTTP testu.
     writeConfig({
       RAROG_ORIGINS: 'https://rarog.example.net', RAROG_PORT: '1', RAROG_PROJECT_ROOTS: roots,
@@ -916,6 +919,7 @@ describe.skipIf(!IS_MAC)(macOnly('rarog doctor: linia iroh z gniazdem administra
       write(path.join(configDir(), 'secret', 'private.env'),
         `SONIOX_API_KEY=${FAKE_SECRET}\nRAROG_IROH_KEY=${FAKE_IROH_KEY}\n`, 0o600);
       write(path.join(trial(), 'devices.json'), JSON.stringify({ version: 1, serverId: SERVER_ID, devices: [] }));
+      write(path.join(trial(), 'server.log'), '');
       serverProcess(liveEnv({
         RAROG_IROH: '1', RAROG_IROH_RELAY: IROH_RELAY, RAROG_IROH_KEY: FAKE_IROH_KEY, RAROG_DATA_DIR: trial(),
       }));
@@ -958,6 +962,7 @@ describe.skipIf(!IS_MAC)(macOnly('rarog doctor: linia iroh z gniazdem administra
         'consent channel: the server does not report it (/health without consent)',
         `consent channel settings: no sandbox access to ${path.join(dataDir(), 'run')}/ and no other PermissionRequest`
           + ` hook in ${path.join(dir, '.claude', 'settings.json')}`,
+        `consent without a hook: none in the last 7 days (${path.join(dataDir(), 'server.log')})`,
         'PR status: off (RAROG_PR_STATUS=0)',
       ]);
       expect(run.stdout).toContain('result: ok 10, ERROR 0, unknown 0, warn 0');

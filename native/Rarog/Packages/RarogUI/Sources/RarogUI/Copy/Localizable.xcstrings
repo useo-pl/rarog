@@ -5311,24 +5311,6 @@
         }
       }
     },
-    "composer.interruptedTyping" : {
-      "comment" : "Pole wiadomości › Przerwanie tury.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Interrupted. The prompt didn't come back because you're already typing."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przerwane — prompt nie wrócił, bo już piszesz."
-          }
-        }
-      }
-    },
     "composer.limitLine.at" : {
       "comment" : "Pole wiadomości › Pole wiadomości. „Limit planu — spróbuj po 14:00.\" (godzina z `stateDetailRef.args[0]` kodu `state.limit-reached`, zapas: `resetAt=<ISO>` w `stateDetail`). Parametry: 1. clock (tekst).",
       "extractionState" : "manual",
@@ -10551,6 +10533,744 @@
         }
       }
     },
+    "inbox.cards.spoken" : {
+      "comment" : "Inbox screen header, VoiceOver label of the number after the title \"Inbox\": every card on the screen. Plural by parameter 1 (the number of cards).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld karty"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld kart"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld karta"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld kart"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inbox.count.spoken" : {
+      "comment" : "Inbox button, VoiceOver value after \"Inbox\": cards that wait for you or carry an unread result. Plural by parameter 1 (the number of cards).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowe"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowych"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowych"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inbox.empty.body" : {
+      "comment" : "Inbox screen without cards: the sentence under \"Nothing new\". Second person.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When an agent finishes or stops for your decision, its last message lands here. Removed cards come back when their agent finishes again."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gdy agent skończy albo stanie na Twojej decyzji, jego ostatnia wiadomość trafi tutaj. Usunięte karty wracają, gdy ich agent znów skończy."
+          }
+        }
+      }
+    },
+    "inbox.empty.title" : {
+      "comment" : "Inbox screen without cards: the first line. Short.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing new"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nic nowego"
+          }
+        }
+      }
+    },
+    "inbox.loading" : {
+      "comment" : "Inbox card: VoiceOver label of the placeholder while the message text loads.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading the message"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wczytuję wiadomość"
+          }
+        }
+      }
+    },
+    "inbox.newPill" : {
+      "comment" : "Inbox, the pill at the top when new cards came above while you read lower; the states follow after a dot. Short, keep the arrow. Plural by parameter 1 (new cards).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new ↑"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new ↑"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowe ↑"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowych ↑"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowa ↑"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowych ↑"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inbox.newPill.hint" : {
+      "comment" : "Inbox, VoiceOver hint of the pill with new cards above.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolls to the top."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przewija na górę."
+          }
+        }
+      }
+    },
+    "inbox.newPill.spoken" : {
+      "comment" : "Inbox, VoiceOver label of the pill with new cards above. Plural by parameter 1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new card above"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new cards above"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowe karty powyżej"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowych kart powyżej"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowa karta powyżej"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nowych kart powyżej"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inbox.openSession" : {
+      "comment" : "Inbox card: the button that opens the session of the card. Also the VoiceOver action.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open session"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz sesję"
+          }
+        }
+      }
+    },
+    "inbox.prompt.cancel" : {
+      "comment" : "Inbox card, button in the prompt block while editing: drops the edit and shows the agent's prompt again.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anuluj"
+          }
+        }
+      }
+    },
+    "inbox.prompt.edit" : {
+      "comment" : "Inbox card, button in the prompt block: turns the block into a text field with the prompt.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edytuj"
+          }
+        }
+      }
+    },
+    "inbox.prompt.edited" : {
+      "comment" : "Inbox card, label on top of the prompt block while the person edits it: the edited text goes only with the block's Send button, not by voice.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edited · send with the button"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poprawiony · wyślij przyciskiem"
+          }
+        }
+      }
+    },
+    "inbox.prompt.label" : {
+      "comment" : "Inbox card, small label on top of the block with the prompt the voice agent prepared for the session's agent.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt for the agent"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt dla agenta"
+          }
+        }
+      }
+    },
+    "inbox.prompt.send" : {
+      "comment" : "Inbox card, filled button in the prompt block: sends the prompt, or the edited text, to the card's session.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyślij"
+          }
+        }
+      }
+    },
+    "inbox.remove" : {
+      "comment" : "Inbox card: the × button and the VoiceOver action that remove the card.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from Inbox"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuń z Inboxa"
+          }
+        }
+      }
+    },
+    "inbox.removeChanged" : {
+      "comment" : "Toast when the server refused a removal because the agent wrote a newer card.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The card changed in the meantime and is back with its new text."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karta zmieniła się w międzyczasie i wraca z nowym tekstem."
+          }
+        }
+      }
+    },
+    "inbox.removeFailed" : {
+      "comment" : "Toast when a removal from the Inbox failed; the card is back.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not remove the card. Try again."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się usunąć karty. Spróbuj ponownie."
+          }
+        }
+      }
+    },
+    "inbox.removeOffline" : {
+      "comment" : "Toast when a card could not be removed from the Inbox, or brought back, without a connection.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection. The card stays."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak połączenia. Karta zostaje."
+          }
+        }
+      }
+    },
+    "inbox.removed" : {
+      "comment" : "Toast after a card was removed from the Inbox, next to Undo. Parameter 1: the session name. Keep the quotes of the language.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed “%@”"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usunięto „%@”"
+          }
+        }
+      }
+    },
+    "inbox.reply.cardChanged" : {
+      "comment" : "Sentence under an Inbox card's reply field when the reply did not go out because the card no longer showed the turn the person answered; the text is back in the field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The card changed before sending. Read it and send again."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karta zmieniła się przed wysłaniem. Przeczytaj ją i wyślij jeszcze raz."
+          }
+        }
+      }
+    },
+    "inbox.reply.mic" : {
+      "comment" : "Inbox › result card › the mic button in the reply row, before the send arrow. Read by VoiceOver and shown as the pointer's tip; the name stays the same while recording, the state is the selected trait.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictate reply"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dyktuj odpowiedź"
+          }
+        }
+      }
+    },
+    "inbox.reply.placeholder" : {
+      "comment" : "Placeholder and VoiceOver label of the reply field under an Inbox result card; one line, about 30 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply to the agent"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odpowiedz agentowi"
+          }
+        }
+      }
+    },
+    "inbox.reply.send" : {
+      "comment" : "VoiceOver label and pointer tip of the send button (arrow up) next to an Inbox card's reply field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send reply"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyślij odpowiedź"
+          }
+        }
+      }
+    },
+    "inbox.showAll" : {
+      "comment" : "Inbox card: the row in the middle of a long folded message; a tap shows the whole message. Plural by parameter 1 (hidden lines).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more line · Show all"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more lines · Show all"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Jeszcze %lld linie · Pokaż całość"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Jeszcze %lld linii · Pokaż całość"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Jeszcze %lld linia · Pokaż całość"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Jeszcze %lld linii · Pokaż całość"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inbox.showLess" : {
+      "comment" : "Inbox card: the row under an expanded long message; a tap folds it again. Short.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show less"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwiń"
+          }
+        }
+      }
+    },
+    "inbox.swipeRemove" : {
+      "comment" : "Inbox card on the iPhone: the red action revealed by a swipe to the left. One word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuń"
+          }
+        }
+      }
+    },
+    "inbox.title" : {
+      "comment" : "Inbox: the button under the Agents header of the session list and the title of the Inbox screen. One word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inbox"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inbox"
+          }
+        }
+      }
+    },
+    "inbox.truncated" : {
+      "comment" : "Inbox card: a quiet line above a message the server cut at its start because it was too long.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The start of this message is cut."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Początek tej wiadomości jest ucięty."
+          }
+        }
+      }
+    },
+    "inbox.undo" : {
+      "comment" : "Toast after a card was removed from the Inbox: the button that brings the card back. One word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cofnij"
+          }
+        }
+      }
+    },
+    "inbox.undoFailed" : {
+      "comment" : "Toast when Undo of a removal from the Inbox failed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not bring the card back."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się przywrócić karty."
+          }
+        }
+      }
+    },
+    "inbox.voice.readingPrompt" : {
+      "comment" : "Inbox card, voice strip beside Mute and End: the app reads the agent's prompt block aloud. One short line.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading the prompt"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Czytam prompt"
+          }
+        }
+      }
+    },
     "inspector.artifactGone" : {
       "comment" : "Prawy panel sesji (iPad) › Artefakty. Pierwszy człon linii czasu wiersza usuniętego artefaktu („usunięty · 2 h temu · 14:05\").",
       "extractionState" : "manual",
@@ -10821,42 +11541,6 @@
         }
       }
     },
-    "inspector.changesTitle" : {
-      "comment" : "Prawy panel sesji (iPad) › Zmiany w katalogu. „ZMIANY W KATALOGU · 3\" — bez liczby, gdy jej nie znamy albo jest zerem.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Changes"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zmiany w katalogu"
-          }
-        }
-      }
-    },
-    "inspector.changesTitle.count" : {
-      "comment" : "Prawy panel sesji (iPad) › Zmiany w katalogu. Etykieta sekcji z liczbą: „ZMIANY W KATALOGU · 3”. Parametry: 1. liczba zmienionych plików.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Changes · %lld"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zmiany w katalogu · %lld"
-          }
-        }
-      }
-    },
     "inspector.directoryCollapsed" : {
       "comment" : "Prawy panel sesji (iPad) › Zmiany w katalogu.",
       "extractionState" : "manual",
@@ -10893,76 +11577,74 @@
         }
       }
     },
-    "inspector.directorySpoken" : {
-      "comment" : "Prawy panel sesji (iPad) › Zmiany w katalogu. Katalog drzewa zmian na głos: „katalog Sources/RarogUI/Switcher, 2 pliki”. Parametry: 1. ścieżka katalogu, 2. liczba plików (liczba mnoga).",
+    "inspector.filePreviewFailed" : {
+      "comment" : "Bubble after a tap on a file in the right panel's Files tree when the server refused or the answer broke: the file name.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "directory %1$@, %2$#@files@"
-          },
-          "substitutions" : {
-            "files" : {
-              "argNum" : 2,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg file"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg files"
-                    }
-                  }
-                }
-              }
-            }
+            "value" : "Could not open the preview of %@."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "katalog %1$@, %2$#@files@"
-          },
-          "substitutions" : {
-            "files" : {
-              "argNum" : 2,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "few" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg pliki"
-                    }
-                  },
-                  "many" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg plików"
-                    }
-                  },
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg plik"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg plików"
-                    }
-                  }
-                }
-              }
-            }
+            "value" : "Nie udało się otworzyć podglądu pliku %@."
+          }
+        }
+      }
+    },
+    "inspector.filePreviewGone" : {
+      "comment" : "Bubble after a tap on a file in the right panel's Files tree that was deleted on the server: the file name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is no longer in the session directory."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pliku %@ nie ma już w katalogu sesji."
+          }
+        }
+      }
+    },
+    "inspector.filePreviewOffline" : {
+      "comment" : "Bubble after a tap on a file in the right panel's Files tree when the file cannot be fetched without a connection.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection to the server. The preview did not open."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak połączenia z serwerem. Podgląd się nie otworzył."
+          }
+        }
+      }
+    },
+    "inspector.filePreviewTooLarge" : {
+      "comment" : "Bubble after a tap on a file in the right panel's Files tree that the server will not send: file name, its size and the server's limit, e.g. 2.1 MB.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ is %2$@, larger than the preview limit of %3$@."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plik %1$@ ma %2$@, więcej niż limit podglądu %3$@."
           }
         }
       }
@@ -10981,6 +11663,438 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@, plik binarny"
+          }
+        }
+      }
+    },
+    "inspector.filesCopyPath" : {
+      "comment" : "Menu item on a long press of a file row in the right panel: copies the path relative to the session directory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Path"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiuj ścieżkę"
+          }
+        }
+      }
+    },
+    "inspector.filesDiffTruncated" : {
+      "comment" : "Note under the file tree of the right panel when the change list does not carry every changed file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not every change is marked in the tree."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie każda zmiana jest oznaczona w drzewie."
+          }
+        }
+      }
+    },
+    "inspector.filesDirectorySpoken" : {
+      "comment" : "VoiceOver label of a directory row of the file tree; 1 is the directory name, 2 the number of changed files under it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, changes inside: %2$lld"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, zmiany w środku: %2$lld"
+          }
+        }
+      }
+    },
+    "inspector.filesIgnoredSpoken" : {
+      "comment" : "VoiceOver label of a file tree row the version control ignores; the parameter is the row label (the name).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, ignored"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, ignorowany"
+          }
+        }
+      }
+    },
+    "inspector.filesListTruncated" : {
+      "comment" : "Note under the file tree of the right panel when the server cut a directory listing at its ceiling.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some directories have more entries than the list shows."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niektóre katalogi mają więcej wpisów, niż pokazuje lista."
+          }
+        }
+      }
+    },
+    "inspector.filesModeAll" : {
+      "comment" : "Segment of the toggle under the Files header in the right panel: the whole tree of the session directory. Two segments share a panel 280 pt wide.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pliki"
+          }
+        }
+      }
+    },
+    "inspector.filesModeChanged" : {
+      "comment" : "Segment of the toggle under the Files header in the right panel: only the changed files. Two segments share a panel 280 pt wide.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changed Only"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tylko zmienione"
+          }
+        }
+      }
+    },
+    "inspector.filesModeLabel" : {
+      "comment" : "VoiceOver label of the toggle under the Files header in the right panel (its segments are Files and Changed Only).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File Tree"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drzewo plików"
+          }
+        }
+      }
+    },
+    "inspector.filesPreview" : {
+      "comment" : "Menu item on a long press of a file row in the right panel: opens the preview of the file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podgląd"
+          }
+        }
+      }
+    },
+    "inspector.filesSearchClear" : {
+      "comment" : "VoiceOver label of the x button at the end of the file search field in the right panel.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Search"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyczyść szukanie"
+          }
+        }
+      }
+    },
+    "inspector.filesSearchFailed" : {
+      "comment" : "Note under the file search result in the right panel when the list of all files failed; a Try Again button follows it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file list did not load."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lista plików się nie wczytała."
+          }
+        }
+      }
+    },
+    "inspector.filesSearchIndexTruncated" : {
+      "comment" : "Note under the file search result in the right panel when the server cut the list of all files at a ceiling; the parameter is the number of files searched. Plural by the parameter.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The file list is incomplete: searching %lld file."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The file list is incomplete: searching %lld files."
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lista plików jest niepełna: szukam w %lld plikach."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lista plików jest niepełna: szukam w %lld plikach."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lista plików jest niepełna: szukam w %lld pliku."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lista plików jest niepełna: szukam w %lld pliku."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inspector.filesSearchInvalid" : {
+      "comment" : "Note under the file search field in the right panel when the query, with the .* button on, does not compile.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This regular expression is not valid."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To wyrażenie regularne jest błędne."
+          }
+        }
+      }
+    },
+    "inspector.filesSearchLoading" : {
+      "comment" : "Note under the file search result in the right panel while the list of all files of the session directory is on its way.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading the file list…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wczytuję listę plików…"
+          }
+        }
+      }
+    },
+    "inspector.filesSearchNoMatch" : {
+      "comment" : "Note under the file search field in the right panel when nothing matches; the parameter is the query as typed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No files match “%@”."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak plików pasujących do „%@”."
+          }
+        }
+      }
+    },
+    "inspector.filesSearchOpenOnly" : {
+      "comment" : "Note under the file search result in the right panel when the server cannot send the list of all files.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching only the open directories."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szukam tylko w otwartych katalogach."
+          }
+        }
+      }
+    },
+    "inspector.filesSearchPlaceholder" : {
+      "comment" : "Placeholder and VoiceOver label of the search field under the Files header in the right panel; it searches file paths.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search files"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szukaj plików"
+          }
+        }
+      }
+    },
+    "inspector.filesSearchRegex" : {
+      "comment" : "VoiceOver label of the .* button beside the file search field in the right panel: on, the query is a regular expression.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regular Expression"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyrażenie regularne"
+          }
+        }
+      }
+    },
+    "inspector.filesSearchRetry" : {
+      "comment" : "Button after the note that the file list of the right panel did not load: asks for the list again.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spróbuj ponownie"
+          }
+        }
+      }
+    },
+    "inspector.filesSearchShown" : {
+      "comment" : "Note under the file search result in the right panel: 1 is the number of files shown, 2 the number that match.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showing %1$lld of %2$lld."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokazano %1$lld z %2$lld."
+          }
+        }
+      }
+    },
+    "inspector.filesSearchTooSlow" : {
+      "comment" : "Note under the file search field in the right panel when a regular expression ran past its time limit.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This expression is too slow, so the search stopped."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To wyrażenie jest za wolne, więc szukanie stanęło."
+          }
+        }
+      }
+    },
+    "inspector.filesTitle" : {
+      "comment" : "Section label in the right panel over the tree of the session directory; short, uppercase in the drawing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pliki"
           }
         }
       }
@@ -11935,6 +13049,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wybierz sesję z listy obok."
+          }
+        }
+      }
+    },
+    "list.discussedByVoice" : {
+      "comment" : "Session list › a row's state word in place of idle: the voice agent discussed the session's result and marked it received. Lowercase like the other state words; the clock follows it on the same line.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "discussed by voice"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "omówiona głosem"
           }
         }
       }
@@ -13456,7 +14588,7 @@
       }
     },
     "list.serverUpdate" : {
-      "comment" : "Lista sesji i stopka limitów › Wiersz nad limitami. Serwer jest starszy niż wersja wydana z apką; tap otwiera arkusz „Limity” ze zdaniem `usage.serverUpdate.detail`. Jedna linia na szerokość kolumny listy.",
+      "comment" : "Lista sesji i stopka limitów › Wiersz nad limitami. Serwer jest starszy niż wersja wydana z apką; tap otwiera dymek z komendą aktualizacji (`list.serverUpdateSheet.*`). Jedna linia na szerokość kolumny listy.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -13469,6 +14601,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dostępna aktualizacja serwera"
+          }
+        }
+      }
+    },
+    "list.serverUpdateSheet.after" : {
+      "comment" : "List footer › popover of the \"Server update available\" row, under the command. What the command does and when the row goes away.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The command installs the newest server version and restarts the server. Sessions keep running. This row disappears after the restart."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Komenda instaluje najnowszą wersję serwera i go restartuje. Sesje działają dalej. Wiersz zniknie po restarcie."
+          }
+        }
+      }
+    },
+    "list.serverUpdateSheet.intro" : {
+      "comment" : "List footer › popover of the \"Server update available\" row. The command follows on its own line. Parameters: %1$@ server version from the probe (e.g. 0.1.0), %2$@ server version shipped with the app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server %1$@ is older than this app (%2$@). Run this in a terminal on the Mac:"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serwer %1$@ jest starszy niż apka (%2$@). Uruchom w terminalu na Macu:"
+          }
+        }
+      }
+    },
+    "list.serverUpdateSheet.intro.vps" : {
+      "comment" : "VPS variant of list.serverUpdateSheet.intro: same place and parameters, a server outside macOS. The command follows on its own line.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server %1$@ is older than this app (%2$@). Run this in a terminal on the VPS:"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serwer %1$@ jest starszy niż apka (%2$@). Uruchom w terminalu na VPS-ie:"
+          }
+        }
+      }
+    },
+    "list.serverUpdateSheet.title" : {
+      "comment" : "List footer › popover of the \"Server update available\" row. Title of the popover (iPad eyebrow, iPhone sheet bar). Short.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server Update"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktualizacja serwera"
           }
         }
       }
@@ -20625,6 +21829,60 @@
         }
       }
     },
+    "row.scheduledCount" : {
+      "comment" : "Lista sesji › Wiersz sesji. Dymek i czytnik znacznika zegara przy sesji z zaplanowanymi zadaniami (crony): „2 zaplanowane zadania”. Liczba mnoga według parametru 1 (liczba).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld scheduled task"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld scheduled tasks"
+                }
+              }
+            }
+          }
+        },
+        "pl" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld zaplanowane zadania"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld zaplanowanych zadań"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld zaplanowane zadanie"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld zaplanowanego zadania"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "sessionControl.promptBarHint" : {
       "comment" : "Lista promptów › Pasek promptu i lista tur.",
       "extractionState" : "manual",
@@ -21688,43 +22946,43 @@
       }
     },
     "switcher.empty" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Okno bez żadnej sesji.",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Okno bez żadnej zakładki.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No recent sessions."
+            "value" : "No tabs in this project."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brak ostatnich sesji."
+            "value" : "Projekt nie ma zakładek."
           }
         }
       }
     },
     "switcher.heading" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Nagłówek okna: „Ostatnie · 6” (kapitaliki robi styl `Eyebrow`). Parametry: 1. count (liczba).",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Nagłówek okna: „Zakładki projektu · 6” (kapitaliki robi styl `Eyebrow`). Parametry: 1. count (liczba).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recent · %lld"
+            "value" : "Project tabs · %lld"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ostatnie · %lld"
+            "value" : "Zakładki projektu · %lld"
           }
         }
       }
     },
     "switcher.here" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Pigułka przy sesji, która stoi na ekranie.",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Pigułka przy zakładce, która stoi na ekranie.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21742,7 +23000,7 @@
       }
     },
     "switcher.hints.close" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawisza.",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawisza.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21760,7 +23018,7 @@
       }
     },
     "switcher.hints.go" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawisza.",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawisza.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21778,7 +23036,7 @@
       }
     },
     "switcher.hints.jump" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawiszy 0–9 (cyfra wiersza przenosi od razu do jego sesji).",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawiszy 1–9 (cyfra zakładki przenosi od razu do niej).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21796,7 +23054,7 @@
       }
     },
     "switcher.hints.select" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawisza.",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawisza.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21814,91 +23072,55 @@
       }
     },
     "switcher.label" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Nazwa okna dla czytnika (kontener modalny).",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Nazwa okna dla czytnika (kontener modalny).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recent Sessions"
+            "value" : "Project Tabs"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ostatnie sesje"
-          }
-        }
-      }
-    },
-    "switcher.next" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Polecenie menu ⌘S.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next Recent Session"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Następna z ostatnich sesji"
+            "value" : "Zakładki projektu"
           }
         }
       }
     },
     "switcher.onlyCurrent" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Pod jedynym wierszem, gdy to sesja na ekranie.",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Pod jedynym wierszem, gdy to zakładka na ekranie.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No other recent session."
+            "value" : "No other tabs in this project."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brak innych ostatnich sesji."
-          }
-        }
-      }
-    },
-    "switcher.previous" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Polecenie menu ⇧⌘S.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Previous Recent Session"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Poprzednia z ostatnich sesji"
+            "value" : "Projekt nie ma innych zakładek."
           }
         }
       }
     },
     "switcher.tabHint" : {
-      "comment" : "Przełącznik sesji (⌘S): ostatnio odwiedzone sesje. Podpowiedź czytnika przy bieżącej zakładce: jej aktywacja otwiera okno.",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Podpowiedź czytnika przy bieżącej zakładce: jej aktywacja otwiera okno.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens the Recent Sessions window."
+            "value" : "Opens the Project Tabs window."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otwiera okno ostatnich sesji."
+            "value" : "Otwiera okno zakładek projektu."
           }
         }
       }
@@ -26045,6 +27267,42 @@
         }
       }
     },
+    "tree.pin" : {
+      "comment" : "Project list tree › project header: context menu item and screen reader action that pins the project on top of the list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pin Project"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przypnij projekt"
+          }
+        }
+      }
+    },
+    "tree.pinnedValue" : {
+      "comment" : "Project list tree › project header: screen reader value fragment of a pinned project, joined by code with the collapse state (lowercase).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pinned"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "przypięty"
+          }
+        }
+      }
+    },
     "tree.toggleLabel.collapse" : {
       "comment" : "Drzewo projektów na liście › Nagłówek projektu. Etykieta strzałki: skutek tapnięcia i projekt. Parametry: 1. nazwa projektu.",
       "extractionState" : "manual",
@@ -26077,6 +27335,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rozwiń projekt %@"
+          }
+        }
+      }
+    },
+    "tree.unpin" : {
+      "comment" : "Project list tree › project header: context menu item and screen reader action that unpins a pinned project.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unpin Project"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odepnij projekt"
           }
         }
       }
@@ -26171,6 +27447,60 @@
         }
       }
     },
+    "voiceAgent.call.closed.cardChanged" : {
+      "comment" : "Voice conversation of an Inbox card did not start because the card showed a new turn while the app loaded the session.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The conversation did not start: the card changed."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa nie ruszyła: karta się zmieniła."
+          }
+        }
+      }
+    },
+    "voiceAgent.call.closed.cardGone" : {
+      "comment" : "Voice conversation of an Inbox card ended because the card was removed or hid (its session started working or stopped).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The conversation ended: the card left the Inbox."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa zakończona: karta zniknęła z Inboxa."
+          }
+        }
+      }
+    },
+    "voiceAgent.call.closed.connectionLost" : {
+      "comment" : "Voice conversation ended because the app's connection to the server dropped.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The conversation ended: the connection to the server dropped."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa zakończona: połączenie z serwerem zostało zerwane."
+          }
+        }
+      }
+    },
     "voiceAgent.call.closed.disabled" : {
       "comment" : "Voice conversation ended because the feature was turned off in Settings or on the server.",
       "extractionState" : "manual",
@@ -26203,6 +27533,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rozmowa zakończona: pole wiadomości zniknęło."
+          }
+        }
+      }
+    },
+    "voiceAgent.call.closed.inboxLeft" : {
+      "comment" : "Voice conversation of an Inbox card ended because the user left the Inbox screen.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The conversation ended: the Inbox closed."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa zakończona: Inbox został zamknięty."
           }
         }
       }
@@ -26887,6 +28235,276 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rozmowa głosowa z agentem o bieżącej sesji Claude Code. Działa na OpenAI z kluczem API ustawionym na serwerze Raroga."
+          }
+        }
+      }
+    },
+    "voiceAgent.lockedTrial.lead" : {
+      "comment" : "One-line footnote under the locked-phone trial switch on the Voice Agent settings page.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A trial for measuring: a conversation or dictation you started keeps running after the phone locks."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próba do pomiaru: rozpoczęta rozmowa albo dyktowanie trwa po zablokowaniu telefonu."
+          }
+        }
+      }
+    },
+    "voiceAgent.lockedTrial.title" : {
+      "comment" : "Switch label on the Voice Agent settings page; a trial that keeps a voice conversation or dictation running after the phone locks.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Talking When Locked (Trial)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa po zablokowaniu (próba)"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.bar.dismissHint" : {
+      "comment" : "VoiceOver hint of the line with the end sentence of the voice conversation across sessions: activating it removes the sentence and the line. Third person verb, period.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes the message."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuwa komunikat."
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.bar.promptSpoken" : {
+      "comment" : "VoiceOver label of the card of the voice conversation across sessions that shows the prompt waiting for the user's spoken confirmation: the project, then the session name. VoiceOver reads the exact prompt text after it as the value. Capital first letter, no period.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt to send: project %@, session %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt do wysłania: projekt %@, sesja %@"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.bar.spoken" : {
+      "comment" : "VoiceOver label of the line with the end sentence of the voice conversation across sessions; VoiceOver reads the end sentence after it as the value. Capital first letter, no period.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice conversation about all sessions"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa głosowa o wszystkich sesjach"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.consent.close" : {
+      "comment" : "Consent sheet of the voice conversation across sessions opened from the session list: the close button (an X glyph; VoiceOver name and pointer tip), like \"Close Dictation\". Closing stores nothing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close Consent"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zamknij zgodę"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.consent.prompts" : {
+      "comment" : "Consent page of the voice conversation across sessions, paragraph 3: the agent sends prompts to sessions only on the user's word. Full sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The agent sends a prompt to a session only when you tell it to."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent wysyła prompt do sesji tylko na Twoje słowo."
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.consent.sent" : {
+      "comment" : "Consent page of the voice conversation across sessions, paragraph 1: what goes to OpenAI on top of the voice agent's consent. Full sentences; the sentence on masking says plainly that it is no guarantee.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This adds to the voice agent's consent. During a conversation about all sessions, this device also sends OpenAI the list of sessions from all projects your Rarog server shares with the voice agent (names, states and the first line of a dialog), the recent turns of the sessions the conversation asks about, and the answers Rarog gives the agent."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To uzupełnia zgodę na agenta głosowego. W rozmowie o wszystkich sesjach to urządzenie wysyła też do OpenAI listę sesji ze wszystkich projektów, które serwer Raroga udostępnia agentowi głosowemu (nazwy, stany i pierwszą linię dialogu), ostatnie tury sesji, o które pyta rozmowa, i odpowiedzi Raroga na pytania agenta."
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.consent.speech" : {
+      "comment" : "Consent page of the voice conversation across sessions, paragraph 2: what goes from this device to Soniox in the EU to be read aloud. Full sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soniox in the EU gets the text of the agent's answers, session names and the text of prompts, to read them aloud."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soniox w UE dostaje tekst odpowiedzi agenta, nazwy sesji i treść promptów, żeby przeczytać je na głos."
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.consent.start" : {
+      "comment" : "Consent of the voice conversation across sessions opened from the session list: the button that stores the consent and starts the conversation. Title case, verb first.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agree and Start"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zgadzam się i zaczynam"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.consent.title" : {
+      "comment" : "Consent page of the voice conversation across sessions (App Store 5.1.2(i)): the page title in the navigation bar, like \"Voice Agent and OpenAI\" of the voice agent's consent.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Sessions and OpenAI"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wszystkie sesje i OpenAI"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.header.promptQuestion" : {
+      "comment" : "Session list: the first, coloured part of the caption over a prompt the voice agent showed, in the strip under the list header; project and session name follow. The user answers it by voice with yes or no. About 20 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send the prompt?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wysłać prompt?"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.lead" : {
+      "comment" : "Voice Agent page in Settings: the footer under the switch of the conversation across sessions. Full sentences: what it is and where it starts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk with the voice agent about the sessions of all projects. You start the conversation from the session list."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa z agentem głosowym o sesjach wszystkich projektów. Zaczynasz ją z listy sesji."
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.promptReading" : {
+      "comment" : "Read aloud by the voice agent before it sends a prompt to a session: the project, the session name and the exact prompt text, in this order. Spoken, not shown; no length limit.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project %@, session %@: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projekt %@, sesja %@: %@"
+          }
+        }
+      }
+    },
+    "voiceAgent.sessions.title" : {
+      "comment" : "Voice conversation across sessions: the switch label on the Voice Agent page in Settings and the VoiceOver label of the waveform button in the session list bar, next to New Session. Title case, short: it stands in one row with a switch.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk About All Sessions"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa o wszystkich sesjach"
           }
         }
       }

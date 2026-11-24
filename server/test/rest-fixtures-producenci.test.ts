@@ -73,6 +73,8 @@ import { FakeManager, makeSummary } from './fake-manager.ts';
 import { FakeController, FakeHerdr } from './fake-term-herdr.ts';
 import { blockedLine, noticeLine, turnLines } from './helpers/plik-rozmowy.ts';
 import { createTestDevice } from './helpers/urzadzenie.ts';
+import { INBOX_REST_SCHEMAS, produceInboxRest } from './rest-fixtures-producenci-inbox.ts';
+import { FILES_REST_SCHEMAS, produceFilesRest } from './rest-fixtures-producenci-files.ts';
 import { demoContentPl } from '../src/demo/content/pl.ts';
 
 const FIXTURES_DIR = path.resolve(
@@ -141,6 +143,8 @@ const SCHEMAS: Record<string, ZodType> = {
   companionTurns: companionTurnsSchema,
   companionSessions: companionSessionsSchema,
   dirEntry: dirEntrySchema,
+  ...INBOX_REST_SCHEMAS,
+  ...FILES_REST_SCHEMAS,
 };
 
 const serialize = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
@@ -365,6 +369,8 @@ describe('złote odpowiedzi REST: producenci → pliki', () => {
       } finally {
         await new Promise<void>((resolve) => { irohServer.close(() => { resolve(); }); });
       }
+      await produceInboxRest(produced, routerDeps, device.headers, ORIGIN);
+      await produceFilesRest(produced);
       const cwd = manager.projects().find((p) => p.path.endsWith('/willow'))?.path ?? '';
       await call('resumable.json', 'GET', `/api/resumable?cwd=${encodeURIComponent(cwd)}`);
       // Zrzut sprzed 2 min: świeże liczby z chwilą zrzutu i e-mailem konta, bez `stale`.
@@ -608,6 +614,13 @@ describe('złote odpowiedzi REST: producenci → pliki', () => {
           body: JSON.stringify({ answers: [['A', 'B']] }),
         });
         produced.set('error.decision-refused.json', { status: res.status, body: await res.json() as unknown });
+        // Esc whose field then showed the interrupted prompt: the demo driver reads no field, the manager fake answers.
+        refusing.sessions.set('sess-1', makeSummary({ state: 'waiting-input' }));
+        refusing.returnedPromptResult = 'Refactor the parser and keep the tests green';
+        const handed = await fetch(`http://127.0.0.1:${port}/api/sessions/sess-1/interrupt`, {
+          method: 'POST', headers: { ...device.headers, Origin: ORIGIN, 'Content-Type': 'application/json' }, body: '{}',
+        });
+        produced.set('interrupt.returned-prompt.json', { status: handed.status, body: await handed.json() as unknown });
       } finally {
         await new Promise<void>((resolve) => { refusingServer.close(() => { resolve(); }); });
       }
@@ -1302,17 +1315,19 @@ describe('złote odpowiedzi REST: producenci → pliki', () => {
       });
       produced.set('error.conversation-changed.json', { status: sent.status, body: await sent.json() as unknown });
       companionManager.sendMessage = realCompanionSend;
-      // The voice agent's pick-up of a result it did not read: the manager's refusal behind the real gate of the mode.
+      /*
+       * The voice agent's pick-up of a result it did not read, with the conversation token and read mark of the turns
+       * read above: the manager's refusal behind the real gate of the mode.
+       */
+      const readMark = (produced.get('companion.turns.json')?.body as { readMark?: string } | undefined)?.readMark;
+      if (readMark === undefined) throw new Error('companion turns read mark missing');
       const realMarkSeen = companionManager.markSeen.bind(companionManager);
       companionManager.markSeen = () => { throw new BadStateError(say('session.seen-result-changed')); };
       const picked = await fetch(`http://127.0.0.1:${String((sessionsServer.address() as AddressInfo).port)}`
         + '/api/sessions/s1/seen', {
         method: 'POST',
         headers: { ...companionDevice.headers, Origin: ORIGIN, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          by: 'voice-agent', stateSince: new Date(NOW - 120_000).toISOString(),
-          conversation: fixedToken(COMPANION_CONVERSATION),
-        }),
+        body: JSON.stringify({ by: 'voice-agent', conversation: fixedToken(COMPANION_CONVERSATION), readMark }),
       });
       produced.set('error.seen-result-changed.json', { status: picked.status, body: await picked.json() as unknown });
       companionManager.markSeen = realMarkSeen;

@@ -363,12 +363,15 @@ describe('strażnik tożsamości: teksty dla użytkownika apki', () => {
     expect(catalog.length, 'wartości katalogów').toBeGreaterThan(1000);
     expect(consents.map((entry) => entry.where.replace(/:\d+ /, ' ')).sort()).toEqual([
       `${APP_PLIST} NSCameraUsageDescription`, `${APP_PLIST} NSLocalNetworkUsageDescription`,
-      `${APP_PLIST} NSMicrophoneUsageDescription`, `${APP_PLIST} NSSpeechRecognitionUsageDescription`,
+      `${APP_PLIST} NSMicrophoneUsageDescription`, `${APP_PLIST} NSPhotoLibraryAddUsageDescription`,
+      `${APP_PLIST} NSSpeechRecognitionUsageDescription`,
       `${APP_INFO_CATALOG} „NSCameraUsageDescription” [en]`, `${APP_INFO_CATALOG} „NSCameraUsageDescription” [pl]`,
       `${APP_INFO_CATALOG} „NSLocalNetworkUsageDescription” [en]`,
       `${APP_INFO_CATALOG} „NSLocalNetworkUsageDescription” [pl]`,
       `${APP_INFO_CATALOG} „NSMicrophoneUsageDescription” [en]`,
       `${APP_INFO_CATALOG} „NSMicrophoneUsageDescription” [pl]`,
+      `${APP_INFO_CATALOG} „NSPhotoLibraryAddUsageDescription” [en]`,
+      `${APP_INFO_CATALOG} „NSPhotoLibraryAddUsageDescription” [pl]`,
       `${APP_INFO_CATALOG} „NSSpeechRecognitionUsageDescription” [en]`,
       `${APP_INFO_CATALOG} „NSSpeechRecognitionUsageDescription” [pl]`,
     ]);

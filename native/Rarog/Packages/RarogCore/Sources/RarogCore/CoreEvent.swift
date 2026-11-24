@@ -60,6 +60,10 @@ public enum CoreEvent: Sendable, Equatable {
   /// Sesja poza turą od `since` (``CoreTiming/queuedIdleAfter``): wpisy w kolejce, których echo nie przyszło,
   /// kończą jako „Nie potwierdzono” — o ile okres bezczynności trwa od tej samej chwili.
   case outboxQueuedIdle(sessionId: String, since: Date)
+  /// The countdown after the 202 of an accepted entry, started at `openedAt` (its session's stream came online, or its
+  /// wait for that stream ended), ended: Not confirmed, unless the entry waits for the stream, a later start replaced
+  /// this one, or an entry in the CLI queue is still before its cap.
+  case outboxUnconfirmedAfterOpening(UUID, openedAt: Date)
 
   // MARK: Decyzje
   /// `answers` — odpowiedzi karty pytania per pytanie, do śladu decyzji; przy zgodzie puste.
@@ -124,6 +128,9 @@ public enum CoreEvent: Sendable, Equatable {
 
   // MARK: Queue take-back (branches in `Reducer+QueueTakeBack`)
   case queueTakeBack(QueueTakeBackEvent)
+
+  // MARK: Inbox (branches in `Reducer+Inbox`)
+  case inbox(InboxEvent)
 }
 
 /// Skutek uboczny reduktora do wykonania przez magazyn (reduktor sam nie dotyka dysku ani sieci).
@@ -138,6 +145,12 @@ public enum CoreEffect: Sendable, Equatable {
   case persistListCache
   /// Sesja z wpisem w kolejce CLI wyszła z tury: sprawdź za ``CoreTiming/queuedIdleAfter``.
   case scheduleQueuedIdleCheck(sessionId: String, since: Date)
+  /// An accepted entry's countdown started at `openedAt` (its session's stream came online, or its wait for that
+  /// stream ended): check for Not confirmed after `after` (``CoreEvent/outboxUnconfirmedAfterOpening(_:openedAt:)``).
+  case scheduleUnconfirmedCheck(UUID, after: Duration, openedAt: Date)
+  /// An entry in the CLI queue met its session's stream coming online: check the cap
+  /// (``CoreTiming/queuedUnconfirmedAfter``) counted from `queuedAt`, for what is left of it.
+  case scheduleQueuedCeilingCheck(UUID, queuedAt: Date)
   /// A restarted card stands live again with the old `cliUpdate`: check after ``SessionControlTiming/restartSettleGrace``.
   case scheduleRestartGrace(sessionId: String, settledAt: Date)
 }

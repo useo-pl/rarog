@@ -171,15 +171,16 @@ final class HeaderChromeTests: XCTestCase {
     XCTAssertGreaterThan(RenderedPixels.distance(edge, keyed.background), 12, "kafelek odcina się od tła")
   }
 
-  /// Bieżąca zakładka stoi na płytce — pełna szerokość celu, od 10 pt pod
-  /// jego górą do 6 pt nad dołem, róg 8 pt; siostra tła nie ma, a kreski stanu nie ma u nikogo.
-  func testCurrentTabStandsOnPlateWithoutUnderline() throws {
+  /// The current tab stands on the plate: the tab's full width (with its "×"), from 10 pt under its top to 6 pt over
+  /// its bottom, 8 pt corner; a sibling has no background, and no tab has a state underline.
+  func testCurrentTabStandsOnPlateWithoutUnderline() async throws {
     let plate = Self.hex(Palette.tabPlate)
     for tone in [StatusTone.quiet, .working, .waiting] {
       let current = ProjectTabModel(
         id: "t1", kind: .session, target: .session("t1"), label: "Claude Code", tone: tone, current: true,
         spoken: "Claude Code")
-      let pixels = try XCTUnwrap(Self.render(ProjectTabLabel(tab: current, showsMark: false, digit: 2)))
+      let close = TabCloseModel(tab: .session("t1"), glyph: .idle, label: "Zamknij panel w herdr")
+      let pixels = try await Self.renderHosted(ProjectTabButton(tab: current, digit: 2, select: {}, close: close))
       attach(pixels, "zakladka-biezaca-\(tone)")
       XCTAssertEqual(pixels.heightPoints, 44, accuracy: 0.5, "cel dotyku 44 pt")
       // Pion płytki w osi środka zakładki (poza zaokrąglonymi rogami; etykieta stoi tylko w środkowym pasie).
@@ -202,7 +203,7 @@ final class HeaderChromeTests: XCTestCase {
       let sibling = ProjectTabModel(
         id: "t2", kind: .session, target: .session("t2"), label: "Claude Code", tone: tone, current: false,
         spoken: "Claude Code")
-      let siblingPixels = try XCTUnwrap(Self.render(ProjectTabLabel(tab: sibling, showsMark: false, digit: 2)))
+      let siblingPixels = try await Self.renderHosted(ProjectTabButton(tab: sibling, digit: 2, select: {}))
       XCTAssertLessThanOrEqual(
         RenderedPixels.distance(siblingPixels.color(at: CGPoint(x: 2, y: mid)), siblingPixels.background), 2,
         "\(tone): siostra bez płytki")
@@ -261,6 +262,150 @@ final class HeaderChromeTests: XCTestCase {
     }
   }
 
+  /// The current session tab is the same tab as a sibling plus the divider and the "×" (`TabTokens.closeSpace`), and
+  /// no passing state of the close (armed, on its way, dimmed) changes the width, so the bar never shifts under it.
+  /// The divider is half the plate's height; the armed "×" stands on the `err` wash, the resting one on the plate.
+  func testCurrentTabAddsCloseSpaceInEveryState() async throws {
+    let plate = Self.hex(Palette.tabPlate)
+    let wash = PaletteTokens.over(
+      PaletteTokens.err.dark, alpha: TabTokens.closeArmedWashAlpha.dark, on: TabTokens.plate.dark)
+    for digit in [Int?.none, 3] {
+      let sibling = ProjectTabModel(
+        id: "t", kind: .session, target: .session("t"), label: "Claude Code", tone: .working, current: false,
+        spoken: "Claude Code")
+      let current = ProjectTabModel(
+        id: "t", kind: .session, target: .session("t"), label: "Claude Code", tone: .working, current: true,
+        spoken: "Claude Code")
+      let siblingWidth = try await Self.renderHosted(ProjectTabButton(tab: sibling, digit: digit, select: {})).widthPoints
+      for glyph in [TabCloseGlyph.idle, .armed, .closing, .dimmed] {
+        let close = TabCloseModel(tab: .session("t"), glyph: glyph, label: "Zamknij panel w herdr")
+        let pixels = try await Self.renderHosted(ProjectTabButton(tab: current, digit: digit, select: {}, close: close))
+        attach(pixels, "zakladka-biezaca-\(glyph)-\(digit.map(String.init) ?? "bez-cyfry")")
+        let name = "\(glyph), digit \(String(describing: digit))"
+        XCTAssertEqual(pixels.widthPoints, siblingWidth + TabTokens.closeSpace, accuracy: 0.5, "\(name): width")
+        XCTAssertEqual(pixels.heightPoints, 44, accuracy: 0.5, "\(name): the tab's height")
+        // The divider: `closeDividerGap` after the label's content, which ends `tabLabelInset` before the sibling's edge.
+        let dividerX = siblingWidth - HeaderMetrics.tabLabelInset + TabTokens.closeDividerGap + 0.5
+        let plateMid = (TabTokens.plateTopInset + pixels.heightPoints - TabTokens.plateBottomInset) / 2
+        let plateHeight = pixels.heightPoints - TabTokens.plateTopInset - TabTokens.plateBottomInset
+        XCTAssertGreaterThan(
+          RenderedPixels.distance(pixels.color(at: CGPoint(x: dividerX, y: plateMid)), plate), 8, "\(name): divider")
+        XCTAssertLessThanOrEqual(
+          RenderedPixels.distance(pixels.color(at: CGPoint(x: dividerX, y: plateMid - plateHeight * 0.4)), plate), 2,
+          "\(name): the divider is half the plate's height")
+        // The "×" cell beside its glyph: the wash while armed, the plate otherwise.
+        let cell = CGPoint(x: pixels.widthPoints - 4, y: TabTokens.plateTopInset + 4)
+        let expected = glyph == .armed ? wash : plate
+        XCTAssertLessThanOrEqual(
+          RenderedPixels.distance(pixels.color(at: cell), expected), 3,
+          "\(name): #\(String(pixels.color(at: cell), radix: 16)), expected #\(String(expected, radix: 16))")
+      }
+    }
+  }
+
+  /// The current terminal tab carries the same "×": wider than its sibling by the divider and the "×", and the same
+  /// width in every state of the terminal's close (the screen not attached yet, armed, on its way). The terminal
+  /// glyph before the label is drawn in the current tab's weight, so the sibling's width is compared with a margin.
+  func testCurrentTerminalTabAddsCloseSpaceInEveryState() async throws {
+    let wash = PaletteTokens.over(
+      PaletteTokens.err.dark, alpha: TabTokens.closeArmedWashAlpha.dark, on: TabTokens.plate.dark)
+    let target = ProjectTabRef.terminal("00000000000000a1")
+    let sibling = ProjectTabModel(
+      id: "term.a1", kind: .terminal, target: target, label: "zsh", tone: .quiet, current: false, spoken: "zsh")
+    let current = ProjectTabModel(
+      id: "term.a1", kind: .terminal, target: target, label: "zsh", tone: .quiet, current: true, spoken: "zsh")
+    let siblingWidth = try await Self.renderHosted(ProjectTabButton(tab: sibling, digit: 2, select: {})).widthPoints
+    var widths: [CGFloat] = []
+    for glyph in [TabCloseGlyph.dimmed, .idle, .armed, .closing] {
+      let close = TabCloseModel(tab: target, glyph: glyph, label: "Zamknij terminal")
+      XCTAssertTrue(close.stands(in: current), "\(glyph)")
+      let pixels = try await Self.renderHosted(ProjectTabButton(tab: current, digit: 2, select: {}, close: close))
+      attach(pixels, "zakladka-terminala-\(glyph)")
+      widths.append(pixels.widthPoints)
+      XCTAssertEqual(pixels.widthPoints - siblingWidth, TabTokens.closeSpace, accuracy: 1.5, "\(glyph): width")
+      XCTAssertEqual(pixels.heightPoints, 44, accuracy: 0.5, "\(glyph): the tab's height")
+      let cell = CGPoint(x: pixels.widthPoints - 4, y: TabTokens.plateTopInset + 4)
+      let expected = glyph == .armed ? wash : Self.hex(Palette.tabPlate)
+      XCTAssertLessThanOrEqual(RenderedPixels.distance(pixels.color(at: cell), expected), 3, "\(glyph): the “×” cell")
+    }
+    XCTAssertEqual(widths.max()! - widths.min()!, 0, accuracy: 0.01, "no state changes the width: \(widths)")
+  }
+
+  /// The error notice stands under the tab bar, where the arming card stands. Laid over the bar's row, a notice of
+  /// two or three lines (a refused close) covered the current tab's "×", and its own tap-to-dismiss took the taps
+  /// meant for the "×".
+  func testNoticeStandsUnderTheBarClearOfTheClose() throws {
+    InboxScreenTests.enableAccessibility()
+    let (store, session) = try Self.store(session: "")
+    let navigation = RarogNavigation(prefs: MemoryPreferences())
+    navigation.detail = .session(session.id)
+    navigation.post(
+      "The server refused to close the pane: the session is still starting, so its pane is not ready yet. "
+        + "Try again in a moment, or close the pane in the terminal.")
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 514, height: 600))
+    window.overrideUserInterfaceStyle = .dark
+    window.rootViewController = UIHostingController(rootView: Color(uiColor: Palette.background)
+      .modifier(HeaderTabsSlot(store: store, selection: session.id, terminal: TerminalChrome()))
+      .environment(navigation))
+    window.makeKeyAndVisible()
+    defer { window.isHidden = true }
+    ProjectTreeListTests.spin()
+    let notice = try InboxScreenTests.frame("tabs.notice", in: window)
+    // The tabs' elements sit in the bar's scroll view, which a hosted view does not expose to accessibility; the
+    // scroll view's frame is the bar's row, and the "×" of the current tab stands in it.
+    let bars = ProjectTreeListTests.views(UIScrollView.self, in: window)
+    XCTAssertEqual(bars.count, 1, "one scroll view: the tab bar")
+    let bar = try XCTUnwrap(bars.first).convert(try XCTUnwrap(bars.first).bounds, to: window)
+    try InboxScreenTests.snapshot(window, "naglowek-zdanie-pod-paskiem")
+    XCTAssertGreaterThanOrEqual(bar.height, 43.5, "the bar's row: \(bar)")
+    XCTAssertGreaterThanOrEqual(notice.minY, bar.maxY - 0.5, "the notice under the bar: \(notice), bar \(bar)")
+  }
+
+  /// On a terminal route the terminal screen's arming brings the card under the bar, as the session's does: the
+  /// shell's sentence, below the bar's row, so the card never covers the "×" in the current terminal tab. At rest and
+  /// after the screen goes, no card.
+  func testTerminalArmingCardStandsUnderTheBar() async throws {
+    InboxScreenTests.enableAccessibility()
+    let (store, _) = try Self.store(session: "")
+    let entry = try JSONDecoder().decode(TerminalListEntry.self, from: Data(#"""
+      {"id":"00000000000000a1","cwd":"/Users/demo/rarog","live":true,"slot":1,"proc":"zsh","role":"shell"}
+      """#.utf8))
+    store.dispatch(.terminals(.loaded([entry], at: Date())))
+    let navigation = RarogNavigation(prefs: MemoryPreferences())
+    navigation.detail = .terminal(entry.id)
+    XCTAssertNotNil(navigation.currentProjectCwd(store.state), "the terminal's project is known: the bar stands")
+    let screen = try TerminalScreenTests.harness(in: self).screen
+    let chrome = TerminalChrome()
+    screen.chrome = chrome
+    // The detail column of an iPad Pro 11" beside the list, or an iPhone 17's width.
+    let phone = UIDevice.current.userInterfaceIdiom == .phone
+    let device = phone ? "iphone" : "ipad"
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: phone ? 402 : 514, height: 300))
+    window.overrideUserInterfaceStyle = .dark
+    window.rootViewController = UIHostingController(rootView: Color(uiColor: Palette.background)
+      .modifier(HeaderTabsSlot(store: store, selection: nil, terminal: chrome))
+      .environment(navigation))
+    window.makeKeyAndVisible()
+    defer { window.isHidden = true }
+    ProjectTreeListTests.spin()
+    XCTAssertNil(InboxScreenTests.element("tabs.closeArmed", in: window), "no card at rest")
+    try InboxScreenTests.snapshot(window, "terminal-tab-close-idle-\(device)")
+
+    chrome.tapClose()
+    ProjectTreeListTests.spin()
+    let card = try XCTUnwrap(InboxScreenTests.element("tabs.closeArmed", in: window), "the arming card")
+    XCTAssertEqual(card.accessibilityLabel, UICopy.terminalCloseConfirmSpoken(.mac))
+    let bars = ProjectTreeListTests.views(UIScrollView.self, in: window)
+    XCTAssertEqual(bars.count, 1, "one scroll view: the tab bar")
+    let bar = try XCTUnwrap(bars.first).convert(try XCTUnwrap(bars.first).bounds, to: window)
+    XCTAssertGreaterThanOrEqual(card.accessibilityFrame.minY, bar.maxY - 0.5, "the card under the bar: \(bar)")
+    try InboxScreenTests.snapshot(window, "terminal-tab-close-armed-\(device)")
+
+    screen.shutdown()
+    ProjectTreeListTests.spin()
+    XCTAssertNil(InboxScreenTests.element("tabs.closeArmed", in: window), "the screen went: the card goes")
+  }
+
   // MARK: - Pomocnicze
 
   /// Kolor palety w ciemnym motywie jako 0xRRGGBB.
@@ -308,6 +453,34 @@ final class HeaderChromeTests: XCTestCase {
       .environment(\.colorScheme, .dark))
     renderer.scale = 3
     return renderer.cgImage.flatMap { RenderedPixels($0, scale: 3) }
+  }
+
+  /// The same, drawn from a window: a button with the pointer tip carries a UIKit anchor, which `ImageRenderer`
+  /// paints as a yellow placeholder over the button's background.
+  static func renderHosted(_ view: some View) async throws -> RenderedPixels {
+    let host = UIHostingController(rootView: AnyView(view
+      .fixedSize()
+      .background(Color(uiColor: Palette.background))
+      .environment(\.colorScheme, .dark)))
+    host.safeAreaRegions = []
+    host.overrideUserInterfaceStyle = .dark
+    host.view.backgroundColor = Palette.background
+    let size = host.sizeThatFits(in: CGSize(width: 2000, height: 2000))
+    let window = QuestionDockLayoutTests.window(height: size.height)
+    window.frame = CGRect(origin: .zero, size: size)
+    window.rootViewController = host
+    window.isHidden = false
+    defer { window.isHidden = true }
+    host.view.frame = window.bounds
+    try await QuestionDockLayoutTests.settle(host)
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 3
+    let renderer = UIGraphicsImageRenderer(bounds: host.view.bounds, format: format)
+    var image = renderer.image { context in host.view.layer.render(in: context.cgContext) }
+    if let drawn = PendingMediaRowTests.Bitmap(image), drawn.alpha(atX: 1, y: 1) == 0 {
+      image = renderer.image { _ in _ = host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true) }
+    }
+    return try XCTUnwrap(image.cgImage.flatMap { RenderedPixels($0, scale: 3) }, "bitmap")
   }
 }
 

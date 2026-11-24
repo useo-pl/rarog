@@ -237,5 +237,10 @@ extension MarkdownTableView: UITextViewDelegate {
     while let current = view, !(current is MessageContentView) { view = current.superview }
     return (view as? MessageContentView)?.textView(textView, editMenuForTextIn: range, suggestedActions: suggestedActions)
   }
+
+  /// A selection in the cells ends the transcript's pointer selection, as one in the message field does.
+  func textViewDidChangeSelection(_ textView: UITextView) {
+    MessageContentView.systemSelectionChanged(in: textView)
+  }
 }
 #endif

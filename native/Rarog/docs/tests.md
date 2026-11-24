@@ -196,15 +196,43 @@ xcodebuild ends with "No Accounts"), signed with `RAROG_IOS_SIGN=1`; `RAROG_IOS_
 
 **What the tests cover.** The test name says the area; the class's own doc comment says the scenario. The groups:
 
-- packages, `swift test`: logic of each package (reducers, outbox, transport, copy catalogs, markdown, models);
+- packages, `swift test`: logic of each package (reducers, outbox, transport, copy catalogs, markdown, models),
+  among them the background rule of a voice conversation under the locked-phone trial (`VoiceAgentWatchTests`) and
+  the locked-phone monitor's hold, heartbeat and lines on a manual clock (`LockedPhoneMonitorTests`, with the store's
+  question to the server in `StoreLockedPhoneTests`), what the app's microphone reports for the voice Live Activity:
+  a conversation's phase from its status and a waiting prompt, and the session it names by project and name, never
+  by a prompt's text (`DictationCenterTests`, `VoiceAgentInboxTests`,
+  `VoiceAgentSessionsConversationTests`), and the activity's state, which encodes only its kind, phase, scope, start
+  time and the session's project and name cut to their ceiling (`VoiceActivityAttributesTests`), and its words,
+  subject line, VoiceOver label, colour of each phase and glyph (`VoiceActivityPresentationTests`);
 - `RarogUIKitTests`: a separate XCTest target without the production app host, for real view controllers and
   layout (`ComposerPrimaryButtonTests`, `InspectorWidthTests`, `TreeListAnchorTests`, `LiveActivityViewTests`, which
   renders the Live Activity views in both themes and writes PNGs with `TEST_RUNNER_RAROG_LA_SNAPSHOT_DIR=<dir>`;
-  `ListFilterBarTests`, which writes the stacked list under the Needs You segment with
-  `TEST_RUNNER_RAROG_LIST_SNAPSHOT_DIR=<dir>`, a phone picture with `RAROG_IOS_SIMULATOR="iPhone 17 Pro"`), and
-  for app files it compiles itself (`membershipExceptions`: `TunnelCoordinator`, `TunnelTrace`, `RelayGates` and
-  others) with the fake tunnel from `RarogTransportTesting` (`TunnelCoordinatorTests`, `RelayGatesTests`,
-  `SettingsSheetServerTests`);
+  `VoiceActivityViewTests`, which keeps the voice Live Activity's Lock Screen tile under 90 pt at the default type
+  size (also with names at their ceiling and a waiting prompt), stops it growing past its type limit, checks the
+  phase's colour and writes the tile of each state with
+  `TEST_RUNNER_RAROG_VOICE_LA_SNAPSHOT_DIR=<dir>`;
+  `ListFilterBarTests`, which writes the stacked list under the Needs You segment and, in the light theme, a result
+  the voice agent picked up between a fresh and a read one with
+  `TEST_RUNNER_RAROG_LIST_SNAPSHOT_DIR=<dir>`, a phone picture with `RAROG_IOS_SIMULATOR="iPhone 17 Pro"`;
+  `VoiceAgentSessionsBarTests`, which checks the lit circle in the list bar, in the session header and in the
+  Inbox's header by its pixels (the state's tone, a bar in the background colour, on iPhone, in the iPad list column,
+  in the session header with the list column hidden and on the Inbox at the root of the iPhone's stack), that the
+  Inbox's circle ends the owner's conversation, that from the Inbox to a session opened from a card and back one
+  circle and one prompt card stand, that the end sentence stands in one line above the session screen and the Inbox
+  and a tap removes it, that the screen does not move while the conversation only runs, and that a long title keeps
+  the header's icon group with the circle out of the bar's overflow (an iPhone test, skipped elsewhere: run it with
+  `RAROG_IOS_SIMULATOR="iPhone 17 Pro"`), and writes the voice conversation across sessions (the lit circle in both
+  themes, the iPad list column in each state, with a three-line and a 1000-character waiting prompt, the mode's
+  consent page, the session screen's header and the Inbox on iPhone running, with a waiting prompt and after the
+  end, and on iPad with the list column hidden and with both columns; the iPhone pictures with
+  `RAROG_IOS_SIMULATOR="iPhone 17 Pro"`) with `TEST_RUNNER_RAROG_VOICE_SESSIONS_SNAPSHOT_DIR=<dir>`), and
+  for app files it compiles itself (`membershipExceptions`: `TunnelCoordinator`, `TunnelTrace`, `RelayGates`,
+  `VoiceActivityController` and others) with the fake tunnel from `RarogTransportTesting` (`TunnelCoordinatorTests`,
+  `RelayGatesTests`, `SettingsSheetServerTests`) or a fake of ActivityKit and a real microphone center with
+  recording places of the test's own (`VoiceActivityControllerTests`: the voice Live Activity's start, update and
+  end, an update on a new phase or subject that keeps the timer, another kind that starts it anew, the trial
+  switch, leftovers at launch, a refused request, the End button's handler and its lines);
 - `RarogUITests` (XCUITest against the demo): `FlowUITests` (pair, list, transcript, send, decision cards),
   `CardsUITests`, `HeaderUITests` (status line, git, the diff window, the model pill), `ProjectsUITests`,
   `ProjectTreeUITests`, `QuestionUITests`, `MarkdownUITests`, `AttachmentUITests`, `VoiceUITests`,

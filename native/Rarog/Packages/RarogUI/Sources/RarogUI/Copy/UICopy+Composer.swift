@@ -269,7 +269,6 @@ extension UICopy {
   static var interruptUnsure: String { L("composer.interruptUnsure") }
   static var interrupted: String { L("composer.interrupted") }
   static var interruptedRestored: String { L("composer.interruptedRestored") }
-  static var interruptedTyping: String { L("composer.interruptedTyping") }
 
   /// „2,1 MB" / „840 kB" — twarda spacja, przecinek dziesiętny.
   static func bytes(_ count: Int) -> String {

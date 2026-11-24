@@ -54,30 +54,42 @@ extension RarogStore {
   /// Stan `queued` trafia na dysk PRZED żądaniem; odmowa dysku = nic nie wychodzi, stan zostaje.
   /// W starcie agenta nic nie wychodzi i wpis stoi nietknięty do `waiting-input` albo `running`.
   public func retry(_ entryId: UUID) async -> SendOutcome {
+    await retryReporting(entryId).outcome
+  }
+
+  /// `retry` with the attempt it started (`nil` = nothing went out), for a caller that reads the server's answer.
+  /// The attempt exists from the start, the manifest write included (`retrying`), and settles on every exit, so a
+  /// voice agent's call with the same id waits for this Retry's outcome instead of sending.
+  func retryReporting(_ entryId: UUID) async -> (outcome: SendOutcome, flight: SendFlight?) {
     let login = currentLogin
-    guard !retrying.contains(entryId), let entry = state.outbox.first(where: { $0.id == entryId }), entry.isRetryable else {
-      return .ignored
+    guard retrying[entryId] == nil, let entry = state.outbox.first(where: { $0.id == entryId }), entry.isRetryable
+    else {
+      return (.ignored, nil)
     }
     // Stan sesji wprost, nie `sendBlock`: ten oddaje najpierw przeszkody kanału (herdr tylko do odczytu…),
     // a serwer i tak odmówi wiadomości w `starting`.
-    if state.sessions[entry.sessionId]?.state == .starting { return .blocked(.starting) }
-    retrying.insert(entryId)
-    defer { retrying.remove(entryId) }
+    if state.sessions[entry.sessionId]?.state == .starting { return (.blocked(.starting), nil) }
+    let flight = SendFlight()
+    retrying[entryId] = flight
+    defer { retrying[entryId] = nil }
     var next = entry
     next.state = .queued
     let queued = next
     do {
       try await persistInOrder { try await $0.save(queued) }
     } catch {
-      return .notPersisted(String(describing: error))
+      let outcome = SendOutcome.notPersisted(String(describing: error))
+      flight.settle(outcome)
+      return (outcome, nil)
     }
     // Wpis mógł zniknąć w trakcie zapisu (echo, „Odrzuć") — wtedy nic nie wysyłamy.
     guard state.outbox.contains(where: { $0.id == entryId }) else {
       chainPersistence { await $0.delete(entryId) }
-      return .ignored
+      flight.settle(.ignored)
+      return (.ignored, nil)
     }
     dispatch(.outboxRetrying(entryId))
-    return await deliver(queued, login: login)
+    return await deliverReporting(queued, login: login, flight: flight)
   }
 
   /// „Odrzuć": zdejmuje wpis lokalnie (np. doszła, a echo się nie dopasowało) razem z plikami treści.
@@ -124,7 +136,15 @@ extension RarogStore {
   /// stopped attempt (a closing upload connection can take seconds), so an immediate Retry is not held by `retrying`.
   /// Cancelling the caller's task cancels the attempt, as before.
   func deliver(_ entry: OutboxEntry, login: Int) async -> SendOutcome {
-    let flight = SendFlight()
+    await deliverReporting(entry, login: login).outcome
+  }
+
+  /// `deliver` with its attempt: `SendFlight.answer` keeps what the server answered, which `SendOutcome` folds
+  /// together (a timeout and a dropped connection are both Not confirmed, a queued 202 and a plain one both accepted).
+  /// `flight`: the attempt a Retry registered before its manifest write.
+  func deliverReporting(
+    _ entry: OutboxEntry, login: Int, flight: SendFlight = SendFlight()
+  ) async -> (outcome: SendOutcome, flight: SendFlight) {
     sendFlights[entry.id] = flight
     let attempt = Task {
       let outcome = await self.attempt(entry, login: login, flight: flight)
@@ -138,7 +158,7 @@ extension RarogStore {
       attempt.cancel()
     }
     if sendFlights[entry.id] === flight { sendFlights[entry.id] = nil }
-    return outcome
+    return (outcome, flight)
   }
 
   /// The body of `deliver`. After every suspension a stopped attempt returns the outcome the stop already put on
@@ -152,7 +172,9 @@ extension RarogStore {
     if entry.attachments.isEmpty {
       do {
         upload = try MessageUpload.json(
-          MessageBody(text: entry.text, clientMessageId: entry.clientMessageId, queueAware: entry.queueAware == true))
+          MessageBody(
+            text: entry.text, clientMessageId: entry.clientMessageId, queueAware: entry.queueAware == true,
+            sender: entry.sender?.message))
       } catch {
         return refuse(entry.id, code: OutboxEntry.RefusalCode.encodingFailed)
       }
@@ -203,9 +225,11 @@ extension RarogStore {
         sessionId: entry.sessionId, upload, timeout: timeout, progress: progress)
     } catch {
       if let stopped = flight.stopped { return stopped }
+      flight.answer = .failed(error)
       return failed(entry, error, login: login)
     }
     if let stopped = flight.stopped { return stopped }
+    flight.answer = .accepted(queued: accepted?.queued == true)
     // Echo odroczone: wiadomość czeka u serwera, aż CLI weźmie prompt. Wpis wysłany z `queueAware` nie
     // znika po samej powtórce — po restarcie serwera `queued` nie wraca (a pierwsza odpowiedź z nim mogła
     // zginąć), a CLI mogło promptu jeszcze nie wziąć; czeka na echo po podpisie albo na „Nie potwierdzono”.
@@ -272,6 +296,11 @@ extension RarogStore {
       dispatch(.outboxRefused(entry.id, code: failure.code, message: failure.message))
       handleUnauthorized(since: login)
       return .refused(entry.id, code: failure.code, message: failure.message)
+    case let .http(failure) where failure.status == 409 && failure.sentenceCode == Self.conversationChangedSentence:
+      // Only a voice agent's prompt (with `expectedConversation`) gets this 409; the refusal is final.
+      let code = OutboxEntry.RefusalCode.conversationChanged
+      dispatch(.outboxRefused(entry.id, code: code, message: failure.message))
+      return .refused(entry.id, code: code, message: failure.message)
     case let .forbidden(failure), let .rateLimited(failure), let .http(failure):
       // 409 `client-id-conflict` też tu: kod ostateczny, „Ponów" znika (`isRetryable`).
       dispatch(.outboxRefused(entry.id, code: failure.code, message: failure.message))
@@ -284,6 +313,9 @@ extension RarogStore {
       return .unconfirmed(entry.id)
     }
   }
+
+  /// The server's sentence code of the 409 to a message whose `expectedConversation` is not the one the session writes.
+  static let conversationChangedSentence = "session.conversation-changed"
 
   private func refuse(_ id: UUID, code: String) -> SendOutcome {
     dispatch(.outboxRefused(id, code: code, message: nil))
@@ -321,21 +353,18 @@ extension RarogStore {
     }
   }
 
-  /// Start apki: kolejka z dysku wraca na ekran. Wpis, któremu zniknął plik treści, wraca jako
-  /// odmowa bez „Ponów" (tych samych bajtów już nie ma) — widoczna, z „Odrzuć".
+  /// The app start, or a space entered after it (`RarogStore+Spaces`): the queue from disk comes back on screen. An
+  /// entry whose content file is gone comes back as a refusal without Retry (the same bytes are gone), visible, with
+  /// Discard.
   func restoreOutbox() async {
-    // Odczyt i poprawki stanów idą do przestrzeni z chwili startu. Magazyn wszedł w trakcie w inną (parowanie
-    // z linku przy starcie, „Zapomnij serwer”): kolejka poprzedniej do stanu nie wraca.
+    // Reads and state fixes go to the space of the moment of the call. When the store entered another space meanwhile
+    // (pairing from a link at the start, Forget Server), the previous space's queue does not come back into the state.
+    // The swapped `persistence` also catches entering a space from "nobody's" data, which `spaceChanges` does not count.
     let persistence = persistence
     let spaceChanges = serverRuntime.spaceChanges
     // Katalogi treści bez manifestu (awaria przy zakładaniu wpisu) sprząta sam odczyt.
     let load = await persistence.loadAll()
-    let now = clock()
     var restored: [OutboxEntry] = []
-    // Sufity wpisów w kolejce CLI planujemy PO wstawieniu kolejki do stanu — timer odpalony w trakcie
-    // zapisu kolejnego manifestu trafiłby w pusty stan i przepadł.
-    var ceilings: [(UUID, Date)] = []
-    var unconfirmed: [(UUID, Duration)] = []
     for var entry in load.entries {
       if load.missing.contains(entry.id) {
         entry.state = .refused(code: OutboxEntry.RefusalCode.attachmentMissing, message: nil)
@@ -348,33 +377,24 @@ extension RarogStore {
         // Zabita w trakcie żądania: nie wiadomo, czy serwer ją przyjął.
         entry.state = .unconfirmed
         try? await persistence.save(entry)
-      case .sent where entry.queuedAt != nil:
-        // Wpis w kolejce CLI: bez progu 15 s — sufit od pierwszego przyjęcia, a okres bezczynności
-        // sesji wyznacza reduktor, gdy przyjdzie jej stan.
-        let queuedAt = entry.queuedAt ?? now
-        if now.timeIntervalSince(queuedAt) >= timing.queuedUnconfirmedAfter.timeInterval {
-          entry.state = .unconfirmed
-          try? await persistence.save(entry)
-        } else {
-          ceilings.append((entry.id, queuedAt))
-        }
-      case let .sent(acceptedAt):
-        let left = timing.unconfirmedAfter(for: entry).timeInterval - now.timeIntervalSince(acceptedAt)
-        if left <= 0 {
-          entry.state = .unconfirmed
-          try? await persistence.save(entry)
-        } else {
-          unconfirmed.append((entry.id, .milliseconds(Int(left * 1000))))
-        }
-      case .unconfirmed, .refused:
+      case .sent, .unconfirmed, .refused:
+        // An accepted entry gets its countdown below; the reducer decides when it ends (`waitsForOpenStream`).
         break
       }
       restored.append(entry)
     }
-    guard spaceChanges == serverRuntime.spaceChanges else { return }
+    guard spaceChanges == serverRuntime.spaceChanges, persistence === self.persistence else { return }
     dispatch(.outboxRestored(restored))
-    for (id, delay) in unconfirmed { scheduleUnconfirmed(id, after: delay) }
-    for (id, queuedAt) in ceilings { scheduleQueuedCeiling(id, queuedAt: queuedAt) }
+    // Scheduled after the outbox is in the state: a check that came while the next manifest was read would find
+    // nothing. The countdown after the 202 starts again from here; the cap still counts from the first acceptance.
+    for entry in restored {
+      guard case .sent = entry.state else { continue }
+      if let queuedAt = entry.queuedAt {
+        scheduleQueuedCeiling(entry.id, queuedAt: queuedAt)
+      } else {
+        scheduleUnconfirmed(entry.id, after: timing.unconfirmedAfter(for: entry))
+      }
+    }
   }
 
   /// Zapis kolejki W ŁAŃCUCHU z resztą zapisów (skutki reduktora), z wynikiem dla wołającego:
@@ -404,21 +424,29 @@ final class SendFlight {
   var task: Task<SendOutcome, Never>?
   /// Set by the stop: the outcome the stop put on the entry. The attempt returns it and changes nothing else.
   var stopped: SendOutcome?
+  /// What the server answered this attempt; `nil` = no answer (nothing went out, or the stop came first).
+  var answer: Answer?
   /// The outcome `deliver` returns: the first of the attempt's own and the stop's.
   private var settled: SendOutcome?
-  private var waiter: CheckedContinuation<SendOutcome, Never>?
+  private var waiters: [CheckedContinuation<SendOutcome, Never>] = []
+
+  enum Answer: Equatable {
+    /// 202; `queued`: the reply said the message waits in the server's queue.
+    case accepted(queued: Bool)
+    case failed(TransportError)
+  }
 
   /// Settles the attempt once; a later outcome (the stopped attempt ending) changes nothing.
   func settle(_ outcome: SendOutcome) {
     guard settled == nil else { return }
     settled = outcome
-    waiter?.resume(returning: outcome)
-    waiter = nil
+    for waiter in waiters { waiter.resume(returning: outcome) }
+    waiters = []
   }
 
-  /// Waits for the first outcome.
+  /// Waits for the first outcome; any number of callers may wait.
   func outcome() async -> SendOutcome {
     if let settled { return settled }
-    return await withCheckedContinuation { waiter = $0 }
+    return await withCheckedContinuation { waiters.append($0) }
   }
 }

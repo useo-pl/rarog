@@ -309,6 +309,16 @@ final class WindowsUITests: XCTestCase {
     XCTAssertTrue(files.firstMatch.waitForAppearance(timeout: 10), "pliki w panelu")
     XCTAssertTrue(element(app, "inspector.git.title").isHittable, "kotwica na zmianach w katalogu")
     if ProcessInfo.processInfo.environment["RAROG_SCREENSHOT_DIR"] != nil { try shot(app, "arkusz-panelu") }
+    // A tap on an existing file: the preview stands over the sheet, and closing it returns to the panel.
+    let file = element(app, "inspector.git.file.src/notes.ts")
+    XCTAssertTrue(file.waitForAppearance(timeout: 10), "an existing file in the sheet")
+    file.tap()
+    let close = element(app, "QLOverlayDoneButtonAccessibilityIdentifier")
+    XCTAssertTrue(close.waitForAppearance(timeout: 10), "the file preview over the sheet")
+    if ProcessInfo.processInfo.environment["RAROG_SCREENSHOT_DIR"] != nil { settle(1.5); try shot(app, "podglad-arkusz") }
+    close.tap()
+    XCTAssertTrue(close.waitForDisappearance(timeout: 5), "the file preview closed")
+    XCTAssertTrue(panel.waitForAppearance(timeout: 5), "closing the preview returns to the panel sheet")
     let bar = app.navigationBars["Panel sesji"]
     XCTAssertTrue(bar.waitForAppearance(timeout: 5), "tytuł panelu w pasku arkusza")
     let barButtons = bar.buttons.allElementsBoundByIndex

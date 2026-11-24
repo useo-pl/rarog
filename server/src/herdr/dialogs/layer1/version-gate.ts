@@ -1,8 +1,9 @@
 /**
  * The Claude Code version gate of the proof rule: on which releases a session counts the `channel` rule,
  * per request kind (main thread, subagent requests). The base is the package constant
- * {@link CONSENT_CHANNEL_MEASURED_CLI}; the canary file `<dataDir>/consent-canary.json` adds exact releases on which
- * the canary command measured the contract (`pass`) and takes away releases where it failed (`fail`).
+ * {@link CONSENT_CHANNEL_MEASURED_CLI}: releases up to its `cli` except the exact releases in its `excluded`. The
+ * canary file `<dataDir>/consent-canary.json` adds exact releases on which the canary command measured the contract
+ * (`pass`) and takes away releases where it failed (`fail`).
  *
  * This module reads the file through the regular-file gate (`safe-read.ts`) and never writes it; the gate with
  * its log line is `createConsentProofGate` in `observe.ts`. Any doubt about the file gives the package base alone,
@@ -149,8 +150,9 @@ export function createConsentCanaryFile(dataDir: string): ConsentCanaryFile {
  * 1. configuration `screen` (`RAROG_CONSENT_PROOF`), or the release unknown (no single process of the session in the
  *    registry read, a string outside the release shape) → `screen`;
  * 2. `fail` → `screen`;
- * 3. the release not above {@link CONSENT_CHANNEL_MEASURED_CLI} → `channel`;
- * 4. `pass` → `channel`;
+ * 3. the release in the package base (not above `cli` of {@link CONSENT_CHANNEL_MEASURED_CLI}, not in its
+ *    `excluded`) → `channel`;
+ * 4. `pass` → `channel`, also on an excluded release;
  * 5. the rest (`unmeasured`, no entry) → `screen`.
  *
  * MCP tools stay at `screen` in the request rule (`consentKeyRule`, `consentHiddenKeyRule` in `proof.ts`).
@@ -160,8 +162,15 @@ export function consentProofRuleOf(
 ): ConsentProofRule {
   if (configured !== 'channel' || cliVersion === undefined || !CLI_VERSION_SHAPE.test(cliVersion)) return 'screen';
   if (result === 'fail') return 'screen';
-  if (compareCliVersions(cliVersion, CONSENT_CHANNEL_MEASURED_CLI.cli) <= 0) return 'channel';
+  if (inPackageBase(cliVersion)) return 'channel';
   return result === 'pass' ? 'channel' : 'screen';
+}
+
+/** Whether release `cliVersion` (in the release shape) is covered by {@link CONSENT_CHANNEL_MEASURED_CLI}. */
+function inPackageBase(cliVersion: string): boolean {
+  const { cli, excluded } = CONSENT_CHANNEL_MEASURED_CLI;
+  return compareCliVersions(cliVersion, cli) <= 0
+    && !excluded.some((release) => compareCliVersions(cliVersion, release) === 0);
 }
 
 /** The entry of release `cliVersion` in the read; `null` = none (no file read, no exact entry). */

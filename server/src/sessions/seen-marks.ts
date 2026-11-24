@@ -29,12 +29,18 @@ export interface SeenMarkStore {
 }
 
 /**
- * The voice agent's pick-up (`POST …/seen` with `by`, `stateSince` and `conversation`): who picks up, and the
- * `stateSince` and the engine conversation of the result it read.
+ * The voice agent's pick-up (`POST …/seen` with `by`, `conversation` and `readMark`): who picks up, and the engine
+ * conversation and the read mark of the turns read it picks up.
  */
 export interface SeenPickUp {
   readonly by: SeenBy;
-  readonly stateSince: string;
+  /**
+   * `readMark` of the turns read: the newest message the session's memory held and the session's `stateSince` when the
+   * route took the session (`Session.readMark`). A turns read with no messages, or with a message cut to its start by
+   * the size limit, gives a mark that names no read (`NO_READ_MARK` in `server/src/companion/turns.ts`), which no
+   * session's mark equals.
+   */
+  readonly readMark: string;
   /**
    * The body's conversation token as a check of a conversation id; the route builds it as for a send
    * (`SendMessageOptions.conversation`).
@@ -140,17 +146,20 @@ export function markSeen(session: Session, deps: SeenMarksDeps, pickUp?: SeenPic
  *   so a receipt taken there would cover the turn's real result;
  * - no decision card waits on it: a permission card or a question that comes after the turn end moves no state, so it
  *   can stand over the result in `waiting-input`;
- * - the `stateSince` is the session's current one. Equality, not order: a history import can move `stateSince` back,
- *   and the agent read another result then;
  * - the session is in the engine conversation the agent read ({@link inReadConversation}): `/clear` and `/resume`
  *   change it with no change of state or `stateSince`. A session without a conversation yet has no result the agent
- *   could have read.
+ *   could have read;
+ * - the session's memory holds no message newer than the read and its `stateSince` is the one of the read
+ *   (`Session.readMark` equals the pick-up's). A short turn whose `working` herdr's grace drops ends with no change of
+ *   state or `stateSince`, and only its messages tell its result from the one the agent read. A turn whose `working`
+ *   reaches the session can end before its messages reach the memory, and only its state stamps tell it. A turn that
+ *   adds no message (a context compaction alone) moves the stamp too, so the agent reads the session again.
  */
 function pickUpMeetsResult(session: Session, deps: SeenMarksDeps, pickUp: SeenPickUp): boolean {
   if (session.state !== 'waiting-input' || deps.decisionStands(session)) return false;
-  if (pickUp.stateSince !== session.stateSince) return false;
   if (session.engineSessionId === undefined || session.engineSessionId === '') return false;
-  return inReadConversation(session, pickUp.conversation);
+  if (!inReadConversation(session, pickUp.conversation)) return false;
+  return pickUp.readMark === session.readMark;
 }
 
 /**

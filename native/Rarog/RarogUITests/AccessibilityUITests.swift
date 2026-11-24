@@ -296,7 +296,6 @@ class AccessibilityAudit: XCTestCase {
         // Po środku ramki, nie po całej: w największym piśmie ramka cyfry wystaje 0,5 pt pod zakładkę.
         facts.inTab = tabRow?.contains(CGPoint(x: frame.midX, y: frame.midY)) ?? false
         facts.shortcutDigit = facts.inTab && Self.isShortcutDigit(element?.label)
-        facts.treeTabKey = facts.inRow && Self.isShortcutDigit(element?.label)
         facts.frame = frame
         facts.outsideClip = clip.map { !$0.insetBy(dx: -1, dy: -1).contains(frame) } ?? false
       }
@@ -355,8 +354,6 @@ class AccessibilityAudit: XCTestCase {
     var inTab = false
     /// Element to cyfra klawisza skrótu Cmd na zakładce.
     var shortcutDigit = false
-    /// The element is the tab digit square at the end of a tree row (`TreeTabKey`).
-    var treeTabKey = false
     /// Ramka elementu w chwili zgłoszenia; `nil` = audyt nie wskazał elementu.
     var frame: CGRect?
     /// Kontrast z pikseli kadru elementu na zrzucie zaraz po audycie; `nil` = w kadrze nie ma tekstu.
@@ -412,12 +409,6 @@ class AccessibilityAudit: XCTestCase {
       if let contrast = facts.contrast {
         if contrast.ratio >= 4.5 { return "fałszywy alarm audytu: piksele \(contrast)" }
         if facts.inRow, contrast.isIdleInk { return "świadomie wyciszony wiersz bezczynny: \(contrast)" }
-        if facts.treeTabKey, contrast.isTreeTabKeyEdge {
-          // The square's hairline edge is the faintest colour in the digit's frame, so the measurement takes it for
-          // the ink once the frame hugs the square (small text sizes). The edge is decoration; the digit's own
-          // contrast is checked from the tokens (`ProjectTreeRowsTests`).
-          return "edge of the tree row's tab digit square, not its ink: \(contrast)"
-        }
         return nil
       }
       if !facts.hasElement {
@@ -606,8 +597,6 @@ struct ScreenPixels {
 
     /// Atrament wiersza bezczynnego (`PaletteTokens.idleInk`: jasny `#92929A`, ciemny `#58585F`).
     var isIdleInk: Bool { [0x92929A, 0x58585F].contains { ScreenPixels.close($0, ink) } }
-    /// The ink is the hairline edge of the tree row's tab digit square (`treeTabKeyEdge`, light and dark).
-    var isTreeTabKeyEdge: Bool { [0xC2C2C8, 0x38383D].contains { ScreenPixels.close($0, ink) } }
   }
 
   private let width: Int

@@ -903,6 +903,95 @@ struct StorePairingTests {
     #expect(restarted.state.outbox.count == 1, "dysk oddał wskaźnik: dane wracają")
   }
 
+  /// A session with a key and no space (the pointer unreadable at the start) whose space holds a queue entry
+  /// (`entryA`) and a cached list with `s1`; the disk returns the pointer, and the pairing sheet for the same server is
+  /// open.
+  private func sessionWithoutSpaceBeforePairing() async throws -> (FakeServer, RarogStore, ServerSpace) {
+    let keychain = MemoryKeychain(.init(credential: PairingFixtures.credential(), pushKey: "BQUF"))
+    let server = FakeServer(keychain: keychain)
+    _ = server.store()
+    let space = try #require(server.pointer)
+    try await #require(server.outbox()).save(entryA())
+    let row = try JSONDecoder().decode(SessionSummary.self, from: Data(Frames.summary("s1").utf8))
+    #expect(await SnapshotCache(directory: server.spaces.directory(space).appending(path: ServerSpaces.list)).save([row], at: Date()))
+    let pointer = server.spaces.pointerFile.path
+    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: pointer)
+    let store = server.store()
+    await store.start()
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: pointer)
+    #expect(store.dataSpaceDirectory == nil && store.state.outbox.isEmpty, "a session without a space")
+    store.offerPairing(PairingFixtures.link())
+    return (server, store, space)
+  }
+
+  @Test("session without a space (pointer unreadable at the start), the disk returns the pointer, pairing again with the same server: the pairing logs in with the space's queue and list already in the state")
+  func pairingIntoPointerSpaceShowsItsData() async throws {
+    let (server, store, space) = try await sessionWithoutSpaceBeforePairing()
+    #expect(await store.confirmPairing() == .paired)
+    #expect(store.dataSpaceDirectory == server.spaces.directory(space) && server.wipes == 1)
+    // No wait: the login opens streams and lets messages out only after the space's queue and list are read.
+    #expect(store.state.auth == .loggedIn)
+    #expect(store.state.outbox.map(\.text) == ["do serwera A"] && store.state.sessions["s1"] != nil)
+    #expect(store.state.listCache.staleSince != nil, "the list comes from the cache, stale until the first stream state")
+  }
+
+  @Test("an entry that reaches the outbox right after pairing into the pointer's space keeps its place and state")
+  func entryAfterPairingKeepsItsPlace() async throws {
+    let (server, store, _) = try await sessionWithoutSpaceBeforePairing()
+    #expect(await store.confirmPairing() == .paired)
+    // The state a send leaves once its write is done: the entry in the outbox, accepted by the server.
+    let accepted = Date()
+    let fresh = OutboxEntry(sessionId: "s1", text: "right after pairing", createdAt: accepted, state: .sent(acceptedAt: accepted))
+    store.dispatch(.outboxEnqueued(fresh))
+    await until("queue of the space") { store.state.outbox.contains { $0.text == "do serwera A" } }
+    #expect(store.state.outbox.first { $0.id == fresh.id }?.state == .sent(acceptedAt: accepted))
+    #expect(server.wipes == 1)
+  }
+
+  @Test("an echo that arrives right after pairing into the pointer's space settles the space's queue entry for good")
+  func echoAfterPairingSettlesTheRestoredEntry() async throws {
+    let (server, store, _) = try await sessionWithoutSpaceBeforePairing()
+    #expect(await store.confirmPairing() == .paired)
+    let at = ISOTime.string(Date().addingTimeInterval(1))
+    store.dispatch(.frame(try Frames.transcript("sesja-a"), source: .session("sesja-a"), cursor: nil))
+    let echo = try Frames.message("sesja-a", seq: 10, role: "user", text: "do serwera A", at: at)
+    store.dispatch(.frame(echo, source: .session("sesja-a"), cursor: nil))
+    // A read of the space's queue that ended after the echo would bring the settled entry back as pending.
+    try await Task.sleep(for: .milliseconds(200))
+    #expect(!store.state.outbox.contains { $0.text == "do serwera A" }, "the echo settled it")
+    #expect(server.wipes == 1)
+  }
+
+  @Test("device-revoked, then pairing again with the same server: the space's queue is on screen in the same store, also when the start had no space")
+  func repairAfterRevocationShowsQueue() async throws {
+    for readable in [true, false] {
+      let label = readable ? "pointer read at the start" : "pointer unreadable at the start"
+      let keychain = MemoryKeychain(.init(credential: PairingFixtures.credential(), pushKey: "BQUF"))
+      let server = FakeServer(keychain: keychain)
+      _ = server.store()
+      try await #require(server.outbox()).save(entryA())
+      let pointer = server.spaces.pointerFile.path
+      if !readable { try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: pointer) }
+      let store = server.store()
+      await store.start()
+      try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: pointer)
+      #expect(store.state.outbox.count == (readable ? 1 : 0), "\(label)")
+      let device = try #require(server.current)
+      await until("global stream") { store.state.global == .online }
+      device.set {
+        $0.rejection = .revoked(
+          deviceId: "03030303030303030303030303030303", revokedAt: "2026-10-04T10:03:00.000Z", revokedBy: "admin")
+      }
+      device.end(.global, error: .unauthorized(APIFailure(status: 401, code: "device-revoked")))
+      await until("revoked screen") { store.state.auth == .loggedOut(.deviceRevoked) }
+      store.offerPairing(PairingFixtures.link())
+      #expect(await store.confirmPairing() == .paired, "\(label)")
+      let space = try #require(server.pointer)
+      #expect(store.dataSpaceDirectory == server.spaces.directory(space), "\(label)")
+      await until("queue of the space, \(label)") { store.state.outbox.map(\.text) == ["do serwera A"] }
+    }
+  }
+
   /// Sesja A bez przestrzeni na dysku (wskaźnik
   /// nieczytelny) i parowanie z B nie czyściły stanu A w pamięci ani półki załączników — czyszczenie zależało od
   /// przestrzeni, a nie od właściciela danych w pamięci.

@@ -2,14 +2,14 @@ import UIKit
 import XCTest
 
 /// The app's text size against the demo server: ⌘= (and ⇧⌘=) and ⌘- move the size one step and type nothing into the
-/// message field, ⌘0 gives the system's size back but with the session switcher open picks its row 0 instead, and the
+/// message field, ⌘0 gives the system's size back, also next to the open session switcher, which picks nothing, and the
 /// main screens pass the accessibility audit with the app's size set far from the system's in both directions. The
 /// size shows as the value of the Text Size row on the Settings list, which follows each step; the Text Size page
 /// stores a tapped step with a check and goes back to the system's size with Use System Size. The system's size is
 /// pinned to Large for the keys (`-UIPreferredContentSizeCategoryName`), so one step up is Larger.
 final class TextScaleUITests: AccessibilityAudit {
   private let keyboard = ["RAROG_UI_TEST_HW_KEYBOARD": "1"]
-  private let session = "demo-willow"
+  private let session = "demo-rarog"
   private let larger = "Większe"
   private let veryLarge = "Bardzo duże"
   private let system = "Jak w systemie"
@@ -51,22 +51,28 @@ final class TextScaleUITests: AccessibilityAudit {
     XCTAssertEqual(textSize(app), system, "⌘0 gives the system's size back")
   }
 
+  /// The switcher window has no row 0: ⌘0 with the window open gives the system's size back, and the window stays
+  /// with the same selection and picks nothing.
   @MainActor
-  func testCommandZeroPicksSwitcherRowAndKeepsTheSize() throws {
+  func testCommandZeroResetsTheSizeNextToTheSwitcher() throws {
     let app = try launch()
-    open(app, "demo-data-loader")
     open(app, session)
     app.typeKey("=", modifierFlags: .command)
     XCTAssertEqual(textSize(app), larger, "one step before the switcher")
     closeSettings(app)
 
-    app.typeKey("s", modifierFlags: .command)
+    element(app, "tab.\(session)").tap()
     let window = element(app, "switcher.window")
-    XCTAssertTrue(window.waitForAppearance(timeout: 5), "⌘S opens the switcher")
+    XCTAssertTrue(window.waitForAppearance(timeout: 5), "a tap on the current tab opens the switcher")
+    XCTAssertTrue(element(app, "switcher.row.\(session)").isSelected, "the selection on the current tab")
     app.typeKey("0", modifierFlags: .command)
-    XCTAssertTrue(window.waitForDisappearance(timeout: 5), "⌘0 picks row 0 and closes the window")
-    XCTAssertTrue(selected(app, session), "row 0 is the session on screen")
-    XCTAssertEqual(textSize(app), larger, "⌘0 in the switcher does not reset the size")
+    settle(1)
+    XCTAssertTrue(window.exists, "⌘0 picks no row: the window stays")
+    XCTAssertTrue(element(app, "switcher.row.\(session)").isSelected, "the selection did not move")
+    XCTAssertTrue(selected(app, session), "no jump")
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.04)).tap()
+    XCTAssertTrue(window.waitForDisappearance(timeout: 5), "a tap outside closes the window")
+    XCTAssertEqual(textSize(app), system, "⌘0 next to the switcher gives the system's size back")
     closeSettings(app)
   }
 

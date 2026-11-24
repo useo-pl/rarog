@@ -27,6 +27,8 @@ final class VoiceAgentSessionHost: VoiceAgentHost {
   /// What of the app state counts for the end rules now; `nil` = no screen: the conversation does not start, and a
   /// running one is left to the screen's own end.
   var watchInput: (@MainActor () -> VoiceAgentWatch.Input?)?
+  /// The field the prompt goes into: its edit rule stands in the instructions and the prompt tools' descriptions.
+  var promptField = RealtimePromptField.messageField
 
   private let backend: any VoiceAgentBackend
   private var watch: VoiceAgentWatch?
@@ -46,7 +48,8 @@ final class VoiceAgentSessionHost: VoiceAgentHost {
       showPrompt: { [weak self] text, version in
         self?.place(text, version: version) ?? RealtimePromptShown(placement: .refused(reason: "the message field is gone"))
       },
-      sendPrompt: { [weak self] version in await self?.send(version) ?? VoiceAgentToolText.send(nil) })
+      sendPrompt: { [weak self] version in await self?.send(version) ?? VoiceAgentToolText.send(nil) },
+      field: promptField)
   }
 
   /// The watch starts from the app state of this moment: changes that end the conversation count from it.
@@ -80,28 +83,33 @@ final class VoiceAgentSessionHost: VoiceAgentHost {
     guard let sendField else { return VoiceAgentToolText.send(nil) }
     return VoiceAgentToolText.send(await sendField(version))
   }
+
+  /// The conversation's session as the app's list names it.
+  var microphoneSubject: MicrophoneSubject { .of(backend.sessionSummary(sessionId)) }
 }
 
 extension RealtimeConversation.Content {
   /// The conversation at one session: its transcript as content, `ask_session`, `show_prompt` and `send_prompt` as
   /// tools. `messages`: the transcript messages in the phone window; `showPrompt` writes the prompt with its version
   /// into the message field or refuses with a reason; `sendPrompt` sends the field while the prompt with that version
-  /// stands in it → the result for the model.
+  /// stands in it → the result for the model. `field`: the field the prompt goes into, whose edit rule the
+  /// instructions and the prompt tools' descriptions state.
   @MainActor
   static func session(
     messages: @escaping @MainActor () -> [TranscriptMessage],
     askSession: @escaping @MainActor (String) async -> String,
     showPrompt: @escaping @MainActor (String, Int) -> RealtimePromptShown,
-    sendPrompt: @escaping @MainActor (Int) async -> String
+    sendPrompt: @escaping @MainActor (Int) async -> String,
+    field: RealtimePromptField = .messageField
   ) -> Self {
-    let transcript = VoiceAgentTranscriptSource(messages: messages)
+    let transcript = VoiceAgentTranscriptSource(messages: messages, field: field)
     return Self(
       budget: RealtimeProjector.budget,
       instructions: { transcript.instructions(budget: $0) },
       update: { transcript.update() },
       tools: [
         RealtimeToolSpec(
-          name: RealtimeTool.askSession.rawValue, schema: schema(.askSession), tally: .ask,
+          name: RealtimeTool.askSession.rawValue, schema: schema(.askSession, field), tally: .ask,
           action: { arguments in
             guard let question = RealtimeConversation.argument(arguments, RealtimeTool.questionField) else {
               return .answer(RealtimeConversation.toolError("The question is empty."))
@@ -109,7 +117,7 @@ extension RealtimeConversation.Content {
             return .work(checking: true) { await askSession(question) }
           }),
         RealtimeToolSpec(
-          name: RealtimeTool.showPrompt.rawValue, schema: schema(.showPrompt), tally: nil,
+          name: RealtimeTool.showPrompt.rawValue, schema: schema(.showPrompt, field), tally: nil,
           action: { arguments in
             guard let text = RealtimeConversation.argument(arguments, RealtimeTool.textField) else {
               return .answer(RealtimeConversation.toolError("The prompt is empty."))
@@ -117,30 +125,38 @@ extension RealtimeConversation.Content {
             return .showPrompt { version in
               let shown = showPrompt(text, version)
               if case let .refused(reason) = shown.placement {
-                return .refused(
-                  RealtimeConversation.toolError(
-                    "The prompt was not written: the message field is read-only now: \(reason). Tell the user."))
+                let refusal =
+                  switch field {
+                  case .messageField:
+                    "The prompt was not written: the message field is read-only now: \(reason). Tell the user."
+                  case .inboxReply: RealtimeInstructions.inboxPromptRefused(reason)
+                  }
+                return .refused(RealtimeConversation.toolError(refusal))
               }
               return .shown(RealtimeConversation.toolResult(VoiceAgentToolText.shownText(shown)))
             }
           }),
         RealtimeToolSpec(
-          name: RealtimeTool.sendPrompt.rawValue, schema: schema(.sendPrompt), tally: .send,
-          action: { _ in .sendPrompt(refusals: promptRefusals, sendPrompt) }),
+          name: RealtimeTool.sendPrompt.rawValue, schema: schema(.sendPrompt, field), tally: .send,
+          action: { _ in .sendPrompt(refusals: promptRefusals(field), sendPrompt) }),
       ])
   }
 
-  /// The schema of `tool` from `RealtimeInstructions.tools()`.
-  private static func schema(_ tool: RealtimeTool) -> [String: Any] {
-    RealtimeInstructions.tools().first { $0["name"] as? String == tool.rawValue } ?? [:]
+  /// The schema of `tool` from `RealtimeInstructions.tools(field)`.
+  private static func schema(_ tool: RealtimeTool, _ field: RealtimePromptField) -> [String: Any] {
+    RealtimeInstructions.tools(field).first { $0["name"] as? String == tool.rawValue } ?? [:]
   }
 
-  /// What `send_prompt` hears when nothing is sent before the send operation of the field.
+  /// What `send_prompt` hears when nothing is sent before the send operation of `field`.
   @MainActor
-  private static var promptRefusals: RealtimePromptRefusals {
-    RealtimePromptRefusals(
-      noPrompt: RealtimeConversation.toolError(
-        "No prompt is in the message field. Call \(RealtimeTool.showPrompt.rawValue) first."),
+  private static func promptRefusals(_ field: RealtimePromptField) -> RealtimePromptRefusals {
+    let noPrompt =
+      switch field {
+      case .messageField: "No prompt is in the message field. Call \(RealtimeTool.showPrompt.rawValue) first."
+      case .inboxReply: RealtimeInstructions.inboxNoPrompt
+      }
+    return RealtimePromptRefusals(
+      noPrompt: RealtimeConversation.toolError(noPrompt),
       promptGone: RealtimeConversation.toolError(VoiceAgentToolText.promptGone),
       unreachable: VoiceAgentToolText.unreachable)
   }
@@ -152,18 +168,21 @@ extension RealtimeConversation.Content {
 @MainActor
 final class VoiceAgentTranscriptSource {
   private let messages: @MainActor () -> [TranscriptMessage]
+  /// The field the prompt goes into, for the role's prompt rules.
+  private let field: RealtimePromptField
   private var lastSyncedSeq: Int?
   private var knownTurns = 0
 
-  init(messages: @escaping @MainActor () -> [TranscriptMessage]) {
+  init(messages: @escaping @MainActor () -> [TranscriptMessage], field: RealtimePromptField = .messageField) {
     self.messages = messages
+    self.field = field
   }
 
   func instructions(budget: Int) -> String {
     let projection = RealtimeProjector.project(messages(), budget: budget)
     lastSyncedSeq = projection.lastSeq
     knownTurns = projection.turns
-    return RealtimeInstructions.full(projection)
+    return RealtimeInstructions.full(projection, field: field)
   }
 
   func update() -> String? {

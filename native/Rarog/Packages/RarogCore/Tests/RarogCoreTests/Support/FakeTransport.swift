@@ -134,6 +134,10 @@ final class FakeTransport: RarogTransporting, @unchecked Sendable {
   var gate: MutationGate?
   /// Terminal: `POST`/lista/gniazda — `Support/FakeTerminal.swift`.
   let terminal = FakeTerminalBackend()
+  /// Inbox routes — `Support/FakeInbox.swift`.
+  let inbox = FakeInboxBackend()
+  /// Session file routes — `Support/FakeFiles.swift`.
+  let files = FakeFilesBackend()
 
   init(credential: Bool = true) {
     lock.withLock { $0.credential = credential }
@@ -153,7 +157,7 @@ final class FakeTransport: RarogTransporting, @unchecked Sendable {
   func sendMessage(
     sessionId: String, _ upload: MessageUpload, timeout: Duration?, progress: (@Sendable (UploadProgress) -> Void)?
   ) async throws(TransportError) -> MessageAccepted? {
-    try await check("POST", "/api/sessions/\(sessionId)/messages")
+    try await check("POST", "/api/sessions/\(sessionId)/messages", expectsConversation: upload.expectsConversation)
     let body = SentBody.decode(upload)
     let (hook, asyncHook, result, reply, queued) = lock.withLock { state in
       state.messages.append((sessionId, body))
@@ -231,10 +235,10 @@ final class FakeTransport: RarogTransporting, @unchecked Sendable {
     return stream
   }
 
-  func check(_ method: String, _ path: String) async throws(TransportError) {
+  func check(_ method: String, _ path: String, expectsConversation: Bool = false) async throws(TransportError) {
     guard let gate else { return }
     do {
-      try await gate.check(method: method, path: path)
+      try await gate.check(method: method, path: path, expectsConversation: expectsConversation)
     } catch {
       throw .refused(error)
     }
@@ -349,6 +353,9 @@ struct SentBody: Decodable, Equatable, Sendable {
   let clientMessageId: String?
   /// Echo odroczone: `true` albo brak pola.
   var queueAware: Bool? = nil
+  /// The voice agent's sender pair: both fields or neither.
+  var source: String? = nil
+  var expectedConversation: String? = nil
 
   static func decode(_ upload: MessageUpload) -> SentBody {
     let data: Data? =
@@ -391,6 +398,23 @@ func until(
   }
 }
 
+/// Zawór dla atrapy: wysyłka stoi, dopóki test go nie otworzy.
+actor Valve {
+  private var open = false
+  private var waiters: [CheckedContinuation<Void, Never>] = []
+
+  func wait() async {
+    if open { return }
+    await withCheckedContinuation { waiters.append($0) }
+  }
+
+  func release() {
+    open = true
+    for waiter in waiters { waiter.resume() }
+    waiters.removeAll()
+  }
+}
+
 /// Katalog tymczasowy na kolejkę jednego testu.
 func temporaryOutbox() -> URL {
   FileManager.default.temporaryDirectory.appending(path: "rarog-core-tests/\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -400,7 +424,8 @@ func temporaryOutbox() -> URL {
 let fastTiming = CoreTiming(
   backoffMin: .milliseconds(10), backoffMax: .milliseconds(40), unconfirmedAfter: .milliseconds(150),
   attachmentUnconfirmedAfter: .milliseconds(1200), compatWait: .milliseconds(150), presenceInterval: .milliseconds(60), echoClockSkew: .seconds(60),
-  noticeLifetime: .milliseconds(100), queuedIdleAfter: .milliseconds(150), queuedUnconfirmedAfter: .milliseconds(600)
+  noticeLifetime: .milliseconds(100), queuedIdleAfter: .milliseconds(150), queuedUnconfirmedAfter: .milliseconds(600),
+  fileTreeRefreshGap: .milliseconds(100), fileIndexRefreshGap: .milliseconds(400)
 )
 
 /// Magazyn z atrapą transportu i bramką wpiętą jak w `RarogStore.live`.
@@ -491,7 +516,7 @@ extension FakeTransport {
   }
 
   func sessionDiffFiles(sessionId: String) async throws(TransportError) -> DiffFileList {
-    throw .invalidResponse("nieużywane w testach rdzenia")
+    try await files.diff(sessionId)
   }
 
   func sessionDiffFile(sessionId: String, path: String) async throws(TransportError) -> DiffFilePatch {
@@ -607,6 +632,18 @@ extension FakeTransport {
   }
 
   func companionSpeechToken() async throws(TransportError) -> CompanionSpeechToken {
+    throw .invalidResponse("unused in core tests")
+  }
+
+  func companionSessions() async throws(TransportError) -> CompanionSessions {
+    throw .invalidResponse("unused in core tests")
+  }
+
+  func companionTurns(sessionId: String, count: Int) async throws(TransportError) -> CompanionTurns {
+    throw .invalidResponse("unused in core tests")
+  }
+
+  func pickUpResult(sessionId: String, _ pickUp: SeenPickUp) async throws(TransportError) {
     throw .invalidResponse("unused in core tests")
   }
 }

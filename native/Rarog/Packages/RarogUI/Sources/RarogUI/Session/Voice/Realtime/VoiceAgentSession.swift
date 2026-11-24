@@ -32,11 +32,15 @@ protocol VoiceAgentBackend: AnyObject {
   func trace(_ line: String, budget: TraceBudget)
   /// Numer zalogowania (`RarogStore.loginEpoch`): wylogowanie, odpięcie i zmiana serwera go podnoszą.
   var loginEpoch: Int { get }
+  /// The session as the app's list has it, for the project and name the voice Live Activity shows; `nil` = the app
+  /// does not have it.
+  func sessionSummary(_ sessionId: String) -> SessionSummary?
 }
 
 extension RarogStore: VoiceAgentBackend {
   func companionToken() async -> CompanionTokenOutcome { await mintCompanionToken() }
   func companionSpeechToken() async -> CompanionSpeechTokenOutcome { await mintCompanionSpeechToken() }
+  func sessionSummary(_ sessionId: String) -> SessionSummary? { state.sessions[sessionId] }
 
   func ask(sessionId: String, question: String) async -> CompanionAskOutcome {
     await askCompanion(sessionId: sessionId, question: question)
@@ -142,6 +146,11 @@ final class VoiceAgentSession {
 
   private let backend: any VoiceAgentBackend
   private let scheduler: any VoiceScheduler
+  /// The app's microphone that holds this conversation: it learns each phase change and the deinit
+  /// (`DictationCenter.changed(_:)`).
+  weak var microphoneCenter: DictationCenter?
+  /// The subject the microphone's observers last heard from `observe()`.
+  private var reportedSubject: MicrophoneSubject?
   private var conversation: RealtimeConversation!
   /// Login in which the conversation started; a send of the field checks it right before it goes out.
   private var startLogin: Int?
@@ -182,7 +191,14 @@ final class VoiceAgentSession {
         phase: { [weak self] in self?.phaseChanged($0) },
         speech: { [weak self] in self?.speech($0) },
         levels: { [weak self] in self?.onLevels?($0) },
-        diagnostic: { [weak self] in self?.backend.trace($0.traceLine, budget: $0.traceBudget) }))
+        diagnostic: { [weak self] in self?.backend.trace($0.traceLine, budget: $0.traceBudget) },
+        answer: { [weak self] in self?.host.answer($0) },
+        soundOverAnswer: { [weak self] in self?.host.soundOverAnswer(utterances: $0) }))
+  }
+
+  /// A conversation dropped without an end still tells the microphone center, so nothing stays held for it.
+  isolated deinit {
+    microphoneCenter?.changed(self)
   }
 
   var isActive: Bool {
@@ -191,6 +207,11 @@ final class VoiceAgentSession {
     default: true
     }
   }
+
+  /// The conversation runs past its readiness gate: the audio engine runs and OpenAI took the session, so the
+  /// microphone's audio goes out. While it connects (keys, socket, engine start) it is active but not ready. The gate
+  /// opening moves the phase on from connecting, so every change of this value comes with a phase change.
+  var isReady: Bool { isActive && conversation.audioRunning }
 
   /// The login of the start is still the app's login (no logout, unpairing or other server since).
   var loginUnchanged: Bool { startLogin != nil && backend.loginEpoch == startLogin }
@@ -213,24 +234,49 @@ final class VoiceAgentSession {
 
   /// The app state changed: an end reason of the host ends the conversation.
   func observe() {
-    guard isActive, let reason = host.endReason() else { return }
+    guard isActive else { return }
+    guard let reason = host.endReason() else {
+      // The session's name can change under a status that stays: the microphone's observers learn the new one.
+      let subject = host.microphoneSubject
+      if subject != reportedSubject {
+        reportedSubject = subject
+        reportUse()
+      }
+      return
+    }
     closedBy = reason
     conversation.end(.closed, detail: reason.traceName)
   }
 
-  /// Second tap on the button, the screen goes away, dictation takes the microphone.
-  func end() {
-    conversation.end(.closed)
+  /// Second tap on the button, the screen goes away, dictation takes the microphone; `detail`: what closed it, for
+  /// the end line in `client.log` (`live-activity` for an end button outside the app's screens).
+  func end(detail: String? = nil) {
+    conversation.end(.closed, detail: detail)
+  }
+
+  /// What of the conversation lives (the locked-phone monitor's heartbeat): a microphone frame within
+  /// `MicrophoneUse.frameWindow` seconds, the Realtime socket to OpenAI, the Soniox speech socket.
+  var liveParts: (audio: Bool, openAI: Bool, soniox: Bool) {
+    (conversation.inputFresh(within: MicrophoneUse.frameWindow), conversation.socketOpen, conversation.speechOpen)
   }
 
   /// The microphone of the conversation is muted (the composer mic shows it lit).
   var muted: Bool { conversation.muted }
 
+  /// The host's subject or waiting prompt changed (`VoiceAgentHost.microphoneSubject`, `promptWaits`): the app's
+  /// microphone learns it, as it learns every change of the indicator.
+  func reportUse() {
+    microphoneCenter?.changed(self)
+  }
+
   /// The composer mic (and ⌥⌘M) during a conversation: mutes or unmutes it. No conversation runs: nothing.
   func toggleMute() {
     guard isActive else { return }
     conversation.setMuted(!conversation.muted)
+    let before = indicator
     refresh()
+    // A mute over a state the status row keeps (a prompt in the field, an answer) changes the microphone's phase too.
+    if indicator == before { reportUse() }
   }
 
   /// The mark of a send that takes the message field now; `nil` = no conversation runs.
@@ -254,6 +300,12 @@ final class VoiceAgentSession {
   /// refuses until the next `show_prompt`.
   func promptLeftField() {
     conversation.promptLeftField()
+  }
+
+  /// The host stops the app's reading in progress (the person edits or sends the text by hand): it ends as speech
+  /// over it ends it, with no result for the model. No reading: nothing.
+  func stopReading() {
+    conversation.stopReading()
   }
 
   /// A timer on the conversation's clock (the screen fades the prompt highlight with it; tests advance it).
@@ -284,7 +336,9 @@ final class VoiceAgentSession {
     } else {
       stopChecking()
     }
-    refresh()
+    refresh(reports: false)
+    // Readiness and the end both come with a phase change, so the center learns every change of the use here.
+    microphoneCenter?.changed(self)
   }
 
   private func speech(_ started: Bool) {
@@ -309,7 +363,7 @@ final class VoiceAgentSession {
         guard let session, session.loginUnchanged else { return refusals.unreachable }
         return await send(version)
       }
-    case .answer, .work:
+    case .answer, .work, .workAtTurn, .workAndRead:
       return action
     }
   }
@@ -347,7 +401,9 @@ final class VoiceAgentSession {
     checkingSince = nil
   }
 
-  private func refresh() {
+  /// `reports`: a changed indicator reaches the app's microphone, whose use carries its phase; a phase change
+  /// reports once itself.
+  private func refresh(reports: Bool = true) {
     let seconds = checkingSince.map { Int(max(0, scheduler.now - $0)) } ?? 0
     var next = VoiceAgentIndicator.make(
       phase: phase, hearing: hearing, muted: conversation.muted, transient: transient?.kind, closedBy: closedBy,
@@ -356,5 +412,6 @@ final class VoiceAgentSession {
     guard next != indicator else { return }
     indicator = next
     onIndicator?(next)
+    if reports { microphoneCenter?.changed(self) }
   }
 }

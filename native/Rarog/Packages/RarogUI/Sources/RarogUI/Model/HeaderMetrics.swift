@@ -12,6 +12,8 @@ enum HeaderMetrics {
   static let tabLabelInset: CGFloat = 8
   /// Pasek zakładek: cel dotyku pierwszej zakładki zaczyna się `tabLabelInset` przed treścią.
   static let tabBarInset: CGFloat = contentInset - tabLabelInset
+  /// The smallest tab: its label's target, 44 pt wide and high, also for a one-character label.
+  static let tabTarget: CGFloat = 44
   /// Pasek zakładek bliżej linii gita o 4 pt. Linia statusu traci górny margines (2 → 0),
   /// a treść zakładki schodzi o 2 pt w celu 44 pt (``tabLabelDrop``), który dalej ma 44 pt.
   static let statusTopPadding: CGFloat = 0
@@ -38,9 +40,11 @@ enum HeaderMetrics {
   static let barSideInset: CGFloat = contentInset
   static let titleTrailingGap: CGFloat = contentInset
 
-  /// Uzbrojone „×” mówi pytanie (`projects.confirmQuestion`, `terminal.closeConfirm`) tekstem szerszym niż cel 44 pt
-  /// (`subheadline` półgruby): na te 5 s tytuł oddaje tyle miejsca, żeby nie wejść pod napis. Zapas liczy najszerszy
-  /// język katalogu: polskie „Na pewno?” do xxxLarge ma ~100 pt, angielskie “Sure?” i “Close?” są węższe.
+  /// The terminal's armed "×" in the corner (a terminal without a tab bar, ``HeaderTrailingIcons/terminalClose``)
+  /// asks its question (`terminal.closeConfirm`) in text wider than the 44 pt target
+  /// (`subheadline` semibold): for those 5 s the title gives up this much room so it does not run under the text. The
+  /// margin follows the widest language of the catalog: the Polish "Na pewno?" up to xxxLarge is ~100 pt, the English
+  /// "Sure?" and "Close?" are narrower.
   static let armedCloseExtra: CGFloat = 64
 
   /// Najszerszy tytuł (nazwa projektu i ścieżka) obok przycisku zwijania: szerokość kolumny bez przycisku,
@@ -80,39 +84,38 @@ enum HeaderMetrics {
   }
 }
 
-/// Które ikony stoją w prawym górnym rogu nagłówka (`HeaderSessionSlot` rysuje je w tej kolejności). Na telefonie
-/// (`compact`) najwyżej ``HeaderMetrics/trailingIconsMax``: przy czterech system chowa całą grupę w „⋯"
-/// przepełnienia paska, które grupy nie pokazuje, więc tapnięcie nic nie robi (ekran terminala: „Terminal
-/// w oknie", zegar, „⋯" i „×"). „Terminal w oknie" wchodzi wtedy do „⋯"
-/// terminala — w pasku zostają trzy ikony, a żadna akcja nie znika. The Recent Sessions clock does not stand here: it
-/// is a button in the project header of the list, so a phone shows at most three icons anyway and
-/// the move to the menu is a guard for a fourth icon.
+/// Which icons stand in the top right corner of the header (`HeaderSessionSlot` draws them in this order). On the
+/// phone at most ``HeaderMetrics/trailingIconsMax``: with four the system hides the whole group in the bar's overflow
+/// "⋯", which does not show the group, so a tap does nothing. The rule keeps it at three: the right panel toggle never
+/// stands on a terminal route (`RarogNavigation.inspectorSession`), and the terminal's "×" stands here only without a
+/// tab bar (``RarogNavigation/terminalCloseInCorner(_:)``); the session's and, with a bar, the terminal's "×" stand in
+/// the current tab. The Recent Sessions clock does not stand here either: it is a button in the project header of the
+/// list. The lit circle of a running voice conversation across sessions stands first where the session header shows
+/// it (`VoiceAgentSessionsPlacement`); where it would be a fourth icon (a terminal without a tab bar: "Pop-Up
+/// Terminal", "⋯", "×"), "Pop-Up Terminal" gives way while the conversation runs, and Cmd+F still opens the window.
+/// The rule holds on the iPad too, whose title ceiling also counts three icons.
 struct HeaderTrailingIcons: Equatable {
-  /// „Terminal w oknie" ikoną w pasku.
-  private(set) var popup: Bool
-  /// „Terminal w oknie" pozycją menu „⋯" terminala.
-  private(set) var popupInMenu = false
+  /// The lit circle that shows and ends the voice conversation across sessions (`VoiceAgentSessionsHeaderCircle`).
+  let voiceSessions: Bool
+  /// "Pop-Up Terminal" (the same as Cmd+F).
+  let popup: Bool
   let inspector: Bool
-  /// „⋯" terminala.
+  /// The terminal's "⋯".
   let terminalMenu: Bool
-  /// „×" terminala; przy „×" sesji obok go nie ma (wpis agenta w terminalu Raroga zamyka panel sam).
+  /// The terminal's "×", also with an agent inside the terminal: only on a terminal screen without a tab bar.
   let terminalClose: Bool
-  let sessionClose: Bool
 
-  init(popup: Bool, inspector: Bool, terminal: Bool, sessionClose: Bool, compact: Bool) {
-    self.popup = popup
+  init(voiceSessions: Bool, popup: Bool, inspector: Bool, terminal: Bool, closeInCorner: Bool) {
+    self.voiceSessions = voiceSessions
     self.inspector = inspector
     terminalMenu = terminal
-    terminalClose = terminal && !sessionClose
-    self.sessionClose = sessionClose
-    if compact && terminal && count > HeaderMetrics.trailingIconsMax {
-      self.popup = false
-      popupInMenu = popup
-    }
+    terminalClose = terminal && closeInCorner
+    let others = [voiceSessions, inspector, terminalMenu, terminalClose].filter { $0 }.count
+    self.popup = popup && others < HeaderMetrics.trailingIconsMax
   }
 
-  /// Ikony w pasku.
+  /// Icons in the bar.
   var count: Int {
-    [popup, inspector, terminalMenu, terminalClose, sessionClose].filter { $0 }.count
+    [voiceSessions, popup, inspector, terminalMenu, terminalClose].filter { $0 }.count
   }
 }

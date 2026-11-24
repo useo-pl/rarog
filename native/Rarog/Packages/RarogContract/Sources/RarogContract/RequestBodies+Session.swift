@@ -48,33 +48,34 @@ public struct EmptyBody: Sendable, Equatable, Encodable {
 /// `POST /api/sessions/<id>/seen`, a mirror of `seenBodySchema` in `shared/src/rest.ts`. Without a pick-up the body is
 /// `{}`, the same bytes as the ``EmptyBody`` a human's view sends. With a ``SeenPickUp`` the voice agent across
 /// sessions picks up the result it read: the server marks it received with `seenBy` only while that result stands
-/// (`waiting-input` with no decision card over it) at the `stateSince` and in the engine conversation the agent read,
-/// and answers 409 `session.seen-result-changed` otherwise. The server takes `by`, `stateSince` and `conversation`
-/// only all three together (a part is a 400), so they come in as one ``SeenPickUp`` and cannot be set one by one.
-/// With the server's mode across sessions off, a pick-up is a 503.
+/// (`waiting-input` with no decision card over it) in the engine conversation the agent read and while the server's
+/// memory of the session holds no message newer than the read and the session's `stateSince` is the one of the read,
+/// and answers 409 `session.seen-result-changed` otherwise. The server takes `by`, `conversation` and `readMark` only all three together (a part is a 400), so they
+/// come in as one ``SeenPickUp`` and cannot be set one by one. With the server's mode across sessions off, a pick-up
+/// is a 503.
 public struct SeenBody: Sendable, Equatable, Encodable {
   public private(set) var by: SeenBy?
-  public private(set) var stateSince: String?
   public private(set) var conversation: String?
+  public private(set) var readMark: String?
 
   public init(pickUp: SeenPickUp? = nil) {
     by = pickUp?.by
-    stateSince = pickUp?.stateSince
     conversation = pickUp?.conversation
+    readMark = pickUp?.readMark
   }
 }
 
-/// Who picks up a result, and the `stateSince` and the conversation token of the read it picks up (both from the
-/// session catalogue row or the turns route): the three fields ``SeenBody`` puts on the wire, always all three.
+/// Who picks up a result, and the conversation token and the read mark of the turns read it picks up (both from one
+/// ``CompanionTurns``): the three fields ``SeenBody`` puts on the wire, always all three.
 public struct SeenPickUp: Sendable, Equatable {
   public var by: SeenBy
-  public var stateSince: String
   public var conversation: String
+  public var readMark: String
 
-  public init(by: SeenBy, stateSince: String, conversation: String) {
+  public init(by: SeenBy, conversation: String, readMark: String) {
     self.by = by
-    self.stateSince = stateSince
     self.conversation = conversation
+    self.readMark = readMark
   }
 }
 

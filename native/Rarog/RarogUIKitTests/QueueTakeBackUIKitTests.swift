@@ -11,7 +11,9 @@ import XCTest
 /// still expands it; VoiceOver has the action on the queued bubble only; a refusal leaves the bubbles and says why.
 /// The bubbles and the `operationId` go only after the draft on disk took the texts, the answer goes to the screen of
 /// the session that stands at answer time (taking a failed send's text that waits there into the field first), and a
-/// kept take-back keeps the gestures on Not confirmed bubbles.
+/// kept take-back keeps the gestures on Not confirmed bubbles. Esc puts into the field only the prompt the interrupt
+/// answer says Claude Code handed back (`returnedPrompt`), never a queued text; like the take-back's texts, that prompt
+/// goes to the session's screen that stands at answer time, or else to its stored draft.
 /// The text and cursor rules: `QueueTakeBackFieldTests` (RarogUI); the store: `StoreQueueTakeBackTests` (RarogCore).
 /// Owner: send.
 @MainActor
@@ -95,6 +97,193 @@ final class QueueTakeBackUIKitTests: XCTestCase {
         fixture.controller.rows["s\(entry.id.uuidString)"],
         .pendingStatus(entry: entry.id, status: .takingBack, retrying: false), "the status under the bubble", line: line)
     }
+  }
+
+  // MARK: - Esc and the field
+
+  /// Esc on the empty field, then waits until the interrupt answer reached the screen.
+  private func interruptByEscape(_ fixture: Fixture, reply: String, typing: String? = nil) throws {
+    EscapeGrace.reset()
+    fixture.calls.record {
+      $0.interruptReply = reply
+      $0.holdInterrupt = typing != nil
+    }
+    try fixture.press(.escape)
+    fixture.wait("interrupt out") { fixture.calls.read(\.interrupts) == ["s1"] }
+    if let typing {
+      fixture.composer.textView.insertText(typing)
+      fixture.calls.record { $0.holdInterrupt = false }
+    }
+    fixture.wait("interrupt settled") { !fixture.store.state.isInterrupting("s1") }
+    RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+  }
+
+  /// A queued prompt is not handed back by Claude Code: it runs after the interrupt, so a copy in the field would be
+  /// sent twice. Without `returnedPrompt` the field stays as it was.
+  func testEscapeWithQueueAndNoHandedBackPromptLeavesFieldEmpty() throws {
+    let fixture = try Fixture(state: "running")
+    defer { fixture.close() }
+    let entry = queue(fixture, "Queued next step")
+    _ = try messageView(fixture, "pending.\(entry.id.uuidString)")
+    try interruptByEscape(fixture, reply: #"{"ok":true,"delivered":"yes"}"#)
+    XCTAssertEqual(fixture.composer.text, "", "no hand-back: the field stays empty, as in the terminal")
+  }
+
+  /// The prompt Claude Code put back into its own field comes into the empty field, word for word.
+  func testEscapePutsHandedBackPromptIntoEmptyField() throws {
+    let fixture = try Fixture(state: "running")
+    defer { fixture.close() }
+    try interruptByEscape(fixture, reply: #"{"ok":true,"delivered":"yes","returnedPrompt":"Refactor the parser"}"#)
+    XCTAssertEqual(fixture.composer.text, "Refactor the parser")
+  }
+
+  /// Text typed while the answer travelled stays: the handed-back prompt stands on its own line before it, and the
+  /// cursor stays where the typing stopped.
+  func testEscapePutsHandedBackPromptBeforeTypedText() throws {
+    let fixture = try Fixture(state: "running")
+    defer { fixture.close() }
+    try interruptByEscape(
+      fixture, reply: #"{"ok":true,"delivered":"yes","returnedPrompt":"Refactor the parser"}"#, typing: "and the lexer")
+    XCTAssertEqual(fixture.composer.text, "Refactor the parser\nand the lexer")
+    XCTAssertEqual(
+      fixture.composer.textView.selectedRange, NSRange(location: ("Refactor the parser\nand the lexer" as NSString).length, length: 0),
+      "the cursor stays after the typed text")
+  }
+
+  private static let handedBack = #"{"ok":true,"delivered":"yes","returnedPrompt":"Refactor the parser"}"#
+
+  /// Esc with the answer held in the transport, so the test can change the screens while it travels.
+  private func escapeHeld(_ fixture: Fixture) throws {
+    EscapeGrace.reset()
+    fixture.calls.record {
+      $0.interruptReply = Self.handedBack
+      $0.holdInterrupt = true
+    }
+    try fixture.press(.escape)
+    fixture.wait("interrupt out") { fixture.calls.read(\.interrupts) == ["s1"] }
+  }
+
+  private func releaseInterrupt(_ fixture: Fixture) {
+    fixture.calls.record { $0.holdInterrupt = false }
+    fixture.wait("interrupt settled") { !fixture.store.state.isInterrupting("s1") }
+  }
+
+  /// The session's draft as a new process reads it from disk.
+  private func storedDraft(_ drafts: ComposerDrafts, _ directory: URL) -> String? {
+    drafts.flush()
+    return ComposerDrafts(directory: directory).take(for: "s1")?.text
+  }
+
+  private func draftsDirectory() -> URL {
+    FileManager.default.temporaryDirectory.appending(path: "interrupt-draft-\(UUID().uuidString)")
+  }
+
+  /// The next send clears the CLI's field, so a handed-back prompt the app drops is lost: an answer after the screen
+  /// closed lands in the session's draft, and the session opened again shows it.
+  func testHandedBackPromptReachesTheDraftAfterTheScreenCloses() throws {
+    let directory = draftsDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let drafts = ComposerDrafts(directory: directory)
+    let fixture = try Fixture(state: "running", drafts: drafts)
+    defer { fixture.close() }
+    try escapeHeld(fixture)
+    fixture.window.rootViewController = nil
+    releaseInterrupt(fixture)
+    fixture.wait("the prompt on disk") { storedDraft(drafts, directory) == "Refactor the parser" }
+    let reopened = SessionViewController(store: fixture.store, sessionId: "s1", drafts: drafts)
+    fixture.window.rootViewController = reopened
+    reopened.view.layoutIfNeeded()
+    XCTAssertEqual(reopened.composer.text, "Refactor the parser", "the session opened again shows the prompt")
+  }
+
+  /// A draft that stood when the screen closed stays: the prompt goes on its own line before it, as in the field.
+  func testHandedBackPromptStandsBeforeTheDraftOfAClosedScreen() throws {
+    let directory = draftsDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let drafts = ComposerDrafts(directory: directory)
+    let fixture = try Fixture(state: "running", drafts: drafts)
+    defer { fixture.close() }
+    try escapeHeld(fixture)
+    fixture.composer.textView.insertText("s")
+    fixture.window.rootViewController = nil
+    fixture.wait("the draft on disk") { storedDraft(drafts, directory) == "s" }
+    releaseInterrupt(fixture)
+    fixture.wait("the prompt before the draft") { storedDraft(drafts, directory) == "Refactor the parser\ns" }
+    let reopened = SessionViewController(store: fixture.store, sessionId: "s1", drafts: drafts)
+    fixture.window.rootViewController = reopened
+    reopened.view.layoutIfNeeded()
+    XCTAssertEqual(reopened.composer.text, "Refactor the parser\ns")
+  }
+
+  /// The session opened again before the answer: the screen that stands now gets the prompt, once; the closed
+  /// screen's field stays as it was.
+  func testHandedBackPromptAfterReopenGoesToTheNewScreenOnce() throws {
+    let directory = draftsDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let drafts = ComposerDrafts(directory: directory)
+    let fixture = try Fixture(state: "running", drafts: drafts)
+    defer { fixture.close() }
+    try escapeHeld(fixture)
+    fixture.window.rootViewController = nil
+    let reopened = SessionViewController(store: fixture.store, sessionId: "s1", drafts: drafts)
+    fixture.window.rootViewController = reopened
+    reopened.view.layoutIfNeeded()
+    XCTAssertEqual(reopened.composer.text, "")
+    releaseInterrupt(fixture)
+    fixture.wait("the prompt in the new field") { reopened.composer.text == "Refactor the parser" }
+    RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+    XCTAssertEqual(reopened.composer.text, "Refactor the parser", "once")
+    XCTAssertEqual(fixture.composer.text, "", "the closed screen's field stays as it was")
+    XCTAssertEqual(storedDraft(drafts, directory), "Refactor the parser")
+  }
+
+  /// The answer lands while a full-screen presentation covers the session screen: its live field gets the prompt,
+  /// because that field writes the session's draft next.
+  func testHandedBackPromptWhileScreenIsCoveredReachesItsField() throws {
+    let directory = draftsDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let drafts = ComposerDrafts(directory: directory)
+    let fixture = try Fixture(state: "running", drafts: drafts)
+    defer { fixture.close() }
+    try escapeHeld(fixture)
+    fixture.window.rootViewController = UIViewController()
+    fixture.wait("screen covered") { fixture.controller.view.window == nil }
+    releaseInterrupt(fixture)
+    fixture.wait("the prompt in the covered field") { fixture.composer.text == "Refactor the parser" }
+    fixture.window.rootViewController = fixture.controller
+    fixture.wait("screen back") { fixture.controller.view.window != nil }
+    XCTAssertEqual(fixture.composer.text, "Refactor the parser")
+    fixture.wait("the same on disk") { storedDraft(drafts, directory) == "Refactor the parser" }
+  }
+
+  /// A send that failed under the presentation left its text waiting in memory: the field takes it before the
+  /// prompt goes in, so the write that replaces the draft keeps both.
+  func testHandedBackPromptWhileScreenIsCoveredKeepsAFailedSendThatWaits() throws {
+    let directory = draftsDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let drafts = ComposerDrafts(directory: directory)
+    let fixture = try Fixture(state: "running", drafts: drafts)
+    defer { fixture.close() }
+    try escapeHeld(fixture)
+    try fixture.failSendUnderCover("B")
+    releaseInterrupt(fixture)
+    fixture.wait("prompt and failed text") { fixture.composer.text == "Refactor the parser\nB" }
+    fixture.wait("the same on disk") { storedDraft(drafts, directory) == "Refactor the parser\nB" }
+  }
+
+  /// An answer to a gesture from before a logout belongs to no one: no field and no draft gets the prompt.
+  func testHandedBackPromptFromBeforeLogoutGoesNowhere() throws {
+    let directory = draftsDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let drafts = ComposerDrafts(directory: directory)
+    let fixture = try Fixture(state: "running", drafts: drafts)
+    defer { fixture.close() }
+    try escapeHeld(fixture)
+    fixture.store.dispatch(.loggedOut(.deviceUnknown))
+    releaseInterrupt(fixture)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+    XCTAssertEqual(fixture.composer.text, "")
+    XCTAssertNil(storedDraft(drafts, directory))
   }
 
   func testUpShowsTakingBackAtOnceUntilTheTakenAnswer() throws {

@@ -102,7 +102,7 @@ public struct CommandHold: Sendable, Equatable {
       return hide(.commandReleased)
     case let .otherKeyDown(usage):
       othersDown.insert(usage)
-      // Any key with Cmd held ends this hold until Cmd is released (⌘S, ⌘1 and the rest work as before).
+      // Any key with Cmd held ends this hold until Cmd is released (⌘1, ⌘N and the rest work as before).
       startedAt = nil
       return hide(.otherKey)
     case let .otherKeyUp(usage):

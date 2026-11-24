@@ -55,6 +55,24 @@
         }
       }
     },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Zgoda iOS na dopisanie do biblioteki zdjęć: zdanie w systemowym oknie, które iOS pokazuje przy pierwszym zapisie obrazu z podglądu QuickLook (plik z drzewa „Pliki” w prawym panelu albo zdjęcie z transkryptu). Wartość en = ta sama w `Info.plist` apki (pilnuje `scripts/l10n-check.mjs`). Pełne zdania: kiedy apka dopisuje obraz i że biblioteki nie czyta.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app adds an image to your photo library only when you save it from a file or photo preview. It does not read your library."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apka dodaje obraz do biblioteki zdjęć tylko wtedy, gdy zapiszesz go z podglądu pliku albo zdjęcia. Biblioteki nie czyta."
+          }
+        }
+      }
+    },
     "NSSpeechRecognitionUsageDescription" : {
       "comment" : "Zgoda iOS na rozpoznawanie mowy: zdanie w systemowym oknie, które iOS pokazuje przy pierwszym dyktowaniu z opcją „System Dictation” (`dictation.system.title`, cytowana dosłownie). Wartość en = ta sama w `Info.plist` apki (pilnuje `scripts/l10n-check.mjs`). Pełne zdania: kiedy działa, co robi, dokąd idzie dźwięk (na urządzeniu, gdy język ma model mowy; inaczej serwery Apple).",
       "extractionState" : "manual",

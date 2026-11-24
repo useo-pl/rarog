@@ -582,6 +582,369 @@ final class DictationRouteTests: XCTestCase {
     try await rig.finish(composer)
   }
 
+  // MARK: - Locked-phone trial
+
+  /// Catches a background that still interrupts the field's recording with the locked-phone trial on (the trial
+  /// would do nothing for dictation), and text that stops landing in the field after the lock.
+  func testTrialKeepsTheFieldRecordingInTheBackground() async throws {
+    let rig = try Rig(choice: .system)
+    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    let composer = rig.composer()
+    composer.tap()
+    let task = try await rig.speechTask()
+    task.partial("Z pola")
+    _ = await waitUntil { composer.text == "Z pola" }
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    await settle()
+    XCTAssertTrue(composer.recording, "the recording goes on")
+    XCTAssertEqual(rig.mics.open, ["composer"])
+    XCTAssertFalse(task.cancelled)
+    task.partial("Z pola po blokadzie")
+    let landed = await waitUntil { composer.text == "Z pola po blokadzie" }
+    XCTAssertTrue(landed, "text after the lock lands in the same field: \(composer.text)")
+    XCTAssertEqual(endLines(rig), [])
+    try await rig.finish(composer)
+    XCTAssertEqual(endLines(rig), ["dictation: ended stopped"])
+  }
+
+  /// Catches a background that keeps the field's recording with the trial off (the microphone would run on in the
+  /// locked phone without the switch), and a missing end line.
+  func testBackgroundEndsTheFieldRecordingWithoutTheTrial() async throws {
+    let rig = try Rig(choice: .system)
+    let composer = rig.composer()
+    composer.tap()
+    let task = try await rig.speechTask()
+    task.partial("Z pola")
+    _ = await waitUntil { composer.text == "Z pola" }
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    let ended = await waitUntil { !composer.recording }
+    XCTAssertTrue(ended, "the background ends the recording")
+    XCTAssertEqual(rig.mics.open, [])
+    XCTAssertEqual(composer.text, "Z pola", "its text stays in the field")
+    XCTAssertEqual(endLines(rig), ["dictation: ended background"])
+  }
+
+  /// Catches a trial that keeps a recording still preparing: its microphone would open with the app in the
+  /// background, without the user's tap in the foreground.
+  func testTrialDoesNotKeepARecordingWhoseMicrophoneHasNotOpened() async throws {
+    let rig = try Rig(choice: .system)
+    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    let composer = rig.composer()
+    composer.tap()
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    await settle()
+    XCTAssertFalse(composer.recording)
+    XCTAssertEqual(rig.mics.starts["composer"] ?? 0, 0, "the microphone never opened")
+    XCTAssertEqual(endLines(rig), ["dictation: ended background"])
+  }
+
+  /// Catches the trial reaching a project note's dictation: the trial covers the message field only, so the
+  /// background still ends a note's recording.
+  func testTrialLeavesNoteDictationEndingInTheBackground() async throws {
+    let rig = try Rig(choice: .system)
+    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    let note = try await rig.note()
+    note.tap()
+    let task = try await rig.speechTask()
+    task.partial("Z notatki")
+    _ = await waitUntil { note.text.hasSuffix("Z notatki") }
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    let ended = await waitUntil { !note.recording }
+    XCTAssertTrue(ended, "the note's recording ends")
+    XCTAssertEqual(rig.mics.open, [])
+  }
+
+  /// Catches a recording kept in the background that ends there without writing the draft: the words said after the
+  /// lock and the last ones, which land after the end, stay only in the field, and an app the system removes while
+  /// suspended loses them. A new draft store reads the disk, with no screen coming back.
+  func testBackgroundEndWritesTheWholeTextToTheDraft() async throws {
+    for end in BackgroundEnd.allCases {
+      let directory = FileManager.default.temporaryDirectory.appending(path: "drafts-\(UUID().uuidString)")
+      defer { try? FileManager.default.removeItem(at: directory) }
+      let drafts = ComposerDrafts(directory: directory)
+      let rig = try Rig(choice: .system)
+      let composer = try await keptInTheBackground(rig, drafts: drafts)
+      self.end(end, rig)
+      let ended = await waitUntil { !composer.recording }
+      XCTAssertTrue(ended, "\(end): the recording ends")
+      XCTAssertEqual(composer.text, Self.whole, "\(end): the last words land in the field")
+      drafts.flush()
+      XCTAssertEqual(ComposerDrafts(directory: directory).take(for: "s1")?.text, Self.whole, "\(end): stored draft")
+    }
+  }
+
+  /// Catches a recording kept in the background that finishes there without background time: once its microphone
+  /// stops nothing keeps the app running, and a suspension cuts the last words and the draft write. The time is taken
+  /// while the microphone is still open, held at the draft write and ended once; a recording that goes on holds none.
+  func testBackgroundEndHoldsBackgroundTimeUntilTheDraftIsWritten() async throws {
+    for end in BackgroundEnd.allCases {
+      let rig = try Rig(choice: .system)
+      let system = rig.attachBackgroundWork()
+      let composer = try await keptInTheBackground(rig)
+      XCTAssertEqual(system.started, [], "\(end): a recording that goes on holds none")
+      self.end(end, rig)
+      XCTAssertEqual(system.started, ["dyktowanie"], "\(end): the finalization holds one")
+      XCTAssertEqual(rig.mics.open, ["composer"], "\(end): taken before the microphone stops")
+      let ended = await waitUntil { !composer.recording }
+      XCTAssertTrue(ended, "\(end): the recording ends")
+      XCTAssertEqual(rig.draftWrites.last, Rig.DraftWrite(text: Self.whole, held: 1), "\(end): written while held")
+      let released = await waitUntil { !system.stopped.isEmpty }
+      XCTAssertTrue(released, "\(end): the background time ends")
+      XCTAssertEqual(system.stopped, [1], "\(end): ended once, after the write")
+    }
+  }
+
+  /// Catches a recording kept in the background whose stream fails for good: it ends with no finalizing view, so no
+  /// background time was taken, its microphone is closed, and the draft write with the words said after the lock
+  /// could stay in the queue of a suspended app.
+  func testBackgroundEndWithoutAFinalizationHoldsBackgroundTimeForTheDraft() async throws {
+    let rig = try Rig(choice: .system)
+    let system = rig.attachBackgroundWork()
+    let composer = try await keptInTheBackground(rig)
+    let task = try await rig.speechTask()
+    task.fail(SpeechTaskError(domain: SpeechTaskError.assistantDomain, code: 1101))
+    let ended = await waitUntil { !composer.recording }
+    XCTAssertTrue(ended, "the recording ends")
+    XCTAssertEqual(system.started, ["dyktowanie"], "the end takes background time for the draft write")
+    XCTAssertEqual(
+      rig.draftWrites.last, Rig.DraftWrite(text: "Before the lock and after it", held: 1), "written while held")
+    let released = await waitUntil { !system.stopped.isEmpty }
+    XCTAssertTrue(released, "the background time ends")
+    XCTAssertEqual(system.stopped, [1])
+  }
+
+  /// Catches a draft write after a Send that waited for the last words: the send emptied the field, so the write
+  /// would delete the stored draft before the message is stored.
+  func testWaitingSendWritesNoDraftAtTheEndOfTheRecording() async throws {
+    let rig = try Rig(choice: .system)
+    let composer = rig.composer()
+    composer.tap()
+    let task = try await rig.speechTask()
+    task.tail = "Send me."
+    task.partial("Send")
+    _ = await waitUntil { composer.text == "Send" }
+    let before = rig.draftWrites.count
+    composer.send()
+    let sent = await waitUntil { composer.sent == ["Send me."] }
+    XCTAssertTrue(sent, "the send took the whole text: \(composer.sent)")
+    await settle()
+    XCTAssertEqual(rig.draftWrites.count, before, "no draft write of this end")
+  }
+
+  /// Catches background time that ends when the draft write is only asked for: the screen queues the disk write, and
+  /// a process suspended right after could be removed before the queue ran. The time is held until the disk confirms.
+  func testBackgroundTimeEndsOnceTheDiskConfirmedTheDraft() async throws {
+    let rig = try Rig(choice: .system)
+    let system = rig.attachBackgroundWork()
+    let composer = try await keptInTheBackground(rig)
+    let disk = DiskGate()
+    composer.onDraftOnDisk = { await disk.wait() }
+    end(.silence, rig)
+    let asked = await waitUntil { disk.asked }
+    XCTAssertTrue(asked, "the end waits for the disk")
+    XCTAssertFalse(composer.recording, "the recording ended")
+    XCTAssertEqual(rig.draftWrites.last?.text, Self.whole)
+    XCTAssertEqual(system.stopped, [], "held while the disk has not confirmed")
+    disk.confirm()
+    let released = await waitUntil { system.stopped == [1] }
+    XCTAssertTrue(released, "ended once the disk confirmed: \(system.stopped)")
+  }
+
+  /// Catches a background entered while the field's recording finishes, its microphone already stopped, that holds
+  /// no background time with the trial on: the trial keeps that recording, and nothing keeps the app running for its
+  /// last words. With the trial off the background takes the time too.
+  func testBackgroundDuringTheFinalizationHoldsBackgroundTime() async throws {
+    for trial in [false, true] {
+      let rig = try Rig(choice: .system)
+      rig.clock = VoiceAgentRowScheduler()
+      rig.store.voiceAgent.lockedPhoneTrial.set(trial)
+      let system = rig.attachBackgroundWork()
+      let composer = rig.composer()
+      composer.tap()
+      let task = try await rig.speechTask()
+      task.holdsEnd = true
+      task.tail = "Finishing words."
+      task.partial("Finishing")
+      _ = await waitUntil { composer.text == "Finishing" }
+      composer.tap()
+      let finishing = await waitUntil { task.audioEnded }
+      XCTAssertTrue(finishing, "trial \(trial): the microphone stopped, the recognizer finishes")
+      XCTAssertEqual(rig.mics.open, [])
+      NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+      let held = await waitUntil { system.started == ["dyktowanie"] }
+      XCTAssertTrue(held, "trial \(trial): background time for the last words: \(system.started)")
+      task.answerEnd()
+      let ended = await waitUntil { !composer.recording }
+      XCTAssertTrue(ended, "trial \(trial): the recording ends")
+      XCTAssertEqual(rig.draftWrites.last, Rig.DraftWrite(text: "Finishing words.", held: 1), "trial \(trial)")
+      let released = await waitUntil { !system.stopped.isEmpty }
+      XCTAssertTrue(released, "trial \(trial): the background time ends")
+      XCTAssertEqual(system.stopped, [1], "trial \(trial)")
+    }
+  }
+
+  /// Catches a field that goes away with its screen mid-recording without an end line: the recorder's view does not
+  /// reach a field in its deinit. One line, without the text.
+  func testDeallocatedFieldWritesOneEndLine() async throws {
+    let rig = try Rig(choice: .system)
+    var composer: ComposerDriver? = rig.composer()
+    composer?.tap()
+    let task = try await rig.speechTask()
+    task.partial("Private words")
+    _ = await waitUntil { composer?.text == "Private words" }
+    weak var gone = composer?.dictation
+    composer = nil
+    let deallocated = await waitUntil { gone == nil }
+    XCTAssertTrue(deallocated, "the field goes with its screen")
+    await settle()
+    XCTAssertEqual(endLines(rig), ["dictation: ended hand-off"])
+    XCTAssertFalse(rig.store.reporter.pending.contains { $0.contains("Private") }, "no line carries the text")
+  }
+
+  /// How a recording kept in the background ends there: by itself after a minute of silence, or from outside the
+  /// app's screens.
+  private enum BackgroundEnd: CaseIterable { case silence, lockScreen }
+
+  private static let whole = "Before the lock and after it, to the end."
+
+  /// A message-field recording on the system route with the trial on, kept in the background on a clock the test
+  /// moves: words before the lock, the screen's draft write at the lock, words after it, and last words that only the
+  /// end of the audio gives.
+  private func keptInTheBackground(_ rig: Rig, drafts: ComposerDrafts? = nil) async throws -> ComposerDriver {
+    rig.clock = VoiceAgentRowScheduler()
+    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    let composer = rig.composer(drafts: drafts)
+    composer.tap()
+    let task = try await rig.speechTask()
+    task.tail = Self.whole
+    task.partial("Before the lock")
+    _ = await waitUntil { composer.text == "Before the lock" }
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    composer.onDraftWrite?()
+    task.partial("Before the lock and after it")
+    let landed = await waitUntil { composer.text == "Before the lock and after it" }
+    XCTAssertTrue(landed, "text after the lock lands in the field: \(composer.text)")
+    XCTAssertTrue(composer.recording, "the trial keeps the recording")
+    return composer
+  }
+
+  private func end(_ end: BackgroundEnd, _ rig: Rig) {
+    switch end {
+    case .silence: rig.clock?.advance(VoiceTiming().silenceLimit)
+    case .lockScreen: XCTAssertEqual(DictationCenter.shared.endFromLockScreen(), .dictation)
+    }
+  }
+
+  private func endLines(_ rig: Rig) -> [String] {
+    rig.store.reporter.pending.filter { $0.hasPrefix("dictation: ended") }
+  }
+
+  // MARK: - Microphone use
+
+  /// Catches a field recording reported before its microphone opened (an observer outside the app's screens would
+  /// show a recording that may never start), one never reported, a use with more in it than its flags and its
+  /// session's project and name (the field's text would reach the Lock Screen), and an open or an end the observers
+  /// never learn.
+  func testFieldRecordingReportsItsUseWhileItsMicrophoneIsOpen() async throws {
+    let rig = try Rig(choice: .soniox)
+    let json = #"{"type":"sessions-snapshot","sessions":[\#(DecisionDockTests.session(state: "running", since: 1))]}"#
+    try DecisionDockTests.frame(rig.store, json, source: .global)
+    let center = DictationCenter.shared
+    let told = Told()
+    center.observe { [told] in told.count += 1 }
+    let composer = rig.composer()
+    composer.tap()
+    XCTAssertTrue(composer.dictation.isActive)
+    XCTAssertNil(center.use, "a recording still preparing reports none")
+    let beforeOpen = told.count
+    let opened = await waitUntil { center.use != nil }
+    XCTAssertTrue(opened, "the open microphone is reported")
+    XCTAssertEqual(rig.mics.open, ["composer"])
+    XCTAssertGreaterThan(told.count, beforeOpen, "the open reaches the observers")
+    let socket = try await rig.socket()
+    rig.mics.speak("composer")
+    socket.message(#"{"tokens":[{"text":"Dictated words","is_final":false}]}"#)
+    let streaming = await waitUntil { center.use?.soniox == true && composer.text == "Dictated words" }
+    XCTAssertTrue(streaming, "\(String(describing: center.use)), field: \(composer.text)")
+    let session = MicrophoneSubject.session(project: "project", name: nil)
+    XCTAssertEqual(
+      center.use,
+      MicrophoneUse(kind: .dictation, audio: true, openAI: false, soniox: true, phase: .dictating, subject: session))
+    XCTAssertFalse(String(reflecting: center.use).contains("Dictated words"), "the field's text stays out")
+
+    let beforeEnd = told.count
+    try await rig.finish(composer)
+    XCTAssertNil(center.use, "an ended recording reports none")
+    XCTAssertGreaterThan(told.count, beforeEnd, "the end reaches the observers")
+  }
+
+  /// Catches a field that goes away mid-recording (its screen gone without `leave`) while the center still reports
+  /// it, or whose going the observers never learn.
+  func testDeallocatedFieldLeavesNoUse() async throws {
+    let rig = try Rig(choice: .system)
+    let center = DictationCenter.shared
+    let told = Told()
+    center.observe { [told] in told.count += 1 }
+    var composer: ComposerDriver? = rig.composer()
+    composer?.tap()
+    let opened = await waitUntil { center.use != nil }
+    XCTAssertTrue(opened, "the open microphone is reported")
+    weak var gone = composer?.dictation
+    let before = told.count
+    composer = nil
+    let deallocated = await waitUntil { gone == nil }
+    XCTAssertTrue(deallocated, "the field goes with its screen")
+    XCTAssertNil(center.use)
+    XCTAssertGreaterThan(told.count, before, "the observers learn it")
+    XCTAssertEqual(rig.mics.open, [], "the microphone closes with the field")
+  }
+
+  /// Catches an end from outside the app's screens that loses the last words, sends the field, leaves the
+  /// microphone open, or writes another end line than `live-activity`; no line carries the text.
+  func testEndFromLockScreenKeepsTheTextInTheFieldWithoutSending() async throws {
+    let rig = try Rig(choice: .soniox)
+    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    let composer = rig.composer()
+    composer.tap()
+    let socket = try await rig.socket()
+    socket.tail = "Dictated on the lock screen."
+    socket.message(#"{"tokens":[{"text":"Dictated on","is_final":false}]}"#)
+    let shown = await waitUntil { composer.text == "Dictated on" }
+    XCTAssertTrue(shown, "hypothesis in the field: \(composer.text)")
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    await settle()
+    XCTAssertTrue(composer.recording, "the trial keeps the recording in the background")
+
+    XCTAssertEqual(DictationCenter.shared.endFromLockScreen(), .dictation)
+    let ended = await waitUntil { !composer.recording }
+    XCTAssertTrue(ended, "the recording ends")
+    XCTAssertEqual(composer.text, "Dictated on the lock screen.", "the last words land in the same field")
+    XCTAssertEqual(composer.sent, [], "nothing is sent")
+    XCTAssertEqual(rig.mics.open, [])
+    XCTAssertNil(DictationCenter.shared.use)
+    XCTAssertEqual(endLines(rig), ["dictation: ended live-activity"])
+    XCTAssertFalse(rig.store.reporter.pending.contains { $0.contains("Dictated") }, "no line carries the text")
+  }
+
+  /// Catches a project note's recording reported as the microphone's use, or ended from outside the app's screens:
+  /// the locked-phone trial covers the message field only.
+  func testNoteRecordingReportsNoUse() async throws {
+    let rig = try Rig(choice: .system)
+    let note = try await rig.note()
+    note.tap()
+    let task = try await rig.speechTask()
+    task.partial("From the note")
+    let landed = await waitUntil { note.text.hasSuffix("From the note") }
+    XCTAssertTrue(landed, "\(note.text)")
+    XCTAssertTrue(note.recording)
+    XCTAssertNil(DictationCenter.shared.use)
+    XCTAssertNil(DictationCenter.shared.endFromLockScreen())
+    await settle()
+    XCTAssertTrue(note.recording, "the note's recording goes on")
+    XCTAssertEqual(rig.mics.open, ["note"])
+    try await rig.finish(note)
+  }
+
   // MARK: - Wpięcie w ekran sesji
 
   /// Ekran sesji wpina nawigację: stuknięcie przy trasie, która pyta, stawia arkusz „Dyktowanie”; drugie stuknięcie
@@ -638,6 +1001,13 @@ private struct Counts: Equatable {
   var connect = 0
 }
 
+/// Calls of a microphone center's observer. The app's center keeps its observers for the process, so the observer
+/// captures only this box, never a host or the rig.
+@MainActor
+private final class Told {
+  var count = 0
+}
+
 @MainActor
 private final class Rig {
   /// Results of `voiceToken()` in order, and the count of its calls.
@@ -653,6 +1023,18 @@ private final class Rig {
   var micGranted = false
   /// `false`: new sockets never open (a connection that hangs).
   var socketsOpen = true
+  /// The recorder's clock for hosts made after it is set, moved by the test; `nil` = real time.
+  var clock: VoiceAgentRowScheduler?
+  /// The system's background tasks under the store's background work (`attachBackgroundWork()`).
+  private(set) var background: FakeBackgroundSystem?
+  /// Each draft write the message field asked for (the session screen's `persistDraftNow`).
+  private(set) var draftWrites: [DraftWrite] = []
+
+  /// The field's text at a draft write, and how many background tasks were held then.
+  struct DraftWrite: Equatable {
+    var text: String
+    var held: Int
+  }
 
   init(choice: DictationChoice?, sonioxAllowed: Bool = true, server: ServerVoice = .enabled) throws {
     store = RarogStore(
@@ -681,7 +1063,7 @@ private final class Rig {
     timing.minMintInterval = 0
     timing.finalizeTimeout = 0.3
     timing.stopConnectWait = 0.3
-    let scheduler = TaskVoiceScheduler()
+    let scheduler: any VoiceScheduler = clock ?? TaskVoiceScheduler()
     return VoiceServices(
       microphone: { [mics] in RouteMicrophone(tag: host.rawValue, log: mics) },
       connect: { [weak self] _, _, events in
@@ -698,13 +1080,29 @@ private final class Rig {
     Counts(mic: mics.starts[host.rawValue] ?? 0, mint: tokens.mints, connect: sockets.count)
   }
 
-  func composer() -> ComposerDriver {
+  /// The message field; `drafts` gets each draft write as the session screen writes it, under session `s1`.
+  func composer(drafts: ComposerDrafts? = nil) -> ComposerDriver {
     let driver = ComposerDriver(store: store, services: services(.composer))
     driver.dictation.onActiveChange = { [weak self, weak driver] in
       guard let self, let driver, self.mics.open.contains("composer"), !driver.recording else { return }
       self.violations.append("composer: \(self.mics.events)")
     }
+    driver.onDraftWrite = { [weak self, weak driver] in
+      guard let self, let driver else { return }
+      let held = self.background.map { $0.started.count - $0.stopped.count } ?? 0
+      self.draftWrites.append(DraftWrite(text: driver.text, held: held))
+      drafts?.persist(text: driver.text, attachments: [], for: "s1")
+    }
     return driver
+  }
+
+  /// The store's background work through the app's adapter over a fake system, kept by the rig: the fake's
+  /// closures hold it unowned.
+  func attachBackgroundWork() -> FakeBackgroundSystem {
+    let system = FakeBackgroundSystem()
+    store.pushRuntime.background = UIKitBackgroundWork(system: system.system)
+    background = system
+    return system
   }
 
   func note() async throws -> NoteDriver {
@@ -767,6 +1165,23 @@ private protocol Driver: AnyObject {
   func dismissAsk()
 }
 
+/// The disk's answer to a draft write, given when the test says so.
+@MainActor
+private final class DiskGate {
+  private var waiting: CheckedContinuation<Void, Never>?
+
+  var asked: Bool { waiting != nil }
+
+  func wait() async {
+    await withCheckedContinuation { waiting = $0 }
+  }
+
+  func confirm() {
+    waiting?.resume()
+    waiting = nil
+  }
+}
+
 @MainActor
 private final class ComposerDriver: Driver {
   let composer = ComposerView(frame: CGRect(x: 0, y: 0, width: 390, height: 200))
@@ -774,6 +1189,10 @@ private final class ComposerDriver: Driver {
   private(set) var asks = 0
   /// The field's text at each send, as the session screen's send would take it.
   private(set) var sent: [String] = []
+  /// The draft write the dictation asks for (the session screen's `persistDraftNow`).
+  var onDraftWrite: (@MainActor () -> Void)?
+  /// The wait for the disk to run that write (the draft store's `written`); `nil` confirms at once.
+  var onDraftOnDisk: (@MainActor () async -> Void)?
 
   init(store: RarogStore, services: VoiceServices) {
     dictation = ComposerDictation(services: services)
@@ -781,7 +1200,9 @@ private final class ComposerDriver: Driver {
       guard let self else { return }
       self.sent.append(self.composer.text)
     }
-    dictation.install(in: composer, store: store) {}
+    dictation.install(
+      in: composer, store: store, sessionId: "s1", persistDraft: { [weak self] in self?.onDraftWrite?() },
+      draftOnDisk: { [weak self] in await self?.onDraftOnDisk?() })
     dictation.onAsk = { [weak self] in self?.asks += 1 }
     dictation.render(editable: true)
     composer.layoutIfNeeded()
@@ -1011,6 +1432,11 @@ private final class RouteSpeechTask: SpeechTask {
   private let events: SpeechTaskEvents
   private(set) var cancelled = false
   private var last = ""
+  /// The final result only the end of the audio gives (a recording's last words); `nil` = the last hypothesis.
+  var tail: String?
+  /// `true`: the end of the audio waits for `answerEnd()`.
+  var holdsEnd = false
+  private(set) var audioEnded = false
 
   init(request: SpeechRequest, events: SpeechTaskEvents) {
     self.request = request
@@ -1020,9 +1446,15 @@ private final class RouteSpeechTask: SpeechTask {
   func append(_ pcm: Data) {}
 
   func endAudio() {
+    audioEnded = true
+    if !holdsEnd { answerEnd() }
+  }
+
+  /// The recognizer's answer to the end of the audio: the tail, or else the last hypothesis, as the final result.
+  func answerEnd() {
     Task { @MainActor [weak self] in
       guard let self, !self.cancelled else { return }
-      self.events.result(self.last, .final)
+      self.events.result(self.tail ?? self.last, .final)
     }
   }
 

@@ -65,6 +65,7 @@ import { IROH_PACKAGE, irohModuleInfo, irohPlatform } from '../iroh/adapter.ts';
 import type { IrohModuleInfo } from '../iroh/adapter.ts';
 import { readRegularFileSync } from '../safe-read.ts';
 import { RAROG_VERSION } from '../version.ts';
+import { noHookLines } from './doctor-no-hook.ts';
 import { prStatusLine } from './doctor-pr-status.ts';
 import { writeBlockLine } from './doctor-write-block.ts';
 import {
@@ -1661,6 +1662,7 @@ export async function doctorCommand(argv: readonly string[], io: CliIo): Promise
     hookLine(home, health, dataDir),
     consentLineOf(health, thresholdOf(built?.env ?? null)),
     channelSettingsLine(home, dataDir),
+    ...await noHookLines(dataDir, Date.now()),
     writeBlockLine(io, home, platform, manager, flags.dataDir),
     statusLineLine(home, Date.now()),
     // A loaded herdr agent starts herdr with `launchctl kickstart` (`setup-herdr-agent.ts`).

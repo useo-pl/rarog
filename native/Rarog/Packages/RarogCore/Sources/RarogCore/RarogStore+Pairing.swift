@@ -49,6 +49,10 @@ struct ServerRuntime {
   var holder: String?
   /// Ile razy magazyn wszedł w inną przestrzeń — wpis kolejki zapisany w trakcie zmiany nie wraca do stanu.
   var spaceChanges = 0
+  /// The outbox read of the space entered last after the start (`RarogStore+Spaces`). A login waits for it
+  /// (`switchEndpoint`, `start()`): `.outboxRestored` replaces the whole outbox, so a send or an echo that came before
+  /// the read ends would be overwritten by it.
+  var spaceRestore: Task<Void, Never>?
   /// Urządzenie, które właśnie „zapomina” serwer. Serwer odpina je PRZED odpowiedzią 204 i zamyka jego strumienie,
   /// więc `device-revoked` w tym czasie to skutek własnej operacji, nie odpięcie z Maca.
   var forgettingDevice: String?
@@ -252,13 +256,9 @@ extension RarogStore {
       dispatch(.pairing(.failed(link, failure)))
       return .failed(failure)
     }
-    let previousSpace = serverRuntime.space
     clearRevocation()
     dispatch(.pairing(.paired))
-    switchEndpoint(to: .device(credential))
-    // Ta sama przestrzeń (np. parowanie po odpięciu z Maca, dane czekały): lista z pamięci jak przy starcie z kluczem,
-    // nieświeża do pierwszego stanu ze strumienia (reduktor przyjmie ją tylko przed nim).
-    if let previousSpace, serverRuntime.space?.name == previousSpace.name { applyRestoredList(await readListCache()) }
+    await switchEndpoint(to: .device(credential))
     // Poprzedni klucz (ponowne parowanie, inny serwer) odpina się sam — best-effort, w tle.
     if let old = previous.credential, old.deviceId != credential.deviceId {
       forgetOnServer(connector.forgetTransport(previous, rules))
@@ -508,13 +508,22 @@ extension RarogStore {
   /// terminala z sesją zatrzymaną przez `retire` zostałby martwy. Po `retire` złącze kończy tożsamość poprzedniego
   /// punktu końcowego (`ServerConnector.release`), raz na przełączenie. Przestrzeń przejścia z dowodem klucza niesie
   /// wskaźnik z następcą (``announceSuccessor(_:)``).
-  private func switchEndpoint(to endpoint: ServerEndpoint) {
+  ///
+  /// The login comes as at the start: first the queue of the space (a space entered here reads it in `enter`), then
+  /// the list cache, and only then `.loggedIn` and the streams. The list from the cache (the same space, as
+  /// after an unpairing from the Mac, or the space just entered) is stale until the stream's first list.
+  private func switchEndpoint(to endpoint: ServerEndpoint) async {
     let previous = serverRuntime.endpoint
     retire(.switchingServer, unregisterPush: false)
     serverRuntime.connector?.release(previous)
     install(endpoint)
     interfaceEpoch += 1
+    await serverRuntime.spaceRestore?.value
+    let cached = await readListCache()
+    // Forget Server or an unpairing that finished during the reads replaced the endpoint: this key does not log in.
+    guard serverRuntime.endpoint == endpoint else { return }
     enterLoggedIn()
+    applyRestoredList(cached)
   }
 
   /// Para iroh nowego poświadczenia: z odpowiedzi po walidacji, a gdy jej nie ma albo jest zła, przy

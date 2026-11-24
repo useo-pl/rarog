@@ -377,9 +377,9 @@ of the footer and the Dynamic Island. Attachment names are cut to 32 characters 
 
 ## Usage descriptions
 
-`NSCameraUsageDescription`, `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` stand in the
-iOS permission dialog, outside the app. The English text is in the app's `Info.plist` and is the `en` value of
-`InfoPlist.xcstrings`; `l10n-check` keeps the two equal.
+`NSCameraUsageDescription`, `NSMicrophoneUsageDescription`, `NSPhotoLibraryAddUsageDescription` and
+`NSSpeechRecognitionUsageDescription` stand in the iOS permission dialog, outside the app. The English text is in
+the app's `Info.plist` and is the `en` value of `InfoPlist.xcstrings`; `l10n-check` keeps the two equal.
 
 - **Full sentences** that say when the device turns on, what it does, and where the data goes: "The microphone turns
   on only when you tap the microphone button to dictate, or while you talk with the voice agent. Dictation audio goes

@@ -91,15 +91,22 @@ export const HOOK_PAYLOAD_FIELDS = {
 } as const;
 
 /**
- * Wydanie CLI, na którym zmierzono precyzję przycisku zgody z kanału bez wierzchu ekranu: późne
- * `allow` hooka po decyzji przy biurku (po „Yes”, po „No” i SIGTERM; `Bash`, `Write`) nic nie wykonuje. To nie literał
- * pliku hooka, tylko fakt o jego zachowaniu w CLI: sesja, której jedyny proces ma w odczycie rejestru tej obserwacji
- * wyższe wydanie, liczy dowód regułą `screen`, chyba że plik kanarka ma dla tego wydania `pass` (bramka wersji
- * `layer1/version-gate.ts`). Ta stała to baza z paczki: obowiązuje też bez pliku kanarka. Wersję podbija
- * dopiero pomiar późnego `allow` wątku głównego na nowym CLI z tym samym wynikiem (`docs/dialogs.md`,
- * „PermissionRequest hook behavior”).
+ * The package base of the `channel` proof rule: the CLI release `cli` on which the precision of the channel approve
+ * button without the screen top was measured, and the releases under it the package does not cover (`excluded`).
+ * The measured contract: a late `allow` of the hook after a desk decision (after "Yes", after "No" and SIGTERM;
+ * `Bash`, `Write`) runs nothing, and a hidden subagent request runs only on its own `allow`, once (measured on the
+ * release `cli` by the consent canary, `pass` for both request kinds; `docs/dialogs.md`, "`PermissionRequest` hook
+ * behavior"). This is not a literal of the hook file but a fact about its behavior in the CLI, so the base holds
+ * without the canary file too. The version gate
+ * (`layer1/version-gate.ts`) gives `channel` to a release not above `cli` and not in `excluded`; any other release
+ * counts `screen` unless the canary file has `pass` for it and the request kind.
+ *
+ * `cli` goes up only after a canary run with `pass` for both request kinds (main thread and subagents) on the new
+ * release. In the same change every release between the old and the new `cli` without `pass` for both kinds (a
+ * `fail`, an `unmeasured` kind, no run) goes onto `excluded`, a closed list of exact releases (`docs/dialogs.md`,
+ * "Proof rule").
  */
-export const CONSENT_CHANNEL_MEASURED_CLI = { cli: '2.1.325' } as const;
+export const CONSENT_CHANNEL_MEASURED_CLI = { cli: '2.1.330', excluded: ['2.1.327'] } as const;
 
 /**
  * Programmatic Claude Code sessions: the environment variable the hook inherits from the CLI process, and the

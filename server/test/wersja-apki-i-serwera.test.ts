@@ -17,14 +17,14 @@ function releaseVersions(source: string): string[] {
 }
 
 /**
- * Package names in `static let installAndUpdateCommand = "npm i -g <name>@latest …"` (comments `//` skipped). The app
- * shows this command in the banner and in the server machine section, so a name the registry does not have gives
- * the user a command that fails.
+ * Install commands `static let <constant> = "npm i -g <name>@<tag> …"` (comments `//` skipped): the stable chain
+ * with `@latest` and the beta chain with `@beta`. The app shows them in the banner, the update row and the server
+ * machine section, so a name the registry does not have gives the user a command that fails.
  */
-function installCommandPackages(source: string): string[] {
+function installCommands(source: string): { constant: string; name: string; tag: string }[] {
   const code = source.split('\n').map((line) => line.replace(/\/\/.*$/, '')).join('\n');
-  return [...code.matchAll(/static\s+let\s+installAndUpdateCommand\s*=\s*"npm i -g (\S+)@latest\s/g)]
-    .map((match) => match[1] ?? '');
+  return [...code.matchAll(/static\s+let\s+(\w+)\s*=\s*"npm i -g (\S+)@([\w-]+)\s/g)]
+    .map((match) => ({ constant: match[1] ?? '', name: match[2] ?? '', tag: match[3] ?? '' }));
 }
 
 describe('wersja serwera wydana z apką', () => {
@@ -34,10 +34,12 @@ describe('wersja serwera wydana z apką', () => {
     expect(versions[0]).toBe(RAROG_VERSION);
   });
 
-  it('`ServerRelease.installAndUpdateCommand` installs the package `RAROG_PACKAGE_NAME`', () => {
-    const names = installCommandPackages(readFileSync(SOURCE, 'utf8'));
-    expect(names, 'exactly one `npm i -g <name>@latest` install command in ServerRelease.swift').toHaveLength(1);
-    expect(names[0]).toBe(RAROG_PACKAGE_NAME);
+  it('the stable and the beta install commands install the package `RAROG_PACKAGE_NAME`', () => {
+    const commands = installCommands(readFileSync(SOURCE, 'utf8'));
+    expect(commands, 'exactly the `@latest` and the `@beta` install commands in ServerRelease.swift').toEqual([
+      { constant: 'installAndUpdateCommand', name: RAROG_PACKAGE_NAME, tag: 'latest' },
+      { constant: 'betaInstallAndUpdateCommand', name: RAROG_PACKAGE_NAME, tag: 'beta' },
+    ]);
   });
 
   it('parser stałej: literał w komentarzu się nie liczy, dwie stałe to dwa wpisy', () => {
@@ -46,9 +48,15 @@ describe('wersja serwera wydana z apką', () => {
     expect(releaseVersions('static let updateCommand = "npm i -g rarog@latest"')).toEqual([]);
   });
 
-  it('install command parser: a scoped name stays whole, a commented-out line does not count', () => {
+  it('install command parser: a scoped name stays whole, the tag is read, a commented-out line does not count', () => {
     const line = 'static let installAndUpdateCommand = "npm i -g @rarog/server@latest && \\(updateOnlyCommand)"';
-    expect(installCommandPackages(line)).toEqual(['@rarog/server']);
-    expect(installCommandPackages(`// ${line}`)).toEqual([]);
+    expect(installCommands(line)).toEqual([
+      { constant: 'installAndUpdateCommand', name: '@rarog/server', tag: 'latest' },
+    ]);
+    expect(installCommands(`// ${line}`)).toEqual([]);
+    const beta = 'static let betaInstallAndUpdateCommand = "npm i -g @acme/server@beta && rarog update --finish"';
+    expect(installCommands(beta)).toEqual([
+      { constant: 'betaInstallAndUpdateCommand', name: '@acme/server', tag: 'beta' },
+    ]);
   });
 });

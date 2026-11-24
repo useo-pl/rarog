@@ -61,17 +61,40 @@ public enum TabTokens {
     Double(1 - min(max(hidden, 0), edgeFadeWidth) / edgeFadeWidth)
   }
 
-  /// Wygaszenie z geometrii przewinięcia: `offset` jak `contentOffset.x` (w spoczynku na początku `-leadingInset`),
-  /// szerokość treści bez wcięć, szerokość widoku i wcięcia treści (obszar bezpieczny).
+  /// The fade from the scroll geometry, in `ScrollGeometry`'s terms (`TabBarCentring.Viewport`): `offset` as
+  /// `contentOffset.x` (at the start `-leadingInset`), the content's width without the insets, the container's width
+  /// as the visible part (the frame less the insets) and the content insets (the safe area; on the iPad the session
+  /// list). The visible part shows the content from `offset + leadingInset` to that plus `containerWidth`.
   public static func edgeFade(
     offset: CGFloat, contentWidth: CGFloat, containerWidth: CGFloat, leadingInset: CGFloat, trailingInset: CGFloat
   ) -> EdgeFade {
     let hiddenLeading = offset + leadingInset
-    let hiddenTrailing = contentWidth + trailingInset - containerWidth - offset
+    let hiddenTrailing = contentWidth - containerWidth - leadingInset - offset
     return EdgeFade(
       leading: edgeOpacity(hidden: hiddenLeading), trailing: edgeOpacity(hidden: hiddenTrailing),
       leadingInset: max(leadingInset, 0), trailingInset: max(trailingInset, 0))
   }
+
+  // MARK: "×" of the current session tab
+
+  /// The divider before the "×" stands this far after the label, in place of the label's trailing inset, as the
+  /// divider in the "N new" chip does.
+  public static let closeDividerGap: CGFloat = 6
+  /// The divider: a line in `border`, half the plate's height.
+  public static let closeDividerWidth: CGFloat = 1
+  /// The "×" target: 28 pt wide and the tab's full height (at least 44 pt). A 44 pt width would push the glyph far
+  /// from the label it closes; the exception stands in `docs/design.md`, "Shape, surfaces and density".
+  public static let closeTarget: CGFloat = 28
+  /// What the current session tab adds to the same tab as a sibling: the divider and the "×", less the label's
+  /// trailing inset that the divider gap replaces. A label at the target's minimum width keeps its width and adds the
+  /// divider and the "×" whole (`TabBarCentring.room`).
+  public static let closeSpace: CGFloat =
+    closeDividerGap - HeaderMetrics.tabLabelInset + closeDividerWidth + closeTarget
+  /// How long the room for the divider and the "×" takes to open on the new current tab and close on the old one
+  /// (ease-out), in seconds (`TabCloseRoomMotion`).
+  public static let closeRoomSlide: Double = 0.18
+  /// The `err` wash under the armed "×", laid over the plate (`PaletteContrastTests`).
+  public static let closeArmedWashAlpha = Alpha(dark: 0.14, light: 0.14)
 
   // MARK: Kafelek z cyfrą (klawiatura sprzętowa)
 

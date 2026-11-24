@@ -2,10 +2,10 @@ import Foundation
 import RarogContract
 import RarogCore
 
-// Sekcje prawego panelu bez „w tle" (ta jest wspólna z popoverem, `BackgroundPanel`): SKOŃCZONE OSTATNIO
-// z notek harnessu w ogonie transkryptu, ARTEFAKTY z `SessionSummary.artifacts` i ZMIANY W KATALOGU z ramki
-// `git-status`. Panel NIE pobiera diffa — wiersze plików idą z `fileDetails`, a bez
-// pola same nazwy z `files`. Czyste funkcje, testy na macOS. Właściciel: panel.
+// Sections of the right panel other than the background one (shared with the popover, `BackgroundPanel`): recently
+// finished from the harness notes at the transcript tail, artifacts from `SessionSummary.artifacts`, and the change
+// state of the Files section from the `git-status` frame (its tree: `FileTree`, `InspectorFiles`). Pure functions,
+// tests on macOS. Owner: panel.
 
 /// Zadanie w tle, które się skończyło: notka harnessu z rodzajem, wynikiem i nazwą. Czasu końca serwer
 /// nie daje osobno — niesie go wiadomość notki. Wiersz mówi oba czasy: ile temu („2 h temu", liczone przy
@@ -294,8 +294,8 @@ public enum PullRequestRows {
   }
 }
 
-/// Plik w sekcji ZMIANY W KATALOGU: litera rodzaju, nazwa, `+a −b` (binaria bez liczników, z oznaczeniem);
-/// katalog niesie drzewo (`ChangesTree`). Bez `fileDetails` sama ścieżka — liter i liczb nie zgadujemy.
+/// A changed file of the `git-status` frame: kind letter, name, `+a −b` (a binary file without counts, marked as
+/// such). It feeds the fallback file tree (`FileTree`). Without `fileDetails` only the path: no guessed letters.
 public struct InspectorFileRow: Sendable, Equatable, Identifiable {
   public let path: String
   /// `nil` = sama nazwa z `files` (ramka bez szczegółów).
@@ -334,15 +334,9 @@ public struct InspectorFileRow: Sendable, Equatable, Identifiable {
   }
 }
 
-/// Sekcja ZMIANY W KATALOGU: trzy różne stany pustki (czysto, nic jeszcze nie przyszło, ostatni znany stan) zamiast
-/// jednego „brak" — każdy mówi co innego o repozytorium.
+/// The change state of the session for the Files section: the count of its header and, without tree rows, one of the
+/// empty states (clean, nothing came yet, the last known state), because each says something else about the repo.
 public struct InspectorChanges: Sendable, Equatable {
-  /// „pokazano 50 z 73".
-  public struct Shown: Sendable, Equatable {
-    public let rows: Int
-    public let of: Int
-  }
-
   public enum Body: Sendable, Equatable {
     case files([InspectorFileRow])
     /// Znane zero zmian: „Czysto od <skrót ostatniego commita>".
@@ -351,32 +345,20 @@ public struct InspectorChanges: Sendable, Equatable {
     case noData
   }
 
-  /// Liczba zmienionych plików do nagłówka (`nil` = nie wiem).
+  /// Changed files of the whole repo, from the frame (`nil` = unknown).
   public let count: Int?
   public let body: Body
-  /// Serwer ucina listę do 50: ile pokazano z ilu (`nil` = cała lista).
-  public let shown: Shown?
   /// Bez kontaktu ze źródłem: treść to ostatni znany stan.
   public let stale: Bool
 
-  /// Jest drzewo plików, więc jest co zwinąć: nagłówek sekcji staje się przełącznikiem. Zdania pustki („Czysto
-  /// od …", „Brak danych o zmianach.") stoją zawsze — jedna linia, bez strzałki.
-  public var collapsible: Bool {
-    if case .files = body { return true }
-    return false
-  }
-
   public static func make(meta: GitMeta, fresh: GitStatusEvent?, stale: Bool) -> InspectorChanges {
     var body = Body.noData
-    var shown: Shown?
     if let fresh, !fresh.files.isEmpty {
-      let rows = rows(fresh)
-      body = .files(rows)
-      if fresh.dirtyCount > rows.count { shown = Shown(rows: rows.count, of: fresh.dirtyCount) }
+      body = .files(rows(fresh))
     } else if (fresh?.dirtyCount ?? meta.dirtyCount) == 0 {
       body = .clean(commit: meta.lastCommit?.hash)
     }
-    return InspectorChanges(count: meta.dirtyCount ?? fresh?.dirtyCount, body: body, shown: shown, stale: stale)
+    return InspectorChanges(count: meta.dirtyCount ?? fresh?.dirtyCount, body: body, stale: stale)
   }
 
   /// Wiersze z `fileDetails` (kolejność i sufit jak `files`), a bez pola — same nazwy z `files`.

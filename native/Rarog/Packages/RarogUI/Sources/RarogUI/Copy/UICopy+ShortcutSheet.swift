@@ -37,8 +37,6 @@ extension UICopy {
     switch item {
     case .newSession: L("shortcuts.newSession", language: language)
     case .newTerminal: L("terminal.newTerminal", language: language)
-    case .nextSession: L("switcher.next", language: language)
-    case .previousSession: L("switcher.previous", language: language)
     case .previousProject: L("shortcuts.previousProject", language: language)
     case .toggleRead: L("shortcuts.readToggle", language: language)
     case .note: L("notes.shortcut", language: language)

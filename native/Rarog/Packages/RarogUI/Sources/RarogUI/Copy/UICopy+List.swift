@@ -29,6 +29,8 @@ extension UICopy {
   public static var unknownSession: String { L("list.unknownSession") }
   public static var backToList: String { L("list.backToList") }
   public static var idleSeen: String { L("list.idleSeen") }
+  /// The state word of a received result the voice agent picked up (`SessionSummary.seenBy`).
+  public static var discussedByVoice: String { L("list.discussedByVoice") }
   public static var backgroundWork: String { L("list.backgroundWork") }
 
   /// Słowo stanu — po ludzku, nigdy nazwą z protokołu (`STATE_LABELS`).
@@ -176,7 +178,7 @@ extension UICopy {
 
   // MARK: Wiersz aktualizacji serwera nad limitami
 
-  /// Serwer starszy niż wydany z apką; zdanie z komendą w arkuszu „Limity”: ``serverUpdateDetail(_:_:)``.
+  /// Server older than the app's release; its popover with the command: ``serverUpdateSheetIntro(_:_:)``.
   public static var serverUpdate: String { L("list.serverUpdate") }
 
   // MARK: Arkusz „Limity” komendy apki `/usage`

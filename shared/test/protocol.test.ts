@@ -209,6 +209,21 @@ const events: ServerEvent[] = [
     detail: 'socket herdr nieosiągalny',
   },
   { type: 'notes', cwd: '/Users/d/Projects/rarog', empty: false },
+  {
+    type: 'inbox-heads',
+    heads: [{
+      sessionId: 'a1b2', turnId: 't-1', version: 'v-1', kind: 'decision', state: 'waiting-permission',
+      at: '2026-08-21T10:01:00.000Z', dialog: 'permission',
+    }],
+  },
+  {
+    type: 'inbox-head',
+    head: {
+      sessionId: 'a1b2', turnId: 't-2', version: 'v-2', kind: 'result', state: 'waiting-input',
+      at: '2026-08-21T10:03:00.000Z',
+    },
+  },
+  { type: 'inbox-removed', sessionId: 'a1b2', turnId: 't-2' },
 ];
 
 describe('PROTOCOL_VERSION', () => {
@@ -588,28 +603,38 @@ describe('schematy komend POST', () => {
     expect(messageBodySchema.safeParse({ text: 'run', expectedConversation }).success).toBe(false);
   });
 
-  it('SeenBody: `by`, `stateSince` and `conversation` come all three or none, `by` only `voice-agent`, '
-    + '`stateSince` and `conversation` 1 to 64 long', () => {
+  it('SeenBody: `by`, `conversation` and `readMark` come all three or none, `by` only `voice-agent`, '
+    + '`conversation` and `readMark` 1 to 64 long', () => {
     const by = 'voice-agent';
-    const stateSince = '2026-10-03T10:00:00.000Z';
     const conversation = 'c0nversat10nT0ken-abcd';
-    const pickUp = { by, stateSince, conversation };
+    const readMark = 'm3moryN4me.42';
+    const pickUp = { by, conversation, readMark };
     expect(seenBodySchema.safeParse({}).success).toBe(true);
     expect(seenBodySchema.safeParse(pickUp).success).toBe(true);
     for (const part of [
-      { by }, { stateSince }, { conversation }, { by, stateSince }, { by, conversation }, { stateSince, conversation },
+      { by }, { conversation }, { readMark }, { by, conversation }, { by, readMark }, { conversation, readMark },
     ]) {
       expect(seenBodySchema.safeParse(part).success, JSON.stringify(part)).toBe(false);
     }
     for (const other of ['human', '', null]) {
       expect(seenBodySchema.safeParse({ ...pickUp, by: other }).success, String(other)).toBe(false);
     }
-    for (const field of ['stateSince', 'conversation'] as const) {
+    for (const field of ['conversation', 'readMark'] as const) {
       expect(seenBodySchema.safeParse({ ...pickUp, [field]: 'x'.repeat(64) }).success, field).toBe(true);
       expect(seenBodySchema.safeParse({ ...pickUp, [field]: 'x'.repeat(65) }).success, field).toBe(false);
       expect(seenBodySchema.safeParse({ ...pickUp, [field]: '' }).success, field).toBe(false);
       expect(seenBodySchema.safeParse({ ...pickUp, [field]: null }).success, field).toBe(false);
     }
+  });
+
+  it('SeenBody: `stateSince` is no field and drops out as any unknown key; the body of `by`, `stateSince` and '
+    + '`conversation` misses `readMark`', () => {
+    const stateSince = '2026-10-03T10:00:00.000Z';
+    const pickUp = { by: 'voice-agent', conversation: 'c0nversat10nT0ken-abcd', readMark: 'm3moryN4me.42' };
+    expect(seenBodySchema.parse({ ...pickUp, stateSince })).toEqual(pickUp);
+    expect(seenBodySchema.parse({ stateSince })).toEqual({});
+    expect(seenBodySchema.safeParse({ by: 'voice-agent', stateSince, conversation: pickUp.conversation }).success)
+      .toBe(false);
   });
 
   it('MessageBody z obrazkami', () => {

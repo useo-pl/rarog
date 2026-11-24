@@ -46,7 +46,8 @@ Top-level files:
 - `server/src/git-watch.ts` — watcher of the `.git` directory, a session-independent trigger of `git-status`.
 - `server/src/git-diff.ts` — per-file session diff: the changed file list and the patch of one file.
 - `server/src/git-stats.ts` — git cost counter: one `server.log` line per window.
-- `server/src/safe-read.ts` — reading and appending regular files only, in directories an agent can write.
+- `server/src/safe-read.ts` — reading and appending regular files only, and listing a directory through its `dev` and
+  `ino`, in directories an agent can write.
 - `server/src/hidden-chars.ts` — code point ranges of characters that hide or reorder text on screen.
 - `server/src/text.ts` — outside text on its way to the wire or the log: clipping, control characters, labels, builds.
 - `server/src/usage.ts` — plan limits (5-hour and weekly windows) from the Claude Code status line.
@@ -74,15 +75,21 @@ Directories:
   condensing a conversation file for Sonnet, the isolated `claude -p` call, the secret mask and the Sonnet instruction
   (`docs/companion.md`).
 - `server/src/config/` — configuration parsers per area (listening, demo, herdr, roots and cwd checks, push,
-  terminal, dictation, flags, clients, Claude account, macOS-protected folders, the work area); they never read the
-  environment, `config.ts` passes values.
-- `server/src/demo/` — demo mode: fake herdr supervisor, seeds, demo control routes, review-mode route table.
+  terminal, dictation, flags, clients, Claude account, macOS-protected folders, the work area, session files); they
+  never read the environment, `config.ts` passes values.
+- `server/src/demo/` — demo mode: fake herdr supervisor, seeds, the demo file tree, demo control routes, review-mode
+  route table.
 - `server/src/demo/content/` — demo content sets per language (`en`, `pl`), their contract and the loader of named
   sets (`RAROG_DEMO_CONTENT`), chosen once at start.
 - `server/src/drivers/` — session drivers: the herdr driver facade, the mock driver, runtime helpers, tool text.
 - `server/src/drivers/herdr/` — modules of the herdr driver: sending to the pane, the queue of messages sent while a
   turn runs, the turn watchdog and send numbers, the form and CLI registry fallbacks, the transcript follower, pull
-  request refresh, CLI registry reads of the consent channel.
+  request refresh, CLI registry reads of the consent channel, the prompt Claude Code hands back to its field after Esc,
+  refusals of a decision and their audit funnel.
+- `server/src/files/` — session files: the session gate, one path rule for listing a directory and opening a file
+  in the session directory, the listing of one directory with git's `ignored` labels, the index of the session's
+  files (a walk by that listing, narrowed by `git ls-files`), the download of one file (the limit, the sender, the
+  downloads in flight by device) and the refusals of the routes.
 - `server/src/inbox/` — Inbox cards: one card per session from its conversation file, and their removals.
 - `server/src/install/` — installation layout: install mode and root, data directory of the service, service
   target, repair commands, the pinned Claude SDK, package manager facts.
@@ -309,6 +316,7 @@ RarogUI sources (`native/Rarog/Packages/RarogUI/Sources/RarogUI/…`):
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Views/Common/` — shared controls: gauges, hover, menu pill.
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Views/Dictation/` — the Dictation screen and choice.
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Views/Header/` — session header: background tasks, git, diff.
+- `native/Rarog/Packages/RarogUI/Sources/RarogUI/Views/Inbox/` — the Inbox screen: cards, replies, dictation, voice.
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Views/Inspector/` — inspector panel and its toggle.
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Views/List/` — session list and project tree.
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Views/List/Footer/` — list footer: usage line and panel.

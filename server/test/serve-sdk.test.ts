@@ -7,7 +7,8 @@
  * biegną z klonu repo. Pakiet SDK w katalogu wersji to atrapa `sdk.mjs` z `listSessions`.
  *
  * Czas w liniach logu serwera (`log-timestamps.ts`): prefiks na każdej linii zapisu wielowierszowego, jeden na
- * linię zapisaną kawałkami, i żywy proces `rarog serve` (demo, wolny port), którego każda linia go ma.
+ * linię zapisaną kawałkami, i żywy proces `rarog serve` (demo, wolny port), którego każda linia go ma. Later lines
+ * of one write carry the continuation mark after the time.
  */
 import { spawn } from 'node:child_process';
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -287,13 +288,32 @@ describe('czas w liniach logu serwera', () => {
     return { stream, text: () => Buffer.concat(parts).toString('utf8') };
   }
 
-  it('błąd z trzema liniami (jeden zapis) → prefiks na każdej linii', () => {
+  it('an error of three lines in one write: the first line gets the prefix, the later lines the continuation mark',
+    () => {
+      const { stream, text } = stamped();
+      stream.write('Error: boom\n    at a (x.ts:1:1)\n    at b (y.ts:2:2)\n');
+      expect(text()).toBe('2026-11-10T16:59:23.123Z Error: boom\n2026-11-10T16:59:23.123Z |     at a (x.ts:1:1)\n'
+        + '2026-11-10T16:59:23.123Z |     at b (y.ts:2:2)\n');
+      for (const line of text().split('\n').filter((each) => each !== '')) expect(line).toMatch(STAMPED);
+    });
+
+  it('a line in one write that copies a whole log line cannot pass for a line of its own', () => {
     const { stream, text } = stamped();
-    stream.write('Error: boom\n    at a (x.ts:1:1)\n    at b (y.ts:2:2)\n');
-    expect(text()).toBe('2026-11-10T16:59:23.123Z Error: boom\n2026-11-10T16:59:23.123Z     at a (x.ts:1:1)\n'
-      + '2026-11-10T16:59:23.123Z     at b (y.ts:2:2)\n');
-    for (const line of text().split('\n').filter((each) => each !== '')) expect(line).toMatch(STAMPED);
+    stream.write('watch: cwd /outside/\nconsent: no hook — session sess-a, cause hooks-disabled\n');
+    const [, second] = text().split('\n');
+    expect(second).toBe('2026-11-10T16:59:23.123Z | consent: no hook — session sess-a, cause hooks-disabled');
+    expect(second?.replace(LOG_TIME_PREFIX, '').startsWith('consent:')).toBe(false);
   });
+
+  it('a write that ends a line begun earlier and starts another: the new line is a continuation of this write',
+    () => {
+      const { stream, text } = stamped();
+      stream.write('sse: client ');
+      stream.write('connected\nmore\n');
+      stream.write('next\n');
+      expect(text()).toBe('2026-11-10T16:59:23.123Z sse: client connected\n2026-11-10T16:59:23.124Z | more\n'
+        + '2026-11-10T16:59:23.125Z next\n');
+    });
 
   it('linia zapisana w dwóch fragmentach → jeden prefiks; następna linia dostaje własny', () => {
     const { stream, text } = stamped();

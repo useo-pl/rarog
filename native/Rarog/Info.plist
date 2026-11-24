@@ -50,6 +50,8 @@
 	<string>Rarog connects directly to your server when it is on the same network. It does not look for other devices.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>The microphone turns on only when you tap the microphone button to dictate, or while you talk with the voice agent. Dictation audio goes only to the speech recognition you chose on the “Dictation” screen. Voice agent audio goes to OpenAI, and only after you turn on “Voice Agent” in Settings.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>The app adds an image to your photo library only when you save it from a file or photo preview. It does not read your library.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Speech recognition runs only when you tap the microphone button with “System Dictation” chosen: your speech becomes text in the field. The audio stays on this device when your language has an on-device speech model; otherwise it goes to Apple's speech recognition servers.</string>
 	<key>NSAppTransportSecurity</key>
@@ -63,6 +65,10 @@
 	<string>$(AppIdentifierPrefix)ai.rarog.app.shared</string>
 	<key>RarogVoiceSoniox</key>
 	<string>$(RAROG_VOICE_SONIOX)</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

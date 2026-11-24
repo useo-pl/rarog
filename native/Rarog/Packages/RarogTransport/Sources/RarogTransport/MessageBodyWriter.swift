@@ -176,16 +176,21 @@ public struct MessageUpload: Sendable, Equatable {
   public var body: Body
   /// Identyfikator wysłany w ciele — transport sprawdza, że odpowiedź oddała TEN SAM.
   public var clientMessageId: String?
+  /// The body carries `expectedConversation`, and the session gate of the request hears it (``MutationGate``).
+  public var expectsConversation: Bool
 
-  public init(body: Body, clientMessageId: String?) {
+  public init(body: Body, clientMessageId: String?, expectsConversation: Bool = false) {
     self.body = body
     self.clientMessageId = clientMessageId
+    self.expectsConversation = expectsConversation
   }
 
   /// Ciało w pamięci z `MessageBody` (wiadomość bez załączników).
   public static func json(_ message: MessageBody) throws(TransportError) -> MessageUpload {
     do {
-      return MessageUpload(body: .data(try JSONEncoder().encode(message)), clientMessageId: message.clientMessageId)
+      return MessageUpload(
+        body: .data(try JSONEncoder().encode(message)), clientMessageId: message.clientMessageId,
+        expectsConversation: message.expectedConversation != nil)
     } catch {
       throw .invalidResponse("nie da się zakodować ciała wiadomości: \(error)")
     }

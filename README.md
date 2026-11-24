@@ -1,8 +1,9 @@
 # Rarog
 
-Rarog is an iPhone and iPad app plus a server on your Mac or Linux machine for the Claude Code sessions that run in
-[herdr](https://herdr.dev), a terminal multiplexer. From the phone you follow every session, answer its permission
-prompts and questions, and send it prompts, photos and files.
+Rarog is a free, open-source (MIT) iPhone and iPad app, plus a server on your Mac or Linux machine, that shows the
+Claude Code sessions running in Herdr TUI and lets you drive them. Herdr ([herdr.dev](https://herdr.dev)) is
+a terminal multiplexer. From the phone you follow every session, answer its permission prompts and questions, and
+send it prompts, photos and files.
 
 ## What it is
 

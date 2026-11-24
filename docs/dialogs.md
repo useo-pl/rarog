@@ -908,8 +908,8 @@ map, the public API for the driver facade, the import rules and the dependency d
   (`records.ts`), binding to the call (`bind.ts`), proof and effect (`proof.ts`), the version gate of the proof rule
   with the canary file (`version-gate.ts`), the match of a dump to the top of the screen (`top.ts`), the key state
   machine with the session pool (`cycle.ts`), the desk fallback with its clock (`desk.ts`), the reason code of a desk
-  release (`desk-reason.ts`), the session hook list (`hook-list/`) and the observation of one session (`observe.ts`):
-  "Channel cycle". The registry and the socket exist only in a
+  release (`desk-reason.ts`), the session hook list and the session facts without a hook dump (`hook-list/`) and the
+  observation of one session (`observe.ts`): "Channel cycle". The registry and the socket exist only in a
   channel mode that needs registration (`consentRegistrationWanted`), not with `off` and `shadow`; the power boundary
   of both sockets: `docs/security-model.md`, "Pairing and device keys". `layer1/` imports neither the transcript
   nor herdr driver modules, and `shadow/` does not import `layer1/` (`server/test/layer1-granica.test.ts`);
@@ -918,8 +918,16 @@ map, the public API for the driver facade, the import rules and the dependency d
 Outside the directory:
 
 - `server/src/drivers/herdr-driver.ts`: the state machines (evaluation, fallbacks, hook channel, check before the
-  digit, refusals); the only writer to the pane;
-- `server/src/herdr/jsonl-follow.ts`, `jsonl-pending.ts`: the transcript and the pending tool;
+  digit); the only writer to the pane;
+- `server/src/drivers/herdr/refusals.ts`: a decision that did not reach the pane (the sentence, the card cleared or
+  kept, the outcome for the manager), the one audit funnel of refusals and degrades with its dump ("Refusal
+  diagnostics"), and the registry and router fields of an `approve` entry;
+- `server/src/drivers/herdr/consent-no-hook.ts`: a consent dialog without a hook and a card without the approve
+  button, as `server.log` lines ("Refusal diagnostics"); the cause and the lines are `dialogs/no-hook.ts`, the `ps`
+  and `statusLine` reads `drivers/herdr/consent-no-hook-io.ts`, the sources `consentNoHookSources` in
+  `server/src/bootstrap/consent.ts`;
+- `server/src/herdr/jsonl-follow.ts`, `jsonl-pending.ts`: the transcript and the pending tool, with the `cwd` of its
+  transcript entry;
 - `server/src/herdr/consent-evidence.ts`: the consent channel's transcript check from the checkpoint, outside the
   follower window ("Channel cycle");
 - `server/src/herdr/consent-subagent.ts`: the subagent file of a subagent target in that check
@@ -1791,19 +1799,22 @@ Below is what the module code does.
     live process of the session in that read (`version` in `cliWaitingOf`). A session without a known release (no
     live entry, several live processes, a registry not read yet) counts `screen` for both. For a known release and
     each request kind the first matching row wins: (1) the canary file has `fail` for that release and kind:
-    `screen`; (2) the release is not above `CONSENT_CHANNEL_MEASURED_CLI` in `hook/contract.ts`, the release on
-    which the package measured that contract (2.1.325): `channel`; (3) the canary file has `pass` for that release
-    and kind: `channel`; (4) anything else (no entry, `unmeasured`, no file, an ignored file): `screen`. Only exact
-    releases count, so a release without its own entry gets `screen` even between two passed ones. The constant
-    goes up only after the same measurement on the new release ("`PermissionRequest` hook behavior").
+    `screen`; (2) the release is in the package base of `CONSENT_CHANNEL_MEASURED_CLI` in `hook/contract.ts`: not
+    above its `cli`, the release on which the package measured that contract (2.1.330), and not in its `excluded`,
+    the closed list of releases under `cli` that did not pass that measurement for both request kinds (2.1.327):
+    `channel`; (3) the canary file has `pass` for that release and kind: `channel`, also on an excluded release;
+    (4) anything else (no entry, `unmeasured`, no file, an ignored file): `screen`. Only exact releases count, so a
+    release without its own entry gets `screen` even between two passed ones. `cli` goes up only after the same
+    measurement on the new release passes for both request kinds ("`PermissionRequest` hook behavior"), and every
+    release between the old and the new `cli` without that result goes onto `excluded` in the same change.
   - The canary file `<dataDir>/consent-canary.json` holds the results of a measurement of that contract on new
     releases. The server only reads it, never writes it:
     `{"format": 1, "versions": {"<release>": {"main": "pass", "subagents": "unmeasured"}}}`, each kind `pass`, `fail`
     or `unmeasured` (a missing kind is `unmeasured`; other fields are not read). It is read at every observation with
     a known release and parsed again after a change of its inode, size, `mtime` or `ctime`, so a new entry changes
     the rules of a live session without a restart. Any doubt makes the server ignore the whole file, which then
-    counts as no file: the constant alone, never more (`channel` up to the constant, `screen` above it; only a
-    `fail` in a file the server reads gives `screen` up to the constant). The doubts: a symlink or another
+    counts as no file: the constant alone, never more (`channel` in the package base, `screen` outside it; only a
+    `fail` in a file the server reads gives `screen` in the package base). The doubts: a symlink or another
     non-regular file, a mode other than `0600`, over 256 KiB, not JSON, a `format` other than 1, a key outside the
     release shape, a value outside the three results. An install without the file works on the constant alone.
   - A kind's change to `screen` takes away at once every proof taken under its `channel` rule: the main-thread
@@ -2051,7 +2062,8 @@ Below is what the module code does.
   whose value is missing or names a source other than `user`, `project` and `local`. A prompt passed as an
   argument that contains `--settings` is read as that flag: its hooks count, and a `false` in its `enabledPlugins`
   turns a plugin off for the list.
-  `disableAllHooks` and `allowManagedHooksOnly` only turn hooks off, so the list ignores them. The list cannot see
+  `disableAllHooks` and `allowManagedHooksOnly` only turn hooks off, so the list ignores them (the session facts
+  below read them). The list cannot see
   hooks of mods built into the CLI, plugins from `CLAUDE_CODE_PLUGIN_DIRS` or from a `CLAUDE_CODE_PLUGIN_CACHE_DIR`
   cache (the session environment carries secrets, so the server does not read it), hooks passed as SDK options, a
   file deleted after the session start, or a marketplace added again from another source after the session start. A
@@ -2071,6 +2083,38 @@ Below is what the module code does.
   the sole hook before the desk fallback's 10 s run out. Any other code lives 30 s and keeps the 10 s.
   Without the CLI registry reader (demo) there is no list and no sole hook. A change of a session's verdict logs `consent:
   session hooks <session> ok` or `consent: session hooks <session> no (<reason>)`.
+- **Session facts** (`server/src/herdr/dialogs/layer1/hook-list/session-facts.ts`) describe a session for a consent
+  dialog without a hook dump, from the same read as the session hook list scoped to the registry `cwd` read at the
+  start: the registry process (pid and start), that `cwd`, the call `cwd`, the list verdict with its reason, and the
+  same read over the current content, without the start check, so `changed` does not stop it.
+  - The current read says whether a foreign `PermissionRequest` hook stands anywhere the list looks (settings layers,
+    plugins, definitions): no, yes, or unknown when it stopped on another doubt. Its settings layers say whether
+    Rarog's entry (the shape the list accepts) stands in one of them, and give `disableAllHooks` and
+    `allowManagedHooksOnly`; a layer read that stopped early gives none of the three.
+  - `disableAllHooks` follows the settings precedence of the Claude Code documentation ("Settings files and
+    precedence"): managed, `--settings`, local, project, user. The read is a superset (local files in every directory
+    above `cwd`, the main checkout's files, every managed source), so only some layers surely take part: a
+    `--settings` file (inline `--settings` JSON is not sure, since `ps` loses argument bounds and the same text may
+    stand inside a prompt) and, unless `--setting-sources` stands anywhere in the arguments, the user `settings.json` and the project and
+    local file of the session `cwd` (settings documentation, "Where Claude Code keeps the local file in a git
+    repository": the shared file is read from the primary working directory, the local file in the starting
+    directory is read beside the one at the repository root). No managed source is sure: by default only the
+    highest-ranked one with a policy key applies, and remote settings need an eligible credential (managed settings
+    documentation, "How Claude Code combines managed sources"). Tier by tier from the top, the value of every layer
+    counts, down to the first tier where a sure layer sets the key; without one, the default `false` counts too. The
+    key is the one boolean they all give, else unknown. So a key no layer sets is `false`, while a `true` that only a
+    managed or unsure layer gives, or a sure value that an unsure layer in its tier or above contradicts, is unknown.
+    `allowManagedHooksOnly` follows the same rule over the managed tier alone, so it is `false` or unknown, never
+    `true`.
+  - The call `cwd` is the `cwd` field of the transcript entry that carries the pending `tool_use`, absolute only.
+    After a Bash `cd` it names the directory the call runs in, while the CLI registry and the herdr agent stay on the
+    session start directory (CLI 2.1.330). Without it the call `cwd` is unknown, never the session `cwd`. The card
+    decision does not read it.
+  - Facts hold while the session process, its registry `cwd` (read on every call) and the caller's episode stay the
+    same; a negative read is read again in the same episode after its kind's time (2 s transient, 30 s otherwise). A
+    read whose process or registry `cwd` changed by its end gives no facts. Both reads scan the `cwd` read at the
+    start beside the registry `cwd` they read themselves, so a `cwd` that moved during the read and back is still
+    scanned. The facts keep a cache of their own and log nothing, so the session hook list reads as without them.
 - **Top of the screen** (`layer1/top.ts`, the pool in `layer1/cycle.ts`) is the only part of the `standing` proof that
   carries the identity of a request: the allow button goes only to the request that, alone in the full session pool,
   matches the freshly read top of the screen. It applies under the `screen` proof rule, and under `channel` to MCP and
@@ -3563,6 +3607,36 @@ The same step for other areas: `docs/background-tasks.md`, `docs/artifacts.md` a
   `all`"). The facts behind `settings-changed`, `other-hook` and `unverified-hooks` are in `server.log`:
   `consent: session hooks <session> no (<why>)` names the list verdict with the file, and `consent: key <key>
   (subagent) released to the desk … (reason: other-hooks)` the release of that call.
+- **A consent without a hook.** In `main` and `all`, a tool consent dialog (registry class `permission`) without a
+  trace of Rarog's hook 3 s (`NO_HOOK_GRACE_MS`) after the episode start gives one line per episode:
+  `consent: no hook — session <id>, cause <cause>, tool <name>, cli <version|?>, mode <mode|?>, thread
+  <main|subagent>, after <ms> ms, hooks <ok|code|?>, statusline <fresh|stale|none>, screen-button <yes|no>`.
+  The episode starts at the first of the herdr block and the entry into the CLI registry hold, and herdr taking the
+  block over from the hold is the same block, so the episode keeps its start and grace; it is one dialog identity (a
+  card swap of the same call keeps it) and ends with Rarog's key, a desk decision (the CLI registry `active` after it
+  said `waiting: permission` within the episode), the block end or another dialog, whose card ends it at that moment.
+  A trace is a registration accepted after the previous episode ended, a channel card holding a dialog, a channel
+  request without an exit whose record is not settled, a per-call dump on disk whose record is not settled, or a
+  request marker on disk the pool has not taken yet whose record is not settled (a marker without a call key has no
+  record that settles it); an unsettled record is none or one in `pending`, `deciding` or `sent`, and an incomplete
+  read of the dumps or markers is a trace too. A trace or an end that comes while the facts are read still cancels
+  the line; when the channel mode is closed or the registry no longer says `waiting: permission` after the read, the
+  line waits for the next registry signal and the episode is judged again, up to 3 evaluations in all
+  (`NO_HOOK_EVALUATIONS`); past them the episode gets no line. Causes, the first that holds:
+  `hook-running` (`ps` shows a child of the session process running `node` with the hook copy's script as its first
+  argument; with whitespace in that path `ps` cannot settle the argument bounds, which is unknown),
+  `outside-work-area` (the registry `cwd` differs from the pane's and lies outside the work area by the hook's rule),
+  `hooks-disabled` (`disableAllHooks` or `allowManagedHooksOnly` surely `true`), `not-in-session-hooks` (no settings
+  layer of the session holds Rarog's entry), `unexplained`. An unknown fact (`ps` unavailable, an unreadable layer)
+  never makes a cause hold. `mode` is Rarog's mode name (`manual`, `plan`, `auto`, `bypass`), `hooks` the code of the
+  session hook list verdict (`?` without a read), `statusline` the age of the session's `statusLine` dump,
+  `screen-button` whether the `off` path card would carry the approve button. The detector only observes: a failure
+  inside it never stops the card, the poll or a key, costs at most the episode's line and logs `consent: no hook
+  detector failed (<error name>)`.
+- `consent: no approve button — session <id>, reason <reason|?>, tool <name>, channel <mode|?>, rule
+  <channel|screen|?>, cli <version|?>`: once per card identity (`reqId`) whose approve button the channel gate took
+  while the `off` path card would have it; `reason` is the card's `unavailable`, `rule` the proof rule of the card's
+  thread. Neither line carries a command, a path or input content: a value that is not a plain name prints `?`.
 - The consent channel cycle (`layer1/cycle.ts`) writes `<time>-top-<member>-<key tail>.txt` for a main-thread card
   without proof whose proof log line names an unknown top element: `top-bash-zone`, `top-edit-zone`, `top-bottom`
   ("Proof log"; a subagent card has no proof log line, so no dump). One dump per card, not per read; the key tail
@@ -3764,7 +3838,8 @@ last two entries are gaps of the consent channel itself.
   rule and a key line under it mid-content loses everything above it on the card. A rule and footer faked in an
   agent's answer reach the card as a dialog block; the card has no buttons.
 - **Esc right after the pause appears.** The Esc refusal on "Session paused" reads the screen at the blocked state
-  (`#blockedNow`). An interrupt sent before herdr or the CLI registry reports the blocked state goes without a read.
+  (`#blockedNow`). An interrupt sent before herdr or the CLI registry reports the blocked state goes without the
+  gate's read; the field read before the gate (`returnedPrompt`) does not look for the pause.
 - **The 422 sentence for the Esc refusal on the pause.** The reason `terminal-only` is the closest one in
   `REFUSE_REASONS`, so the 422 body carries its contract sentence (`REFUSE_MESSAGES`) about an option that changes
   permissions; the exact explanation stands in the transcript (`PAUSE_ESCAPE_MESSAGE`). A pause card from the list is

@@ -71,6 +71,7 @@ describe('praca apki w tle tylko przez adapter BackgroundWork', () => {
 describe('flagi needsServer w pracach w tle RarogUI', () => {
   const expected: Record<string, string[]> = {
     'Session/Voice/ComposerDictation.swift': ['dyktowanie: false'],
+    'Views/Inbox/InboxDictation.swift': ['inbox dictation: false'],
     'Views/Notes/NoteDictation.swift': ['dyktowanie notatki: false', 'notatka: true'],
     'Views/Notes/NoteBackgroundSave.swift': ['notatka: true'],
   };

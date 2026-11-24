@@ -33,6 +33,10 @@ import {
   gitStatusEventSchema,
   helloEventSchema,
   herdrStatusEventSchema,
+  inboxCardKindSchema,
+  inboxDialogKindSchema,
+  inboxEventSchemas,
+  inboxHeadSchemaOf,
   messageAttachmentSchema,
   messageEventSchema,
   notesEventSchema,
@@ -49,6 +53,7 @@ import {
   questionResolvedEventSchema,
   sessionChangedEventSchema,
   sessionPullRequestSchema,
+  sessionStateSchema,
   sessionsSnapshotEventSchema,
   sessionSummarySchema,
   stateEventSchema,
@@ -167,6 +172,12 @@ export const DEGRADATIONS = {
   'pullRequests.state': undefined,
   /** `SessionSummary.seenBy`: an unknown picker drops the field, so the received result reads as a human's. */
   seenBy: undefined,
+  /**
+   * An `inbox-heads` head with an unknown `kind`, `state` or `dialog`: that head drops out of the list and the other
+   * heads stay, so a card kind added later does not empty an older app's Inbox. A single `inbox-head` with such a
+   * value is one item with nothing left to show and is ignored whole.
+   */
+  'inbox.head': undefined,
 } as const;
 
 /** Wartość zapasowa pola `K` — wyłącznie do `satisfies` w schematach (zero kodu w runtime). */
@@ -180,6 +191,17 @@ type Fallback<K extends keyof typeof DEGRADATIONS> = (typeof DEGRADATIONS)[K];
 class Unknown {
   readonly value: string;
   constructor(value: string) {
+    this.value = value;
+  }
+}
+
+/**
+ * A list element the client cannot read. The result drops it from its list; the raw view keeps it in place, wrapped,
+ * so {@link collect} reports its markers at the input index and pairs the elements after it with the right result.
+ */
+class Dropped {
+  readonly value: unknown;
+  constructor(value: unknown) {
     this.value = value;
   }
 }
@@ -325,6 +347,22 @@ function buildSchemas(raw: boolean) {
     questions: z.array(questionSchema.extend({ options: z.array(option) })),
   });
 
+  /*
+   * `inbox-heads`: a head with an unknown string in `kind`, `state` or `dialog` drops out and the rest of the list
+   * stays. Any other broken head (`null`, a missing field, an empty `version`) still rejects the frame, also next to
+   * an unknown value.
+   */
+  const [inboxHeadsEvent, inboxHeadEvent, inboxRemovedEvent] = inboxEventSchemas(sessionStateSchema);
+  const inboxHead = inboxHeadSchemaOf(sessionStateSchema);
+  const unreadableHead = inboxHead.extend({
+    kind: lenient(inboxCardKindSchema, undefined satisfies Fallback<'inbox.head'>),
+    state: lenient(sessionStateSchema, undefined satisfies Fallback<'inbox.head'>),
+    dialog: lenientOpt(inboxDialogKindSchema.optional(), undefined satisfies Fallback<'inbox.head'>),
+  }).transform((head) => new Dropped(head));
+  type InboxHead = z.output<typeof inboxHead>;
+  const inboxHeads = z.array(z.union([inboxHead, unreadableHead]))
+    .transform((heads) => (raw ? heads : heads.filter((head) => !(head instanceof Dropped))) as InboxHead[]);
+
   return z.discriminatedUnion('type', [
     helloEventSchema,
     sessionsSnapshotEventSchema.extend({ sessions: z.array(summary) }),
@@ -366,6 +404,10 @@ function buildSchemas(raw: boolean) {
     usageEventSchema,
     herdrStatusEventSchema,
     notesEventSchema,
+    inboxHeadsEvent.extend({ heads: inboxHeads }),
+    // One head is one item: an unknown value ignores the frame, and the next head or `GET /api/inbox` mends it.
+    inboxHeadEvent,
+    inboxRemovedEvent,
   ]);
 }
 
@@ -407,11 +449,23 @@ function collect(raw: unknown, out: unknown, path: string, acc: Degradation[]): 
     acc.push({ path, value: raw.value });
     return;
   }
+  if (raw instanceof Dropped) {
+    collect(raw.value, undefined, path, acc);
+    return;
+  }
   if (typeof raw !== 'object' || raw === null) return;
   const target = typeof out === 'object' && out !== null ? (out as Record<string, unknown>) : undefined;
+  // A dropped element exists only in the raw view, so every later element sits that many places earlier in `out`.
+  let dropped = 0;
   for (const [key, value] of Object.entries(raw)) {
-    const next = target?.[key];
-    if (next === undefined) delete target?.[key];
+    if (value instanceof Dropped) {
+      dropped += 1;
+      collect(value, undefined, `${path}/${key}`, acc);
+      continue;
+    }
+    const outKey = dropped === 0 ? key : String(Number(key) - dropped);
+    const next = target?.[outKey];
+    if (next === undefined) delete target?.[outKey];
     collect(value, next, `${path}/${key}`, acc);
   }
 }

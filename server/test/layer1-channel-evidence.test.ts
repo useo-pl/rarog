@@ -308,7 +308,7 @@ describe('reguła `channel`: przycisk zgody z kanału, bez wierzchu ekranu', () 
 
 describe('bramka wersji CLI (`CONSENT_CHANNEL_MEASURED_CLI`)', () => {
   it('stała w rejestrze literałów CLI: wersja i data pomiaru', () => {
-    expect(CONSENT_CHANNEL_MEASURED_CLI).toEqual({ cli: '2.1.325' });
+    expect(CONSENT_CHANNEL_MEASURED_CLI).toEqual({ cli: '2.1.330', excluded: ['2.1.327'] });
   });
 
   it('wersja wyższa od zmierzonej → `screen`; równa i niższa → `channel`; nieznana → `screen`; konfiguracja `screen`'
@@ -358,25 +358,27 @@ describe('bramka wersji CLI (`CONSENT_CHANNEL_MEASURED_CLI`)', () => {
     expect(card(h, dump.key)).toEqual({ state: 'pending', canAllow: true, unavailable: null });
   });
 
-  it('spóźniona obserwacja `waiting` z CLI 2.1.326 przy nowszej migawce z procesami 2.1.325 i 2.1.326 → reguła'
-    + ' `screen` z wersji tego samego odczytu, pusty ekran bez przycisku; jeden proces 2.1.325 → `channel`',
+  it('a late `waiting` observation from a release above the measured one, with a newer snapshot holding processes of'
+    + ' the measured release and the one above → the `screen` rule from the release of that same read, an empty'
+    + ' screen without the button; one process of the measured release → `channel`',
   async () => {
     const h = await harness();
     const gate = createConsentProofGate({ configured: 'channel', log: () => {} });
     const dump = writeDump('migawka');
     hookStarts(h, dump);
-    const older = oneProcess('2.1.326');
+    const measuredCli = CONSENT_CHANNEL_MEASURED_CLI.cli;
+    const older = oneProcess(newerThanMeasured());
     const newer: CliRegistry = new Map([[SESSION, [
-      ...(older.get(SESSION) ?? []), { pid: 70_011, version: '2.1.325', status: 'busy' },
+      ...(older.get(SESSION) ?? []), { pid: 70_011, version: measuredCli, status: 'busy' },
     ]]]);
     // Pułapka: najniższa wersja z nowszej migawki to wersja zmierzona.
-    expect(runningCliVersion(newer, SESSION)).toBe('2.1.325');
+    expect(runningCliVersion(newer, SESSION)).toBe(measuredCli);
     const late = readOf(older);
     expect(gate.ruleFor(SESSION, late)).toEqual(SCREEN_RULES);
     expect(gate.ruleFor(SESSION, readOf(newer))).toEqual(SCREEN_RULES);
     await h.step({ registry: late, rule: gate.ruleFor(SESSION, late), screen: '' });
     expect(card(h, dump.key)).toEqual({ state: 'pending', canAllow: false, unavailable: 'no-proof' });
-    const single = readOf(oneProcess('2.1.325'));
+    const single = readOf(oneProcess(measuredCli));
     expect(gate.ruleFor(SESSION, single)).toEqual(CHANNEL_RULES);
     await h.step({ registry: single, rule: gate.ruleFor(SESSION, single), screen: '' });
     expect(card(h, dump.key)).toEqual({ state: 'pending', canAllow: true, unavailable: null });

@@ -72,6 +72,16 @@ public struct DictationRequest: Identifiable, Hashable, Sendable {
   }
 }
 
+/// A request for the consent of the voice conversation across sessions: the session list button while a consent is
+/// missing (`VoiceAgentSessionsEntry.consent`). The last consent starts the conversation; closing stores nothing more.
+public struct VoiceAgentSessionsConsentRequest: Identifiable, Hashable, Sendable {
+  public let id: UUID
+
+  public init(id: UUID = UUID()) {
+    self.id = id
+  }
+}
+
 /// Arkusz nad ekranem. `id` to żeton TEJ prezentacji: zamknięcie jest zawsze adresowane żetonem, więc spóźnione
 /// wywołanie starej prezentacji (`exit` zamkniętego terminala, odpowiedź formularza) nie zamyka nowej.
 public enum AppSheet: Identifiable, Equatable, Sendable {
@@ -90,6 +100,9 @@ public enum AppSheet: Identifiable, Equatable, Sendable {
   case settings(SettingsRequest)
   /// „Dyktowanie”: wybór i zgoda przed pierwszym nagraniem — formularz: okno nie wchodzi w miejsce pytania.
   case dictation(DictationRequest)
+  /// The consent of the voice conversation across sessions (and the voice agent's before it when that is off) — a
+  /// form: a window does not take its place.
+  case voiceAgentSessionsConsent(VoiceAgentSessionsConsentRequest)
 
   public var id: UUID {
     switch self {
@@ -102,13 +115,14 @@ public enum AppSheet: Identifiable, Equatable, Sendable {
     case let .note(request): request.id
     case let .settings(request): request.id
     case let .dictation(request): request.id
+    case let .voiceAgentSessionsConsent(request): request.id
     }
   }
 
   /// Formularz ma stan (wpisana ścieżka, start w drodze), więc TRZYMA: okno nie wchodzi w jego miejsce.
   public var isForm: Bool {
     switch self {
-    case .newSession, .recentSessions, .note, .settings, .dictation: true
+    case .newSession, .recentSessions, .note, .settings, .dictation, .voiceAgentSessionsConsent: true
     case .terminal, .history, .diff, .transcriptText, .consentInput: false
     }
   }
@@ -192,6 +206,12 @@ extension RarogNavigation {
   public func openDictation() {
     guard dictationSheet == nil else { return }
     openSheet(.dictation(DictationRequest()))
+  }
+
+  /// Opens the consent of the voice conversation across sessions, unless it stands already.
+  public func openVoiceAgentSessionsConsent() {
+    if case .voiceAgentSessionsConsent = sheet { return }
+    openSheet(.voiceAgentSessionsConsent(VoiceAgentSessionsConsentRequest()))
   }
 
   /// Formularz notatki projektu otwarty teraz, jeśli to on stoi.

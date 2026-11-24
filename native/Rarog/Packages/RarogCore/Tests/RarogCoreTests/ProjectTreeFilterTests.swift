@@ -10,12 +10,6 @@ private let at = Date(timeIntervalSince1970: 1_790_000_000)
 private let seen = #","seen":true"#
 private let background = #","backgroundTasks":[{"id":"t1","kind":"command","command":"pnpm test"}]"#
 
-private let utc: Calendar = {
-  var calendar = Calendar(identifier: .gregorian)
-  calendar.timeZone = TimeZone(identifier: "UTC")!
-  return calendar
-}()
-
 /// An agent in `/Users/demo/<project>`; `minute` orders agents by age inside a project.
 private func agent(_ id: String, _ project: String, state: String, minute: Int, extra: String = "") -> String {
   let created = String(format: "2026-10-03T07:%02d:00.000Z", minute)
@@ -53,7 +47,7 @@ private func sevenStates(project: String = "p") -> [String] {
 private func tree(
   _ state: AppState, _ filter: ListFilter, held: Set<String> = [], collapsed: CollapsedProjects = CollapsedProjects()
 ) -> [ProjectTreeNode] {
-  state.projectTree(collapsed: collapsed, filter: filter, held: held, calendar: utc)
+  state.projectTree(collapsed: collapsed, filter: filter, held: held)
 }
 
 private func sessionIds(_ nodes: [ProjectTreeNode]) -> [String] {
@@ -113,7 +107,7 @@ struct ProjectTreeFilterRowsTests {
     var state = try listed(sevenStates() + [agent("Q", "q", state: "done", minute: 8, extra: seen)])
     state.apply(.list(.selected("D")), now: at)
     for memory in [CollapsedProjects(), collapsed("p"), collapsed("q"), collapsed("p", "q")] {
-      let plain = state.projectTree(collapsed: memory, calendar: utc)
+      let plain = state.projectTree(collapsed: memory)
       #expect(tree(state, .all, held: ["F", "Q"], collapsed: memory) == plain)
     }
   }
@@ -126,7 +120,7 @@ struct ProjectTreeFilterRowsTests {
           agent("quiet-read", "quiet", state: "waiting-input", minute: 8, extra: seen),
           agent("quiet-done", "quiet", state: "done", minute: 9),
         ])
-    let all = state.projectTree(collapsed: CollapsedProjects(), calendar: utc).map(\.id)
+    let all = state.projectTree(collapsed: CollapsedProjects()).map(\.id)
     let filtered = tree(state, .needsYou).map(\.id)
     #expect(filtered == [.project("/Users/demo/p"), .session("A"), .session("E")])
     #expect(all.filter(filtered.contains) == filtered, "the filter keeps the tree's order")

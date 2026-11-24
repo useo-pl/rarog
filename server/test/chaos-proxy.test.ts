@@ -30,6 +30,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.ts';
 import { type Logger, createRouter } from '../src/router.ts';
 import type { ManagerApi } from '../src/sessions/manager-api.ts';
+import { NOT_FOUND } from '../src/files/refusals.ts';
+import type { FileDownloadAnswer } from '../src/files/session-download.ts';
+import type { FileListingAnswer, SessionFilesPort } from '../src/files/session-files.ts';
 import type { ResolveResult } from '../src/permissions.ts';
 import { RingBuffer } from '../src/sessions/ring-buffer.ts';
 import { SseHub } from '../src/sse.ts';
@@ -94,6 +97,7 @@ class ScriptedManager implements ManagerApi {
   async resolvePermission(): Promise<ResolveResult> { return { outcome: 'gone' }; }
   async answerQuestion(): Promise<ResolveResult> { return { outcome: 'gone' }; }
   async interrupt(): Promise<boolean> { return true; }
+  async returnedPrompt(): Promise<null> { return null; }
   async takeBackQueue(): Promise<{ items: never[] }> { return { items: [] }; }
   async close(): Promise<void> { /* nieużywane */ }
   async resume(): Promise<SessionSummary> { return this.session; }
@@ -121,6 +125,9 @@ class ScriptedManager implements ManagerApi {
   async diff(): Promise<SessionDiff> { return { files: [], patch: '', truncated: false }; }
   async diffFiles(): Promise<DiffFileList> { return { files: [], truncated: false }; }
   async diffFile(_id: string, path: string): Promise<DiffFilePatch> { return { path, patch: '', truncated: false }; }
+  async listFiles(): Promise<FileListingAnswer> { return { ok: false, refusal: NOT_FOUND }; }
+  async openFile(): Promise<FileDownloadAnswer> { return { ok: false, refusal: NOT_FOUND }; }
+  filesPort(): SessionFilesPort { throw new Error('nieużywane w tym teście'); }
 
   transcript(): {
     messages: TranscriptMessage[];

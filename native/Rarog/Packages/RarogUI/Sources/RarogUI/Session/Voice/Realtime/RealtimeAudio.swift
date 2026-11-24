@@ -25,13 +25,21 @@ enum RealtimeAudioFormat {
   }
 }
 
+/// The audio engine's host clock in seconds: the clock of `AVAudioTime.hostTime` (`mach_absolute_time`), on which the
+/// input tap stamps each buffer's capture time (`RealtimeAudioHandlers.input`).
+enum RealtimeHostClock {
+  static func now() -> TimeInterval { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }
+}
+
 /// Zdarzenia silnika audio, zawsze na głównym aktorze.
 struct RealtimeAudioHandlers {
   /// The engine runs; argument = its format for `client.log`: `in <port> <Hz> Hz <channels> ch, out <port>` (port
   /// types, no device names).
   var started: @MainActor (String) -> Void
   /// Kawałek mowy z mikrofonu: PCM s16le 24 kHz mono, po przetwarzaniu głosu (bez echa głośnika).
-  var input: @MainActor (Data) -> Void
+  /// The second argument is the capture time of the tap buffer it came from, in seconds on ``RealtimeHostClock``;
+  /// `nil` when the engine gave no valid host time.
+  var input: @MainActor (Data, _ capturedAt: TimeInterval?) -> Void
   /// Odtwarzanie ruszyło z pustej kolejki; argument = opóźnienie wyjścia (s), które jeszcze dzieli dźwięk od ucha.
   var playbackStarted: @MainActor (TimeInterval) -> Void
   /// Kolejka odtwarzania opustoszała: wszystko, co do niej trafiło, zostało odtworzone.
@@ -46,6 +54,12 @@ struct RealtimeAudioHandlers {
   /// The start failed after the permission: argument = the step and the system error code for `client.log`, e.g.
   /// `engine start -10875`. Comes right before `start` throws.
   var startFailed: @MainActor (String) -> Void = { _ in }
+}
+
+extension RealtimeAudioHandlers {
+  /// Microphone audio without a capture time (the scripted engine, tests that do not date their input).
+  @MainActor
+  func input(_ pcm: Data) { input(pcm, nil) }
 }
 
 /// Jeden silnik na wejście i wyjście.

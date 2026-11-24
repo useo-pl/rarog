@@ -62,6 +62,8 @@ extension AppState {
       // w jej katalogu, którego nikt już nie czyta (`ServerSpaces`), więc skutków dyskowych nie ma.
       outbox = []
       echoed = [:]
+      echoedPrompts = [:]
+      unconfirmedOpenings = [:]
       sendProgress = [:]
       queuedIdleSince = [:]
       push.pendingTarget = nil

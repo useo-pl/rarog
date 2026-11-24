@@ -564,6 +564,19 @@ const FROZEN: Readonly<Record<string, string>> = {
   'kontrolny/zgoda-write-wrap-zwsp-119-2.1.330.txt': 'Write · pytanie · cała ramka · stopka · unknown/unknown',
   'kontrolny/zgoda-write-wrap-zwsp-57-2.1.330.txt': 'Write · pytanie · cała ramka · stopka · unknown/unknown',
   'kontrolny/zgoda-write-wrap-zwsp-99-2.1.330.txt': 'Write · pytanie · cała ramka · stopka · unknown/unknown',
+  // Consent captures with and without the hook on CLI 2.1.330 (`zgoda-bez-hooka-…`): new rows, not a changed result.
+  // `edit-relative-cd` edits `sub/notes.txt` after `cd sub` in `Bash`, so the dialog shows `notes.txt` relative to
+  // `sub`, while `<capture>.input.json` records the session directory as `cwd`: the path does not resolve to the
+  // call's file, so the top has no full identity there.
+  'kontrolny/zgoda-bez-hooka-bash-control-2.1.330.txt': 'Bash · pytanie · cała ramka · stopka · match/no',
+  'kontrolny/zgoda-bez-hooka-bash-control-2.1.330.txt [kolejka]': 'Bash · pytanie · cała ramka · stopka · match/no',
+  'kontrolny/zgoda-bez-hooka-bash-hooks-off-2.1.330.txt': 'Bash · pytanie · cała ramka · stopka · match/no',
+  'kontrolny/zgoda-bez-hooka-bash-hooks-off-2.1.330.txt [kolejka]': 'Bash · pytanie · cała ramka · stopka · match/no',
+  'kontrolny/zgoda-bez-hooka-claude-md-default-2.1.330.txt': 'Edit · pytanie · cała ramka · stopka · match/no',
+  'kontrolny/zgoda-bez-hooka-claude-md-default-link-2.1.330.txt': 'Edit · pytanie · cała ramka · stopka · match/no',
+  'kontrolny/zgoda-bez-hooka-edit-relative-2.1.330.txt': 'Edit · pytanie · cała ramka · stopka · match/no',
+  'kontrolny/zgoda-bez-hooka-edit-relative-cd-2.1.330.txt': 'Edit · pytanie · cała ramka · stopka · unknown/no',
+  'kontrolny/zgoda-bez-hooka-settings-target-auto-2.1.330.txt': 'Edit · pytanie · cała ramka · stopka · match/no',
 };
 
 /** Stopka bez ramki operacji z układu sprzed CLI 2.1.286: droga wierzchu i tak nie ma ramki. */

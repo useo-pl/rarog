@@ -46,11 +46,13 @@ import { UPDATE_LOCK_TOKEN, markInstalled, takeUpdateLock, updateLockOf } from '
 import type { InstalledPackage, UpdateLock } from './update-lock.ts';
 import { sentenceFor, usageFor } from './screen/prose.ts';
 
-export const UPDATE_USAGE = `  rarog update [--data-dir <dir>] [--verbose]
-      Updates the npm package on this machine, in a terminal: the newest version from the npm registry (npm next
+export const UPDATE_USAGE = `  rarog update [--beta] [--data-dir <dir>] [--verbose]
+      Updates the npm package on this machine, in a terminal: the newest release from the npm registry (npm next
       to this installation's node, without install scripts), then the finish below by the new version itself. A
       version npm holds back (release age gate) is reported and nothing else changes. One update runs at a time
       (the update lock in ~/.config/rarog). Details go to the log <data directory>/logs/update-<time>.log.
+      --beta: the newer of the newest beta and the newest release (npm dist-tags beta and latest); without it a
+      beta is never installed.
   rarog update --finish [--data-dir <dir>] [--verbose]
       Finishes the version installed on this machine, without the registry: the Claude SDK it pins (downloaded
       without a question), the hook copy (after its diff and a question, as in setup; without the question when the
@@ -84,18 +86,23 @@ const DEFAULT_DEPS: UpdateDeps = {
 
 interface Flags {
   readonly finish: boolean;
+  /** `--beta`: the Download step's target is the higher of the dist-tags `beta` and `latest`. */
+  readonly beta: boolean;
   readonly dataDir: string | null;
   readonly verbose: boolean;
 }
 
 function parseFlags(argv: readonly string[]): Flags {
   let finish = false;
+  let beta = false;
   let dataDir: string | null = null;
   let verbose = false;
   for (let i = 1; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
     if (arg === '--finish') {
       finish = true;
+    } else if (arg === '--beta') {
+      beta = true;
     } else if (arg === '--verbose') {
       verbose = true;
     } else if (arg === '--data-dir') {
@@ -109,7 +116,10 @@ function parseFlags(argv: readonly string[]): Flags {
       throw new Usage(`rarog update: unknown argument "${arg}".`);
     }
   }
-  return { finish, dataDir, verbose };
+  if (finish && beta) {
+    throw new Usage('rarog update: --beta chooses what rarog update downloads, and --finish downloads nothing.');
+  }
+  return { finish, beta, dataDir, verbose };
 }
 
 /** The environment of the steps and their child processes: without the lock token, which only this process checks. */
@@ -307,6 +317,7 @@ async function run(io: CliIo, update: Run, deps: UpdateDeps): Promise<number> {
     if (!update.flags.finish) {
       const outcome = await downloadStep({
         io: stepIo, view, home, root: update.root, execPath: process.execPath, refused: EXIT_REFUSED,
+        beta: update.flags.beta,
         stepHeader: `[1/${String(STEPS + offset)}] Download`, ...(deps.npmCli === undefined ? {} : { npmCli: deps.npmCli }),
         ...(deps.provenanceAuthority === undefined ? {} : { provenanceAuthority: deps.provenanceAuthority }),
       });

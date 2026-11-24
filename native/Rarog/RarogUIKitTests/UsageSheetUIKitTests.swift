@@ -85,17 +85,19 @@ final class UsageSheetUIKitTests: XCTestCase {
     XCTAssertEqual(fixture.calls.read(\.sends), [], "nic nie idzie do panelu")
   }
 
-  /// The "Usage" sheet from the list footer card and its "Server update available" row: the WINDOW size
-  /// decides the popover (`stacked` from `MainSplitView` through `SessionListView`), not the size class of the list
-  /// column, which is `compact` beside the detail too. Outside a view tree the environment has no size class — like
-  /// the list column, not `regular`.
+  /// The update steps from the list footer's "Server update available" row: the WINDOW size decides the popover
+  /// (`stacked` from `MainSplitView` through `SessionListView`), not the size class of the list column, which is
+  /// `compact` beside the detail too. Outside a view tree the environment has no size class — like the list column,
+  /// not `regular`. A server that is not older than the app has no steps.
   func testFooterSheetFollowsWindowNotColumn() throws {
     let store = try ProjectTreeListTests.store()
-    XCTAssertFalse(
-      ListFooter(store: store, stacked: false).usageSheet.compact,
-      "list beside the detail: a popover sized to its content (600 pt ceiling)")
-    XCTAssertTrue(ListFooter(store: store, stacked: true).usageSheet.compact, "stack: a sheet with detents")
-    XCTAssertFalse(ListFooter(store: store, stacked: false).usageSheet.ownSurface, "background inside the popover")
+    XCTAssertNil(ListFooter(store: store, stacked: false).updateSheet, "no probed version: no update steps")
+    let version = #"{"version":"0.1.0","protocolVersion":3,"serverStartId":"test"}"#
+    store.dispatch(.versionProbed(try JSONDecoder().decode(VersionInfo.self, from: Data(version.utf8))))
+    let beside = try XCTUnwrap(ListFooter(store: store, stacked: false).updateSheet)
+    XCTAssertFalse(beside.compact, "list beside the detail: a popover sized to its content (600 pt ceiling)")
+    XCTAssertEqual(beside.update.server, "0.1.0", "the probed server version reaches the steps")
+    XCTAssertTrue(try XCTUnwrap(ListFooter(store: store, stacked: true).updateSheet).compact, "stack: a sheet")
   }
 
   // MARK: - Pomocnicze

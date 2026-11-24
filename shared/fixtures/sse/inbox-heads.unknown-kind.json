@@ -1,0 +1,30 @@
+{
+  "type": "inbox-heads",
+  "heads": [
+    {
+      "sessionId": "herdr-w1-p2",
+      "turnId": "pX8n2cHq5zKe4uTy9bWa1f",
+      "version": "iVg-BNMOCnubka4wnzQxI7",
+      "kind": "decision",
+      "state": "waiting-permission",
+      "at": "2026-10-03T08:12:00.000Z",
+      "dialog": "permission"
+    },
+    {
+      "sessionId": "herdr-w1-p1",
+      "turnId": "kT3q9sVb1xRm0aLp2wEc7d",
+      "version": "g2adfkYL2aR8dd2uvoKs5O",
+      "kind": "summary",
+      "state": "waiting-input",
+      "at": "2026-10-03T08:09:58.000Z"
+    },
+    {
+      "sessionId": "herdr-w2-p3",
+      "turnId": "rB6m1dLs3vQo8iGh0nZx4k",
+      "version": "fXx_rrZjR_AkGTs8M6TXZX",
+      "kind": "failed",
+      "state": "error",
+      "at": "2026-10-03T08:05:00.000Z"
+    }
+  ]
+}

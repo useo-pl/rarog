@@ -105,12 +105,28 @@ struct RarogClientTests {
     let harness = MockHarness(device: testDevice) { _ in .json(401, body) }
     let error = await #expect(throws: TransportError.self) { try await harness.client.version() }
     #expect(error == .unauthorized(APIFailure(
-      status: 401, code: "device-revoked", message: "To urządzenie odpięto — sparuj je z serwerem ponownie.")))
+      status: 401, code: "device-revoked", message: "To urządzenie odpięto — sparuj je z serwerem ponownie.",
+      sentenceCode: "rest.device-revoked")))
     guard case let .revoked(deviceId, _, revokedBy)? = harness.client.credentialRejection else {
       Issue.record("oczekiwano odmowy `revoked`, jest \(String(describing: harness.client.credentialRejection))")
       return
     }
     #expect(deviceId == testDevice.deviceId && revokedBy == "admin")
+  }
+
+  @Test("a refusal keeps its sentence code: two 409 `bad-state` refusals of the message route tell apart (golden file)")
+  func sentenceCode() async throws {
+    let body = try goldenRest("error.conversation-changed.json")
+    let harness = MockHarness { _ in .json(409, body) }
+    let error = await #expect(throws: TransportError.self) {
+      try await harness.client.sendMessage(sessionId: "s", MessageBody(text: "x"))
+    }
+    guard case let .http(failure)? = error else {
+      Issue.record("expected an HTTP refusal, got \(String(describing: error))")
+      return
+    }
+    #expect(failure.status == 409 && failure.code == "bad-state")
+    #expect(failure.sentenceCode == "session.conversation-changed")
   }
 
   @Test("statusy błędów: 429 z Retry-After, 403 z Caddy, 422 z powodem")

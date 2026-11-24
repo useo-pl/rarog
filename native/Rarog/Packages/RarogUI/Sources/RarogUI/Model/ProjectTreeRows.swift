@@ -14,16 +14,23 @@ public struct ProjectTreeHeaderModel: Sendable, Equatable, Identifiable {
   public let collapsed: Bool
   /// Ilu agentów widać pod nagłówkiem.
   public let shown: Int
+  /// Pinned on this device (``PinnedProjects``): a pin glyph after the name and "pinned" in the reader's value.
+  public var pinned = false
 
   public var id: String { row.cwd }
 
   /// Strzałka zwijania istnieje tylko przy projekcie z sesjami.
   public var collapsible: Bool { row.agents > 0 }
 
-  /// Wartość dla czytnika: „zwinięty, widać 1 z 3”, „rozwinięty”; projekt bez sesji — pusto.
+  /// Wartość dla czytnika: „zwinięty, widać 1 z 3”, „rozwinięty”; projekt bez sesji — pusto. A pinned project
+  /// says "pinned" before that.
   public var spokenValue: String {
-    guard collapsible else { return "" }
-    return collapsed ? UICopy.treeCollapsedValue(shown: shown, total: row.agents) : UICopy.treeExpandedValue
+    var parts: [String] = []
+    if pinned { parts.append(UICopy.treePinnedValue) }
+    if collapsible {
+      parts.append(collapsed ? UICopy.treeCollapsedValue(shown: shown, total: row.agents) : UICopy.treeExpandedValue)
+    }
+    return UICopy.list(parts, .comma)
   }
 
   /// Etykieta strzałki: co zrobi tap.
@@ -171,21 +178,23 @@ public enum TreeToggleGesture: Sendable, Equatable {
 
 extension AppState {
   /// Wiersze drzewa w kolejności rdzenia: nagłówki jak karta PROJEKTY, pod nimi widoczni agenci od najstarszego.
-  /// `openCwd` i `jumpCwd` jak w `projectRows` („otwarty” i „cel Cmd+L” w etykiecie czytnika). `filter` and `held`
-  /// as in `projectTree(collapsed:filter:held:)`; the list passes them through `RarogNavigation.treeRows`.
+  /// `openCwd` i `jumpCwd` jak w `projectRows` („otwarty” i „cel Cmd+L” w etykiecie czytnika). `pinned`, `filter`
+  /// and `held` as in `projectTree(collapsed:pinned:filter:held:)`; the list passes them through
+  /// `RarogNavigation.treeRows`.
   public func projectTreeRows(
-    collapsed: CollapsedProjects, openCwd: String?, jumpCwd: String?, filter: ListFilter = .all,
-    held: Set<String> = [], calendar: Calendar = .current
+    collapsed: CollapsedProjects, pinned: PinnedProjects = PinnedProjects(), openCwd: String?, jumpCwd: String?,
+    filter: ListFilter = .all, held: Set<String> = []
   ) -> [ProjectTreeRow] {
     let projects = Dictionary(
-      projectRows(openCwd: openCwd, jumpCwd: jumpCwd, calendar: calendar).map { ($0.cwd, $0) },
+      projectRows(openCwd: openCwd, jumpCwd: jumpCwd).map { ($0.cwd, $0) },
       uniquingKeysWith: { first, _ in first })
     let ordinals = duplicateOrdinals
-    return projectTree(collapsed: collapsed, filter: filter, held: held, calendar: calendar).compactMap { node in
+    return projectTree(collapsed: collapsed, pinned: pinned, filter: filter, held: held).compactMap { node in
       switch node.kind {
       case let .project(header):
         return projects[header.group.cwd].map {
-          .header(ProjectTreeHeaderModel(row: $0, collapsed: header.collapsed, shown: header.shown))
+          .header(ProjectTreeHeaderModel(
+            row: $0, collapsed: header.collapsed, shown: header.shown, pinned: pinned.contains(header.group.cwd)))
         }
       case let .session(session):
         return .session(SessionRowModel(

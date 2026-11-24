@@ -9,8 +9,9 @@ public struct RowStatus: Sendable, Equatable {
 
   public init(_ session: SessionSummary) {
     let tone = session.statusTone
+    // A received result the voice agent picked up says so; the tone stays that of a received result.
     let base = session.state == .waitingInput && session.resultSeen
-      ? UICopy.idleSeen
+      ? (session.seenBy == .voiceAgent ? UICopy.discussedByVoice : UICopy.idleSeen)
       : UICopy.stateLabel(session.state)
     // Czy tło jest pracą, mówi reguła rdzenia, ta sama, z której rdzeń liczy ton: sam subagent w postoju
     // pracą nie jest i słowo „pracuje w tle" przy nim nie pada.
@@ -78,6 +79,8 @@ public struct SessionRowModel: Sendable, Equatable, Identifiable {
   public let freshResult: Bool
   /// Wiersz pod nagłówkiem projektu w drzewie: bez członu projektu — projekt niesie nagłówek.
   public let showsProject: Bool
+  /// The crons the session has armed (`SessionSummary.scheduledTasks`); the row mark filters expired ones at render.
+  public let scheduledTasks: [SessionScheduledTask]
   /// Nazwa sesji bez projektu: człon promptu, a bez niego cztery znaki identyfikatora (jak zakładka).
   private(set) var sessionName: String
   let clockKind: ListClock.Kind
@@ -118,6 +121,7 @@ public struct SessionRowModel: Sendable, Equatable, Identifiable {
     stage = stageLine.text
     progress = stageLine.progress
     backgroundDot = stageLine.dot
+    scheduledTasks = session.scheduledTasks ?? []
   }
 
   /// Linia etapu. Decyzję opisuje linia „na co czeka", a przy danych nieświeżych linii nie ma:
@@ -201,7 +205,9 @@ public struct SessionRowModel: Sendable, Equatable, Identifiable {
   }
 
   /// Wiersz jednym zdaniem dla VoiceOver: tytuł, silnik, stan, czas, na co czeka.
-  public func spoken(now: Date) -> String {
+  /// `scheduleNow` is the wall clock for the scheduled-task part: a frozen row's status clock stops, but a cron's
+  /// expiry and next run keep their real time. `nil` = `now`.
+  public func spoken(now: Date, scheduleNow: Date? = nil) -> String {
     var parts = label.isEmpty ? [project] : [project, label]
     if let ordinal { parts.append(UICopy.ordinalSpoken(ordinal)) }
     if isCodex { parts.append(UICopy.codexSpoken) }
@@ -213,6 +219,7 @@ public struct SessionRowModel: Sendable, Equatable, Identifiable {
     if let waiting, !waiting.isEmpty { parts.append(waiting) }
     if let stage, !stage.isEmpty { parts.append(stage) }
     if stale { parts.append(UICopy.staleSpoken) } else if cached { parts.append(UICopy.cachedRowSpoken) }
+    if let scheduled = scheduledText(now: scheduleNow ?? now, separator: .comma) { parts.append(scheduled) }
     return UICopy.list(parts, .comma)
   }
 }

@@ -121,12 +121,54 @@ extension ForwardingProbe {
     try await base.companionSpeechToken()
   }
 
+  func companionSessions() async throws(TransportError) -> CompanionSessions {
+    try await base.companionSessions()
+  }
+
+  func companionTurns(sessionId: String, count: Int) async throws(TransportError) -> CompanionTurns {
+    try await base.companionTurns(sessionId: sessionId, count: count)
+  }
+
+  func pickUpResult(sessionId: String, _ pickUp: SeenPickUp) async throws(TransportError) {
+    try await base.pickUpResult(sessionId: sessionId, pickUp)
+  }
+
   func makeDirectory(_ body: MakeDirBody) async throws(TransportError) -> DirEntry {
     try await base.makeDirectory(body)
   }
 
   func takeBackQueue(sessionId: String, operationId: UUID) async throws(TransportError) -> QueueTakeBackResponse {
     try await base.takeBackQueue(sessionId: sessionId, operationId: operationId)
+  }
+
+  // MARK: Inbox
+  func inboxCards() async throws(TransportError) -> InboxList {
+    try await base.inboxCards()
+  }
+
+  func inboxCard(sessionId: String) async throws(TransportError) -> InboxCardResponse {
+    try await base.inboxCard(sessionId: sessionId)
+  }
+
+  func removeInboxCard(sessionId: String, _ body: InboxActionBody) async throws(TransportError) -> InboxActionResponse {
+    try await base.removeInboxCard(sessionId: sessionId, body)
+  }
+
+  func restoreInboxCard(sessionId: String, _ body: InboxActionBody) async throws(TransportError) -> InboxActionResponse {
+    try await base.restoreInboxCard(sessionId: sessionId, body)
+  }
+
+  // MARK: Session files
+  func sessionFiles(sessionId: String, dir: String) async throws(TransportError) -> FileListing {
+    try await base.sessionFiles(sessionId: sessionId, dir: dir)
+  }
+
+  func fetchSessionFile(sessionId: String, path: String, maxBytes: Int) async throws(TransportError) -> SessionFileFetch {
+    try await base.fetchSessionFile(sessionId: sessionId, path: path, maxBytes: maxBytes)
+  }
+
+  func sessionFileIndex(sessionId: String) async throws(TransportError) -> FileIndex {
+    try await base.sessionFileIndex(sessionId: sessionId)
   }
 }
 

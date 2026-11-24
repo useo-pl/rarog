@@ -52,6 +52,11 @@ struct MessageContentConfiguration: UIContentConfiguration {
   var takeBack: (@MainActor () -> Void)?
   /// The queue of this queued bubble is being taken back: the bubble dims further until the server answers.
   var takingBack = false
+  /// The text outside the transcript (an Inbox card): no turn gap and no side margins; the container spaces it.
+  var bare = false
+  /// The part of this row's text in the transcript's pointer selection (`MessageContentView+PointerHighlight`);
+  /// `nil` = none.
+  var pointerRange: NSRange?
 
   func makeContentView() -> any UIView & UIContentView {
     MessageContentView(configuration: self)
@@ -82,7 +87,7 @@ final class MessageContentView: UIView, UIContentView {
   /// Okno tekstu. Przy zwiniętym prompcie przycina pole do 6 linii, a pole zostaje pełnej wysokości: pełny układ,
   /// zaznaczenie i kopia całości, tło dymku szerokie jak najszersza linia CAŁEGO tekstu (rozwinięcie nie poszerza
   /// dymku). Tła bloków kodu stoją w oknie, więc przycina je razem z tekstem.
-  private let clipView = UIView()
+  let clipView = UIView()
   /// Ostatnia widoczna linia zwiniętego promptu zanika w kolor dymku — przycięcie w pół linii nie wygląda na błąd.
   private let fade = PromptFoldFade()
   let foldButton = PromptFoldButton()
@@ -116,6 +121,12 @@ final class MessageContentView: UIView, UIContentView {
   private(set) var codeButtons: [CopyIconButton] = []
   /// The tap that takes the queue back, live only on a queued bubble (`MessageContentView+TakeBack`).
   let takeBackTap = UITapGestureRecognizer()
+  /// The highlight of the transcript's pointer selection under the text (`MessageContentView+PointerHighlight`).
+  let pointerHighlight = PointerHighlightView()
+  /// The highlighted range, from the configuration or set straight by the screen while the pointer drags.
+  var pointerRange: NSRange? {
+    didSet { if oldValue != pointerRange { setNeedsLayout() } }
+  }
   /// Tła bloków kodu POD tekstem, w kolejności bloków (podświetlenie zaznaczenia leży pod widokami
   /// fragmentów, więc tło narysowane we fragmencie by je zasłoniło).
   private var codeBoxes: [CodeBlockBox] = []
@@ -296,9 +307,11 @@ final class MessageContentView: UIView, UIContentView {
     // An agent reply's time stands under the code box's bottom padding, so that padding moves from the margin into
     // the room above the time.
     clockLift = !config.plate && config.clock != nil ? codeTail : 0
-    directionalLayoutMargins = NSDirectionalEdgeInsets(
-      top: top, leading: TranscriptSpacing.cellSide, bottom: spacing.rowBottom + codeTail - clockLift,
-      trailing: TranscriptSpacing.cellSide)
+    directionalLayoutMargins = config.bare
+      ? NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: codeTail, trailing: 0)
+      : NSDirectionalEdgeInsets(
+        top: top, leading: TranscriptSpacing.cellSide, bottom: spacing.rowBottom + codeTail - clockLift,
+        trailing: TranscriptSpacing.cellSide)
 
     let vertical = config.plate ? Self.plateVertical : 0
     let horizontal = config.plate ? Self.plateHorizontal : 0
@@ -365,6 +378,7 @@ final class MessageContentView: UIView, UIContentView {
     textView.accessibilityTraits = config.header ? baseTraits.union(.header) : baseTraits
     // Every configuration sets both: a reused cell that shows an echo must not keep the take-back of a queued bubble.
     applyTakeBack(config.takeBack != nil)
+    pointerRange = config.pointerRange
     setNeedsLayout()
   }
 
@@ -375,6 +389,7 @@ final class MessageContentView: UIView, UIContentView {
     textView.layoutIfNeeded()
     placePlate()
     placeCodeBlocks()
+    placePointerHighlight()
     placeClock()
     placeFold()
   }
@@ -401,94 +416,6 @@ final class MessageContentView: UIView, UIContentView {
   }
 
   // MARK: - Dymek i godzina
-
-  /// The widest bubble: the density's readable measure (``TranscriptSpacing/readableEm``, where readable prose ends)
-  /// in the body text at the current text size, in both width modes.
-  static func plateCap(_ traits: UITraitCollection, spacing: TranscriptSpacing) -> CGFloat {
-    CGFloat(spacing.readableEm) * Fonts.text(MarkdownRenderer.transcriptStyle, traits: traits).pointSize
-  }
-
-  /// Wysokość okna zwiniętego promptu: ``PromptFolds/visible`` odstępów linii prozy w piśmie treści.
-  static func foldHeight(_ traits: UITraitCollection) -> CGFloat {
-    CGFloat(PromptFolds.visible) * prosePitch(traits)
-  }
-
-  /// Odstęp linii prozy w piśmie treści: 1,5 stopnia albo naturalny, gdy większy (``ProseLeading``).
-  static func prosePitch(_ traits: UITraitCollection) -> CGFloat {
-    let font = Fonts.text(MarkdownRenderer.transcriptStyle, traits: traits)
-    return max(ProseLeading.naturalPitch(font), font.pointSize * ProseLeading.ratio)
-  }
-
-  /// Linia napisu „Pokaż całość” / „Zwiń” na dole dymka; rośnie z pismem. Cel dotyku (≥ 44 pt) wystaje poza nią.
-  static func foldLineHeight(_ traits: UITraitCollection) -> CGFloat {
-    Fonts.text(.footnote, traits: traits).lineHeight.rounded(.up)
-  }
-
-  /// Zanik dolnej pół linii okna zwiniętego promptu.
-  static func fadeHeight(_ traits: UITraitCollection) -> CGFloat {
-    prosePitch(traits) / 2
-  }
-
-  /// Wiersz przycisku zwinięcia w dymku pod oknem tekstu: odstęp nad linią napisu, linia napisu i o ile cel
-  /// dotyku (≥ 44 pt) wystaje nad nią i pod nią.
-  struct FoldRow: Equatable {
-    var gap: CGFloat
-    var line: CGFloat
-    var above: CGFloat
-    var below: CGFloat
-    /// Miejsce w dymku pod oknem tekstu.
-    var reserve: CGFloat { gap + line }
-    static let none = FoldRow(gap: 0, line: 0, above: 0, below: 0)
-  }
-
-  /// Cel dotyku sięga najpierw w dół, na `room` pod linią napisu, potem w górę: przy zwiniętym prompcie najwyżej na
-  /// zanik ostatniej linii, przy rozwiniętym wcale — tam rośnie odstęp nad napisem. Cel nie nachodzi więc na widoczny
-  /// tekst, który ma zostać do zaznaczania i linków.
-  static func foldRow(traits: UITraitCollection, collapsed: Bool, room: CGFloat) -> FoldRow {
-    let line = foldLineHeight(traits)
-    let spare = max(0, foldTarget - line)
-    let below = min(max(0, room), spare)
-    let above = spare - below
-    let overlap = collapsed ? fadeHeight(traits) : 0
-    return FoldRow(gap: max(foldGap, above - overlap), line: line, above: above, below: below)
-  }
-
-  /// Pismo godziny przy dymku: jak znacznik czasu (`caption`, stała szerokość), rośnie z Dynamic Type.
-  static func clockFont(_ traits: UITraitCollection) -> UIFont {
-    Fonts.mono(.caption1, traits: traits)
-  }
-
-  /// Whether the time fits BESIDE the bubble in a row `rowWidth` wide (after the side margins). A wide column (iPad in
-  /// landscape) always has room; a narrower one when the widest text line leaves the gap and the label at the current
-  /// text size on the right. Measured with the same TextKit 2 as the field, in a container of min(column, the bubble's
-  /// cap at the density `spacing`) minus the insets. A long prompt (`fold`) has a bubble at least as wide as the
-  /// button label at its bottom (``PromptFoldButton/showWidth(lines:traits:)``).
-  static func clockFitsBeside(
-    text: NSAttributedString, clock: String, rowWidth: CGFloat, traits: UITraitCollection, spacing: TranscriptSpacing,
-    fold: PromptFold? = nil
-  ) -> Bool {
-    guard rowWidth > 0 else { return true }
-    let clockWidth = (clock as NSString).size(withAttributes: [.font: clockFont(traits)]).width.rounded(.up)
-    let cap = plateCap(traits, spacing: spacing)
-    if rowWidth >= cap + clockGap + clockWidth { return true }
-    let container = min(rowWidth, cap) - 2 * plateHorizontal
-    let floor = fold.map { PromptFoldButton.showWidth(lines: $0.lines, traits: traits) } ?? 0
-    let used = needsFullWidth(text) ? container : min(container, max(floor, measuredWidth(text, container: container)))
-    return used + 2 * plateHorizontal + clockGap + clockWidth <= rowWidth
-  }
-
-  /// Najszersza linia tekstu w kontenerze `container` (TextKit 2, `usageBoundsForTextContainer`).
-  static func measuredWidth(_ text: NSAttributedString, container: CGFloat) -> CGFloat {
-    let storage = NSTextContentStorage()
-    let manager = NSTextLayoutManager()
-    storage.addTextLayoutManager(manager)
-    let box = NSTextContainer(size: CGSize(width: container, height: 0))
-    box.lineFragmentPadding = 0
-    manager.textContainer = box
-    storage.attributedString = text
-    manager.ensureLayout(for: manager.documentRange)
-    return manager.usageBoundsForTextContainer.maxX.rounded(.up)
-  }
 
   /// Szerokość zajęta przez tekst w polu (po układzie): najszersza linia, a przy kodzie, tabeli i linii poziomej —
   /// całe pole.
@@ -675,88 +602,6 @@ final class MessageContentView: UIView, UIContentView {
       button.isHidden = clipView.clipsToBounds && button.frame.midY > cut
     }
     for button in codeButtons.dropFirst(bars.count) { button.isHidden = true }
-  }
-}
-
-// MARK: - „Zaznacz więcej…”
-
-/// Ekran, który otwiera okno tekstu transkryptu od wiersza `row` (zaznaczenie systemu nie wychodzi poza jedną
-/// wiadomość). Wiersz szuka go w łańcuchu responderów.
-@MainActor protocol TranscriptSelectionOpening: AnyObject {
-  func openTranscriptSelection(row: String)
-}
-
-extension MessageContentView: UITextViewDelegate {
-  /// Menu systemowe zaznaczenia i na końcu „Zaznacz więcej…”, gdy nad wierszem stoi ekran, który umie otworzyć okno.
-  func textView(
-    _ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]
-  ) -> UIMenu? {
-    guard let opener = Self.opener(from: textView) else { return nil }
-    let row = String(current.accessibilityIdentifier.trimmingPrefix("message."))
-    let more = UIAction(
-      title: UICopy.transcriptSelectMore, image: UIImage(systemName: "text.viewfinder"),
-      identifier: Self.selectMoreAction
-    ) { [weak opener] _ in
-      opener?.openTranscriptSelection(row: row)
-    }
-    return UIMenu(children: suggestedActions + [more])
-  }
-
-  /// Identyfikator pozycji „Zaznacz więcej…” w menu edycji.
-  static let selectMoreAction = UIAction.Identifier("transcript.selectMore")
-
-  /// Pierwszy responder nad widokiem, który otwiera okno tekstu transkryptu.
-  static func opener(from view: UIResponder) -> TranscriptSelectionOpening? {
-    var next = view.next
-    while let responder = next {
-      if let opener = responder as? TranscriptSelectionOpening { return opener }
-      next = responder.next
-    }
-    return nil
-  }
-}
-
-/// Tło bloku kodu pod tekstem: kryjące `codeBlockFill` (w dymku człowieka `codeInPlateFill`), u góry pasek z językiem
-/// (`barFill`) i włos pod nim. Kolory dynamiczne idą za motywem same. Nie łapie dotyku — zaznaczanie i ikona
-/// kopiowania zostają tekstowi i przyciskowi nad nim.
-final class CodeBlockBox: UIView {
-  private let bar = UIView()
-  private let hairline = UIView()
-
-  /// Wysokość paska z językiem u góry pudełka (0 = bez paska).
-  var barHeight: CGFloat = 0 {
-    didSet { if oldValue != barHeight { setNeedsLayout() } }
-  }
-
-  /// Blok w dymku człowieka: w jasnym motywie jaśniejsze tło, które odcina się od dymku.
-  var inPlate = false {
-    didSet { backgroundColor = inPlate ? Palette.codeInPlateFill : Palette.codeBlockFill }
-  }
-
-  override init(frame: CGRect) {
-    super.init(frame: frame)
-    isUserInteractionEnabled = false
-    isAccessibilityElement = false
-    backgroundColor = Palette.codeBlockFill
-    layer.roundCorners(Radius.inner)
-    clipsToBounds = true
-    bar.backgroundColor = MarkdownColors.barFill
-    hairline.backgroundColor = Palette.border
-    addSubview(bar)
-    addSubview(hairline)
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) nieużywany")
-  }
-
-  override func layoutSubviews() {
-    super.layoutSubviews()
-    bar.frame = CGRect(x: 0, y: 0, width: bounds.width, height: barHeight)
-    hairline.frame = CGRect(x: 0, y: barHeight - 0.5, width: bounds.width, height: 0.5)
-    bar.isHidden = barHeight <= 0
-    hairline.isHidden = barHeight <= 0
   }
 }
 #endif

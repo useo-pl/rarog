@@ -6,8 +6,10 @@ import Testing
 import UIKit
 
 // Selection on the real SwiftTerm surface: a click and a drag with the trackpad pressed select from the press point,
-// without a menu. XCUITest cannot drive the pointer (`.indirectPointer`), so the gesture goes through the hooks
-// `pointerDown(at:count:)`/`pointerDrag(to:)` on synthetic content; the look and feel are checked on an iPad.
+// without a menu. XCUITest can drive the pointer (in the iOS 27.2 and 27.0 simulators `click(forDuration:thenDragTo:)`
+// arrives as an `.indirectPointer` touch with the primary button), but this package test has no app to drive, so the
+// gesture goes through the hooks `pointerDown(at:count:)`/`pointerDrag(to:)` on synthetic content; the look and feel
+// are checked on an iPad.
 // Właściciel: terminal.
 
 @MainActor

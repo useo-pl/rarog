@@ -9,13 +9,19 @@
  * w testach i wyjście komend `rarog …` dla człowieka go nie dostają.
  *
  * Granica linii to `\n` w bajtach zapisu: zapis wielowierszowy (stos błędu) dostaje prefiks na każdej linii, a linia
- * zapisana kilkoma `write` jeden, z czasem pierwszego fragmentu. Czego nie obejmuje: bajtów, które omijają
+ * zapisana kilkoma `write` jeden, z czasem pierwszego fragmentu. A line that starts after a newline inside the same
+ * write continues one log call (a stack trace, a value with a newline), so its prefix is the time followed by
+ * {@link LOG_CONTINUATION_MARK}: after {@link LOG_TIME_PREFIX} it starts with `| `, and a value that carries a whole
+ * log line cannot pass for a line the server wrote. Czego nie obejmuje: bajtów, które omijają
  * `process.stdout.write` / `process.stderr.write` (wydruk niezłapanego wyjątku z samego Node, proces potomny
  * z odziedziczonym deskryptorem).
  */
 
 /** Prefiks czasu na początku linii logu serwera. Czytelnicy logu przyjmują linię z nim i bez niego (stare pliki). */
 export const LOG_TIME_PREFIX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z /u;
+
+/** Follows the time on a line that continues the log call of the line above, in the same write. */
+export const LOG_CONTINUATION_MARK = '| ';
 
 const NEWLINE = 0x0a;
 
@@ -39,12 +45,12 @@ export function timestampWrites(stream: NodeJS.WritableStream, now: () => Date =
     else return original(chunk, ...rest);
     if (bytes.length === 0) return original(chunk, ...rest);
     const parts: Buffer[] = [];
-    let prefix: Buffer | null = null;
+    let time: string | null = null;
     let from = 0;
     while (from < bytes.length) {
       if (atLineStart) {
-        prefix ??= Buffer.from(`${now().toISOString()} `, 'utf8');
-        parts.push(prefix);
+        time ??= now().toISOString();
+        parts.push(Buffer.from(from === 0 ? `${time} ` : `${time} ${LOG_CONTINUATION_MARK}`, 'utf8'));
       }
       const newline = bytes.indexOf(NEWLINE, from);
       const end = newline === -1 ? bytes.length : newline + 1;

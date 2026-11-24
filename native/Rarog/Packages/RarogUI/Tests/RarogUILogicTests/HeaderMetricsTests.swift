@@ -89,63 +89,58 @@ struct HeaderPhoneTitleTests {
 
 @Suite("nagłówek sesji: ikony prawego rogu")
 struct HeaderTrailingIconsTests {
-  /// Every input combination: project (popup terminal), right panel, terminal screen, session "×". The Recent
-  /// Sessions clock is not here: it stands in the project header of the list.
-  private static let inputs: [(popup: Bool, inspector: Bool, terminal: Bool, close: Bool)] = {
+  /// Every input combination the header meets: project (popup terminal), right panel, terminal screen, and whether the
+  /// terminal has a tab bar. The right panel toggle never stands on a terminal route (`inspectorSession`); the Recent
+  /// Sessions clock stands in the project header of the list; the session "×" stands in the current tab.
+  private static let inputs: [(popup: Bool, inspector: Bool, terminal: Bool, corner: Bool)] = {
     let flags = [false, true]
-    return flags.flatMap { popup in flags.flatMap { inspector in
-      flags.flatMap { terminal in flags.map { close in (popup, inspector, terminal, close) } } } }
-  }()
-
-  @Test("telefon: najwyżej trzy ikony — przy czterech system chował grupę w „⋯” przepełnienia, które nic nie robiło")
-  func phoneFitsBar() {
-    // Prawy panel na telefonie się nie mieści (`inspectorAvailable`), więc go tu nie ma.
-    for input in Self.inputs where !input.inspector {
-      let icons = HeaderTrailingIcons(
-        popup: input.popup, inspector: false, terminal: input.terminal, sessionClose: input.close, compact: true)
-      #expect(icons.count <= HeaderMetrics.trailingIconsMax, "\(input): \(icons.count) ikon")
-    }
-  }
-
-  @Test("terminal screen on the phone: popup terminal, “⋯” and “×” fit in the bar, nothing moves to the menu")
-  func phoneTerminalKeepsPopupInBar() {
-    let icons = HeaderTrailingIcons(popup: true, inspector: false, terminal: true, sessionClose: false, compact: true)
-    #expect(icons.popup && !icons.popupInMenu)
-    #expect(icons.terminalMenu && icons.terminalClose && icons.count == 3)
-    // An agent entry in Rarog's terminal: the session "×" instead of the terminal's, still three icons.
-    let hosted = HeaderTrailingIcons(popup: true, inspector: false, terminal: true, sessionClose: true, compact: true)
-    #expect(hosted.popup && !hosted.popupInMenu && hosted.sessionClose && !hosted.terminalClose)
-    #expect(hosted.count == 3)
-  }
-
-  @Test("four icons on the phone: popup terminal moves to the terminal's “⋯” menu, iPad unchanged")
-  func popupMovesToMenuOnlyWhenItDoesNotFit() {
-    // Only a fourth icon (the right panel, if it ever fit on a phone) pushes the popup terminal into the menu.
-    let crowded = HeaderTrailingIcons(popup: true, inspector: true, terminal: true, sessionClose: false, compact: true)
-    #expect(!crowded.popup && crowded.popupInMenu && crowded.count == HeaderMetrics.trailingIconsMax)
-    let session = HeaderTrailingIcons(popup: true, inspector: false, terminal: false, sessionClose: true, compact: true)
-    #expect(session.popup && !session.popupInMenu, "session screen: two icons")
-    for input in Self.inputs {
-      let icons = HeaderTrailingIcons(
-        popup: input.popup, inspector: input.inspector, terminal: input.terminal, sessionClose: input.close,
-        compact: false)
-      #expect(icons.popup == input.popup && !icons.popupInMenu, "iPad: \(input)")
-    }
-  }
-
-  @Test("żadna akcja nie znika: „Terminal w oknie” stoi w pasku albo w menu, „×” zawsze jedno")
-  func nothingLost() {
-    for compact in [false, true] {
-      for input in Self.inputs {
-        let icons = HeaderTrailingIcons(
-          popup: input.popup, inspector: input.inspector, terminal: input.terminal, sessionClose: input.close,
-          compact: compact)
-        #expect((icons.popup || icons.popupInMenu) == input.popup, "\(compact) \(input)")
-        #expect(!(icons.popup && icons.popupInMenu), "\(compact) \(input): nie w obu miejscach")
-        #expect(icons.popupInMenu ? icons.terminalMenu : true, "\(compact) \(input): menu stoi w pasku")
-        let closes = (icons.terminalClose ? 1 : 0) + (icons.sessionClose ? 1 : 0)
-        #expect(closes == (input.terminal || input.close ? 1 : 0), "\(compact) \(input): jedno „×”")
+    return flags.flatMap { popup in
+      [(false, false), (true, false), (false, true)].flatMap { inspector, terminal in
+        flags.map { corner in (popup, inspector, terminal, corner) }
       }
     }
+  }()
+
+  @Test("at most three icons: with four the system hid the group in the bar's overflow “⋯”, which did nothing")
+  func fitsBar() {
+    for input in Self.inputs {
+      for voice in [false, true] {
+        let icons = HeaderTrailingIcons(
+          voiceSessions: voice, popup: input.popup, inspector: input.inspector, terminal: input.terminal,
+          closeInCorner: input.corner)
+        #expect(icons.count <= HeaderMetrics.trailingIconsMax, "\(input), voice \(voice): \(icons.count) icons")
+        #expect(icons.voiceSessions == voice, "\(input): the lit circle stands while the conversation runs")
+        #expect(icons.inspector == input.inspector && icons.terminalMenu == input.terminal, "\(input), voice \(voice)")
+        // Only the circle as a fourth icon makes “Pop-Up Terminal” give way; Cmd+F still opens the window.
+        let fourth = voice && [input.popup, input.inspector, input.terminal, input.terminal && input.corner]
+          .filter { $0 }.count == HeaderMetrics.trailingIconsMax
+        #expect(icons.popup == (input.popup && !fourth), "\(input), voice \(voice): “Pop-Up Terminal”")
+      }
+    }
+  }
+
+  // Catches: the circle that would be a fourth icon on a terminal screen without a tab bar (Pop-Up Terminal, “⋯”,
+  // “×”), so the system hid the whole group, End and the terminal's “×” with it, in the bar's overflow.
+  @Test("a terminal without a tab bar: Pop-Up Terminal gives way to the lit circle while the conversation runs")
+  func voiceSessionsOnTerminalWithoutBar() {
+    let icons = HeaderTrailingIcons(
+      voiceSessions: true, popup: true, inspector: false, terminal: true, closeInCorner: true)
+    #expect(icons.voiceSessions && !icons.popup && icons.terminalMenu && icons.terminalClose)
+    let session = HeaderTrailingIcons(
+      voiceSessions: true, popup: true, inspector: true, terminal: false, closeInCorner: false)
+    #expect(session.voiceSessions && session.popup && session.inspector, "the session screen keeps all three")
+  }
+
+  @Test("terminal screen: “⋯” in the corner; its “×” there only without a tab bar, else in the current tab")
+  func terminalCloseOnlyWithoutBar() {
+    let withBar = HeaderTrailingIcons(
+      voiceSessions: false, popup: true, inspector: false, terminal: true, closeInCorner: false)
+    #expect(withBar.terminalMenu && !withBar.terminalClose && withBar.count == 2)
+    let withoutBar = HeaderTrailingIcons(
+      voiceSessions: false, popup: false, inspector: false, terminal: true, closeInCorner: true)
+    #expect(withoutBar.terminalMenu && withoutBar.terminalClose && withoutBar.count == 2)
+    let session = HeaderTrailingIcons(
+      voiceSessions: false, popup: true, inspector: true, terminal: false, closeInCorner: false)
+    #expect(!session.terminalMenu && !session.terminalClose && session.count == 2, "session screen: no “×” in the corner")
   }
 }

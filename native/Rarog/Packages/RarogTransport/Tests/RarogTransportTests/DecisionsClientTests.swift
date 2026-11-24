@@ -80,10 +80,11 @@ struct DecisionsClientTests {
     }
     #expect(decision == .http(APIFailure(
       status: 422, code: "refused", message: "Wielokrotny wybór zrób w terminalu — Rarog wysyła jedną cyfrę.",
-      reason: "multi-select")))
+      reason: "multi-select", sentenceCode: "dialogs.refuse.multi-select")))
     let resume = await #expect(throws: TransportError.self) { _ = try await harness.client.resumeSession(sessionId: "s1") }
     #expect(resume == .http(APIFailure(
-      status: 409, code: "bad-state", message: "Sesja jest w stanie, który nie pozwala na tę akcję.")))
+      status: 409, code: "bad-state", message: "Sesja jest w stanie, który nie pozwala na tę akcję.",
+      sentenceCode: "rest.bad-state")))
   }
 
   @Test("Wznów: sesja z odpowiedzi tłumaczona (`labelRef` etykiety zapasowej)")

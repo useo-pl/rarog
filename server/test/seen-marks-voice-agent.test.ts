@@ -1,9 +1,10 @@
 /**
  * The voice agent's pick-up of a result (`markSeen` with a pick-up in `server/src/sessions/seen-marks.ts`) through the
  * manager, on the supervisor and driver fakes of `helpers/manager-herdr-atrapy.ts`: `seenBy` on the card, the 409 for
- * a result the agent did not read (another `stateSince`, another engine conversation, no result standing in
- * `waiting-input` or a decision card over it), what a later human receipt, a late herdr `done`, a new turn, "mark as
- * unread" and a Rarog restart do to it, and when herdr gets `agent.focus`.
+ * a result the agent did not read (a newer message in the session's memory or another `stateSince` than the read mark
+ * names, another engine conversation, no result standing in `waiting-input` or a decision card over it), what a later
+ * human receipt, a late herdr `done`, a new turn, "mark as unread" and a Rarog restart do to it, and when herdr gets
+ * `agent.focus`.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -104,15 +105,17 @@ describe('the voice agent picks up a result', () => {
     return events.flatMap((e) => (e.type === 'session-changed' ? [e.session] : []));
   }
 
+  /** The read mark the turns route takes of the session now (`readMark` of its answer). */
+  const markOf = (manager: Manager, id: string): string => manager.companionTarget(id)?.readMark ?? '';
   /**
-   * The voice agent's pick-up of the result it read: `stateSince` and the engine conversation of that read (the route
+   * The voice agent's pick-up of the result it read: the read mark and the engine conversation of that read (the route
    * turns the body's token into this check, as for a send).
    */
   const pickUp = (
-    manager: Manager, id: string, stateSince = manager.get(id)?.stateSince ?? '', read: string = ENGINE_SESSION,
+    manager: Manager, id: string, readMark = markOf(manager, id), read: string = ENGINE_SESSION,
   ): void => {
     manager.markSeen(id, {
-      by: 'voice-agent', stateSince, conversation: (agentSessionId) => agentSessionId === read,
+      by: 'voice-agent', readMark, conversation: (agentSessionId) => agentSessionId === read,
     });
   };
   const refused = expect.objectContaining({
@@ -144,17 +147,20 @@ describe('the voice agent picks up a result', () => {
       expect(marks.get(KEY)).toEqual({ agentSessionId: ENGINE_SESSION, stateChangeSeq: 12, by: 'voice-agent' });
     });
 
-  it('a `stateSince` of an earlier result or any other value: 409 with its sentence, the result stays unreceived',
+  it('the read mark of an older result or any other value: 409 with its sentence, the result stays unreceived',
     async () => {
       const marks: Marks = new Map();
       const { manager, supervisor, id, feed } = await withDone(marks);
-      const read = manager.get(id)?.stateSince ?? '';
-      // A new turn after the agent read the session: its result is another one.
-      await feed(working(13), idle(14, false));
-      expect(manager.get(id)?.stateSince).not.toBe(read);
+      const read = markOf(manager, id);
+      // A new turn after the agent read the session: its prompt and answer reach the session's memory.
+      await feed(
+        { type: 'message', role: 'user', blocks: text('and the docs?') }, working(13),
+        { type: 'message', role: 'assistant', blocks: text('Updated.') }, idle(14, false),
+      );
+      expect(markOf(manager, id)).not.toBe(read);
       const events = record(manager);
 
-      for (const stale of [read, 'not-a-time']) {
+      for (const stale of [read, 'not-a-mark']) {
         let refusal: unknown;
         try {
           pickUp(manager, id, stale);
@@ -175,7 +181,7 @@ describe('the voice agent picks up a result', () => {
       expect(marks.size).toBe(0);
     });
 
-  it('a turn that runs with the `stateSince` the agent read: 409, nothing changes, the push stays', async () => {
+  it('a turn that runs with the read mark the agent read: 409, nothing changes, the push stays', async () => {
     const { manager, id, feed } = await withDone();
     await feed(working(13));
     expect(manager.get(id)?.state).toBe('running');
@@ -191,7 +197,7 @@ describe('the voice agent picks up a result', () => {
   it.each([
     { state: 'waiting-permission', card: bash, answer: (m: Manager, id: string) => m.resolvePermission(id, 'tool-1', 'allow', 'iPhone') },
     { state: 'waiting-question', card: question, answer: (m: Manager, id: string) => m.answerQuestion(id, 'q-1', [['a']]) },
-  ] as const)('a turn in $state with the `stateSince` the agent read: 409; the turn\'s result stays unreceived',
+  ] as const)('a turn in $state with the read mark the agent read: 409; the turn\'s result stays unreceived',
     async ({ state, card, answer }) => {
       const marks: Marks = new Map();
       const { manager, supervisor, id, feed } = await withDone(marks);
@@ -243,16 +249,19 @@ describe('the voice agent picks up a result', () => {
 
   /*
    * `/resume` and `/clear` in the pane bring the driver's `init` with another conversation while the session stays in
-   * `waiting-input` with the same `stateSince`, before the history of the new conversation comes in.
+   * `waiting-input` with the same `stateSince` and nothing new in its memory, before the history of the new
+   * conversation comes in.
    */
-  it('the session moved to another conversation with the same state and `stateSince`: 409 for the token of the one '
+  it('the session moved to another conversation with the same state and read mark: 409 for the token of the one '
     + 'the agent read, nothing changes; the token of the new one picks up', async () => {
     const marks: Marks = new Map();
     const { manager, supervisor, id, feed } = await withDone(marks);
-    const read = manager.get(id)?.stateSince ?? '';
+    const read = markOf(manager, id);
+    const since = manager.get(id)?.stateSince;
     await feed({ type: 'init', engineSessionId: OTHER_CONVERSATION, model: 'claude-opus-5' });
     expect(manager.get(id)?.state).toBe('waiting-input');
-    expect(manager.get(id)?.stateSince).toBe(read);
+    expect(manager.get(id)?.stateSince).toBe(since);
+    expect(markOf(manager, id)).toBe(read);
     const events = record(manager);
 
     expect(() => { pickUp(manager, id, read, ENGINE_SESSION); }).toThrow(refused);
@@ -269,6 +278,28 @@ describe('the voice agent picks up a result', () => {
     expect(manager.get(id)?.seenBy).toBe('voice-agent');
     expect(dismissed).toEqual([id]);
     expect(marks.get(KEY)).toEqual({ agentSessionId: OTHER_CONVERSATION, stateChangeSeq: 12, by: 'voice-agent' });
+  });
+
+  it('the history of the new conversation comes in after `/resume`: another read mark, 409 for the one read before '
+    + 'it, the mark taken after it picks up', async () => {
+    const { manager, id, feed } = await withDone();
+    await feed({ type: 'init', engineSessionId: OTHER_CONVERSATION, model: 'claude-opus-5' });
+    const beforeImport = markOf(manager, id);
+    await feed({
+      type: 'history', engineSessionId: OTHER_CONVERSATION, messages: [
+        { role: 'user', blocks: text('Summarise the plan.'), at: '2026-11-20T09:00:00.000Z' },
+        { role: 'assistant', blocks: text('Three stages.'), at: '2026-11-20T09:00:05.000Z' },
+      ],
+    });
+    expect(manager.get(id)?.state).toBe('waiting-input');
+    expect(markOf(manager, id)).not.toBe(beforeImport);
+
+    expect(() => { pickUp(manager, id, beforeImport, OTHER_CONVERSATION); }).toThrow(refused);
+    expect(manager.get(id)?.seen).toBe(false);
+    expect(dismissed).toEqual([]);
+
+    pickUp(manager, id, markOf(manager, id), OTHER_CONVERSATION);
+    expect(manager.get(id)?.seenBy).toBe('voice-agent');
   });
 
   it('the driver runs another conversation before the manager heard its `init`: 409, nothing changes', async () => {
@@ -294,7 +325,7 @@ describe('the voice agent picks up a result', () => {
       for (const read of ['', ENGINE_SESSION]) {
         expect(() => {
           manager.markSeen(id, {
-            by: 'voice-agent', stateSince: manager.get(id)?.stateSince ?? '',
+            by: 'voice-agent', readMark: markOf(manager, id),
             conversation: (agentSessionId) => (agentSessionId ?? '') === read,
           });
         }, read).toThrow(refused);
@@ -352,6 +383,40 @@ describe('the voice agent picks up a result', () => {
     await flush();
     expect(manager.get(id)?.seen).toBe(true);
     expect(manager.get(id)?.seenBy).toBe('voice-agent');
+    expect(marks.get(KEY)).toEqual({ agentSessionId: ENGINE_SESSION, stateChangeSeq: 14, by: 'voice-agent' });
+  });
+
+  it('herdr\'s late `done` and its repeat after the read: the session stands in `waiting-input`, the mark holds, the '
+    + 'pick-up goes through and clears `done`', async () => {
+    const marks: Marks = new Map();
+    const { manager, supervisor } = await build(makeDeps(marks));
+    supervisor.appear(makeAgent({ status: 'idle', stateChangeSeq: 12 }));
+    await flush();
+    const id = manager.list().find((s) => s.paneId !== undefined)?.id ?? '';
+    const driver = supervisor.driver(KEY);
+    driver.queue.push(working(13));
+    await flush();
+    // The end of the turn comes from the conversation file first; the agent reads the result then.
+    for (const event of [
+      { type: 'message', role: 'assistant', blocks: text('Done.') }, { type: 'result', subtype: 'success' },
+    ] satisfies DriverEvent[]) {
+      driver.queue.push(event);
+      await flush();
+    }
+    expect(manager.get(id)?.state).toBe('waiting-input');
+    const read = markOf(manager, id);
+
+    for (const event of [idle(14, false), idle(14, false)]) {
+      driver.queue.push(event);
+      await flush();
+    }
+    expect(manager.get(id)?.seen).toBe(false);
+    expect(markOf(manager, id)).toBe(read);
+
+    pickUp(manager, id, read);
+    await flush();
+    expect(manager.get(id)?.seenBy).toBe('voice-agent');
+    expect(supervisor.focusCalls).toEqual([KEY]);
     expect(marks.get(KEY)).toEqual({ agentSessionId: ENGINE_SESSION, stateChangeSeq: 14, by: 'voice-agent' });
   });
 
@@ -487,6 +552,78 @@ describe('the voice agent picks up a result', () => {
     expect(manager.get(id)?.seen).toBe(true);
     expect(manager.get(id)?.seenBy).toBe('voice-agent');
     expect(marks.get(KEY)).toEqual({ agentSessionId: ENGINE_SESSION, stateChangeSeq: 13, by: 'voice-agent' });
+  });
+
+  /*
+   * A turn after the read that ends while the result the agent read still stands. A context compaction alone adds no
+   * message to the session's memory, but its state changes move `stateSince`, and the mark with it: the server cannot
+   * tell such a turn from one whose messages have not reached the memory yet, so the agent reads again. A subagent
+   * standby notice is a message: the mark moves and the agent reads again.
+   */
+  describe('a turn without a result after the read', () => {
+    async function afterOrdinaryTurn(marks: Marks): Promise<{
+      manager: Manager; id: string; feed: (...e: DriverEvent[]) => Promise<void>;
+    }> {
+      const { manager, supervisor } = await build(makeDeps(marks), {}, true);
+      supervisor.appear(makeAgent());
+      await flush();
+      const id = manager.list().find((s) => s.paneId !== undefined)?.id ?? '';
+      const feed = async (...list: DriverEvent[]): Promise<void> => {
+        for (const event of list) {
+          supervisor.driver(KEY).queue.push(event);
+          await flush();
+        }
+      };
+      // One ordinary turn first: the turn tally is complete only after a seen turn end.
+      await feed(
+        { type: 'message', role: 'user', blocks: text('do it') }, working(10),
+        { type: 'message', role: 'assistant', blocks: text('Done.') }, idle(11, false),
+      );
+      expect(manager.get(id)?.seen).toBe(false);
+      return { manager, id, feed };
+    }
+
+    it('a context compaction alone: 409 for the read before it, the result stays unreceived; a read after it picks up',
+      async () => {
+        const marks: Marks = new Map();
+        const { manager, id, feed } = await afterOrdinaryTurn(marks);
+        const read = markOf(manager, id);
+        const since = manager.get(id)?.stateSince;
+
+        await feed({ type: 'turn-input', kind: 'compaction' }, working(12), idle(13, false));
+        expect(manager.get(id)?.state).toBe('waiting-input');
+        expect(manager.get(id)?.stateSince).not.toBe(since);
+        expect(markOf(manager, id)).not.toBe(read);
+
+        expect(() => { pickUp(manager, id, read); }).toThrow(refused);
+        expect(manager.get(id)?.seen).toBe(false);
+        expect(manager.get(id)?.seenBy).toBeUndefined();
+        expect(dismissed).toEqual([]);
+        expect(marks.size).toBe(0);
+
+        pickUp(manager, id, markOf(manager, id));
+        expect(manager.get(id)?.seenBy).toBe('voice-agent');
+        expect(dismissed).toEqual([id]);
+        expect(marks.get(KEY)).toEqual({ agentSessionId: ENGINE_SESSION, stateChangeSeq: 13, by: 'voice-agent' });
+      });
+
+    it('a subagent standby notice: 409, the result stays unreceived', async () => {
+      const marks: Marks = new Map();
+      const { manager, id, feed } = await afterOrdinaryTurn(marks);
+      const read = markOf(manager, id);
+
+      await feed(
+        { type: 'message', role: 'user', blocks: text('<task-notification>…</task-notification>'), notice: STANDBY },
+        working(12), idle(13, false),
+      );
+      expect(manager.get(id)?.state).toBe('waiting-input');
+
+      expect(() => { pickUp(manager, id, read); }).toThrow(refused);
+      expect(manager.get(id)?.seen).toBe(false);
+      expect(manager.get(id)?.seenBy).toBeUndefined();
+      expect(dismissed).toEqual([]);
+      expect(marks.size).toBe(0);
+    });
   });
 
   it('"Show in herdr" after the pick-up is a human receipt: `seenBy` goes in a frame', async () => {

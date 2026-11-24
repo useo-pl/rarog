@@ -8,14 +8,14 @@ struct DynamicTypeSourceTests {
   /// Ikony SF Symbols — audyt mierzy tekst, a symbol w `caption2` jest celowo drobny. Jedyny tekst na liście to
   /// cyfra kafelka skrótu na zakładce: ozdobnik ukryty przed czytnikiem (`accessibilityHidden`).
   static let exemptLines: Set<String> = [
+    // The pin glyph of a pinned project header: an SF Symbol, small on purpose, hidden from the screen reader.
+    "Views/List/ProjectTreeHeaderRow.swift: .appFont(.caption2)",
     "Views/Projects/ProjectTabBar.swift: .appFont(.caption2.weight(.bold))",
     // Glif terminala przed etykietą zakładki terminala — etykieta stoi w `caption`.
     "Views/Projects/ProjectTabBar.swift: tab.showsLabel ? .caption2.weight(tab.current ? .semibold : .regular) : .caption",
     // Cyfra kafelka skrótu Cmd (`TabShortcutKey`): o 1 pt mniejsza od etykiety;
     // półgruba w kafelku w kolorze stanu (`TabTokens.key`).
     "Views/Projects/ProjectTabBar.swift: .appFont(.caption2.monospaced().weight(look.semibold ? .semibold : .medium))",
-    // The same digit in an agent row of the active project (`TreeTabKey`): the size of the strip's key.
-    "Views/List/SessionRow.swift: .appFont(.caption2.monospaced().weight(.medium))",
   ]
 
   /// The text scaling contract names every text style (the size table, the style maps, `AppFont.caption2`) and sets

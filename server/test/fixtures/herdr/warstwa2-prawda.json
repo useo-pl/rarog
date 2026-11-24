@@ -1145,6 +1145,51 @@
       "class": "permission",
       "v2": {"kind":"none","why":"class-not-dialog"}
     },
+    "kontrolny/zgoda-bez-hooka-bash-control-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-bash-hooks-off-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-auto-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-auto-link-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-default-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-default-link-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-edit-relative-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-edit-relative-cd-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
+    "kontrolny/zgoda-bez-hooka-settings-target-auto-2.1.330.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
     "kontrolny/zgoda-edit-default-2.1.321.txt": {
       "category": "consent",
       "class": "permission",

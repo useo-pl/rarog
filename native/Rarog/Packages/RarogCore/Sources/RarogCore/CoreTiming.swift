@@ -25,6 +25,14 @@ public struct CoreTiming: Sendable, Equatable {
   public var queuedIdleAfter: Duration
   /// Sufit wpisu w kolejce CLI od pierwszego przyjęcia — sesja zawieszona w pracy (pomiar: max ~13 min).
   public var queuedUnconfirmedAfter: Duration
+  /// How long Undo of an Inbox card removal stays offered after the removal.
+  public var inboxUndoWindow: Duration
+  /// The shortest gap between two refresh passes of a session's file tree: triggers inside it fold into one pass.
+  public var fileTreeRefreshGap: Duration
+  /// The age after which a session's file index is asked again when a query starts, and the shortest gap between two
+  /// index requests that an invalidation (end of a turn, return to the foreground, the panel opening) starts while a
+  /// query stands.
+  public var fileIndexRefreshGap: Duration
 
   public init(
     backoffMin: Duration = .milliseconds(500),
@@ -36,7 +44,10 @@ public struct CoreTiming: Sendable, Equatable {
     echoClockSkew: Duration = .seconds(60),
     noticeLifetime: Duration = .seconds(6),
     queuedIdleAfter: Duration = .seconds(15),
-    queuedUnconfirmedAfter: Duration = .seconds(30 * 60)
+    queuedUnconfirmedAfter: Duration = .seconds(30 * 60),
+    inboxUndoWindow: Duration = .seconds(5),
+    fileTreeRefreshGap: Duration = .seconds(1),
+    fileIndexRefreshGap: Duration = .seconds(30)
   ) {
     self.backoffMin = backoffMin
     self.backoffMax = backoffMax
@@ -48,12 +59,16 @@ public struct CoreTiming: Sendable, Equatable {
     self.noticeLifetime = noticeLifetime
     self.queuedIdleAfter = queuedIdleAfter
     self.queuedUnconfirmedAfter = queuedUnconfirmedAfter
+    self.inboxUndoWindow = inboxUndoWindow
+    self.fileTreeRefreshGap = fileTreeRefreshGap
+    self.fileIndexRefreshGap = fileIndexRefreshGap
   }
 
   public static let production = CoreTiming()
 
-  /// The "Not confirmed" deadline after 202 for this entry, the one rule for `deliver` and `restoreOutbox`:
-  /// ``attachmentUnconfirmedAfter`` with attachments, ``unconfirmedAfter`` for text only.
+  /// The "Not confirmed" deadline after 202 for this entry, the one rule for `deliver`, `restoreOutbox`, a session
+  /// stream's opening and the end of the wait for it: ``attachmentUnconfirmedAfter`` with attachments,
+  /// ``unconfirmedAfter`` for text only.
   func unconfirmedAfter(for entry: OutboxEntry) -> Duration {
     entry.attachments.isEmpty ? unconfirmedAfter : attachmentUnconfirmedAfter
   }

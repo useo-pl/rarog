@@ -47,6 +47,7 @@ import type { HerdrAgent } from '../src/herdr/types.ts';
 import { demoContentPl } from '../src/demo/content/pl.ts';
 import { AtrapaDrivera, AtrapaNadzorcy } from './helpers/atrapa-sesji.ts';
 import { consentBash, consentView, produceConsent, screenConsentEvents } from './sse-fixtures-producenci-zgody.ts';
+import { produceInbox } from './sse-fixtures-producenci-inbox.ts';
 
 const FIXTURES_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)), '../../shared/fixtures/sse',
@@ -1405,7 +1406,7 @@ async function produceSeenMarks(out: Produced, dataDir: string): Promise<void> {
     );
     await flush();
     manager.markSeen(sigma, {
-      by: 'voice-agent', stateSince: manager.get(sigma)?.stateSince ?? '',
+      by: 'voice-agent', readMark: manager.companionTarget(sigma)?.readMark ?? '',
       conversation: (agentSessionId) => agentSessionId === UUID_SIGMA,
     });
     await flush();
@@ -1436,7 +1437,7 @@ describe('złote ramki SSE: producenci → pliki', () => {
   const dirs: string[] = [];
 
   beforeAll(async () => {
-    for (const run of [produceHerdr, produceDemo, produceBare, produceSeenMarks]) {
+    for (const run of [produceHerdr, produceDemo, produceBare, produceSeenMarks, produceInbox]) {
       const dir = await mkdtemp(path.join(tmpdir(), 'rarog-fixtures-'));
       dirs.push(dir);
       await run(produced, dir);

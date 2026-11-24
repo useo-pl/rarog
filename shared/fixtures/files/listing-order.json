@@ -1,0 +1,14 @@
+{
+  "$comment": "Entries of one listing in the order of the contract (compareFileEntries in shared/src/protocol/files.ts): each entry sorts before every later one. Read by the comparator's test (shared/test/files-order.test.ts) and by the app's FileEntry.listingOrder (FileEntryOrderTests in RarogContract). Names are JSON escapes, so no editor changes their Unicode form: U+03AC and U+0391 U+0301 are canonically equivalent once lowercased, yet their UTF-16 code units differ.",
+  "ordered": [
+    { "name": "lib", "kind": "dir" },
+    { "name": "Zeta", "kind": "dir" },
+    { "name": "_x.ts", "kind": "file" },
+    { "name": "B.txt", "kind": "file" },
+    { "name": "b.txt", "kind": "file" },
+    { "name": "é.txt", "kind": "file" },
+    { "name": "é.txt", "kind": "file" },
+    { "name": "ά.txt", "kind": "file" },
+    { "name": "Ά.txt", "kind": "file" }
+  ]
+}

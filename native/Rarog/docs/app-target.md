@@ -10,8 +10,10 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   `terminalSurfaceFactory`; without it the terminal screen says the terminal is unavailable),
   `RarogStore.live(connector:…)` with `AppEnvironment.connector(coordinator:)` (the Keychain with the groups from
   Info.plist, the transports from `TunnelCoordinator`), `RarogRootView(...).id(store.interfaceEpoch)` (a separate
-  store property, so the scene root does not recompute at every frame). The scene phase, the network change and
-  `protectedDataDidBecomeAvailable` go to the coordinator first and then to the store (`setScenePhase`,
+  store property, so the scene root does not recompute at every frame). The root's `.task` runs again whenever the
+  root comes back (a full-screen cover over it closes, a new `interfaceEpoch`): the MetricKit subscriber and the
+  network monitor start in its first run only, and `store.start()` takes effect once. The scene phase, the network
+  change and `protectedDataDidBecomeAvailable` go to the coordinator first and then to the store (`setScenePhase`,
   `reconnectNow`, `protectedDataBecameAvailable()`), so a store request after coming back to the foreground sees the
   new scene; `NWPathMonitor` reports a change of status, interface types, `isExpensive` or gateways
   (`NetworkPathSnapshot` in `RarogTransport/Tunnel/`). Every changed report gets a `network: path …` line in
@@ -52,7 +54,17 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   embedded by the "Embed Foundation Extensions" phase) draws it: `ActivityConfiguration` with the views from
   `RarogActivity`, `widgetURL` from `LiveActivityPresentation.link` (the agent list, `rarog://list`), and numbers
   above zero are a `Link` to `rarog://jump/<kind>` (`jumpLink`, the `TallyLink` modifier; the app picks the first
-  session of that kind from a fresh list, `AppState.firstSession`). No actions on the Live Activity.
+  session of that kind from a fresh list, `AppState.firstSession`). No actions on this Live Activity.
+- **Voice Live Activity:** `VoiceActivityController` (`Rarog/VoiceActivityController.swift`, built in `RarogApp`
+  after the voice agent settings) shows the running voice conversation or message-field dictation under the
+  locked-phone trial, through `ActivityKitVoiceActivities` on `ActivityKit.Activity<VoiceActivityAttributes>`:
+  `request(…, pushType: nil)` with a relevance score of 100 (the board's content is built without one), `update` and
+  `end(nil, dismissalPolicy: .immediate)` by id off the main actor. `RarogApp` installs the handler of its End
+  button (`EndVoiceActivityIntent.handler`). `RarogAppIntents` (`Rarog/RarogAppIntents.swift`) and
+  `RarogWidgetIntents` (`RarogWidgets/RarogWidgetIntents.swift`) list the package's `RarogActivityIntents`
+  (`AppIntentsPackage`), so the intent is in the `Metadata.appintents` of the app and of the extension. The
+  `RarogWidgets` extension draws it with `RarogVoiceActivity`: the views from `RarogActivity` on translucent black
+  in the dark theme, like the board. Rules and lines: `docs/companion.md`, "Locked phone (trial)".
 - **Live Activity layout:** `LiveActivityPresentation` composes the copy from state fields only (counters, usage,
   the Mac, project, run name, phase number and title; no content, tool, label or work time) and the machine word
   from the attributes (`LiveActivityPresentation(_:machine:)`, `context.attributes.machine` in the widget): the
@@ -160,8 +172,9 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     without its lead sentence, and the Keyboard Shortcut section. The Soniox option carries its own server state, so
     the page has no separate server row.
   - **Voice Agent** (`VoiceAgentSettingsPage`): where the server offers the agent, the switch and its consent page
-    (`docs/companion.md`, "Settings") and the Keyboard Shortcut section while the agent is on; otherwise the setup
-    steps (same section).
+    (`docs/companion.md`, "Settings"), the switch of the conversation across sessions with its own consent page where
+    the server offers that mode, and the Keyboard Shortcut section while the agent is on; otherwise the setup steps
+    (same section).
   - **Text Size** (`TextSizeSettingsPage`): the seven steps (`native/Rarog/docs/rarog-ui.md`, the "App text size"
     item).
   - **About** (`SettingsAboutPage`): the same three links as the pairing screen, Report a Problem, Licenses and the

@@ -111,6 +111,11 @@ extension UICopy {
     L("inspector.scheduledLast", language: language, clock)
   }
 
+  /// The session row's scheduled-task mark: "2 scheduled tasks" (tooltip and VoiceOver).
+  static func scheduledCount(_ count: Int, language: CopyLanguage = .current) -> String {
+    L("row.scheduledCount", language: language, count)
+  }
+
   /// Spoken row: "Scheduled task Check the CI run, every 5 minutes, next 22:14".
   static func scheduledTaskSpoken(prompt: String, schedule: [String], language: CopyLanguage = .current) -> String {
     L("inspector.scheduledSpoken", language: language, prompt,
@@ -169,13 +174,55 @@ extension UICopy {
     return opens ? L("inspector.artifactSpoken.opens", sentence) : sentence
   }
 
-  // MARK: Zmiany w katalogu
+  // MARK: Files
 
-  /// „ZMIANY W KATALOGU · 3" — bez liczby, gdy jej nie znamy albo jest zerem.
-  static func inspectorChangesTitle(_ count: Int?) -> String {
-    let title = L("inspector.changesTitle")
-    guard let count, count > 0 else { return title }
-    return L("inspector.changesTitle.count", count)
+  static var inspectorFilesTitle: String { L("inspector.filesTitle") }
+
+  static var inspectorFilesListTruncated: String { L("inspector.filesListTruncated") }
+  static var inspectorFilesDiffTruncated: String { L("inspector.filesDiffTruncated") }
+  static func inspectorFilesIgnoredSpoken(_ label: String) -> String { L("inspector.filesIgnoredSpoken", label) }
+  static var inspectorFilesPreview: String { L("inspector.filesPreview") }
+  static var inspectorFilesCopyPath: String { L("inspector.filesCopyPath") }
+
+  /// The Files / Changed only toggle under the section header.
+  static func inspectorFilesMode(_ mode: FileTreeMode) -> String {
+    switch mode {
+    case .all: L("inspector.filesModeAll")
+    case .changed: L("inspector.filesModeChanged")
+    }
+  }
+  static var inspectorFilesModeLabel: String { L("inspector.filesModeLabel") }
+
+  static var inspectorFilesSearchPlaceholder: String { L("inspector.filesSearchPlaceholder") }
+  static var inspectorFilesSearchRegex: String { L("inspector.filesSearchRegex") }
+  static var inspectorFilesSearchClear: String { L("inspector.filesSearchClear") }
+  static var inspectorFilesSearchRetry: String { L("inspector.filesSearchRetry") }
+
+  /// A note under the file search field or its result, as a sentence.
+  static func inspectorFilesSearchNote(_ note: FileSearchNote) -> String {
+    switch note {
+    case .invalidPattern: L("inspector.filesSearchInvalid")
+    case .tooSlow: L("inspector.filesSearchTooSlow")
+    case let .noMatch(query): L("inspector.filesSearchNoMatch", query)
+    case let .shown(shown, total): L("inspector.filesSearchShown", shown, total)
+    case let .indexTruncated(files): L("inspector.filesSearchIndexTruncated", files)
+    case .openDirectoriesOnly: L("inspector.filesSearchOpenOnly")
+    case .loadingIndex: L("inspector.filesSearchLoading")
+    case .indexFailed: L("inspector.filesSearchFailed")
+    }
+  }
+
+  /// Bubbles of a file preview that did not open: the file name, sizes as `bytes` gives them.
+  static func filePreviewTooLarge(name: String, size: String, limit: String) -> String {
+    L("inspector.filePreviewTooLarge", name, size, limit)
+  }
+  static var filePreviewOffline: String { L("inspector.filePreviewOffline") }
+  static func filePreviewGone(_ name: String) -> String { L("inspector.filePreviewGone", name) }
+  static func filePreviewFailed(_ name: String) -> String { L("inspector.filePreviewFailed", name) }
+
+  /// "src, changes inside: 3".
+  static func inspectorFilesDirectorySpoken(name: String, changes: Int) -> String {
+    L("inspector.filesDirectorySpoken", name, changes)
   }
 
   /// „Czysto od 7cdfbe4b” — drzewo bez zmian względem commita.
@@ -184,11 +231,6 @@ extension UICopy {
   static var inspectorChangesNoData: String { L("inspector.changesNoData") }
   static func inspectorChangesShown(_ rows: Int, of total: Int) -> String { L("inspector.changesShown", rows, total) }
   static var inspectorBinary: String { L("inspector.binary") }
-
-  /// Katalog drzewa zmian na głos: „katalog Sources/RarogUI/Switcher, 2 pliki".
-  static func inspectorDirectorySpoken(label: String, files: Int) -> String {
-    L("inspector.directorySpoken", label, files)
-  }
 
   static var inspectorDirectoryExpanded: String { L("inspector.directoryExpanded") }
   static var inspectorDirectoryCollapsed: String { L("inspector.directoryCollapsed") }

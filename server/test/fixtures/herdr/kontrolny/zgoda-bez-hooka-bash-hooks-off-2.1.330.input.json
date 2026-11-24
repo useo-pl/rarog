@@ -1,0 +1,8 @@
+{
+  "toolName": "Bash",
+  "input": {
+    "command": "touch demo.txt",
+    "description": "Create an empty file"
+  },
+  "cwd": "/Users/u/project"
+}

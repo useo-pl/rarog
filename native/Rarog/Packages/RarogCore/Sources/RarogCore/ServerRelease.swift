@@ -1,35 +1,65 @@
 import Foundation
 
 // Wersja serwera wydana razem z apką. Apka nie pyta rejestru npm: zna wersję serwera ze swojego wydania, a gdy
-// serwer, z którym rozmawia, jest od niej starszy, stopka listy pokazuje cichy wiersz „Dostępna aktualizacja serwera”.
+// serwer, z którym rozmawia, jest od niej starszy, stopka listy pokazuje wiersz „Dostępna aktualizacja serwera”.
 // Bez ruchu sieciowego poza sondą `GET /api/version`, którą apka i tak wysyła. Właściciel: aktywność i lista.
 
 /// Wydanie serwera, z którym wyszła ta apka.
 public enum ServerRelease {
   /// Pole `version` z `package.json` korzenia repo w chwili wydania. Podbicie wersji serwera podbija tę stałą w tym
   /// samym commicie: strażnik `server/test/wersja-apki-i-serwera.test.ts` porównuje oba zapisy.
-  public static let version = "1.0.1"
+  public static let version = "1.1.0-beta.1"
 
   /// First package version with `rarog update`: the first version after `0.1.0`. Only the triple counts: a local
   /// build `0.1.1-local.…` from the clone already has `rarog update`.
   public static let updateCommandSince = "0.1.1"
 
+  /// First package version with `rarog update --beta`. The whole version counts, pre-release included: `1.1.0-beta.0`
+  /// is below, a local build `1.1.0-beta.1.local.…` from the clone is not.
+  public static let betaUpdateCommandSince = "1.1.0-beta.1"
+
   /// Update of a server that has `rarog update`. A command, not copy: no language variants.
   public static let updateOnlyCommand = "rarog update"
 
-  /// Full chain: install from the registry, then `rarog update`. For a server below the threshold and where the server
-  /// version is unknown (refusal for an older protocol, ``CoreCopy/updateServer``). A command, not copy.
+  /// Update to the beta channel of a server that has `rarog update --beta`. A command, not copy.
+  public static let betaUpdateOnlyCommand = "rarog update --beta"
+
+  /// Full chain: install from the registry, then `rarog update`. For a stable app: a server below the threshold and
+  /// a server of unknown version (refusal for an older protocol, ``CoreCopy/updateServer``). A command, not copy.
   /// The package is `@rarog/server`; the guard `server/test/wersja-apki-i-serwera.test.ts` compares the name
   /// with `RAROG_PACKAGE_NAME` of the server.
   public static let installAndUpdateCommand = "npm i -g @rarog/server@latest && \(updateOnlyCommand)"
 
-  /// Update command for the server version from the probe (`docs/distribution.md`, "Server update indicator"): from
-  /// ``updateCommandSince`` just `rarog update`, below it the full chain, unreadable or missing version → `nil` (no
-  /// hint).
-  public static func updateCommand(server: String?) -> String? {
-    guard let server, let current = SemanticVersion(server), let since = SemanticVersion(updateCommandSince) else {
-      return nil
+  /// Full chain of a beta app: install the `beta` dist-tag, then `rarog update --finish` of the installed package
+  /// (an older `rarog update` does not know `--beta`). Same package name and same guard as
+  /// ``installAndUpdateCommand``.
+  public static let betaInstallAndUpdateCommand = "npm i -g @rarog/server@beta && rarog update --finish"
+
+  /// `true` for a release version `X.Y.Z-beta.N`, the beta shape of the release scripts. Any other version, also an
+  /// unreadable one, is a stable app with the stable commands.
+  static func isBeta(_ release: String) -> Bool {
+    guard let version = SemanticVersion(release), !release.contains("+"), version.prerelease.count == 2,
+      version.prerelease[0] == .text("beta"), case .number = version.prerelease[1]
+    else { return false }
+    return true
+  }
+
+  /// Command for a server of unknown version: the full chain of the app's channel.
+  public static func unknownServerCommand(release: String = version) -> String {
+    isBeta(release) ? betaInstallAndUpdateCommand : installAndUpdateCommand
+  }
+
+  /// Update command for the server version from the probe (`docs/distribution.md`, "Server update indicator").
+  /// Stable app: from ``updateCommandSince`` just `rarog update`, below it the full chain. Beta app: from
+  /// ``betaUpdateCommandSince`` `rarog update --beta`, below it the beta chain. Unreadable or missing version → `nil`
+  /// (no hint).
+  public static func updateCommand(server: String?, release: String = version) -> String? {
+    guard let server, let current = SemanticVersion(server) else { return nil }
+    if isBeta(release) {
+      guard let since = SemanticVersion(betaUpdateCommandSince) else { return nil }
+      return current < since ? betaInstallAndUpdateCommand : betaUpdateOnlyCommand
     }
+    guard let since = SemanticVersion(updateCommandSince) else { return nil }
     return current.core.lexicographicallyPrecedes(since.core) ? installAndUpdateCommand : updateOnlyCommand
   }
 }
@@ -40,13 +70,13 @@ public struct ServerUpdate: Sendable, Equatable {
   public let server: String
   /// ``ServerRelease/version`` (w testach dowolna).
   public let release: String
-  /// ``ServerRelease/updateCommand(server:)`` for ``server``.
+  /// ``ServerRelease/updateCommand(server:release:)`` for ``server`` and ``release``.
   public let command: String
 
   /// `nil`, gdy wersji serwera nie ma, któraś wersja jest nieczytelna albo serwer nie jest starszy.
   public init?(server: String?, release: String) {
     guard let server, let current = SemanticVersion(server), let shipped = SemanticVersion(release),
-      current < shipped, let command = ServerRelease.updateCommand(server: server)
+      current < shipped, let command = ServerRelease.updateCommand(server: server, release: release)
     else { return nil }
     self.server = server
     self.release = release

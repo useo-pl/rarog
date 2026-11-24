@@ -59,11 +59,15 @@ export function companionTargetOf(session: Session, config: SessionScopeConfig):
 /**
  * {@link companionTargetOf} with the newest message of the session's transcript in memory, for the voice agent's
  * session catalog, only when that message belongs to the engine conversation the session writes now
- * (`Session.lastMessageOfConversation`). It reads the session only: no file, no mark of a card or a message as shown.
+ * (`Session.lastMessageOfConversation`), and the read mark of that memory (`Session.readMark`), which the turns route
+ * takes with the conversation before it reads the file. It reads the session only: no file, no mark of a card or a
+ * message as shown.
  */
 export function companionEntryOf(session: Session, config: SessionScopeConfig): CompanionEntry | null {
   const target = companionTargetOf(session, config);
-  return target === null ? null : { ...target, lastMessage: session.lastMessageOfConversation() };
+  return target === null
+    ? null
+    : { ...target, lastMessage: session.lastMessageOfConversation(), readMark: session.readMark };
 }
 
 /**

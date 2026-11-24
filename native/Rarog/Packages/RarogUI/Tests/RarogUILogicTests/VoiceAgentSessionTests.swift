@@ -55,10 +55,129 @@ final class FakeVoiceAgentBackend: VoiceAgentBackend {
     return speechToken
   }
 
+  /// Outcomes of the next questions in order; with none left, ``answer``.
+  var answers: [CompanionAskOutcome] = []
+  /// Held questions whose task was cancelled while they waited (the store's request is cancelled with its task).
+  private(set) var cancelledAsks = 0
+
   func ask(sessionId: String, question: String) async -> CompanionAskOutcome {
     questions.append(question)
-    if holdAsk { await withCheckedContinuation { askWaiters.append($0) } }
-    return answer
+    reads.append("ask \(sessionId)")
+    if holdAsk {
+      await withTaskCancellationHandler {
+        await withCheckedContinuation { waiter in
+          // Cancelled before the wait: the handler below already ran and found no waiter.
+          if Task.isCancelled { waiter.resume() } else { askWaiters.append(waiter) }
+        }
+      } onCancel: {
+        Task { @MainActor in self.cancelHeldAsks() }
+      }
+      if Task.isCancelled {
+        cancelledAsks += 1
+        return .cancelled
+      }
+    }
+    return answers.isEmpty ? answer : answers.removeFirst()
+  }
+
+  private func cancelHeldAsks() {
+    let waiting = askWaiters
+    askWaiters = []
+    for waiter in waiting { waiter.resume() }
+  }
+
+  // The mode across sessions (`VoiceAgentSessionsHostTests`): the app state, the catalog and the turns of each
+  // session; `reads` logs the catalog, turns and ask requests in order.
+  var state = AppState(clientBuild: 1)
+  func sessionSummary(_ sessionId: String) -> SessionSummary? { state.sessions[sessionId] }
+  var catalog: CompanionSessionsOutcome = .sessions([])
+  /// Turns answers by session id; one without an entry answers 404 (outside the catalog).
+  var turns: [String: CompanionTurnsOutcome] = [:]
+  private(set) var reads: [String] = []
+  /// Runs while a catalog read is in flight (the app state changes before its answer).
+  var onCatalog: (@MainActor () -> Void)?
+
+  func loadCompanionSessions() async -> CompanionSessionsOutcome {
+    reads.append("catalog")
+    onCatalog?()
+    if holdCatalog { await withCheckedContinuation { catalogWaiters.append($0) } }
+    return catalog
+  }
+
+  /// The catalog read waits for `releaseCatalog()` (a tool's catalog read held open).
+  var holdCatalog = false
+  private var catalogWaiters: [CheckedContinuation<Void, Never>] = []
+  var catalogPending: Bool { !catalogWaiters.isEmpty }
+
+  func releaseCatalog() {
+    let waiting = catalogWaiters
+    catalogWaiters = []
+    for waiter in waiting { waiter.resume() }
+  }
+
+  /// Outcomes of the next prompt sends in order; with none left, `sent`. `sends` logs every call, `requests` the calls
+  /// that reach the server: as in the store, a call with an id already sent or queued answers `sent` with none.
+  var sendOutcomes: [CompanionSendOutcome] = []
+  private(set) var sends: [(sessionId: String, text: String, conversation: String, id: UUID)] = []
+  private(set) var requests = 0
+  private var acceptedIds: Set<UUID> = []
+  /// The send waits for `releaseSend()`; a send whose task was cancelled while it waited counts in `cancelledSends`.
+  var holdSend = false
+  private var sendWaiters: [CheckedContinuation<Void, Never>] = []
+  private(set) var cancelledSends = 0
+  var sendPending: Bool { !sendWaiters.isEmpty }
+  /// Runs while a prompt send that reaches the server is in flight.
+  var onSend: (@MainActor () -> Void)?
+
+  func releaseSend() {
+    let waiting = sendWaiters
+    sendWaiters = []
+    for waiter in waiting { waiter.resume() }
+  }
+
+  func sendCompanionPrompt(sessionId: String, text: String, conversation: String, clientMessageId: UUID) async
+    -> CompanionSendOutcome
+  {
+    sends.append((sessionId, text, conversation, clientMessageId))
+    if acceptedIds.contains(clientMessageId) { return .sent }
+    requests += 1
+    onSend?()
+    if holdSend {
+      await withTaskCancellationHandler {
+        await withCheckedContinuation { waiter in
+          if Task.isCancelled { waiter.resume() } else { sendWaiters.append(waiter) }
+        }
+      } onCancel: {
+        Task { @MainActor in self.releaseSend() }
+      }
+      if Task.isCancelled {
+        cancelledSends += 1
+        return .cancelled
+      }
+    }
+    let outcome = sendOutcomes.isEmpty ? .sent : sendOutcomes.removeFirst()
+    if outcome == .sent || outcome == .queued { acceptedIds.insert(clientMessageId) }
+    return outcome
+  }
+
+  /// Runs while a turns read is in flight.
+  var onTurns: (@MainActor () -> Void)?
+
+  func loadCompanionTurns(sessionId: String, count: Int) async -> CompanionTurnsOutcome {
+    reads.append("turns \(sessionId) \(count)")
+    onTurns?()
+    return turns[sessionId] ?? .outsideCatalog(message: nil)
+  }
+
+  /// What a pick-up answers; `pickUps` logs each pick-up's session id, `conversation` and `readMark` in order.
+  var pickUpOutcome: CompanionPickUpOutcome = .pickedUp
+  private(set) var pickUps: [(sessionId: String, conversation: String, readMark: String)] = []
+
+  func pickUpCompanionResult(sessionId: String, conversation: String, readMark: String) async
+    -> CompanionPickUpOutcome
+  {
+    pickUps.append((sessionId, conversation, readMark))
+    return pickUpOutcome
   }
 
   /// The question waits for `releaseAsk()` (the seconds counter of "Checking the session").
@@ -73,6 +192,39 @@ final class FakeVoiceAgentBackend: VoiceAgentBackend {
   }
 
   func transcript(sessionId: String) -> [TranscriptMessage] { messages }
+
+  // The conversation of an Inbox card (`VoiceAgentInboxTests`): the fresh transcript asked of each session, and each
+  // reply from a card with its outcome.
+  private(set) var refreshes: [String] = []
+  private(set) var inboxReplies: [(text: String, sessionId: String, turnId: String)] = []
+  var inboxReplyOutcome = InboxReplyOutcome.sent(.accepted(UUID()))
+  /// A reply waits for `releaseReply()` (its outcome comes late).
+  var holdReply = false
+  private var replyWaiters: [CheckedContinuation<Void, Never>] = []
+  var replyPending: Bool { !replyWaiters.isEmpty }
+
+  func releaseReply() {
+    let waiting = replyWaiters
+    replyWaiters = []
+    for waiter in waiting { waiter.resume() }
+  }
+
+  func refreshTranscript(_ sessionId: String) {
+    refreshes.append(sessionId)
+  }
+
+  func replyFromInbox(_ text: String, to sessionId: String, turnId: String) async -> InboxReplyOutcome {
+    inboxReplies.append((text, sessionId, turnId))
+    if holdReply { await withCheckedContinuation { replyWaiters.append($0) } }
+    return inboxReplyOutcome
+  }
+
+  /// Outbox entries a card's send deleted, and the unexpected failures it reported.
+  private(set) var discarded: [UUID] = []
+  private(set) var unhandled: [String] = []
+
+  func discard(_ entryId: UUID) { discarded.append(entryId) }
+  func reportUnhandled(_ summary: String) { unhandled.append(summary) }
 
   func trace(_ line: String, budget: TraceBudget) {
     traces.append(line)
@@ -126,11 +278,11 @@ private func appState(messages: [TranscriptMessage] = [], companion: Bool = true
 
 private func input(
   _ state: AppState, login: Int = 1, enabled: Bool = true, sonioxAllowed: Bool = true, selected: String? = "s1",
-  background: Bool = false, fieldShown: Bool = true
+  background: Bool = false, keepsInBackground: Bool = false, fieldShown: Bool = true
 ) -> VoiceAgentWatch.Input {
   VoiceAgentWatch.Input(
     state: state, sessionId: "s1", login: login, enabled: enabled, sonioxAllowed: sonioxAllowed, selected: selected,
-    background: background, fieldShown: fieldShown)
+    background: background, keepsInBackground: keepsInBackground, fieldShown: fieldShown)
 }
 
 /// Rozmowa przy sesji `s1` z atrapami; `ready()` doprowadza ją do słuchania.
@@ -886,6 +1038,38 @@ struct VoiceAgentSessionTests {
     #expect(UICopy.voiceAgentStatus(.closed(.fieldHidden)) == UICopy.voiceAgentClosed(.fieldHidden))
   }
 
+  // Catches a start in the background that the locked-phone trial lets through: the engine would open the
+  // microphone with the app in the background and no tap on screen.
+  @Test("a start in the background is refused also when the host keeps a ready conversation: no audio, no key")
+  func backgroundStartWithTrial() async {
+    let h = Harness()
+    h.start(input(appState(), background: true, keepsInBackground: true))
+    try? await Task.sleep(for: .milliseconds(20))
+    #expect(h.session.indicator == .closed(.background))
+    #expect(h.audio.starts == 0)
+    #expect(h.backend.tokenCalls == 0 && h.backend.speechTokenCalls == 0 && h.sockets.isEmpty)
+  }
+
+  // Catches a readiness that counts a conversation still connecting as running: the trial would keep it in the
+  // background, and its engine would open the microphone there.
+  @Test("the conversation is ready only past its readiness gate, not while the engine and the keys start")
+  func readyOnlyPastGate() async {
+    let h = Harness()
+    h.audio.holdFirstStart = true
+    h.start()
+    #expect(await eventually { h.audio.startPending && !h.sockets.isEmpty })
+    h.speechSockets.last?.open()
+    h.socket.open()
+    h.socket.reply(#"{"type":"session.updated","session":{}}"#)
+    try? await Task.sleep(for: .milliseconds(20))
+    #expect(h.session.isActive && !h.session.isReady, "OpenAI took the session, the engine has not started")
+    h.audio.releaseStart()
+    #expect(await eventually { h.session.phase == .listening })
+    #expect(h.session.isReady)
+    h.session.end()
+    #expect(!h.session.isReady)
+  }
+
   @Test("a hidden field at the start → no conversation, the reason stands")
   func fieldHiddenAtStart() {
     let h = Harness()
@@ -965,6 +1149,25 @@ struct VoiceAgentSessionTests {
     h.socket.reply(done("r1"))
     h.audio.handlers?.drained()
     #expect(h.session.indicator == .muted)
+  }
+
+  // Catches a mute over a prompt in the field that the app's microphone never learns: the status row keeps the
+  // prompt, so nothing would tell the voice Live Activity that the microphone stopped taking the spoken answer.
+  @Test("a mute over a prompt in the field reaches the microphone's observers as muted")
+  func muteOverPromptReported() async {
+    let h = Harness()
+    let center = DictationCenter()
+    center.claim(h.session)
+    await h.ready()
+    await h.cardConfirmedWithoutUtterance()
+    #expect(h.session.indicator == .promptInField)
+    #expect(center.use?.phase == .prompt)
+    var told = 0
+    center.observe { told += 1 }
+    h.session.toggleMute()
+    #expect(h.session.indicator == .promptInField)
+    #expect(told == 1)
+    #expect(center.use?.phase == .muted)
   }
 
   @Test("mute with no conversation is a no-op; the next conversation starts unmuted")

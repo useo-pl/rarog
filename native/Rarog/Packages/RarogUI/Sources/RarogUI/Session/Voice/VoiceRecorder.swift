@@ -129,6 +129,10 @@ final class VoiceRecorder {
   private var microphoneOpenedAt: TimeInterval?
   private var streamed = false
   private var readyTraced = false
+  /// The clock time of the last microphone frame of this recording.
+  private var lastFrameAt: TimeInterval?
+  /// The stream's connection streams (Soniox: its socket); `false` while it connects or reconnects.
+  private var streaming = false
 
   init(deps: Deps, handlers: Handlers) {
     self.deps = deps
@@ -138,6 +142,17 @@ final class VoiceRecorder {
 
   /// Mikrofon otwarty albo właśnie się otwiera.
   var active: Bool { view.active }
+
+  /// The running recording's microphone has opened: it records now, or finishes what it recorded. While the
+  /// recording prepares (permission, the speech key, the microphone opening) it is active but not opened.
+  var microphoneOpened: Bool { active && microphoneOpenedAt != nil }
+
+  /// What of the running recording lives (the locked-phone monitor's heartbeat): a microphone frame within
+  /// `MicrophoneUse.frameWindow` seconds, and the stream's connection streaming.
+  var live: (audio: Bool, stream: Bool) {
+    let fresh = lastFrameAt.map { deps.scheduler.now - $0 < MicrophoneUse.frameWindow } ?? false
+    return (active && fresh, active && stream != nil && streaming)
+  }
 
   /// Zaczyna nagranie: „Łączę…" od razu, więc drugi tap w tej samej chwili już kończy (a nie
   /// zaczyna drugiego nagrania), mikrofon otwiera się w zadaniu. Zadanie oddaje się testom.
@@ -150,6 +165,8 @@ final class VoiceRecorder {
     microphoneOpenedAt = nil
     streamed = false
     readyTraced = false
+    lastFrameAt = nil
+    streaming = false
     startGeneration += 1
     let generation = startGeneration
     emit(VoiceView(phase: .starting))
@@ -322,6 +339,7 @@ final class VoiceRecorder {
   /// The phase follows the microphone (`.recording` from its open); the stream only marks a lost connection after it
   /// has streamed once. Before that a retry keeps the speech in the stream's backlog, so the phase stays.
   private func streamState(_ state: SonioxStream.State) {
+    streaming = state == .streaming
     switch state {
     case .streaming:
       streamed = true
@@ -398,6 +416,7 @@ final class VoiceRecorder {
   }
 
   private func frame(_ frame: VoiceFrame) {
+    lastFrameAt = deps.scheduler.now
     if frame.peak >= voiceSilencePeak { lastVoiceAt = deps.scheduler.now }
     stream?.sendAudio(frame.pcm)
     handlers.level(frame.peak)

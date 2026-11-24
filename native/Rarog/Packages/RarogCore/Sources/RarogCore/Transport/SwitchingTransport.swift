@@ -308,10 +308,60 @@ public final class SwitchingTransport: RarogTransporting, TerminalTransporting, 
     try await call { client throws(TransportError) in try await client.companionSpeechToken() }
   }
 
+  public func companionSessions() async throws(TransportError) -> CompanionSessions {
+    try await call { client throws(TransportError) in try await client.companionSessions() }
+  }
+
+  public func companionTurns(sessionId: String, count: Int) async throws(TransportError) -> CompanionTurns {
+    try await call { client throws(TransportError) in
+      try await client.companionTurns(sessionId: sessionId, count: count)
+    }
+  }
+
+  public func pickUpResult(sessionId: String, _ pickUp: SeenPickUp) async throws(TransportError) {
+    try await call { client throws(TransportError) in try await client.pickUpResult(sessionId: sessionId, pickUp) }
+  }
+
   public func takeBackQueue(sessionId: String, operationId: UUID) async throws(TransportError) -> QueueTakeBackResponse {
     try await call { client throws(TransportError) in
       try await client.takeBackQueue(sessionId: sessionId, operationId: operationId)
     }
+  }
+
+  public func inboxCards() async throws(TransportError) -> InboxList {
+    try await call { client throws(TransportError) in try await client.inboxCards() }
+  }
+
+  public func inboxCard(sessionId: String) async throws(TransportError) -> InboxCardResponse {
+    try await call { client throws(TransportError) in try await client.inboxCard(sessionId: sessionId) }
+  }
+
+  public func removeInboxCard(
+    sessionId: String, _ body: InboxActionBody
+  ) async throws(TransportError) -> InboxActionResponse {
+    try await call { client throws(TransportError) in try await client.removeInboxCard(sessionId: sessionId, body) }
+  }
+
+  public func restoreInboxCard(
+    sessionId: String, _ body: InboxActionBody
+  ) async throws(TransportError) -> InboxActionResponse {
+    try await call { client throws(TransportError) in try await client.restoreInboxCard(sessionId: sessionId, body) }
+  }
+
+  public func sessionFiles(sessionId: String, dir: String) async throws(TransportError) -> FileListing {
+    try await call { client throws(TransportError) in try await client.sessionFiles(sessionId: sessionId, dir: dir) }
+  }
+
+  public func fetchSessionFile(
+    sessionId: String, path: String, maxBytes: Int
+  ) async throws(TransportError) -> SessionFileFetch {
+    try await call { client throws(TransportError) in
+      try await client.fetchSessionFile(sessionId: sessionId, path: path, maxBytes: maxBytes)
+    }
+  }
+
+  public func sessionFileIndex(sessionId: String) async throws(TransportError) -> FileIndex {
+    try await call { client throws(TransportError) in try await client.sessionFileIndex(sessionId: sessionId) }
   }
 
   public func registerApns(

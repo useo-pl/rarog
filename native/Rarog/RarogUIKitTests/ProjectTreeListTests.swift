@@ -308,6 +308,88 @@ final class ProjectTreeListTests: XCTestCase {
     XCTAssertFalse(guide.isWatchingSettle, "display link stopped")
   }
 
+  /// Pinning on a live list, with no frame from the server: the collection follows the navigation's pins alone. Pinning
+  /// the last project makes its header the first row: the collection gets the new rows and its first cell shows
+  /// another header. Pinning and unpinning the first project keeps the order of the rows, and the header still
+  /// redraws: the pin glyph appears and goes (the cell's pixels change and come back), and the header the list gets
+  /// says "pinned" to the reader and stops saying it. SwiftUI builds no accessibility tree in this hostless test
+  /// process, so the cell's identity and the reader's value are read from the rows the list shows
+  /// (`RarogNavigation.treeRows`). With `RAROG_LIST_SNAPSHOT_DIR` (`TEST_RUNNER_RAROG_LIST_SNAPSHOT_DIR` for
+  /// `xcodebuild`) the test also writes `list-tree-pinned.png`.
+  func testPinRedrawsLiveListWithoutFrame() throws {
+    let h = try TreeAnchorHarness(selected: nil)
+    defer { h.close() }
+    let first = TreeAnchorFixture.cwd("p1"), last = TreeAnchorFixture.cwd("p12")
+    XCTAssertEqual(h.ids().first, .project(first), "p1 first in the alphabet")
+    XCTAssertEqual(h.ids().last(where: { if case .project = $0 { true } else { false } }), .project(last))
+
+    let before = try Self.image(of: h.list, item: 0)
+    h.pin("p12", true)
+    Self.spin()
+    XCTAssertEqual(h.ids().first, .project(last), "the pinned project's header is the first row")
+    XCTAssertEqual(h.list.numberOfItems(inSection: 0), h.ids().count, "the collection has the new rows")
+    XCTAssertNotEqual(try Self.image(of: h.list, item: 0), before, "the first cell shows another header")
+    try Self.snapshot(h.window, "list-tree-pinned")
+    h.pin("p12", false)
+    Self.spin()
+
+    let order = h.ids()
+    XCTAssertEqual(order.first, .project(first))
+    let plain = try Self.image(of: h.list, item: 0)
+    XCTAssertFalse(try XCTUnwrap(h.rows().header(first)).spokenValue.contains(UICopy.treePinnedValue))
+
+    h.pin("p1", true)
+    Self.spin()
+    XCTAssertEqual(h.ids(), order, "pinning the first project keeps the order of the rows")
+    XCTAssertEqual(h.list.numberOfItems(inSection: 0), order.count)
+    let header = try XCTUnwrap(h.rows().header(first))
+    XCTAssertTrue(header.pinned && header.spokenValue.contains(UICopy.treePinnedValue), header.spokenValue)
+    XCTAssertNotEqual(try Self.image(of: h.list, item: 0), plain, "the pin glyph appears")
+
+    h.pin("p1", false)
+    Self.spin()
+    XCTAssertEqual(h.ids(), order)
+    XCTAssertFalse(try XCTUnwrap(h.rows().header(first)).spokenValue.contains(UICopy.treePinnedValue))
+    XCTAssertEqual(try Self.image(of: h.list, item: 0), plain, "the pin glyph goes")
+  }
+
+  /// A session with an armed cron shows the quiet clock at the end of its row, and the row loses it when the cron
+  /// goes: the first agent row's pixels change with the server's list and come back. With `RAROG_LIST_SNAPSHOT_DIR`
+  /// the test also writes `list-row-scheduled.png`.
+  func testScheduledClockFollowsSessionCrons() throws {
+    let h = try TreeAnchorHarness(selected: nil)
+    defer { h.close() }
+    let base = TreeAnchorFixture()
+    let row = try XCTUnwrap(h.index(.session("p1-a")), "p1-a row")
+    let plain = try Self.image(of: h.list, item: row)
+
+    var armed = base
+    let index = try XCTUnwrap(armed.specs.firstIndex { $0.id == "p1-a" })
+    armed.specs[index].extra =
+      #","scheduledTasks":[{"id":"c1","cron":"*/5 * * * *","recurring":true,"prompt":"Check CI"}]"#
+    try h.snapshot(armed)
+    Self.spin()
+    XCTAssertNotEqual(try Self.image(of: h.list, item: row), plain, "the clock appears")
+    try Self.snapshot(h.window, "list-row-scheduled")
+
+    try h.snapshot(base)
+    Self.spin()
+    XCTAssertEqual(try Self.image(of: h.list, item: row), plain, "the clock goes with the cron")
+  }
+
+  /// The cell `item` drawn from its layer tree (the test target has no app host, so a screen capture comes out empty).
+  static func image(of list: UICollectionView, item: Int) throws -> Data {
+    let cell = try XCTUnwrap(list.cellForItem(at: IndexPath(item: item, section: 0)), "cell \(item)")
+    let image = UIGraphicsImageRenderer(bounds: cell.bounds).image { cell.layer.render(in: $0.cgContext) }
+    return try XCTUnwrap(image.pngData(), "cell \(item): PNG")
+  }
+
+  static func snapshot(_ window: UIWindow, _ name: String) throws {
+    guard let dir = ProcessInfo.processInfo.environment["RAROG_LIST_SNAPSHOT_DIR"], !dir.isEmpty else { return }
+    let image = UIGraphicsImageRenderer(bounds: window.bounds).image { window.layer.render(in: $0.cgContext) }
+    try XCTUnwrap(image.pngData(), "\(name): PNG").write(to: URL(filePath: dir).appending(path: "\(name).png"))
+  }
+
   /// Powód kotwicy (`TreeListAnchor`): goła lista SwiftUI w stylu `.sidebar` NIE trzyma zaznaczonego wiersza, gdy
   /// nad nim znikają wiersze — kolekcja zostawia przesunięcie treści i wiersz odjeżdża w górę. Gdy system zacznie
   /// kotwiczyć sam, ten test się przewróci i kotwicę w `SessionListView` można zdjąć.
@@ -344,10 +426,18 @@ final class ProjectTreeListTests: XCTestCase {
 
   // MARK: - Pomocnicze
 
-  static func store() throws -> RarogStore {
-    let store = RarogStore.live(
-      config: RarogConfig(baseURL: URL(string: "http://127.0.0.1:9")!, clientLabel: "test·Rarog", build: 1),
-      outboxDirectory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
+  /// The store logged in with the projects' sessions; `transport` (default: a client of a closed local port) answers
+  /// the routes.
+  static func store(transport: UIKitTransport? = nil) throws -> RarogStore {
+    let outbox = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    let store =
+      if let transport {
+        RarogStore(transport: transport, rules: MutationRules(), outboxDirectory: outbox, clientBuild: 1)
+      } else {
+        RarogStore.live(
+          config: RarogConfig(baseURL: URL(string: "http://127.0.0.1:9")!, clientLabel: "test·Rarog", build: 1),
+          outboxDirectory: outbox)
+      }
     store.dispatch(.loggedIn)
     store.dispatch(.streamOpened(.global, resumedWithCursor: false))
     try frame(store, #"{"type":"hello","protocolVersion":3,"serverStartId":"test"}"#)

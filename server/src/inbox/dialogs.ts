@@ -2,25 +2,38 @@
  * The dialog requests each session waits on, folded from the session manager's events (`permission-pending`,
  * `permission-settled`, `permission-resolved`, `question-pending`, `question-resolved`): which request a decision card
  * stands for. The manager keeps its queue of requests to itself and its transcript read marks consent cards as shown
- * on a device, so the Inbox folds the events every device gets. It keeps request ids, states and a digest of what the
- * session summary's `waitingFor` would say of each request, never their text.
+ * on a device, so the Inbox folds the events every device gets. It keeps request ids, states, buttons and a digest of
+ * what the session summary's `waitingFor` would say of each request, never their text.
  */
 import { createHash } from 'node:crypto';
 import { EXIT_PLAN_MODE_TOOL, WAITING_TEXT_MAX } from '@rarog/shared';
-import type { PermissionRequest, PermissionSubject, ServerEvent, WaitingFor } from '@rarog/shared';
+import type { ConsentCardState, PermissionRequest, PermissionSubject, ServerEvent, WaitingFor } from '@rarog/shared';
 import { summarizeToolInput } from '../drivers/tool-summary.ts';
+import type { DialogRequest } from './card.ts';
+
+/** What the session summary's `waitingFor` would say of a permission request. */
+interface Said {
+  readonly tool: string;
+  readonly subject: PermissionSubject;
+  /** {@link digestOf} the summary's text line of the request while it may be allowed. */
+  readonly text: string;
+}
 
 interface PermissionEntry {
   /** A consent channel card. */
   readonly hook: boolean;
   /** It waits for a person. */
   open: boolean;
-  readonly tool: string;
-  readonly subject: PermissionSubject;
-  /** {@link digestOf} the summary's text line of the request while it may be allowed. */
-  readonly text: string;
+  /**
+   * `undefined`: a consent card known only from `permission-settled`, which carries neither its tool nor its text: a
+   * card the server recovered at start and a snapshot showed before its first change. It never gives its id.
+   */
+  readonly said: Said | undefined;
   /** `false`: no allow button, and the summary carries no text for the request. */
   canAllow: boolean;
+  /** A consent card's state and why it has no allow button, as the last event of the card said. */
+  state: ConsentCardState | undefined;
+  unavailable: PermissionRequest['unavailable'];
 }
 
 interface QuestionEntry {
@@ -45,17 +58,31 @@ export class PendingDialogs {
         const { request } = event;
         const hook = request.channel !== undefined;
         this.#of(sessionId).permissions.set(request.permId, {
-          hook, open: !hook || request.state === 'pending', tool: request.toolName,
-          subject: request.subject ?? (request.toolName === EXIT_PLAN_MODE_TOOL ? 'plan' : 'tool'),
-          text: digestOf(permissionLine(request)), canAllow: request.canAllow !== false,
+          hook, open: !hook || request.state === 'pending',
+          said: {
+            tool: request.toolName,
+            subject: request.subject ?? (request.toolName === EXIT_PLAN_MODE_TOOL ? 'plan' : 'tool'),
+            text: digestOf(permissionLine(request)),
+          },
+          canAllow: request.canAllow !== false, state: request.state, unavailable: request.unavailable,
         });
         return;
       }
       case 'permission-settled': {
-        const entry = this.#sessions.get(sessionId)?.permissions.get(event.permId);
-        if (entry === undefined) return;
+        const permissions = this.#of(sessionId).permissions;
+        const entry = permissions.get(event.permId);
+        if (entry === undefined) {
+          // Only a consent card changes in place; one the fold never saw pending still holds its place.
+          permissions.set(event.permId, {
+            hook: true, open: event.state === 'pending', said: undefined, canAllow: event.canAllow, state: event.state,
+            unavailable: event.unavailable,
+          });
+          return;
+        }
         entry.open = !entry.hook || event.state === 'pending';
         entry.canAllow = event.canAllow;
+        entry.state = event.state;
+        entry.unavailable = event.unavailable;
         return;
       }
       case 'permission-resolved':
@@ -81,7 +108,8 @@ export class PendingDialogs {
    * the screen or the transcript, else the first consent card that waits for a person; the first question. It is
    * given only when `waitingFor` says of it what the summary says (tool, subject, text line, question count): the
    * fold lacks a consent card the server recovered at start, before anyone listened, and would otherwise give the id
-   * of the card behind it. `undefined` = the fold has none, or another card than the one `waitingFor` describes.
+   * of the card behind it. A consent card known only from a change cannot be compared, so it gives no id either.
+   * `undefined` = the fold has none, or another card than the one `waitingFor` describes.
    */
   current(sessionId: string, kind: 'permission' | 'question', waitingFor: WaitingFor | undefined): string | undefined {
     const requests = this.#sessions.get(sessionId);
@@ -94,10 +122,23 @@ export class PendingDialogs {
     }
     const permissions = [...requests.permissions];
     const [id, permission] = permissions.find(([, p]) => !p.hook) ?? permissions.find(([, p]) => p.hook && p.open) ?? [];
-    if (permission === undefined || waitingFor.count !== undefined) return undefined;
-    const said = permission.canAllow ? permission.text : digestOf('');
-    return permission.tool === waitingFor.tool && permission.subject === waitingFor.subject && said === text
-      ? id : undefined;
+    const said = permission?.said;
+    if (said === undefined || waitingFor.count !== undefined) return undefined;
+    const line = permission?.canAllow === true ? said.text : digestOf('');
+    return said.tool === waitingFor.tool && said.subject === waitingFor.subject && line === text ? id : undefined;
+  }
+
+  /**
+   * The {@link current} request with the revision of its state and buttons: for a consent card an opaque digest of
+   * `state`, `canAllow` and `unavailable`, which `permission-settled` changes in place; none for a card from the
+   * screen or the transcript and for a question, which do not change in place.
+   */
+  request(sessionId: string, kind: 'permission' | 'question', waitingFor: WaitingFor | undefined): DialogRequest | undefined {
+    const id = this.current(sessionId, kind, waitingFor);
+    if (id === undefined) return undefined;
+    const entry = kind === 'permission' ? this.#sessions.get(sessionId)?.permissions.get(id) : undefined;
+    if (entry === undefined || !entry.hook) return { id };
+    return { id, revision: digestOf(JSON.stringify([entry.state ?? '', entry.canAllow, entry.unavailable ?? ''])) };
   }
 
   forget(sessionId: string): void {

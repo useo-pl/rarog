@@ -14,7 +14,8 @@ import Foundation
 //   synthesis (`SonioxSpeech.Event.finished`) and its playback (the queue drained after the synthesis). The phase
 //   "speaking" lasts while an item that has played audio is not over, so a `drained` before the end of the synthesis
 //   ends neither the item nor the phase.
-// - Items speak in the order of their first text, one Soniox stream at a time (`SonioxSpeech`, rule 1).
+// - Items speak in the order of their first text, one Soniox stream at a time (`SonioxSpeech`, rule 1). A tool's
+//   reading is a stream of its own in the same queue (`RealtimeConversation+Reading.swift`).
 // - A Soniox failure during the conversation ends it with its reason, without a retry. A key near its expiry is
 //   renewed through the same provider (`keyNeeded`); no key then ends the conversation too. One exception: the stream
 //   limit (`SonioxSpeech.Failure.isStreamLimit`) ends that item's synthesis; what Soniox said plays out and the item
@@ -111,15 +112,17 @@ extension RealtimeConversation {
     var limited: Set<String> = []
   }
 
-  /// An item that played audio is not over yet: the conversation speaks.
-  var speechSpeaking: Bool { tts.items.values.contains { $0.hadAudio } }
+  /// An item or a reading that played audio has not ended: the conversation speaks.
+  var speechSpeaking: Bool { tts.items.values.contains { $0.hadAudio } || readingSpeaking }
   /// An item waits for its synthesis or playback, or a response waits for the fixes.
   var speechWaiting: Bool { !tts.items.isEmpty || tts.orderHeld }
 
-  /// The total for the end line. An item whose synthesis did not end makes it a floor.
+  /// The total for the end line. An item or a tool's reading whose synthesis did not end makes it a floor.
   var speechTotal: SpeechCount {
     var total = tts.total
-    if tts.items.values.contains(where: { !$0.synthesized }) { total.cut = true }
+    let itemCut = tts.items.values.contains { !$0.synthesized }
+    let readingCut = readings.active.values.contains { !$0.synthesized }
+    if itemCut || readingCut { total.cut = true }
     return total
   }
 
@@ -167,9 +170,15 @@ extension RealtimeConversation {
     updatePhase()
   }
 
-  /// Characters of an item went out to Soniox: they count for the price.
+  /// Characters of an item or a reading went out to Soniox: they count for the price.
   private func speechSent(_ characters: Int, item: String) {
-    guard let response = tts.items[item]?.response else { return }
+    guard let response = tts.items[item]?.response else {
+      guard readings.active[item] != nil else { return }
+      tts.total.characters += characters
+      // A reading's whole text goes out with its start frame: its stream started.
+      readingStreamStarted(item)
+      return
+    }
     tts.counts[response, default: SpeechCount()].characters += characters
     tts.total.characters += characters
   }
@@ -188,6 +197,7 @@ extension RealtimeConversation {
     for (item, entry) in tts.items where entry.response == response && !entry.textEnded { speechTextDone(item: item) }
     fixAtDone(response)
     logSpeech(response)
+    answerMayBeOver(response)
   }
 
   // MARK: - Playback
@@ -200,6 +210,7 @@ extension RealtimeConversation {
   // MARK: - Soniox events
 
   private func speechEvent(_ event: SonioxSpeech.Event, generation: Int) {
+    if readingEvent(event) { return }
     switch event {
     case let .audio(item, pcm): speechAudio(pcm, item: item)
     case let .characters(item, characters): tts.items[item]?.spoken.append(characters)
@@ -212,6 +223,7 @@ extension RealtimeConversation {
         entry.cut = true
         tts.items[item] = entry
         tts.limited.insert(item)
+        answers.limited.insert(entry.response)
         tts.counts[entry.response, default: SpeechCount()].cut = true
         tts.total.cut = true
         return
@@ -226,15 +238,20 @@ extension RealtimeConversation {
     let samples = RealtimeAudioFormat.samples(in: pcm)
     tts.counts[entry.response, default: SpeechCount()].samples += samples
     tts.total.samples += samples
-    if let stoppedAt = speechStoppedAt, tts.firstPCMFor != stoppedAt {
-      tts.firstPCMFor = stoppedAt
-      let milliseconds = Int(((dependencies.scheduler.now - stoppedAt) * 1000).rounded())
-      handlers.diagnostic(.speechFirstPCM(milliseconds: milliseconds))
-    }
+    logFirstPCM()
     guard !interrupted.contains(entry.response) else { return }
     entry.hadAudio = true
     tts.items[item] = entry
+    answers.audible.insert(entry.response)
     play(pcm, response: entry.response, item: item)
+  }
+
+  /// The first PCM from Soniox since the end of the user's speech: its time goes to `client.log` once.
+  func logFirstPCM() {
+    guard let stoppedAt = speechStoppedAt, tts.firstPCMFor != stoppedAt else { return }
+    tts.firstPCMFor = stoppedAt
+    let milliseconds = Int(((dependencies.scheduler.now - stoppedAt) * 1000).rounded())
+    handlers.diagnostic(.speechFirstPCM(milliseconds: milliseconds))
   }
 
   private func speechFinished(_ item: String) {
@@ -250,6 +267,8 @@ extension RealtimeConversation {
   /// The item played out whole: the conversation keeps it, unless the stream limit cut its synthesis short.
   private func completeSpeech(_ item: String) {
     guard let entry = tts.items.removeValue(forKey: item) else { return }
+    // Text the user never heard: the response does not count as played out whole.
+    if !entry.hadAudio { answers.silent.insert(entry.response) }
     if !playbackPending, items[item] != nil {
       items[item] = nil
       itemOrder.removeAll { $0 == item }
@@ -261,6 +280,7 @@ extension RealtimeConversation {
       tts.settled.insert(item)
     }
     logSpeech(entry.response)
+    answerMayBeOver(entry.response)
   }
 
   /// The speech line of a response that is over and whose items all ended.

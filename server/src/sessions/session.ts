@@ -16,6 +16,7 @@ import type {
   MessageAttachment, RefuseReason, ServerEvent, SessionArtifact, SessionPullRequest, SessionScheduledTask, SessionState, SessionSummary, SessionUsage,
   TranscriptMessage, TranscriptNotice, TranscriptPromptBlocked,
 } from '@rarog/shared';
+import { createHash, randomBytes } from 'node:crypto';
 import { MAX_TRANSCRIPT_MESSAGES } from '@rarog/shared';
 import { isServerSentence, say } from '@rarog/shared/sentences';
 import type { AnyText, OwnText, SentenceRef } from '@rarog/shared/sentences';
@@ -226,6 +227,8 @@ export interface SessionInit {
   /** Wersja CLI zainstalowana w chwili, gdy panel uruchomił Rarog; tylko w pamięci procesu serwera. */
   cliVersionAtLaunch?: string;
   ringCapacity?: number;
+  /** The last seq of the card this one replaces under the same id; the ring numbers on from it. */
+  ringStartSeq?: number;
   herdrMode?: HerdrMode;
   outOfScope?: boolean;
   /** Adres panelu w herdr (`w9:p72`) — do deep-linku „Pokaż w herdr" i diagnostyki. */
@@ -642,6 +645,11 @@ export class Session {
   /** Suma wag wiadomości w `#messages` — drugi sufit transkryptu (bajty, nie sztuki). */
   #messageBytes = 0;
   /**
+   * Random name of this memory of the session for {@link readMark}: a card made again under the same id (a pane that
+   * resumes the same conversation) numbers its messages from 1 again.
+   */
+  readonly #memoryId = randomBytes(6).toString('base64url');
+  /**
    * Ring `seq` of the newest event when the pane last moved to another engine conversation (`/clear`, `/resume`); `0`
    * before any move. A message in memory with a higher `seq` belongs to the conversation the session writes now
    * ({@link lastMessageOfConversation}). Server-side only: not in `summary()` and not on the wire. When the history
@@ -703,7 +711,7 @@ export class Session {
     this.lastGitSignature = undefined;
     this.lastGitEvent = undefined;
     // Ring ma sufit BAJTÓW obok sufitu sztuk — patrz `ring-buffer.ts`.
-    this.ring = new RingBuffer<ServerEvent>(init.ringCapacity, { maxBytes: RING_MAX_BYTES });
+    this.ring = new RingBuffer<ServerEvent>(init.ringCapacity, { maxBytes: RING_MAX_BYTES, startSeq: init.ringStartSeq });
   }
 
   /** Kształt wysyłany do klienta (pola serwerowe zostają na serwerze). */
@@ -840,6 +848,20 @@ export class Session {
   lastMessageOfConversation(): TranscriptMessage | undefined {
     const last = this.#messages.at(-1);
     return last !== undefined && (last.seq ?? 0) > this.conversationStartSeq ? last : undefined;
+  }
+
+  /**
+   * Opaque name of what this memory of the session holds, the voice agent's read mark: the random name of this memory
+   * (`#memoryId`), the ring `seq` of the newest message (`0` before the first one) and a digest of {@link stateSince}.
+   * Every message added to the transcript ({@link appendMessage}: a prompt, an agent message, a notice, imported
+   * history) gives another one, and so does every new `stateSince` (a state change, a history import that moves it
+   * back). Frames sent while the state stands and seen marks leave it as it is. The state stamp is there because
+   * the messages reach the memory from the conversation file while herdr reports a turn's states on its own: a turn
+   * can end before its messages arrive. 37 characters at most (8 + 1 + 16 digits of a safe integer + 1 + 11).
+   */
+  get readMark(): string {
+    const stamp = createHash('sha256').update(this.stateSince).digest('base64url').slice(0, 11);
+    return `${this.#memoryId}.${String(this.#messages.at(-1)?.seq ?? 0)}.${stamp}`;
   }
 
   get messageCount(): number {

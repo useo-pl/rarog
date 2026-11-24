@@ -158,11 +158,11 @@ describe('consent canary push: the release and its result, once', () => {
   it('the same result from a new run sends nothing; a changed `main` sends again', async () => {
     const s = server();
     await s.check();
-    await writeCanary({ '2.1.326': { main: 'unmeasured' } });
+    await writeCanary({ [ABOVE]: { main: 'unmeasured' } });
     await s.check();
-    await writeCanary({ '2.1.326': { main: 'unmeasured', at: '2026-11-15T09:00:00Z', subagents: 'pass' } });
+    await writeCanary({ [ABOVE]: { main: 'unmeasured', at: '2026-11-15T09:00:00Z', subagents: 'pass' } });
     await s.check();
-    await writeCanary({ '2.1.326': { main: 'pass', at: '2026-11-15T10:00:00Z' } });
+    await writeCanary({ [ABOVE]: { main: 'pass', at: '2026-11-15T10:00:00Z' } });
     await s.check();
     expect(s.sent.map((c) => c.bodyRef?.code)).toEqual(['push.canary-body.unmeasured', 'push.canary-body.pass']);
   });

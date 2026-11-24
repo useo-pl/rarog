@@ -31,7 +31,8 @@ import {
   DIFF_SESSION_NOT_FOUND_ERROR,
 } from '@rarog/shared';
 import type {
-  CommandList, CreateSessionResponse, DecisionRefusedBody, DiffFileList, DiffFilePatch, DirEntry, DirListing, ModelList,
+  CommandList, CreateSessionResponse, DecisionRefusedBody, DiffFileList, DiffFilePatch, DirEntry, DirListing,
+  FileIndex, FileListing, FileTooLargeBody, ModelList,
   NotesConflictBody, NotesDoc, SessionModeResponse, SessionModelResponse, SessionSummary, TermOpenResponse,
   VoiceToken, interruptResponseSchema, notesPutResponseSchema, resumableListSchema, termHistoryResponseSchema,
 } from '@rarog/shared';
@@ -43,7 +44,7 @@ import {
 } from '@rarog/shared/rest';
 import type {
   ApnsStatusResponse, CompanionAsk, CompanionSessions, CompanionSpeechToken, CompanionToken, CompanionTurns, DeviceList,
-  DeviceMe, DeviceRevokedBody, ErrorBody,
+  DeviceMe, DeviceRevokedBody, ErrorBody, InboxActionResponse, InboxCardResponse, InboxList,
   MessageAccepted, OkAck, PairResponse, PairingIssued, PlanUsageResponse, QueueTakeBackResponse, RestartResponse,
   ResumeResponse, ServerIroh, ServerSystem, TermListResponse, VersionResponse,
 } from '@rarog/shared/rest';
@@ -75,8 +76,11 @@ import { serverSystem } from './version.ts';
 import type { MacStats } from './mac-stats.ts';
 import { COMPANION_SPEECH_KEY, type SpeechKeyMinter, type VoiceMinter, createVoiceMinter } from './voice/soniox.ts';
 import { type CompanionTokenMinter, createCompanionTokenMinter } from './companion/openai-token.ts';
+import { type FileIndexer, SessionFileIndex } from './files/file-index.ts';
+import { FileDownloads } from './files/send-file.ts';
 import type { RouteContext, RouteGroup, RouteRequest } from './routes/context.ts';
 import { handleDemoPairing, routeDevices } from './routes/devices.ts';
+import { type InboxRoutesPort, routeInbox } from './routes/inbox.ts';
 import { routeLimits } from './routes/limits.ts';
 import { routeNotes } from './routes/notes.ts';
 import { routeProjects } from './routes/projects.ts';
@@ -181,6 +185,14 @@ export interface RouterDeps {
    */
   readonly companionSpeechToken?: SpeechKeyMinter;
   /**
+   * Session file downloads in flight by device (`files/send-file.ts`); the unpair effects stop them, so the server
+   * passes the registry it gives `attachDeactivation`. Default: a registry of the router's own, which only the client
+   * and the end of the file close.
+   */
+  readonly fileDownloads?: FileDownloads;
+  /** Walks of the session file index (`files/file-index.ts`). Default: an indexer of the router's own. */
+  readonly fileIndex?: FileIndexer;
+  /**
    * Rejestr obecności klientów albo `undefined`, gdy Rarog nie pushuje (nie ma kanału APNs).
    *
    * Brak pola nie wyłącza endpointu, tylko czyni go no-opem: apka wysyła beacon zawsze,
@@ -205,6 +217,8 @@ export interface RouterDeps {
    * przed `listen`). Niesie je `GET /api/version` i `PairResponse.server`. Brak albo `null` = serwer bez nasłuchu.
    */
   readonly iroh?: ServerIroh | null;
+  /** The Inbox card tracker (`server/src/inbox/`); missing = `RAROG_INBOX=0`, the Inbox routes answer 503. */
+  readonly inbox?: InboxRoutesPort;
   /**
    * System maszyny serwera dla `GET /api/version` (`system`): `index.ts` podaje `serverSystem()` z `process.platform`,
    * demo stałe `macos` (`demo/mac.ts`), producent złotych odpowiedzi stałą wartość (CI jedzie na Linuksie). Brak
@@ -260,13 +274,17 @@ export type RequestHandler = (req: IncomingMessage, res: ServerResponse) => void
  * Ciało błędu na drucie. Powstaje wyłącznie w {@link errorBody} (przez {@link sendError} albo {@link errorBodyOf}):
  * tekst `message` bierze się zawsze ze zdania, nigdy z gołego napisu.
  */
-type ErrorBodyOut = ErrorBody | DecisionRefusedBody | NotesConflictBody | DeviceRevokedBody;
+type ErrorBodyOut = ErrorBody | DecisionRefusedBody | NotesConflictBody | DeviceRevokedBody | FileTooLargeBody;
 
-/** Pola ciała błędu poza `error` i `message`: powód odmowy decyzji, aktualne notatki, data odpięcia urządzenia. */
+/**
+ * Fields of an error body beyond `error` and `message`: the reason of a refused decision, the current notes, the date
+ * a device was revoked, the size and the limit of a file over the limit.
+ */
 type ErrorExtra =
   | Pick<DecisionRefusedBody, 'reason'>
   | Pick<NotesConflictBody, 'current'>
-  | Pick<DeviceRevokedBody, 'revokedAt' | 'revokedBy'>;
+  | Pick<DeviceRevokedBody, 'revokedAt' | 'revokedBy'>
+  | Pick<FileTooLargeBody, 'size' | 'maxBytes'>;
 
 /**
  * Ciała odpowiedzi 2xx, które router wysyła — typy kontraktu z `rest.ts` i `protocol.ts` (albo typy zwracane przez
@@ -275,6 +293,9 @@ type ErrorExtra =
  */
 type ResponseBody =
   | OkAck
+  | InboxList
+  | InboxCardResponse
+  | InboxActionResponse
   | MessageAccepted
   | VersionResponse
   | PlanUsageResponse
@@ -301,6 +322,8 @@ type ResponseBody =
   | DirEntry
   | DiffFileList
   | DiffFilePatch
+  | FileListing
+  | FileIndex
   | NotesDoc
   | MacStats
   | VoiceToken
@@ -715,6 +738,8 @@ export function createRouter(deps: RouterDeps): RequestHandler {
     ?? createUsageProvider({ logger: (line) => { log.info(line); } });
   const loginLimiter = deps.loginLimiter ?? createLoginLimiter();
   const interruptWaitMs = deps.interruptWaitMs ?? INTERRUPT_WAIT_MS;
+  const fileDownloads = deps.fileDownloads ?? new FileDownloads();
+  const fileIndex = deps.fileIndex ?? new SessionFileIndex();
   const { config, manager, hub, serverStartId, startedAtMs, presence, apns } = deps;
   const notes = deps.notes ?? fileNotes(config.dataDir);
   const system = deps.system ?? serverSystem();
@@ -780,10 +805,11 @@ export function createRouter(deps: RouterDeps): RequestHandler {
   const ctx: RouteContext = {
     deps, config, manager, hub, serverStartId, startedAtMs, presence, apns, notes, system, voice, companionToken,
     companionAvailable, companionSessionsAvailable, companionTurns, companionSpeechToken, usageProvider,
-    healthProbes, secrets, log, interruptWaitMs, apnsTestCooldown, loginLimiter,
+    healthProbes, secrets, log, interruptWaitMs, apnsTestCooldown, loginLimiter, fileDownloads, fileIndex,
   };
   const ROUTE_GROUPS: readonly RouteGroup[] = [
     routeSystem, routeTerminal, routeNotes, routeDevices, routeProjects, routeLimits, routePush, routeSessions,
+    routeInbox,
   ];
 
   /**

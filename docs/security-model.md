@@ -253,9 +253,23 @@ Code: `server/src/iroh/` (listener) and `server/src/auth/` (rules of the iroh so
   caps strings at 60 characters; guards stand in a server test on the WHOLE payload with a command in each field
   (`notify-live-activity.test.ts`), the golden frames (`shared/test/apns-fixtures.test.ts`) and Swift
   (`ApnsFramesTests`, `LiveActivityContractTests`, `LiveActivityInputTests`). An activity token is an ADDRESS like a
-  device token and never reaches a log. The Live Activity has no Allow actions. Signing out ends it locally; the
-  server ends it 10 min before the system's 8 h limit and deletes the `liveActivity` block after `410`, and in any
-  case 8 h after the start. Without updates the Live Activity marks its data as stale after 15 minutes.
+  device token and never reaches a log. This Live Activity, the sessions board, has no actions. Signing out ends it
+  locally; the server ends it 10 min before the system's 8 h limit and deletes the `liveActivity` block after `410`,
+  and in any case 8 h after the start. Without updates the Live Activity marks its data as stale after 15 minutes.
+- **Voice Live Activity of the native app.** The second Live Activity stands only while the locked-phone trial is
+  on and a voice conversation or a message-field dictation records (`docs/companion.md`, "Locked phone (trial)").
+  The app starts, updates and ends it itself, without a push type, so nothing from the server reaches it. Its state
+  carries ONLY the kind (conversation or dictation), a phase from a closed set, the start time of the system timer,
+  the scope (all sessions or one session) and, for one session, its project and session name as the app's list
+  shows them, each through the voice agent's secret mask (`MicrophoneSubject.of`) and cut to 80 characters
+  (`VoiceActivityAttributes.ContentState`; `VoiceActivityAttributesTests` checks the encoded keys): NEVER a prompt,
+  dictated text or a question. While the recording runs, the Lock Screen shows that project and session name to
+  anyone who holds the phone. Its one action, End (Stop for a dictation), is a `LiveActivityIntent` (`EndVoiceActivityIntent`) that declares
+  `IntentAuthenticationPolicy.alwaysAllowed`, which Apple's documentation describes as letting the intent run at
+  any time, including when the device is locked. The intent declares no unlock because it only stops the
+  microphone the way the user's own end does: it sends nothing, a dictation keeps its text in the field unsent,
+  and it opens no app. If the system runs it on a locked phone, whoever holds the phone can stop a recording and
+  nothing more. Its `client.log` lines name the kind and nothing else.
 
 ## iroh relay on a VPS (`relay-vps/`)
 
@@ -379,9 +393,10 @@ install (then `~/Projects`: an older copy reads only the roots). A path lies in 
 One predicate, `insideWorkArea` in `server/src/config/work-area.ts`, answers for every consumer: the session and
 terminal start (`validateProjectCwd`), the directory browser and creating a directory in it ("Creating a directory
 from the New Session form" below), the project scan, pane scope (item 6 of "herdr sessions" below), the diff, the
-command list, the voice agent, attachment reads, and the permission and context hooks (`roots.json`). A protected
-folder is refused on the text of the path, before the first `stat`, because a read there makes macOS ask for access,
-and nobody answers that prompt on a Mac used remotely. Symlinks are resolved one segment at a time
+session file listing and download ("Session files: listing and download" below), the command list, the voice agent,
+attachment reads, and the permission and context hooks (`roots.json`). A protected folder is refused on the text of the path,
+before the first `stat`, because a read there makes macOS ask for access, and nobody answers that prompt on a Mac used
+remotely. Symlinks are resolved one segment at a time
 (`resolveInWorkArea`), and the walk stops before an excluded folder, so `<root>/link -> ~/Desktop/x` is refused
 without a read in `Desktop`. The walk starts from the roots and home in their on-disk form, so a root that is a
 symlink to home (`/srv/home -> ~`) keeps `/srv/home/Desktop` out too. Pane scope, the diff, the command list, the
@@ -1300,24 +1315,42 @@ short; the full list stands in `docs/companion.md`, "Security":
 - **A prompt from the conversation.** With the same two flags, the voice agent can cause a prompt to be typed into a
   Claude Code session whose screen the device does not have open, through `POST /api/sessions/:id/messages` with
   `source: "voice-agent"` and the conversation token it read (`docs/companion.md`, "Sending from the conversation").
-  The prompt runs at once and cannot be taken back. What stops it on the server: a body with only one of the two
-  fields (400), either flag off (503 for a body that carries both, and the restart that applies the flag drops the
-  agent's prompts still queued), a 409 when the session writes another engine conversation than the one the agent
-  read, the gates of the message route with its throttle (240 sends an hour for all sessions), and
-  `RAROG_HERDR_SEND=0`, which refuses every send. The owner's spoken confirmation lives in the app and is not a
-  server guarantee; the server cannot tell an unmarked body from a typed message, and a paired device could always send prompts. The agent's
-  prompts carry `sender` in the audit log (rule 8 of "herdr sessions").
+  The prompt runs at once and cannot be taken back, so this is a power of its own. Its gates, in order:
+  1. the two flags on the server;
+  2. the mode's own consent in the app, on top of the voice agent's;
+  3. the exact reading: the app has Soniox read the project, the session and the exact prompt aloud, and the text it
+     sends is the text it read (`docs/companion.md`, "Conversation across sessions");
+  4. the user's confirmation in an utterance that began after the reading ended, by the app's count of the input
+     audio; a cut reading, a reading not read and a word that began during it send nothing, and speech after the
+     model asked for the send stops it until the app's outbox takes the prompt, and so does any sound over the
+     agent's answer after the confirming utterance, also one the app takes for noise;
+  5. the conversation token captured when the prompt was shown: the app sends nothing when the catalog shows another
+     token, a dialog, or a turn the session started since, and the server answers 409 with nothing in the pane when
+     the session writes another engine conversation than the one of the token;
+  6. the server's gates: a body with only one of the two fields (400), either flag off (503 for a body that carries
+     both, and the restart that applies the flag drops the agent's prompts still queued), the gates of the message
+     route with its throttle (240 sends an hour for all sessions), and `RAROG_HERDR_SEND=0`, which refuses every
+     send;
+  7. the audit entry: the agent's prompts carry `sender` in the audit log (rule 8 of "herdr sessions").
+
+  What it does not protect against: the model judges whether the utterance is a yes, and anyone near the phone can
+  say it. The confirmation lives in the app and is not a server guarantee; the server cannot tell an unmarked body
+  from a typed message, and a paired device could always send prompts. To turn it off: `RAROG_COMPANION_SESSIONS=0`
+  and `rarog restart` ("Emergency runbook").
 - **A result marked as received.** With the same two flags, `POST /api/sessions/:id/seen` with
-  `{by: "voice-agent", stateSince, conversation}` marks the result the agent read as received, with `seenBy` on the
-  row (`docs/companion.md`, "Picking up a result"). It cancels the session's pending push notification and, while
-  herdr shows a standing `done` badge, calls `agent.focus`, which switches the view of every attached herdr client on
-  the Mac, behind the gates of the person's receipt (`RAROG_HERDR_SEEN_FOCUS=0`, `RAROG_HERDR_SEND=0`, read-only
-  herdr). A wrong pick-up hides a result from the owner, and an outside model drives the agent, so the server takes
-  only the result the agent read. What stops it on the server: either flag off (503), a session outside the session
-  catalog (404), and a 409 with nothing changed for a session outside `waiting-input` or with a permission card,
-  question or consent card in `pending` waiting on it, for another `stateSince`, and for another engine conversation
-  than the one of the token the agent read. The body without `by` is the app's own receipt, which any paired device
-  can send.
+  `{by: "voice-agent", conversation, readMark}` from a turns read marks the result the agent read as received, with
+  `seenBy` on the row (`docs/companion.md`, "Picking up a result"). It cancels the session's pending push
+  notification and, while herdr shows a standing `done` badge, calls `agent.focus`, which switches the view of every
+  attached herdr client on the Mac, behind the gates of the person's receipt (`RAROG_HERDR_SEEN_FOCUS=0`,
+  `RAROG_HERDR_SEND=0`, read-only herdr). A wrong pick-up hides a result from the owner, and an outside model drives
+  the agent, so the server takes only the result the agent read. What stops it on the server: either flag off (503),
+  a session outside the session catalog (404), and a 409 with nothing changed for a session outside `waiting-input`
+  or with a permission card, question or consent card in `pending` waiting on it, for another engine conversation
+  than the one of the token the agent read, for a message in the session's memory newer than that read or another
+  `stateSince` (another `readMark`), and for a turns read that returned no messages or a message trimmed to the
+  ceiling of one message, whose mark names no read and meets no session's mark. A turn shorter than the
+  supervisor's `working` grace whose messages the server has not followed from the conversation file yet is outside
+  that check. The body without `by` is the app's own receipt, which any paired device can send.
 - **The keys stay on the server.** `OPENAI_API_KEY` and `SONIOX_API_KEY` are in `logSecrets` and in no response. A
   paired device gets only short-lived OpenAI keys (60 s) and temporary Soniox speech keys (600 s), each behind a
   throttle shared by all devices, so every paired device can spend the accounts' money within those limits: the
@@ -1352,6 +1385,36 @@ channel, so this section says where it goes and what it carries.
   a repository name, a URL or anything `gh` printed.
 - **Demo and review mode** never start `gh`: the states come from a fixed map
   (`server/test/demo-review-proces.test.ts`).
+
+## Inbox: the last message of every session on request
+
+The Inbox (`docs/implementation-spec.md`, "Inbox") puts the last message of the agent's latest turn of every Claude
+Code session in scope in one place. `RAROG_INBOX` is on by default; `0` takes the capability, the stream events and
+the routes away (503). It is not a killswitch: it approves nothing and sends nothing to a pane.
+
+- **What a device gets.** Any paired device can read the text of every session's card (`GET /api/inbox`, at most
+  12,000 characters each) and the heads of the cards on a stream opened with `inbox=1`. The same devices read the
+  same text today through the session stream, which gives the whole transcript of any session in scope, so the Inbox
+  adds no reach; it gathers what a device could read one session at a time. A Codex pane, a pane out of scope and a
+  closed session have no card. The route goes through the same three gates as every route (`Origin` for a mutation,
+  the device key, the device again after the body), and a device revoked before its request gets nothing.
+- **A decision card's pending card.** For a decision card whose permission or question card is still pending, the
+  route reads that card the way the session stream does when it opens; a consent channel card then counts as shown
+  on a device, which is true, because the device is receiving it. The card tracker itself never reads it.
+- **What lies on disk.** `<dataDir>/inbox.json` (`0600`, written atomically) keeps the removals: per entry the
+  session id, an opaque hash of the turn, the card kind, the dialog kind and an opaque hash of the dialog's identity,
+  the moment of a failure, and whether the removal received the result. No text, no path, no command. The open
+  sessions keep their entries; those of closed sessions are capped at 500. A damaged file reads as no removals, and the
+  next removal replaces it; deleting it brings back the removed cards and nothing else ("Persistent state on disk" in
+  `docs/architecture.md`).
+- **A removal is a receipt.** Removing a `result` card of a session in `waiting-input` receives the result like
+  opening the session in the app: the push for that result goes, the unread dot goes, and for a standing `done` in
+  herdr Rarog focuses the pane on the Mac (`agent.focus`, only with `RAROG_HERDR_SEND` and `RAROG_HERDR_SEEN_FOCUS`
+  on). So a stolen key can hide results and move the Mac's view, as it can today by opening sessions. Removing a
+  `decision` or `failed` card only hides it on every device; the decision stays in the session and in the terminal.
+  A restore takes the receipt back only when the removal gave it.
+- **Demo and review mode.** The cards come from the demo sessions in memory, and removals go to `inbox.json` of the
+  demo data directory; a demo restart does not bring them back into force.
 
 ## Tailnet name in the header
 
@@ -1444,8 +1507,9 @@ blocked by a `UserPromptSubmit` hook (body `{resend: {seq, id}}`). Limits:
 Rarog does not change repositories: there is no `git switch`, `pull` or `push` from the phone and no `/api/git/*`
 route. A person changes a repo from the iPad in the console (lazygit under `Cmd+G`), so under `RAROG_TERM`. The server
 runs git only for the git line in the header (`git status --porcelain=v2 --branch --untracked-files=all`,
-`git log -1`) and the session diff: whole (`GET /api/sessions/:id/diff`) or per file (`GET …/diff/files`, the change
-list, and `GET …/diff/file?path=…`, one file's patch). Limits:
+`git log -1`), the session diff: whole (`GET /api/sessions/:id/diff`) or per file (`GET …/diff/files`, the change
+list, and `GET …/diff/file?path=…`, one file's patch), and the `ignored` labels of the session file listing
+(`git check-ignore`, "Session files: listing and download" below). Limits:
 
 - **The server chooses the directory, not the client.** Everything runs in the SESSION's `cwd`, behind the credential
   gate; the whole diff and the list take no path from the request, and untracked files the whole diff adds (at most
@@ -1466,9 +1530,10 @@ list, and `GET …/diff/file?path=…`, one file's patch). Limits:
   an unchanged one is not on it, `ls-files` does not descend into a symlink, and `--literal-pathspecs` makes
   `docs/*.md` a path, not a pattern. Evidence: `server/test/git-diff.test.ts` (fake git) and
   `server/test/git-diff-repo.test.ts` (real git).
-- **The diff does not leave scope, the session directory or the repo** (one gate, `#diffSession`, for all three
-  routes): a session outside the work area of `RAROG_HERDR_ROOTS` gets 400, and the gate checks the directory the
-  read WILL use (`session.cwd`, which does not follow `cd`); every `git diff HEAD` runs with `--relative`, so a session
+- **The diff does not leave scope, the session directory or the repo** (one gate, `diffSession` in
+  `server/src/sessions/session-scope.ts`, for all three routes): a session outside the work area of
+  `RAROG_HERDR_ROOTS` gets 400, and the gate checks the directory the read WILL use (`session.cwd`, which does not
+  follow `cd`); every `git diff HEAD` runs with `--relative`, so a session
   in a repo subdirectory does not get the whole repo's patch; only a REGULAR file goes to `--no-index`
   (`probeUntracked`), because for a symlink to a directory git compares `/dev/null` with `<symlink>/null` and would hand
   out a file from outside the repo (measured on git 2.54, `server/test/git-file-details.test.ts`), so a symlink gets a
@@ -1530,11 +1595,12 @@ list, and `GET …/diff/file?path=…`, one file's patch). Limits:
   **The session diff needs git 2.44 or newer**, the first version that honours `GIT_NO_LAZY_FETCH`. The runner reads
   `git version` once per `PATH`; with an older git, or output it cannot read, it refuses every `diff` without
   starting it. The change list and the file route then answer 503 `git-failed`, the whole diff is empty, and the git
-  line has no line counts; `status`, `log -1`, `ls-files` and `rev-parse` still run, because a lazy fetch was
-  measured on `diff` only. Callers pass `{ global, sub, rest }`: `global` accepts only `--literal-pathspecs`, `sub`
-  only `status`, `log`, `diff`, `ls-files` or `rev-parse` (`GIT_SUBCOMMANDS`), checked again at run time, so
-  a "subcommand" `-c` cannot override the guards; the version read is the runner's own fixed command, outside that
-  list. `server/test/pliki-zwykle-guard.test.ts` checks that the literal `'git'` appears once, in the runner.
+  line has no line counts; `status`, `log -1`, `ls-files`, `rev-parse` and `check-ignore` still run, because a lazy
+  fetch was measured on `diff` only. Callers pass `{ global, sub, rest }`: `global` accepts only `--literal-pathspecs`,
+  `sub` only `status`, `log`, `diff`, `ls-files`, `rev-parse` or `check-ignore` (`GIT_SUBCOMMANDS`), checked again at
+  run time, so a "subcommand" `-c` cannot override the guards; the version read is the runner's own fixed command,
+  outside that list. `server/test/pliki-zwykle-guard.test.ts` checks that the literal `'git'` appears once, in the
+  runner.
   Evidence on real git 2.54, each case with a control run of plain git that does start the program:
   `server/test/git-konfiguracja-repo.test.ts`. `GIT_CONFIG_GLOBAL=/dev/null` is not used: without `~/.gitconfig`
   `ls-files` loses the global `core.excludesFile`.
@@ -1607,6 +1673,92 @@ reason): the server data directory, transcripts in `~/.claude/projects`, `~/.cla
 the push key file from the server config and the checkout's `package.json`. The guard collects bindings from import
 lines (alias, namespace, `promises`), and a dynamic import or `require` of `fs` is forbidden. A new `fs` read in
 `server/src` without an entry fails `pnpm test`.
+
+## Session files: listing and download
+
+`GET /api/sessions/:id/files?dir=…` (`docs/implementation-spec.md`, "Session files") lists one directory under the
+session directory: names, kinds, file sizes and git's `ignored` label. `GET /api/sessions/:id/files/raw?path=…` sends
+the bytes of one file there. `GET /api/sessions/:id/files/index` gives the paths of the files under the session
+directory, for the app's search. `RAROG_FILES` is on by default; `0` takes the three routes and the `files` and
+`file-index` capabilities away. It is not a killswitch: it approves nothing and sends nothing to a pane.
+
+- **What a device gets.** Any paired device lists any directory under the directory of a Claude Code session in
+  scope and downloads any file there up to the limit, including directories and files git ignores. A name kept out of
+  git without a leading dot (`config/master.key`, `*.pem`) is listed with its size and sent like any other. The same
+  devices can already start a session and ask the agent to read such a file, and outside a repository there is no git
+  rule to lean on, so the routes add no reach. The `ignored` label is information, not a boundary: when git fails,
+  the labels go and the listing stays, and a download never asks git.
+- **What it never shows or sends.** A segment or an entry that starts with a dot (`.env`, `.git`, `.github`),
+  `node_modules` in any letter case, a symlink, a special file (FIFO, socket, device), a file with more than one hard
+  link (a hard link to a file outside the session directory would pass every path check), a path outside the session
+  directory, an entry outside the work area ("Work area: where Rarog starts, lists and reads" above) and a name that is
+  not valid UTF-8. A Codex entry, a pane out of scope and a session without a herdr pane get 400 before any disk call.
+- **One path rule** (`server/src/files/path-rule.ts`) for the requested directory or file, in this order: the shape
+  check (as on the diff routes); the text: a hidden segment, `node_modules` and the work area of `RAROG_HERDR_ROOTS` on
+  `cwd + dir`, so a macOS-protected folder of home is refused before any disk call; a walk from the session directory
+  one segment at a time, where the parent's entries must hold the segment byte for byte (letter case and Unicode form
+  too) and each segment must be a directory, never a symlink; then `realpath`, which must be exactly the session
+  directory on disk plus `dir`, inside the work area. After the read the directory must still be the one the walk
+  found (`dev` and `ino`), else 404. Each entry gets its own `lstat` and must still be of the kind the read gave, so
+  an entry swapped for a symlink since the read is left out. A mount point under the session directory is a directory
+  like any other and stays on the listing.
+- **The open of a file** walks the same way, the last segment a regular file, and then opens through
+  `openRegularFile` of `server/src/safe-read.ts` (`O_NOFOLLOW`, `O_NONBLOCK`, so a FIFO answers at once). The
+  `fstat` of that descriptor must show a regular file with one hard link (a second link may name a file outside the
+  session directory). After the open, `realpath` of the path must again be the walked place, and its `stat` must carry
+  the descriptor's `dev` and `ino`; else 404 with the descriptor closed.
+- **The download** (`server/src/files/session-download.ts`, `server/src/files/send-file.ts`). The limit,
+  `RAROG_FILES_MAX_MB` (1 to 1024 MB), is checked on the `fstat` of the open descriptor before the first byte: 413
+  with the size and the limit. The bytes come from that one descriptor, exactly the `fstat` size in pieces of 64 KiB
+  at their own offsets, so a file swapped or appended after the open does not change what goes out, and a file cut
+  while it is sent destroys the response. One piece per download is held in memory, never the file. The response
+  carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. The device is checked again after the open,
+  before the headers, and the download is registered under it with no wait in between: revoking the device destroys
+  the response and closes the file, over TCP and over iroh ("Pairing and device keys" below). A client that goes away
+  closes the file too.
+- **The read binds to the directory, not its path** (`readDirectoryByIdentity` in `server/src/safe-read.ts`). On
+  Linux the directory is opened with `O_DIRECTORY | O_NOFOLLOW`, its `fstat` must carry the `dev` and `ino` of the
+  walk, and the entries come from the descriptor through `/proc/self/fd/<fd>`. On macOS the entries come through
+  `/.vol/<dev>/<ino>`: the kernel turns the inode back into its current path within the one call, so a swap made
+  before the call does not redirect it.
+- **The `ignored` label** comes from `git check-ignore` through the only git runner ("Git reads" above: the closed
+  list of subcommands, the guards, the pinned repository, the macOS sandbox). It runs in the listed directory, so a
+  nested repository and a submodule answer with their own `.gitignore` and `info/exclude`. Every name goes after `--`
+  and after `./`, because `check-ignore` refuses `--literal-pathspecs` (git 2.54.0), and a name that starts with `:`
+  would otherwise read as pathspec magic; names go 200 per process, as arguments, since the runner gives git no stdin.
+  Only an output line in the form `./<name>` counts. A line in another form, a broken C-style quote, an exit code
+  other than 0 or 1 in any batch, a timeout or a capped read drops every label of the listing; exit code 1 means that
+  batch has nothing ignored. A tracked file gets no label.
+- **The index** (`server/src/files/file-index.ts`) reaches no further than the listing: every directory it walks is
+  read by the listing and its path rule, so it holds no path a listing would not show. Git only narrows it to the
+  files git does not ignore (`git ls-files` through the same runner, in the session directory); a path git names
+  that the walk does not find never reaches the index. The walk is bounded: one walk at a time per session directory,
+  with requests during it sharing its answer, and ceilings of 20 000 paths, 2 MiB of body and a soft budget of 3 s,
+  past which the index comes with `truncated: true`. The device is checked again after the walk. A search pattern
+  never reaches the server: the app matches the index itself.
+- **Demo and review mode.** Every demo session lists one fixed project from memory, indexes it and sends its files
+  from memory; no disk call, no git.
+
+Accepted risk:
+
+- On macOS the read through `/.vol` narrows the window of a swap of the directory for a symlink during the read, but
+  does not close it: Node has no descriptor-based directory read there. The checks after the read narrow it further.
+- A volume without `/.vol` support (some network file systems, FAT) answers 404 for every listing on macOS.
+- A swap of an intermediate directory for a symlink between the walk and the open of a file is narrowed by the check
+  after the open (the path resolves to the walked place, whose file is the one the descriptor holds), not closed for
+  every order of steps.
+- Swapping a directory needs a process that writes in the session directory, and such a process already reads the
+  user's files with the user's rights; the listing and the download go only to the owner's paired devices.
+
+Evidence: `server/test/files-sciezka.test.ts` (the path rule, with a disk that counts calls and swaps a directory
+between two of them), `server/test/session-files-repo.test.ts` (real git: hidden and special entries, the label in a
+nested repository, a submodule and a session directory without git, quoted names, failed batches),
+`server/test/session-files.test.ts` (the route, the refusals, the switch, the demo), `server/test/file-index.test.ts`
+and `server/test/file-index-repo.test.ts` (the index: what a listing leaves out, a directory swapped during the walk,
+the ceilings and the budget, one walk at a time, the scope from git with a nested repository and a submodule),
+`server/test/session-files-raw.test.ts` (the download: the limit from the variable, exact bytes, a file appended or
+cut while it is sent, a client gone, a revocation over TCP and over iroh, the demo) and `server/test/safe-read.test.ts`
+(the exact reader).
 
 ## Pairing and device keys
 
@@ -1768,7 +1920,8 @@ proof rule gives a consent card the approve button from the hook channel alone, 
 a signed `allow` reaches only the hook that waits for its own call, and a late `allow` after a decision at the desk
 runs nothing (`docs/dialogs.md`, "`PermissionRequest` hook behavior"). If a new release tied the late `allow` of an
 orphaned hook to whatever dialog stands at that moment, the phone would approve a command it never showed. So the
-rule holds on releases up to the package constant `CONSENT_CHANNEL_MEASURED_CLI` and on exact releases that
+rule holds on releases up to the package constant `CONSENT_CHANNEL_MEASURED_CLI` except the exact releases it
+excludes (a release under it that did not pass the measurement for both request kinds), and on exact releases that
 `<dataDir>/consent-canary.json` lists as passed, per request kind. Every other release gets the screen top rule,
 which needs the dialog alone on top of the screen, and so does a release and kind with a failed entry, also up to
 the constant. A file the server does not trust (a mode other than `0600`, not a regular file, not JSON, a field
@@ -1885,8 +2038,9 @@ invalidates that creator's unused codes and CLOSES the device's running SSE stre
 `deviceId` when opened; a check at open alone would not cut off a live shell). The console socket is cut
 synchronously (an `err` frame and code 1008; frames after the cut go to the bin; no close confirmation within 2 s,
 `TERM_REVOKE_TERMINATE_MS`, drops the socket). It also kills the `claude -p` process of every voice agent question
-the device has in flight and closes those responses without a body. Finally it ends the device's Live Activity and
-deletes the APNs tokens registered with its key.
+the device has in flight and closes those responses without a body, and it destroys the responses of the device's
+session file downloads in flight and closes their files ("Session files: listing and download" above). Finally it ends
+the device's Live Activity and deletes the APNs tokens registered with its key.
 
 **Logs and `redact()`.** Device lines carry the id, creator and counts, never the secret, hash, push key, code or
 label. `redact()` masks `authorization`, `secret*`, `pushKey` and the value `Rarog-Device <…>` anywhere in text
@@ -1939,7 +2093,7 @@ and before any route handler (`classifyReviewRoute` in `server/src/router.ts`). 
 - `allow`: the route works as in the plain demo, method and body checks included: `/health`, `/api/version`,
   `/api/pair`, `/api/devices` (also `/me` and `/forget`), `/api/stream`, `/api/notes`, `/api/client-log`,
   `/api/presence`, projects, resumable sessions, usage, `/api/mac`, `/api/models`, `/api/fs`, `/api/voice/token`,
-  push registration (a no-op without APNs), `/api/sessions` and the 17 actions under `/api/sessions/:id/` (sub-paths
+  push registration (a no-op without APNs), `/api/sessions` and the 19 actions under `/api/sessions/:id/` (sub-paths
   such as `diff/files` or `uploads/:file` take the class of their action).
 - `retired`: `/api/login`, the fixed 410 `login-retired`.
 - `refuse`: `POST /api/pairings` → 403 `demo-review` (`demo.review-refused`). A paired device issues no code, so the
@@ -2108,10 +2262,10 @@ Directory layout of the per-server spaces: `native/Rarog/docs/app-target.md`, "D
   thumbnails live only in process memory (`NSCache`, up to 120 items).
 - **Preferences** in `UserDefaults` hold paths, session ids, flags and dates, zero conversation content:
   `rarog.projectTabs`, `rarog.projectHistory`, `rarog.listCollapsed`, `rarog.newSession`,
-  `rarog.transcript.lastSeen`, `rarog.collapsedProjects`, `rarog.sessionHistory`, `rarog.inspectorOpen`,
-  `rarog.inspectorChangesCollapsed`, `rarog.push.snoozedUntil`, the pairing state `rarog.server.revoked`,
-  `rarog.devices.known.<serverId>` and `rarog.devices.notices.<serverId>`, and the dictation choice
-  `rarog.dictation.choice`.
+  `rarog.transcript.lastSeen`, `rarog.collapsedProjects`, `rarog.pinnedProjects`, `rarog.sessionHistory`,
+  `rarog.inspectorOpen`, `rarog.inspectorChangesCollapsed`, `rarog.push.snoozedUntil`, the pairing state
+  `rarog.server.revoked`, `rarog.devices.known.<serverId>` and `rarog.devices.notices.<serverId>`, and the dictation
+  choice `rarog.dictation.choice`.
 - **Dictation:** no Soniox secret on the device: the app gets only a TEMPORARY Soniox key per connection attempt.
   The dictation choice (`system` or `soniox`) belongs to the device, so another server, logout and Forget Server
   leave it. The microphone works only between two taps (or ⌥⌘M) and stops on going to the background and on a
@@ -2142,22 +2296,36 @@ it is staged and `npm i @rarog/server` does not get it. One path leads to staged
 `.github/workflows/publish.yml` in the public repo, the only one with `id-token: write`, in the `npm` environment. The
 package's trusted publisher accepts an OIDC token only from that workflow file, repo and environment, and only for
 `npm stage publish`. The package has "Require two-factor authentication and disallow tokens", so no npm token
-publishes it, and the workflow has no secrets.
+publishes it, and the workflow has no secrets. The `npm` environment admits only `v*` tags and has no required
+reviewer: whoever can start the workflow on such a tag gets a version to staged, and the only human approval on the
+path is `npm stage approve`.
 
 **Blocked:**
 
-- **Taking over the public repo or the GitHub account** gives at most a staged version. Before approving, the owner
-  downloads it (`npm stage download`) and compares it file by file (`scripts/package-audit.mjs --files-only`) with a
-  tarball built from their own copy of the sources, building and running nothing fetched from GitHub; foreign content
-  fails and the version is rejected (`npm stage reject`).
+- **Taking over the public repo or the GitHub account** gives at most a staged version and cannot publish a different
+  tarball unnoticed. Before approval, the staged tarball (`npm stage download`) must have the sha256 that the `build`
+  job reported for the release run, and its files must match, file by file (`scripts/package-audit.mjs
+  --files-only`), a tarball that the owner's release tooling built on the owner's machine from the export tree that
+  passed the release gate, building and running nothing fetched from GitHub. The sha256 ties the staged version to
+  that run; the file comparison stops content that differs from the tested sources. On any mismatch nothing is
+  approved, and the version is rejected (`npm stage reject`).
 - **Taking over the npm account without the 2FA device** gives at most a staged version (`npm stage publish` does not
-  ask for 2FA; `npm stage approve` and `npm publish` do), so the owner's npm session ends with `npm logout` right
-  after approval.
-- **Swapping the tarball between workflow jobs:** `sbom` and `publish` check the artifact's sha256 against the output
-  of the `build` job that built and audited it.
+  ask for 2FA; `npm stage approve` and `npm publish` do), so the approval step ends the owner's npm session with
+  `npm logout` on every exit, after a refusal or an interruption too.
+- **Swapping the tarball between workflow jobs:** `sbom-ubuntu`, `sbom-macos` and `publish` check the artifact's
+  sha256 against the output of the `build` job that built and audited it.
 - **Injection through workflow inputs:** version and name reach scripts through environment variables, never through
-  `${{ }}` in script text; the version must be X.Y.Z, the name has one allowed value (`@rarog/server`, any other is
-  refused), and publishing starts only from a `v<version>` tag.
+  `${{ }}` in script text; the version must be X.Y.Z or X.Y.Z-beta.N, the name has one allowed value
+  (`@rarog/server`, any other is refused), and publishing starts only from a `v<version>` tag.
+
+**Beta versions** take the same path and the same approval as stable ones. The `build` job derives the dist-tag from
+the version, and `publish` takes it only from that job's output and accepts only `beta` or `latest`: a beta goes out
+with `--tag beta`, a stable version without `--tag`, so npm tags it `latest` and refuses a version lower than the
+current `latest`. A plain `npm i @rarog/server` resolves `latest` and does not install a beta.
+
+**The SBOM is a record, not a gate of the boundary.** `publish` waits for `sbom-ubuntu` only. A red `sbom-macos`
+(for example, a macOS-only difference in the installed dependencies) marks the run red and does not keep the version
+from staged; its SBOM artifact is missing then.
 
 **`rarog update` installs only a release of this workflow.** An installed version updates itself only to one tarball
 that npm downloaded and the update checked: its sha512 equals the registry's `dist.integrity`, npm's own signature

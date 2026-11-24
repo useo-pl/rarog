@@ -125,6 +125,8 @@ struct DetailView: View {
     case .terminal, .openingTerminal:
       // Trasa bez celu (id spoza kształtu `TERM_ID_RE`, katalog odrzucony) — nigdy ślepy zaułek.
       UnknownSessionView(text: UICopy.terminalMissing) { navigation.detail = nil }
+    case .inbox:
+      InboxScreen(store: store, drafts: drafts)
     case nil:
       Placeholder(text: UICopy.detailPlaceholder, store: store)
     }
@@ -137,10 +139,10 @@ private struct InspectorLayout: Equatable {
   let eligible: Bool
 }
 
-/// Ekran terminala na trasie: most `TerminalScreen` z tożsamością ekranu z nawigacji — przepięcie
-/// „Nowego terminala" na jego id nie tworzy nowego kontrolera (i nowej powłoki), a inny terminal tak.
-/// „×" wraca do ostatnio aktywnej sesji projektu, Historia otwiera arkusz. „⋯" i „×" stoją
-/// w pasku nawigacji, jak „×" sesji (`chrome`, `HeaderSessionSlot`).
+/// The terminal screen on the route: the `TerminalScreen` bridge with the screen identity from the navigation, so
+/// moving "New Terminal" onto its id makes no new controller (and no new shell), while another terminal does. "×"
+/// goes back to the project's session last active, History opens a sheet. "⋯" and "×" stand in the icon group of the
+/// navigation bar (`chrome`, `HeaderSessionSlot`).
 struct TerminalRouteView: View {
   let store: RarogStore
   let navigation: RarogNavigation

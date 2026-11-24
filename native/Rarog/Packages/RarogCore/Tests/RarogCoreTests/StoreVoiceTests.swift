@@ -43,6 +43,14 @@ final class VoiceProbe: RarogTransporting, @unchecked Sendable {
     /// Soniox speech key of the voice agent; `hold` as above.
     var speech: Result<CompanionSpeechToken, TransportError> = .failure(.http(APIFailure(status: 404)))
     var speechCalls = 0
+    /// The voice agent across sessions (`StoreCompanionSessionsTests`): catalog and turns; `hold` as above.
+    var catalog: Result<CompanionSessions, TransportError> = .failure(.http(APIFailure(status: 404)))
+    var catalogCalls = 0
+    var turns: Result<CompanionTurns, TransportError> = .failure(.http(APIFailure(status: 404)))
+    var turnsReads: [(sessionId: String, count: Int)] = []
+    /// The voice agent's pick-up of a result it read; `hold` as above.
+    var pickUp: Result<Void, TransportError> = .success(())
+    var pickUps: [(sessionId: String, pickUp: SeenPickUp)] = []
   }
 
   let base: FakeTransport
@@ -111,6 +119,34 @@ final class VoiceProbe: RarogTransporting, @unchecked Sendable {
     }
     try await wait(hold)
     return try result.get()
+  }
+
+  func companionSessions() async throws(TransportError) -> CompanionSessions {
+    let (result, hold) = probe.withLock { state in
+      state.catalogCalls += 1
+      return (state.catalog, state.hold)
+    }
+    try await wait(hold)
+    return try result.get()
+  }
+
+  func companionTurns(sessionId: String, count: Int) async throws(TransportError) -> CompanionTurns {
+    let (result, hold) = probe.withLock { state in
+      state.turnsReads.append((sessionId, count))
+      return (state.turns, state.hold)
+    }
+    try await wait(hold)
+    return try result.get()
+  }
+
+  func pickUpResult(sessionId: String, _ pickUp: SeenPickUp) async throws(TransportError) {
+    try await gated("/api/sessions/\(sessionId)/seen")
+    let (result, hold) = probe.withLock { state in
+      state.pickUps.append((sessionId, pickUp))
+      return (state.pickUp, state.hold)
+    }
+    try await wait(hold)
+    try result.get()
   }
 
   private func gated(_ path: String) async throws(TransportError) {

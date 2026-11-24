@@ -519,14 +519,15 @@ What these routes do beyond the contract:
   only for a pane that stands on `done`. herdr has no "mark seen" method; the only lever is `agent.focus`, so the
   price is that every attached herdr client switches its view, remote clients over SSH or mosh included (herdr 0.9.1
   and newer switch all of them). `RAROG_HERDR_SEEN_FOCUS=0` skips the herdr call and keeps only the local marker. The
-  app calls it once per `stateSince` for a session on `waiting-input` whose `seen` is not `true` (`noteResultViewed`
-  and `seenTarget` in `RarogCore`). In the work states `starting` and `running` the server only clears a waiting push
+  app calls it once per `stateSince` for a session on `waiting-input` whose `seen` is not `true` or whose card carries `seenBy`
+  (`noteResultViewed` and `seenTarget` in `RarogCore`), so a person opening a result the voice agent picked up takes
+  `seenBy` away. In the work states `starting` and `running` the server only clears a waiting push
   (`notifier.seen(id)`), because a glance during a turn does not take a result that does not exist yet. A body
-  `{by: "voice-agent", stateSince, conversation}` is the voice agent's pick-up of the result it read: the same
+  `{by: "voice-agent", conversation, readMark}` is the voice agent's pick-up of the result it read: the same
   receipt with the same effects, `agent.focus` for a pane on `done` included, plus `seenBy` on the card. The server
-  takes it only for a session in `waiting-input` with no decision card waiting on it, at the `stateSince` and in the
-  engine conversation the agent read, and answers 409 with no effect otherwise (`docs/companion.md`, "Picking up a
-  result").
+  takes it only for a session in `waiting-input` with no decision card waiting on it, in the engine conversation the
+  agent read, with no message in its memory newer than the turns read and the `stateSince` of that read (`readMark`),
+  and answers 409 with no effect otherwise (`docs/companion.md`, "Picking up a result").
 - **`…/unseen`** ("mark as unread") undoes the taking of a STANDING result: on `waiting-input` with `seen: true` the
   field goes back to `undefined`, and the store writes an `unseen` entry under the current state number (it survives
   a Rarog restart). The card then carries `markedUnseen: true` until the result is taken or a turn starts, and loses
@@ -584,9 +585,11 @@ What these routes do beyond the contract:
   (`DECISION_STATES`), and `text` is the first line of the content cut to `WAITING_TEXT_MAX` (120 characters). The
   client composes the line (in the app `UICopy.waitingLine`).
 - **`…/focus`** and **`…/close`** with `closePanel` answer **409** with a sentence on a dead herdr socket, not 500.
-- **`…/interrupt`** is the ONLY endpoint that waits for the effect: it returns `202 {ok, session, delivered}`, where
-  `delivered` says whether `escape` reached the pane. The wait has a deadline (`INTERRUPT_WAIT_MS`; after it
-  `'pending'`), because the client retries after 10 s. The manager swallows repeats (one in-flight promise per session
+- **`…/interrupt`** is the ONLY endpoint that waits for the effect: it returns `202 {ok, session, delivered,
+  returnedPrompt?}`, where `delivered` says whether `escape` reached the pane and `returnedPrompt` is the prompt
+  Claude Code handed back to its field after a delivered key
+  (`implementation-spec.md`, "`returnedPrompt`: the prompt back in the field"). The wait has a deadline
+  (`INTERRUPT_WAIT_MS`; after it `'pending'`), because the client retries after 10 s. The manager swallows repeats (one in-flight promise per session
   plus a one-second debounce), because requests also come from a second device and from network retries.
 
 ### The `seen` flag
@@ -1188,9 +1191,10 @@ signature test says which signature lost coverage.
 ## Inbox cards (`server/src/inbox/`)
 
 The server keeps one Inbox card per open session: the last message of the agent's latest turn that ended with a
-result, waits for a decision or stopped. The module sends nothing to devices and has no routes. `startInbox`
+result, waits for a decision or stopped. `startInbox`
 (`server/src/bootstrap/inbox.ts`) joins it to the session manager's events and reads every session's card once after
-the start; the demo has no Inbox.
+the start. Devices get card heads on the global stream and card text through routes (`docs/implementation-spec.md`,
+"Inbox"); the demo computes its cards from the demo sessions' in-memory events (`server/src/demo/inbox.ts`).
 
 - **Source.** The card comes from the tail of the conversation file the session writes now (`readInputSegments` in
   `server/src/herdr/input-segments.ts`): every turn input opens a segment, and the card text is the assistant text
@@ -1209,20 +1213,25 @@ the start; the demo has no Inbox.
   text (a manual `/compact`) keep the previous card, and a conversation without such a segment (right after `/clear`
   or `/resume`) has no `result` card. A `decision` card carries only the dialog of the session summary (`waitingFor`
   or `herdrDialog`) and the id of the card in the session stream it describes (`requestId`, the `permId` or `qId`),
-  not the pending card itself: reading that (`ManagerApi.transcript`) marks consent cards as shown on a device. The
+  not the pending card itself, neither in the tracker nor in the routes: reading that (`ManagerApi.transcript`) marks
+  every consent card of the session as shown on a device. The
   id comes from `PendingDialogs` (`server/src/inbox/dialogs.ts`), which folds the session stream's permission and
   question events and picks the card the way the summary's `waitingFor` does. It gives the id only when the folded
   card matches what `waitingFor` says (tool, subject, text line, question count), because a consent card the server
   recovered at start never came as an event and the fold would pick the card behind it; otherwise the card is known
-  by `waitingFor`. The fold keeps digests of those lines, not their text.
+  by `waitingFor`. A consent card the fold knows only from `permission-settled` (recovered at start and shown in a
+  snapshot before its first change) holds its place in the fold but gives no id, because that event carries neither
+  its tool nor its text. The fold keeps digests of those lines, not their text.
 - **A read that proves nothing keeps the shown turn.** A file that cannot be read, or a window that does not begin at
   the first entry of the file (cut by the byte ceiling or by the message ceiling) and holds no result, keeps the turn
   and text of the card; its kind, state and time follow the session state as always.
 - **Identity.** `turnId` hashes the engine conversation id and the identity of the entry that opened the turn;
-  `version` also changes with late text of the same turn, the kind, the identity of a decision's dialog and the moment
-  the session entered a failure state. A dialog's identity is the card id (`requestId`), else what the summary says of
-  the card, else the recognised dialog of a pane dialog without a card and why it has no buttons; never the moment
-  the session entered its state, which a server restart moves. Both are opaque.
+  `version` also changes with late text of the same turn, the kind, the identity of a decision's dialog, the state
+  and buttons of its consent channel card (`state`, `canAllow` and `unavailable`, which `permission-settled` changes
+  in place; `PendingDialogs.request`) and the moment the session entered a failure state. A dialog's identity is the
+  card id (`requestId`), else what the summary says of the card, else the recognised dialog of a pane dialog without
+  a card and why it has no buttons; never the moment the session entered its state, which a server restart moves, and
+  never the buttons, so a removal holds while they change. Both are opaque.
 - **Removal** (`Inbox.remove`, `Inbox.restore`). A removal is stored in `inbox.json` ("Persistent state on disk"
   below) under the turn for a `result`, the turn, the dialog kind and the dialog's identity for a `decision`, and the
   turn and the state's start for a `failed` card. Late text of the same turn keeps the card hidden, and so does the next
@@ -1249,7 +1258,9 @@ the start; the demo has no Inbox.
    waiting-input · waiting-permission · waiting-question · limit-reached · error · interrupted · done · resumable`.
    Nothing else assigns `state` by hand (the one exception: demo seeds).
 3. **Ring buffer in RAM** per session, the source of tail replay after `Last-Event-ID`. `seq` lives within one
-   `serverStartId` and rides with it in the frame `id:`, so a cursor from another process ends in a snapshot. The cap
+   `serverStartId` and rides with it in the frame `id:`, so a cursor from another process ends in a snapshot. A new
+   card under the same id (restart, `resume()`) numbers on after the old card, so a cursor of the old card ends in a
+   snapshot too, and the open streams of that id get one before the new card's first frame. The cap
    is **twofold, items AND bytes**: 500 ring events and 500 transcript messages, plus `RING_MAX_BYTES` (4 MB)
    separately for the ring and for the message array that `transcript-snapshot` is built from; a single message over
    `MAX_MESSAGE_BYTES` (256 kB) is cut with an explicit marker, because one message can carry megabytes of base64.

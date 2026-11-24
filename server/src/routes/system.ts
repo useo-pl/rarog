@@ -20,7 +20,7 @@ import { HEALTH_ALIVE, fullHealthAllowed, healthPayload, readHookHealth } from '
 import {
   clientLabel, methodNotAllowed, readValidatedBody, recheckDevice, sendError, sendJson,
 } from '../router.ts';
-import { SERVER_CAPABILITIES } from '../version.ts';
+import { serverCapabilities } from '../version.ts';
 import type { RouteContext, RouteRequest } from './context.ts';
 
 /**
@@ -118,9 +118,9 @@ export async function routeSystem(
       apnsEnabled: apns !== undefined,
       /*
        * Możliwości po nazwie (`version.ts`) — apka sprawdza, czy serwer umie to, czego ona
-       * potrzebuje, zamiast porównywać numery wersji. Dziś pusta lista (kopia stałej `readonly`).
+       * potrzebuje, zamiast porównywać numery wersji. `inbox` only while the server keeps an Inbox.
        */
-      capabilities: [...SERVER_CAPABILITIES],
+      capabilities: serverCapabilities({ inbox: deps.inbox !== undefined, files: config.filesEnabled }),
       /*
        * System maszyny serwera (`serverSystem` w `version.ts`): apka bierze z niego słowo maszyny, „Mac” albo
        * „VPS”. Pole jest zawsze; klient czyta brak (serwer sprzed pola) jako „nie wiem”.
@@ -279,7 +279,8 @@ export async function routeSystem(
   if (pathname === '/api/stream') {
     if (method !== 'GET') return methodNotAllowed(res, 'GET');
     // `Accept-Encoding` decyduje o kompresji strumienia (`RAROG_SSE_GZIP`).
-    hub.openGlobal(res, owner, req.headers['accept-encoding']);
+    // `inbox=1`: an app that shows the Inbox asks for its heads (`docs/implementation-spec.md`, "Inbox").
+    hub.openGlobal(res, owner, req.headers['accept-encoding'], rq.url.searchParams.get('inbox') === '1');
     return true;
   }
 

@@ -122,7 +122,8 @@ struct SettingsSheet: View {
       DictationChoiceView(model: dictation, presentation: .settingsPage)
     case .voiceAgent:
       VoiceAgentSettingsPage(
-        model: voiceAgent, availability: { voiceAgentAvailability }, sonioxOnServer: { store.state.sonioxOnServer })
+        model: voiceAgent, availability: { voiceAgentAvailability }, sonioxOnServer: { store.state.sonioxOnServer },
+        sessionsOffered: { store.state.companionSessionsOffered(sonioxAllowed: store.dictation.sonioxAllowed) })
     case .textSize:
       TextSizeSettingsPage(scale: textScale)
     case .about:

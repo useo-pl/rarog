@@ -119,10 +119,12 @@ struct RequestFixturesTests {
       sender: MessageSender(source: .voiceAgent, expectedConversation: "c0nversat10nT0ken-abcd")),
     // A result viewed in the app: the empty body `markSeen` of the client sends.
     "seen.json": EmptyBody(),
-    // The voice agent across sessions picks up the result it read: who, and the `stateSince` and the conversation
-    // token of that read.
+    // The voice agent across sessions picks up the result it read: who, and the conversation token and the read mark
+    // of that turns read.
     "seen.voice-agent.json": SeenBody(pickUp: SeenPickUp(
-      by: .voiceAgent, stateSince: "2026-10-03T10:00:00.000Z", conversation: "c0nversat10nT0ken-abcd")),
+      by: .voiceAgent, conversation: "c0nversat10nT0ken-abcd", readMark: "m3moryN4me.42")),
+    // Remove or restore an Inbox card: the turn and the version from the card's head.
+    "inbox.action.json": InboxActionBody(turnId: "pX8n2cHq5zKe4uTy9bWa1f", version: "iVg-BNMOCnubka4wnzQxI7"),
   ]
 
   @Test("a seen body without a pick-up encodes to the bytes of the app's empty body, with no pick-up field")

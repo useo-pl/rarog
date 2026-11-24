@@ -111,7 +111,7 @@ export function redactAuditText(value: string, secrets: readonly string[] = []):
 export const HERDR_REFUSE_REASONS = REFUSE_REASONS;
 
 /**
- * Powody spoza drivera — do dziennika nie trafiają, bo `#auditRefusal` woła wyłącznie driver.
+ * Powody spoza drivera — do dziennika nie trafiają, bo `auditRefusal` woła wyłącznie driver.
  *
  * `in-flight` powstaje w blokadzie równoległych prób (`PendingInteractions`) i mówi „poczekaj,
  * decyzja z drugiego urządzenia właśnie leci" — to nie jest awaria ścieżki cyfrowej, więc

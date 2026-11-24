@@ -1,7 +1,7 @@
 /**
- * Esc pressed while a send is still in flight (`drivers/herdr-driver.ts`, `interrupt()`). The CLI hands the
- * interrupted prompt back to its field, so the next send has to clear the field first. The flag that asks for it
- * must survive the end of the send that was in flight when Esc came.
+ * Esc pressed while a send is still in flight (`drivers/herdr-driver.ts`, `interrupt()`). Esc may hand the
+ * interrupted prompt back to its field (CLI 2.1.329), so the next send has to clear the field first. The flag that
+ * asks for it must survive the end of the send that was in flight when Esc came.
  */
 import { describe, expect, it } from 'vitest';
 import { EMPTY_FIELD, fieldScreen, makeDriver, quiet, useDriverSandbox, waitFor } from './helpers/herdr-driver-atrapy.ts';

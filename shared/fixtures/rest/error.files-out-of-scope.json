@@ -1,0 +1,7 @@
+{
+  "error": "out-of-scope",
+  "message": "The pane is outside RAROG_HERDR_ROOTS. Rarog shows its state but not the files in its directory.",
+  "messageRef": {
+    "code": "rest.files-out-of-scope"
+  }
+}

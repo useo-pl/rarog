@@ -8,14 +8,19 @@ import SwiftUI
 /// The keyboard shortcut section of the voice agent stands under them while the agent is on
 /// (`VoiceAgentSettingsModel.showsShortcut`).
 /// Klucz OpenAI i model ustawia serwer Raroga, nie ta strona. Strona zgody to strona w stosie Ustawień, nie arkusz
-/// (jeden arkusz naraz). A server that does not offer the agent gets the setup steps instead of all of that
-/// (`VoiceAgentSettingsModel.showsSetup`): no switch, no consent, and the stored consent stays as it is.
+/// (jeden arkusz naraz). Where the server offers the mode across sessions, a second switch turns
+/// that mode on through its own consent page and off by removing its consent
+/// (`VoiceAgentSettingsModel.showsSessions`). A server that does not offer the agent gets the setup steps instead of
+/// all of that (`VoiceAgentSettingsModel.showsSetup`): no switch, no consent, and the stored consent stays as it is.
+/// The last section is the locked-phone trial switch (`LockedPhoneTrial`), shown wherever the page has its switches.
 struct VoiceAgentSettingsPage: View {
   @Bindable var model: VoiceAgentSettingsModel
   /// From `SettingsSheet`: read from the store inside this body, so the page follows the server live (a version
   /// probe while the page is open swaps the steps for the switch and back).
   let availability: @MainActor () -> VoiceAgentSettingsAvailability
   let sonioxOnServer: @MainActor () -> SonioxServerState
+  /// The server offers the mode across sessions (`AppState.companionSessionsOffered`), read live like `availability`.
+  let sessionsOffered: @MainActor () -> Bool
 
   var body: some View {
     if VoiceAgentSettingsModel.showsSetup(availability()) {
@@ -49,6 +54,16 @@ struct VoiceAgentSettingsPage: View {
       } footer: {
         Text(UICopy.voiceAgentLead())
       }
+      if model.showsSessions(offered: sessionsOffered()) {
+        Section {
+          Toggle(
+            UICopy.voiceAgentSessionsTitle(),
+            isOn: Binding(get: { model.sessionsIsOn }, set: { model.toggleSessions($0) }))
+            .accessibilityIdentifier("voiceAgent.sessions.toggle")
+        } footer: {
+          Text(UICopy.voiceAgentSessionsLead())
+        }
+      }
       if settings.enabled {
         let soniox = model.sonioxVoice()
         Section {
@@ -68,13 +83,30 @@ struct VoiceAgentSettingsPage: View {
       if model.showsShortcut {
         ShortcutPageSection(shortcut: .voiceAgent)
       }
+      Section {
+        let trial = settings.lockedPhoneTrial
+        Toggle(UICopy.voiceAgentLockedTrialTitle(), isOn: Binding(get: { trial.on }, set: { trial.set($0) }))
+          .accessibilityIdentifier("voiceAgent.lockedTrial.toggle")
+      } footer: {
+        Text(UICopy.voiceAgentLockedTrialLead())
+      }
     }
     .scrollContentBackground(.hidden)
     .background(Color(uiColor: Palette.background))
     .navigationDestination(isPresented: $model.consentShown) {
-      VoiceAgentConsentPage(model: model)
-        // The consent page takes the keyboard from this page's anchor, which leaves the window.
-        .background { SheetKeyboardAnchor() }
+      VoiceAgentConsentPage(
+        content: model.consent(), identifier: "voiceAgent.consent", accept: { model.acceptConsent() },
+        cancel: { model.cancelConsent() }
+      )
+      // The consent page takes the keyboard from this page's anchor, which leaves the window.
+      .background { SheetKeyboardAnchor() }
+    }
+    .navigationDestination(isPresented: $model.sessionsConsentShown) {
+      VoiceAgentConsentPage(
+        content: model.sessionsConsent(), identifier: "voiceAgent.sessions.consent",
+        accept: { model.acceptSessionsConsent() }, cancel: { model.cancelSessionsConsent() }
+      )
+      .background { SheetKeyboardAnchor() }
     }
   }
 }

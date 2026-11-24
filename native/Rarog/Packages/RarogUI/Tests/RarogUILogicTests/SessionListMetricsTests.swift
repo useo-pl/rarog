@@ -31,4 +31,20 @@ struct SessionListMetricsTests {
     #expect(SessionListMetrics.headerMinWidth(columnWidth: 0) == 0, "kolumna niezmierzona")
     #expect(SessionListMetrics.headerMinWidth(columnWidth: 460) == 332, "największe pismo: kolumna szersza")
   }
+
+  /// The waveform glyph of the voice conversation across sessions is a third 44 pt target before New Session: the
+  /// header's minimum leaves it room, or "AGENCI" slides past the left edge, and stays wider than the symmetric room.
+  @Test("list header with the voice button: room for one more target, still at the leading edge")
+  func headerMinWidthWithVoiceButton() {
+    for column in [CGFloat(320), 402] {
+      let two = SessionListMetrics.headerMinWidth(columnWidth: column)
+      let three = SessionListMetrics.headerMinWidth(columnWidth: column, voiceButton: true)
+      let target = HeaderMetrics.iconTarget + HeaderMetrics.iconSpacing
+      #expect(three <= two - target, "\(column): one more target and its spacing")
+      // The first button starts one target earlier; the bar centres the header only when it fits symmetrically.
+      let firstButton = 16 + two + 8 - target
+      #expect(16 + three <= firstButton - 8, "\(column): before the voice button with a gap")
+      #expect(three > 2 * (firstButton - 8 - column / 2), "\(column): wider than the symmetric room")
+    }
+  }
 }

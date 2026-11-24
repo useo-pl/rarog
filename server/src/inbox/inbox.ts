@@ -2,7 +2,8 @@
  * The server's Inbox: the card of every open session (`card.ts`), read again from the session's conversation file
  * after the session manager's events, and the removals people made (`removals.ts`), with their effect on the receipt
  * of the result. It learns about sessions only from the events it is given and asks the manager through
- * {@link InboxPort}. It sends nothing to devices and has no routes.
+ * {@link InboxPort}. It sends nothing to devices and has no routes: it tells its listeners (`onChange`) which session's
+ * card or removal may have changed, and `heads.ts` turns that into the events of the stream.
  */
 import type { ServerEvent, SessionState, SessionSummary } from '@rarog/shared';
 import type { ManagerApi } from '../sessions/manager-api.ts';
@@ -125,6 +126,7 @@ export class Inbox {
   readonly #running = new Map<string, Promise<boolean>>();
   /** The read of each session asked for while its previous read ran; it starts once that one ends. */
   readonly #queued = new Map<string, Promise<boolean>>();
+  readonly #listeners = new Set<(sessionId: string) => void>();
   #disposed = false;
 
   constructor(config: InboxConfig, port: InboxPort) {
@@ -199,6 +201,15 @@ export class Inbox {
     }
   }
 
+  /**
+   * Listener of changes: called with a session after every card read and every change of its card or removals,
+   * also when nothing visible changed (the listener compares). Returns the function that detaches it.
+   */
+  onChange(listener: (sessionId: string) => void): () => void {
+    this.#listeners.add(listener);
+    return () => { this.#listeners.delete(listener); };
+  }
+
   /** The card of a session, also a removed one; `null` = none. */
   card(sessionId: string): InboxCard | null {
     return this.#cards.get(sessionId) ?? null;
@@ -243,6 +254,7 @@ export class Inbox {
       sessionId, ...key, ...(receipt && session.seen !== true ? { seen: true as const } : {}),
     };
     const stored = await this.#store.add(entry);
+    this.#notify(sessionId);
     if (stored === 'failed') return { kind: 'write-failed' };
     if (stored === 'present') return { kind: 'done', changed: false };
     if (!due) return CHANGED;
@@ -269,6 +281,7 @@ export class Inbox {
     if (!this.#store.has(key)) return { kind: 'done', changed: false };
     if (card.version !== ref.version || found.moved) return STALE;
     const removed = await this.#store.delete(key);
+    this.#notify(sessionId);
     if (removed === 'failed') return { kind: 'write-failed' };
     if (removed === 'absent') return { kind: 'done', changed: false };
     if (removed.entry.seen !== true) return CHANGED;
@@ -343,6 +356,7 @@ export class Inbox {
       this.#transitions.delete(id);
       this.#looks.delete(id);
       this.#states.delete(id);
+      this.#notify(id);
     }
   }
 
@@ -381,7 +395,10 @@ export class Inbox {
         this.#log(`inbox: card read failed for session ${sessionId} (${err instanceof Error ? err.message : String(err)})`);
         return false;
       })
-      .finally(() => { this.#running.delete(sessionId); });
+      .finally(() => {
+        this.#running.delete(sessionId);
+        this.#notify(sessionId);
+      });
     this.#running.set(sessionId, read);
     return read;
   }
@@ -452,7 +469,7 @@ export class Inbox {
       turns = { conversation, shown, ended: session.state === 'waiting-input' ? shown : turns.ended };
     }
     this.#turns.set(sessionId, turns);
-    const requestOf: RequestOf = (dialog, waitingFor) => this.#dialogs.current(sessionId, dialog, waitingFor);
+    const requestOf: RequestOf = (dialog, waitingFor) => this.#dialogs.request(sessionId, dialog, waitingFor);
     const card = composeCard(session, working ? turns.ended : turns.shown, requestOf);
     if (card === null) {
       this.#cards.delete(sessionId);
@@ -477,6 +494,12 @@ export class Inbox {
   #forget(sessionId: string): void {
     this.#cards.delete(sessionId);
     this.#turns.delete(sessionId);
+    this.#notify(sessionId);
+  }
+
+  #notify(sessionId: string): void {
+    if (this.#disposed) return;
+    for (const listener of this.#listeners) this.#safely(sessionId, 'change listener', () => { listener(sessionId); });
   }
 
   #safely(sessionId: string, what: string, step: () => void): void {

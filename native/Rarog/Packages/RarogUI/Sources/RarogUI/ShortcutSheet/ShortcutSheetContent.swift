@@ -67,7 +67,7 @@ public struct ShortcutSheetContent: Sendable, Equatable {
     var items: [Item] {
       switch self {
       case .sessionsAndProject:
-        [.newSession, .newTerminal, .nextSession, .previousSession, .previousProject, .toggleRead, .note]
+        [.newSession, .newTerminal, .previousProject, .toggleRead, .note]
       case .tabsAndView:
         [.tabs, .lastTab, .closeTab, .toggleList, .toggleInspector, .popupShell, .popupLazygit, .textBigger,
          .textSmaller, .textActualSize]
@@ -80,7 +80,7 @@ public struct ShortcutSheetContent: Sendable, Equatable {
 
   /// One row of the sheet.
   public enum Item: Sendable, Hashable, CaseIterable {
-    case newSession, newTerminal, nextSession, previousSession, previousProject, toggleRead, note
+    case newSession, newTerminal, previousProject, toggleRead, note
     case tabs, lastTab, closeTab, toggleList, toggleInspector, popupShell, popupLazygit
     case textBigger, textSmaller, textActualSize
     case send, stop, dictation, voiceAgent
@@ -92,8 +92,6 @@ public struct ShortcutSheetContent: Sendable, Equatable {
       switch self {
       case .newSession: [.app(.newSession)]
       case .newTerminal: [.app(.newTerminal)]
-      case .nextSession: [.app(.nextSession)]
-      case .previousSession: [.app(.previousSession)]
       case .previousProject: [.app(.previousProject)]
       case .toggleRead: [.app(.toggleRead)]
       case .note: [.app(.note)]
@@ -135,7 +133,7 @@ public struct ShortcutSheetContent: Sendable, Equatable {
         capabilities.terminal
       case .voiceAgent: capabilities.voiceAgent
       case .toggleList, .toggleInspector: capabilities.wideIPad
-      case .newSession, .nextSession, .previousSession, .previousProject, .toggleRead, .tabs, .lastTab, .closeTab,
+      case .newSession, .previousProject, .toggleRead, .tabs, .lastTab, .closeTab,
         .send, .stop, .dictation, .launchSession, .closeWindow, .textBigger, .textSmaller, .textActualSize:
         true
       }

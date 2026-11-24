@@ -3,8 +3,8 @@ import RarogContract
 import RarogCore
 
 // Pasek cytatu promptu nad transkryptem i lista tur: reguły testowane na macOS. Promptem jest
-// wiadomość człowieka z tekstem — ta sama definicja co Esc (`AppState.promptText`): sam załącznik
-// nie, notka harnessu nie. Właściciel: sterowanie sesją.
+// wiadomość człowieka z tekstem (`AppState.promptText`): sam załącznik nie, notka harnessu nie.
+// Właściciel: sterowanie sesją.
 
 /// Prompt w transkrypcie: numer wiadomości, tekst i chwila wysłania.
 public struct PromptEntry: Sendable, Equatable, Identifiable {

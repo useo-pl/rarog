@@ -264,11 +264,18 @@ final class RealtimeHarness {
   var speech: [Bool] = []
   var levels: [RealtimeLevels] = []
   var diagnostics: [RealtimeConversation.Diagnostic] = []
+  /// What the conversation told its host about the answers, in order.
+  var answers: [RealtimeConversation.AnswerEvent] = []
   var asked: [String] = []
   /// Versions of the prompt each `send_prompt` asked the screen to send, in order.
   var sentVersions: [Int] = []
   var askReply: () async -> String = { #"{"answer":"It was fixed in turn 2."}"# }
   var sendReply: () async -> String = { "sent" }
+  /// With `turnProbe`, the moment each call of the probe tool `turn_probe` got (`RealtimeToolAction.workAtTurn`).
+  var turns: [RealtimeToolTurn] = []
+  private let turnProbe: Bool
+  /// More tools after the session host's, e.g. a probe of a test file.
+  private let tools: [RealtimeToolSpec]
   /// Soniox speech: its key provider and its sockets.
   let speechKeys: SpeechFakeKeys
   var speechSockets: [MockSocket] = []
@@ -278,16 +285,18 @@ final class RealtimeHarness {
 
   init(
     keys: RealtimeFakeKeys = RealtimeFakeKeys(), messages: [TranscriptMessage] = [],
-    speech: SpeechFakeKeys = SpeechFakeKeys()
+    speech: SpeechFakeKeys = SpeechFakeKeys(), turnProbe: Bool = false, tools: [RealtimeToolSpec] = []
   ) {
     self.keys = keys
+    self.turnProbe = turnProbe
+    self.tools = tools
     speechKeys = speech
     self.messages = messages.isEmpty ? [message(1, "user", "Fix the login bug"), message(2, "assistant", "Fixed.")] : messages
     conversation = makeConversation()
   }
 
   private func makeConversation() -> RealtimeConversation {
-    RealtimeConversation(
+    let conversation = RealtimeConversation(
     dependencies: .init(
       keys: keys,
       socket: { [unowned self] request, events in
@@ -295,7 +304,7 @@ final class RealtimeHarness {
         self.sockets.append(socket)
         return socket
       },
-      audio: audio, scheduler: scheduler,
+      audio: audio, scheduler: scheduler, hostClock: { [scheduler] in scheduler.now },
       speech: RealtimeConversation.Speech(
         keys: speechKeys,
         socket: { [unowned self] url, protocols, events in
@@ -324,7 +333,24 @@ final class RealtimeHarness {
       phase: { [unowned self] in self.phases.append($0) },
       speech: { [unowned self] in self.speech.append($0) },
       levels: { [unowned self] in self.levels.append($0) },
-      diagnostic: { [unowned self] in self.diagnostics.append($0) }))
+      diagnostic: { [unowned self] in self.diagnostics.append($0) },
+      answer: { [unowned self] in self.answers.append($0) }))
+    guard turnProbe || !tools.isEmpty else { return conversation }
+    var content = conversation.content
+    if turnProbe {
+      content.tools.append(
+        RealtimeToolSpec(
+          name: "turn_probe", schema: ["type": "function", "name": "turn_probe"], tally: nil,
+          action: { [unowned self] _ in
+            .workAtTurn(checking: false) { turn in
+              self.turns.append(turn)
+              return "probe"
+            }
+          }))
+    }
+    content.tools += tools
+    return RealtimeConversation(
+      dependencies: conversation.dependencies, content: content, handlers: conversation.handlers)
   }
 
   var socket: RealtimeFakeSocket { sockets[sockets.count - 1] }
@@ -708,6 +734,34 @@ struct RealtimeConversationTests {
     #expect(h.conversation.fieldPrompt == 2)
     #expect(h.placedVersions == [1, 2])
     #expect(h.sentVersions.isEmpty)
+  }
+
+  @Test("a tool that waits for the user's word gets its response and the kept utterances so far; muted speech is none")
+  func toolTurn() async {
+    // A wrong response or a count that includes muted speech would let a host start work the user never agreed to.
+    let h = Harness(turnProbe: true)
+    await h.ready()
+    h.utterance("in1")
+    h.socket.reply(created("r1"))
+    h.socket.reply(call("r1", id: "c1", name: "turn_probe"))
+    h.socket.reply(call("r1", id: "c2", name: "turn_probe"))
+    h.socket.reply(done("r1"))
+    #expect(await eventually { h.turns.count == 2 })
+    h.socket.reply(created("r1f"))
+    h.socket.reply(done("r1f"))
+    h.conversation.setMuted(true)
+    h.utterance("in-muted")
+    h.conversation.setMuted(false)
+    h.utterance("in2")
+    h.socket.reply(created("r2"))
+    h.socket.reply(call("r2", id: "c3", name: "turn_probe"))
+    h.socket.reply(done("r2"))
+    #expect(await eventually { h.turns.count == 3 })
+    #expect(
+      h.turns == [
+        RealtimeToolTurn(response: "r1", utterances: 1), RealtimeToolTurn(response: "r1", utterances: 1),
+        RealtimeToolTurn(response: "r2", utterances: 2),
+      ])
   }
 
   @Test("the prompt left the field → send_prompt hears so and the screen is not asked; a new prompt is live again")

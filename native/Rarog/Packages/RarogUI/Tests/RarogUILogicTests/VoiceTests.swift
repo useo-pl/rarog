@@ -638,6 +638,24 @@ struct VoiceRecorderTests {
     #expect(h.sockets[0].closed && h.mic.stops == 1)
   }
 
+  // Catches a heartbeat that reports audio after the frames stopped, a stream reported live while it reconnects, or
+  // either after the recording ended: an observer outside the app's screens would show a dead recording as running.
+  @Test("what of the recording lives: a frame within the window, the stream while it streams, nothing after the end")
+  func live() async {
+    let h = RecorderHarness()
+    await h.recording()
+    #expect(h.recorder.live == (audio: false, stream: true))
+    h.mic.frame(peak: 0.001)
+    #expect(h.recorder.live == (audio: true, stream: true), "a quiet frame is audio that runs too")
+    h.clock.advance(MicrophoneUse.frameWindow)
+    #expect(h.recorder.live == (audio: false, stream: true))
+    h.mic.frame(peak: 0.5)
+    h.sockets[0].drop()
+    #expect(h.recorder.live == (audio: true, stream: false), "the stream reconnects")
+    h.recorder.cancel()
+    #expect(h.recorder.live == (audio: false, stream: false))
+  }
+
   @Test("anulowanie w trakcie spłukania ostatniej ramki zatrzymuje mikrofon od razu, nie po spłukaniu")
   func cancelWhileFlushing() async {
     let h = RecorderHarness()
@@ -1085,5 +1103,22 @@ struct VoiceFieldTests {
     #expect(VoiceMint(.rateLimited(message: "serwer")) == .stop(UICopy.voiceRateLimited))
     #expect(VoiceMint(.failed(message: nil)) == .retry(UICopy.voiceMintFailed))
     #expect(VoiceMint(.loggedOut) == .stop(""))
+  }
+}
+
+@Suite("dictation: the reason word of the end line")
+struct DictationEndTraceTests {
+  // Catches a notice that leaks its sentence into `client.log` (a key refusal carries the server's text), and two
+  // notices that share a word, which would make the end line of a locked-phone measurement ambiguous.
+  @Test("one distinct word per notice, never the notice's text")
+  func words() {
+    let notices: [VoiceNotice] = [
+      .silence, .sessionLimit, .interrupted, .streamFailed, .microphone(.denied), .dictation(.engineFailed),
+      .message("Server key refused for project-x"),
+    ]
+    let words = notices.map(DictationEndTrace.reason)
+    #expect(Set(words).count == notices.count)
+    #expect(words.allSatisfy { $0.allSatisfy { $0.isLowercase || $0 == "-" } })
+    #expect(DictationEndTrace.reason(.message("Server key refused for project-x")) == "refused")
   }
 }

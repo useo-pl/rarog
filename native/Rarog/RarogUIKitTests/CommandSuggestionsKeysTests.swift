@@ -296,6 +296,10 @@ final class CallLog: @unchecked Sendable {
     var takeBackReply: Result<String, TransportError>?
     /// The take-back waits in the transport until this goes back to `false` (an answer after the screen closed).
     var holdTakeBack = false
+    /// The interrupt's 202 JSON body; `nil` = a 409 refusal (no retry).
+    var interruptReply: String?
+    /// The interrupt waits in the transport until this goes back to `false` (typing while the answer travels).
+    var holdInterrupt = false
   }
 
   private let lock = NSLock()
@@ -307,7 +311,8 @@ final class CallLog: @unchecked Sendable {
 
 extension UIKitTransport {
   /// Test transport: the demo command list, a send answered 202 without a body (or held and failed on request,
-  /// `CallLog.Calls`), an interrupt refused (no retry); nothing else goes to the network.
+  /// `CallLog.Calls`), an interrupt refused (no retry) unless the test gives its answer; nothing else goes to the
+  /// network.
   fileprivate static func suggestions(calls: CallLog) -> UIKitTransport {
     UIKitTransport(
       onCommands: { sessionId throws(TransportError) in
@@ -335,7 +340,15 @@ extension UIKitTransport {
       },
       onInterrupt: { sessionId throws(TransportError) in
         calls.record { $0.interrupts.append(sessionId) }
-        throw .http(APIFailure(status: 409, code: "conflict", message: "Test: bez przerwania."))
+        while calls.read(\.holdInterrupt) { try? await Task.sleep(for: .milliseconds(10)) }
+        guard let body = calls.read(\.interruptReply) else {
+          throw .http(APIFailure(status: 409, code: "conflict", message: "Test: bez przerwania."))
+        }
+        do {
+          return try JSONDecoder().decode(InterruptResponse.self, from: Data(body.utf8))
+        } catch {
+          throw .invalidResponse("interrupt body: \(error)")
+        }
       },
       onTakeBackQueue: { _, operationId throws(TransportError) in
         calls.record { $0.takeBacks.append(operationId) }

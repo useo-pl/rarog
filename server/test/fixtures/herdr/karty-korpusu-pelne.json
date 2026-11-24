@@ -9,10 +9,10 @@
     "input": "decideCard: blockedSeq 1, answeredSeq -1, active null, decided null, canRetry false, hookAnswersEnabled true; karta bez przycisków przez screenDialogCard bez klasy CLI"
   },
   "summary": {
-    "screens": 389,
-    "cards": 389,
-    "buttons": 268,
-    "noButtons": 121
+    "screens": 398,
+    "cards": 398,
+    "buttons": 275,
+    "noButtons": 123
   },
   "screens": {
     "composer-empty-2.1.258.ansi.txt": {
@@ -3909,6 +3909,283 @@
       "screenPrint": "a9c6e891467d16ab",
       "blockVisible": true,
       "card": "fe23fba22463d6215443b7c5cab450e4798700e2a01f382bc429abb3d6e3689f"
+    },
+    "kontrolny/zgoda-bez-hooka-bash-control-2.1.330.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:a399be09be42",
+      "toolName": "Bash",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes"
+        },
+        {
+          "digit": "2",
+          "label": "Yes, and always allow access to /Users/u/project from this project",
+          "terminalOnly": true
+        },
+        {
+          "digit": "3",
+          "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+          "terminalOnly": true
+        },
+        {
+          "digit": "4",
+          "label": "No"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "0f1c45e6b9f90759",
+      "screenPrint": "0f1c45e6b9f90759",
+      "blockVisible": true,
+      "card": "dc831510bfb2186209d3a6cace686a381e74024a6bbecf042546f7f3bad199e2"
+    },
+    "kontrolny/zgoda-bez-hooka-bash-hooks-off-2.1.330.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:a399be09be42",
+      "toolName": "Bash",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes"
+        },
+        {
+          "digit": "2",
+          "label": "Yes, and always allow access to /Users/u/project from this project",
+          "terminalOnly": true
+        },
+        {
+          "digit": "3",
+          "label": "Yes, and switch to auto mode · auto mode handles these prompts for you",
+          "terminalOnly": true
+        },
+        {
+          "digit": "4",
+          "label": "No"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "0f1c45e6b9f90759",
+      "screenPrint": "0f1c45e6b9f90759",
+      "blockVisible": true,
+      "card": "dc831510bfb2186209d3a6cace686a381e74024a6bbecf042546f7f3bad199e2"
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-auto-2.1.330.txt": {
+      "action": "screen-dialog",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:be824011da14",
+      "toolName": "dialog",
+      "knownDialog": null,
+      "dialogKind": null,
+      "options": [],
+      "reason": "unreadable",
+      "audit": "unreadable",
+      "diagnosis": {
+        "mismatchReason": null,
+        "headerVisible": null,
+        "optionCount": 0,
+        "dialogTitle": null
+      },
+      "excerpt": {
+        "sha256": "d3653e297cd1cbab837bcc560a56bfbfa20abd4175a67f779118830cb84a1349",
+        "lines": 14
+      },
+      "bodyPrint": null,
+      "screenPrint": null,
+      "blockVisible": false,
+      "card": "c0e82a6e4903e64c49b18a51e94689cea70b37b8b800d710c3dc89bd1493269c"
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-auto-link-2.1.330.txt": {
+      "action": "screen-dialog",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:be824011da14",
+      "toolName": "dialog",
+      "knownDialog": null,
+      "dialogKind": null,
+      "options": [],
+      "reason": "unreadable",
+      "audit": "unreadable",
+      "diagnosis": {
+        "mismatchReason": null,
+        "headerVisible": null,
+        "optionCount": 0,
+        "dialogTitle": null
+      },
+      "excerpt": {
+        "sha256": "d3653e297cd1cbab837bcc560a56bfbfa20abd4175a67f779118830cb84a1349",
+        "lines": 14
+      },
+      "bodyPrint": null,
+      "screenPrint": null,
+      "blockVisible": false,
+      "card": "c0e82a6e4903e64c49b18a51e94689cea70b37b8b800d710c3dc89bd1493269c"
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-default-2.1.330.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:04d1b2004a3b",
+      "toolName": "Edit",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes"
+        },
+        {
+          "digit": "2",
+          "label": "Yes, and allow Claude to edit files in its ~/.claude folder for this session",
+          "terminalOnly": true
+        },
+        {
+          "digit": "3",
+          "label": "No"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "0468ce7889aa2e24",
+      "screenPrint": "0468ce7889aa2e24",
+      "blockVisible": true,
+      "card": "6b2538450780a303c9214489d08ac41d8535cb5b09c252f31dc54b4080ed7a07"
+    },
+    "kontrolny/zgoda-bez-hooka-claude-md-default-link-2.1.330.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:04d1b2004a3b",
+      "toolName": "Edit",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes"
+        },
+        {
+          "digit": "2",
+          "label": "Yes, and allow Claude to edit files in its ~/.claude folder for this session",
+          "terminalOnly": true
+        },
+        {
+          "digit": "3",
+          "label": "No"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "0468ce7889aa2e24",
+      "screenPrint": "0468ce7889aa2e24",
+      "blockVisible": true,
+      "card": "6b2538450780a303c9214489d08ac41d8535cb5b09c252f31dc54b4080ed7a07"
+    },
+    "kontrolny/zgoda-bez-hooka-edit-relative-2.1.330.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:99a60e9c6193",
+      "toolName": "Edit",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes"
+        },
+        {
+          "digit": "2",
+          "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+          "terminalOnly": true
+        },
+        {
+          "digit": "3",
+          "label": "No"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "66de6d7edfa19308",
+      "screenPrint": "66de6d7edfa19308",
+      "blockVisible": true,
+      "card": "ae7b8a24fa69549a7b27a4e7261d4fbb8cc1bcdad509e2e4a553086329ff9f2a"
+    },
+    "kontrolny/zgoda-bez-hooka-edit-relative-cd-2.1.330.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:99a60e9c6193",
+      "toolName": "Edit",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes"
+        },
+        {
+          "digit": "2",
+          "label": "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
+          "terminalOnly": true
+        },
+        {
+          "digit": "3",
+          "label": "No"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "66de6d7edfa19308",
+      "screenPrint": "66de6d7edfa19308",
+      "blockVisible": true,
+      "card": "ae7b8a24fa69549a7b27a4e7261d4fbb8cc1bcdad509e2e4a553086329ff9f2a"
+    },
+    "kontrolny/zgoda-bez-hooka-settings-target-auto-2.1.330.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:e455eb3a3ce8",
+      "toolName": "Edit",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes"
+        },
+        {
+          "digit": "2",
+          "label": "Yes, and always allow access to /Users/u/dotfiles for this session (shift+tab)",
+          "terminalOnly": true
+        },
+        {
+          "digit": "3",
+          "label": "No"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "ac7d7e52ba1b08ea",
+      "screenPrint": "ac7d7e52ba1b08ea",
+      "blockVisible": true,
+      "card": "e96cd3155f12f4082cf7dc0d8e908676c7a02cd3a247d27b03face6b923b7f69"
     },
     "kontrolny/zgoda-edit-default-2.1.321.txt": {
       "action": "card",

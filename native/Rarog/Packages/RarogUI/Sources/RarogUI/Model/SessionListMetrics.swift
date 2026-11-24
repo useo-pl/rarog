@@ -72,7 +72,11 @@ enum SessionListMetrics {
   /// Najmniejsza szerokość nagłówka listy (`.principal`). Bez systemowego uchwytu w pasku jedyny przycisk
   /// stoi po prawej, a pasek centruje element, który mieści się symetrycznie: nagłówek odjeżdżałby od lewej krawędzi.
   /// Minimum większe niż miejsce symetryczne trzyma go przy lewej. Kolumna niezmierzona (0) — bez minimum.
-  static func headerMinWidth(columnWidth: CGFloat) -> CGFloat {
-    max(0, columnWidth - headerTrailingReserve)
+  /// `voiceButton`: the waveform glyph of the voice conversation across sessions, or the lit circle while it runs,
+  /// stands before New Session, one more 44 pt target with its spacing; without that room the header slid past the
+  /// left edge ("GENCI (45)" on iPhone).
+  static func headerMinWidth(columnWidth: CGFloat, voiceButton: Bool = false) -> CGFloat {
+    let reserve = headerTrailingReserve + (voiceButton ? HeaderMetrics.iconTarget + HeaderMetrics.iconSpacing : 0)
+    return max(0, columnWidth - reserve)
   }
 }

@@ -50,7 +50,7 @@ public enum ListReturnScroll {
     guard new == nil, let old else { return false }
     switch old {
     case .session, .terminal, .openingTerminal: return true
-    case .project: return false
+    case .project, .inbox: return false
     }
   }
 

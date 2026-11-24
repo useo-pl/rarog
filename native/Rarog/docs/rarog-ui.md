@@ -56,16 +56,39 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   for a decision, no streaming row); the time then appears without a reload. Text between tools, tool cards, notes,
   the streaming row and a reply without text have no time.
 - **No Copy under a reply:** reply text is copied by selection, a code block by the icon in its bar.
-- **Select More:** a system selection lives in one text view and does not cross cells, so the edit menu of a
-  message text (`MessageContentView`, `textView(_:editMenuForTextIn:suggestedActions:)`) ends with Select More…, also
-  in a table cell, whose own text field (`MarkdownTableView`) asks the message above it for that menu. It
-  opens the Transcript Text window (`Session/TranscriptSelectionSheet`, `AppSheet.transcriptText`): one read-only
-  `UITextView` with the loaded messages as plain text, a role and time header line per message and a blank line
-  between messages, Markdown without markup, a table as tab-separated rows, a tool card as its line, an image as its
-  VoiceOver label. The pure function `TranscriptSelectionText.build` makes the text when the window opens, so a reply
-  arriving behind it does not change it, and nothing is fetched from the server. The cursor starts at the message the
-  menu came from; Copy All and closing work as in terminal History. Tests: `TranscriptSelectionTextTests`,
+- **Select More:** a system selection (a finger, the pencil) lives in one text view and does not cross cells, so the
+  edit menu of a message text (`MessageContentView`, `textView(_:editMenuForTextIn:suggestedActions:)`) ends with
+  Select More…, also in a table cell, whose own text field (`MarkdownTableView`) asks the message above it for that
+  menu. It opens the Transcript Text window (`Session/TranscriptSelectionSheet`, `AppSheet.transcriptText`): one
+  read-only `UITextView` with the loaded messages as plain text, a role and time header line per message and a blank
+  line between messages, Markdown without markup, a table as tab-separated rows, a tool card as its line, an image as
+  its VoiceOver label. The pure function `TranscriptSelectionText.build` makes the text when the window opens, so a
+  reply arriving behind it does not change it, and nothing is fetched from the server. The cursor starts at the
+  message the menu came from; Copy All and closing work as in terminal History. Tests: `TranscriptSelectionTextTests`,
   `TranscriptSelectionSheetTests`.
+- **Pointer selection:** a pointer (a trackpad on the iPad, a mouse or trackpad on a Mac) selects across messages on the
+  session screen itself. One selection over the rows, by row id and UTF-16 offset (`TranscriptPointerSelection` in
+  `Model/`), survives cell reuse; the screen runs it in `SessionViewController+PointerSelection` and paints each row's
+  part under its text (`MessageContentView+PointerHighlight`, the fill of the system text selection). The list's press
+  recognizer takes only `.indirectPointer` with the primary button, and a message field refuses its own recognizers, the
+  system's private ones too, for a pointer press the screen claims (`MessageTextView.gestureRecognizerShouldBegin(_:)`,
+  `yieldsPointerPress(at:)`): a press on a message's text, not on Show All, a code block's copy icon, a table, a queued
+  bubble that takes the queue back or a card; a right click only on the visible highlight (not on the folded lines of a
+  prompt). Hover keeps the text cursor shape; a finger and the pencil keep the system selection above. A drag selects
+  from the press point; over a card or a gap the focus snaps to the nearest text row. The press point, the double or
+  triple clicked unit and the selection follow a streaming reply into its message when it closes; a press whose text
+  changed before its point ends there. Near or past the top or bottom edge of the list (a 44 pt band) the list scrolls
+  by itself, faster the farther the pointer, and the selection grows with it every frame, also with the pointer still
+  (`+PointerAutoscroll`). The press holds the list like a finger (`PinnedCollectionView.pointerScrolling`): while it
+  lasts the pin follows the distance from the bottom and the list does not follow a streaming reply; on release the pin
+  and the reading place follow where it stopped. A click without movement clears the selection, and on a link opens it
+  once the double click window passes; a double click selects a word, a triple click a paragraph. Cmd+C copies what is
+  highlighted (rows of one message joined by a line break, messages by a blank line, cards, tools and images left out),
+  unless the message field has a selection of its own, and gives the focus back to the field; the right click on the
+  highlight offers Copy and Select More…. A pointer selection clears the system selection in the cells and in their
+  tables, and the other way round. `client.log` gets the first press of each touch kind and the first three selection
+  gestures per process, without text (`TranscriptPointerTraceBudget`). Tests: `TranscriptPointerSelectionTests` (RarogUI
+  and `RarogUIKitTests`), `TranscriptPointerTraceBudgetTests`, `TranscriptPointerSelectionUITests`.
 - **Tool card:** consecutive tool rows with nothing between them draw as ONE card: a `toolCard` fill, corners rounded
   only on the outside (`UnevenRoundedRectangle.block(top:bottom:)`), a one-pixel `border` line where rows meet. The
   chain is computed over ROWS, across message boundaries (live, each call can be a separate message):
@@ -217,15 +240,42 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     terminal off; without the version probe it is absent (`AppState.terminalFeature`). "+" is a menu with New Session
     and New Terminal; New Terminal states in a sentence that creating is blocked or all 4 slots are taken
     (`terminalRefusal`). The terminal list refreshes at least every 5 s while a detail is on screen (`watchTerminals`).
+    The current tab carries its "×" (`Views/Projects/TabCloseButton`, model `RarogNavigation.tabClose` in
+    `Model/TabClose.swift`) after a divider, outside the tab's button. On a session tab a press calls `requestClose`,
+    and a second one within 5 s `close`, the same as Cmd+X and the state card's close button; the arming says its
+    sentence to VoiceOver once, in `requestClose` (`announceArming`), and `HeaderTabsSlot` runs the 5 s clock. On a
+    terminal route (a terminal tab, an agent inside a Rarog terminal, New Terminal while it opens) a press calls
+    `TerminalChrome.tapClose`, the same executor as Cmd+X there; the screen keeps the arming and its 5 s
+    (`TerminalCloseArm`), says the sentence once when it arms, and reports its state to the bar
+    (`TerminalChrome.closeState`, a dimmed "×" until a screen is attached). `HeaderTabsSlot` draws one arming card
+    (`Views/Projects/CloseArmCard`, from `closeArmCard`) under the bar from the session's or the terminal's arming,
+    and an error notice shows instead of the card. Without a known project directory there is no bar, and the
+    terminal's "×" stands in the header icon group (`RarogNavigation.terminalCloseInCorner`).
+    The divider and the "×" stand in a room every tab has (`TabCloseRoom` in `ProjectTabBar.swift`), open only on the
+    current tab; the bar animates its width on a change of the current tab within the same list
+    (`TabCloseRoomMotion`, compared with the identifiers of the last layout; a jump when the list changes too and
+    with Reduce Motion). The tab's content sits in geometry groups, so it moves with the tab and switches at once; the plate has
+    a part under the label and a part in the room (`TabPlateSide`), so it grows with the room.
+    The current tab stands in the middle of the bar's visible part (`Model/TabBarCentring`). The visible part is
+    `ScrollGeometry.containerSize`: the scroll view's frame less the content insets, so on the iPad the 320 pt of the
+    session list under the bar and on an iPhone in landscape the safe area are not part of it (measured on iOS 27);
+    the edge fade (`TabTokens.edgeFade`) reads the same geometry. A tab's width comes from the width of its label's
+    content (`TabBarCentring.width`), which for a session tab does not change when the tab becomes current (the
+    terminal glyph before the label takes the current tab's weight, so its width can follow); the "×" room on the current
+    tab is 27 pt on a longer label and up to 29 pt on a label at the 44 pt minimum (`TabBarCentring.room`). On a change
+    that slides, the scroll takes that offset at once and the row and the edge mask are drawn shifted back by the
+    distance still to cover, from the current tab's index animated with the rooms (`Views/Projects/TabBarFollow`), so
+    the bar moves on the rooms' clock. Appearing, a change of a label's content width, a change of the content's width
+    beyond the room moving to the new current tab, and a change that jumps put the current tab in the middle at once.
     The bar's look: `docs/design.md`, "Tab bar in the session header".
   - **Windows Cmd+F (`popup`) and Cmd+G (`lazygit`):** `togglePopup` toggles the pair (role, project), one window at a
     time. A Cmd+F window whose `popup` pane the terminal list knows connects without `POST`
-    (`AppState.projectPopupTerminal`); lazygit and an unlisted window go through `POST`. The header's Pop-Up Terminal
-    icon (`header.terminalPopup`) has the same action and gate (`canTogglePopup`); on a phone terminal screen it
-    moves into the "⋯" menu. The terminal glyph in a project header of the tree (`tree.terminal.<name>`) toggles the
-    window for that project (`togglePopup(_:in:state:)`), shown only while the terminal is on. While a window is open,
-    Cmd+F and Cmd+G act on its project, not on the one on screen, also with no project on screen. A screen change
-    closes the window, and an open window blocks Cmd+1…9.
+    (`AppState.projectPopupTerminal`); lazygit and an unlisted window go through `POST`. The header's Pop-Up
+    Terminal icon (`header.terminalPopup`) has the same action and gate (`canTogglePopup`). The terminal glyph in a
+    project header of the tree (`tree.terminal.<name>`) toggles the window for that project
+    (`togglePopup(_:in:state:)`), shown only while the terminal is on. While a window is open, Cmd+F and Cmd+G act
+    on its project, not on the one on screen, also with no project on screen. A screen change closes the window, and
+    an open window blocks Cmd+1…9.
   - **Window** (`Terminal/TerminalWindow`): a sheet over the whole split view, a `UINavigationController` with
     `TerminalPopupController` as root (UIKit, so UIKit tests can check terminal focus and Esc). The close button on the
     LEFT only detaches; the "×" of a route kills the shell. The bar title is "KIND project" as in the other windows
@@ -248,10 +298,11 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   `Terminal/TerminalScreenViewController` is the surface and the key bar in one stack pinned to `keyboardLayoutGuide`;
   while the on-screen keyboard slides, the surface moves with the key bar and its grid changes where it is out of
   sight (see "Size").
-  "⋯" (Copy, Paste, History) and "×" stand in the navigation bar's icon group (`TerminalChrome` for
-  `HeaderSessionSlot`). Keys draw at 36 pt in a 44 pt target (Paste is a `UIPasteControl`, which takes touches only on
-  itself). The status line overlaps the top of the surface, so connection messages do not change the grid; otherwise
-  every connection and gesture would give two SIGWINCH in the pane.
+  "⋯" (Copy, Paste, History) stands in the navigation bar's icon group and "×" in the current tab (`TerminalChrome`
+  for `HeaderSessionSlot` and `HeaderTabsSlot`; in the icon group only without a tab bar). Keys draw at 36 pt in a
+  44 pt target (Paste is a `UIPasteControl`, which takes touches only on itself). The status line overlaps the top of
+  the surface, so connection messages do not change the grid; otherwise every connection and gesture would give two
+  SIGWINCH in the pane.
   - **Surface:** the `TerminalSurface` protocol (`SwiftTermSurface` from `RarogTerminal`), created from a target
     (`store.terminalSession(target)`) or an existing session, and handed to SwiftUI through `TerminalScreen` in a NEW
     `TerminalScreenHolder` each time the tab shows. `shutdown()` closes the socket, drops late results and releases
@@ -394,8 +445,14 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   skeleton and the "Photo" tile (a 404) are 96 pt, so loading changes the row height only for wide images. A tile has
   the identity of its content key (`.id(key)`), so a reused cell never shows an old image. ImageIO decodes off the
   main actor; decoded thumbnails stay in memory until the end of the login (`cacheKey(sessionId:)`). A tap opens
-  QuickLook inside the app's navigation (`ImagePreviewNavigation`), because QuickLook presented alone exposes no
-  close button to VoiceOver.
+  QuickLook alone, full screen (`PreviewPresentation`, `RarogQuickLookController`): its own close button, which
+  VoiceOver reads, and its own keys. Esc closes an image or a PDF and leaves a text file open, as in the Files app.
+  A photo opens on black without bars; a tap shows them. An Esc that comes back to the app closes the preview too.
+  A file preview from the panel's Files tree stands the same way
+  (`Views/Inspector/FilePreviewPresenter`; the inspector entry of `native/Rarog/docs/file-layout.md`). On a Mac the
+  system shows the macOS Quick Look panel in a window of its own; the controller then stands in an invisible
+  navigation controller over the app (`ImagePreviewNavigation`, `.overFullScreen`, alpha 0), and closing the panel
+  closes both.
 - **Outbox entry attachments (`Model/PendingMedia`, `Rows/PendingMediaRowView`):** the `attachments` row (`a<entry>`)
   has the layout of the echo's image row, so nothing jumps on confirmation. An image in transit has a dark overlay
   with a thin white ring (`PendingIndicator`): a spinning arc while preparing, a ring filling with the byte fraction
@@ -576,7 +633,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     speaks at the first activity, on a kind change, otherwise at most every 20 s) and `DecisionCardSpeech` (a card
     born during the visit announces its header).
   - **State never by color alone:** a row dot has a state word, a project header has no state mark (its grey
-    agent count in brackets only counts; the header's sentence names the most urgent state), a tab a VoiceOver sentence
+    agent count in brackets only counts; the header's sentence names the most urgent state), a pinned project's pin
+    glyph is hidden from VoiceOver, which hears "pinned" in the header's value, a tab a VoiceOver sentence
     and, with Differentiate Without Color, a glyph shape (`Model/StateGlyph`), the note glyph a VoiceOver value,
     usage thresholds use font weight (`UsageInk.weight`), and a risky permission has the word "risky" in the header.
   - **Dynamic Type:** `Fonts` go through `UIFontMetrics`. The list footer bar steps down (`ViewThatFits`): without the
@@ -640,7 +698,11 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   Apple's servers) and the locale, never the text. During a voice agent conversation the composer microphone and the
   dictation shortcut mute the conversation instead of dictating (`docs/companion.md`, "Conversation").
   `VoiceFieldText` and `ComposerDictation` keep typed text and the dictation apart; the background, a call and closing
-  the screen end the recording with the text in the field, saved into the persistent draft. Send during a recording
+  the screen end the recording with the text in the field, saved into the persistent draft. With the locked-phone
+  trial on, the background keeps a message-field recording whose microphone opened (`VoiceRecorder.microphoneOpened`),
+  and its text keeps landing in the same field; a note's recording still ends (`docs/companion.md`, "Locked phone
+  (trial)"). Every message-field recording ends with one `client.log` line, `dictation: ended <reason>`, never its
+  text (`DictationEndTrace` for a recording that ends by itself). Send during a recording
   ends it like a second microphone tap, waits for the last words (at most the finalization wait above, plus up to
   3 s for a first connection that still holds the speech) and sends the whole text once; leaving the screen during
   that wait sends what the field holds then.
@@ -672,7 +734,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   unknown stored value means none. Nothing stored follows the system. While the system uses an accessibility size the
   app follows the system, ⌘+ and ⌘- are disabled, and the stored step comes back when the system leaves it; the
   system's size is read from the screen, because the scene carries the override, and followed through
-  `UIContentSizeCategory.didChangeNotification`. With the session switcher open ⌘0 picks the window's row 0 instead.
+  `UIContentSizeCategory.didChangeNotification`. ⌘0 resets the size also with the session switcher open, which has
+  no row 0 and picks nothing.
   The Text Size row of Settings shows the state (System Size or the step's name) and opens the Text Size page
   (`Views/TextScale/TextSizeSettingsPage`, rules in `TextScaleSettingsRow`): the seven steps, each name drawn in its
   own size, a check on the stored step, and Use System Size, shown only while a step is stored: the way back without
@@ -700,7 +763,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   `UIFontMetrics`, the SwiftUI text style) and the host adds nothing. `FontContractSourceTests` refuses a font taken
   from the system's text styles outside the contract and names the replacement (`RarogUIKitTests/TextStyleTableTests`,
   `AppFontTests`, `TextScaleMacPathTests`, `TextScaleMacPathPanelTests`).
-- **A failed send keeps the text (`SendRecovery`):** with the session screen alive the text goes back into the field;
+- **A failed send keeps the text (`SendRecovery`, applied by `MessageSendRecovery` for every field that sends a
+  person's message):** with the session screen alive the text goes back into the field;
   when the screen is gone the refusal entry STAYS in the outbox with Retry and Discard, and text without an entry goes
   into the session's draft and attachments onto the shelf. A screen still alive out of the window (under a full-screen
   presentation) leaves that text waiting in `ComposerDrafts` memory. Before a write of its changed field (after a
@@ -714,6 +778,13 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   (`Model/DraftSaveSchedule`), on leaving the screen and on going to the background; an empty state deletes the draft.
   The previous files go only after the manifest is saved, so a refused write keeps the previous draft whole. An
   attachment set loading onto the shelf reaches the draft after loading (`persistAfterLoading`).
+- **Pinned projects (`ProjectTreeHeaderModel.pinned`, `Views/List/ProjectTreeHeaderRow`):** a pinned header shows a
+  small `pin.fill` glyph after the name and the agent count, in the count's colour (`PaletteTokens.treeHeaderCount`),
+  fixed in size, so the name truncates first and the header buttons stay; VoiceOver hears "pinned" before the fold
+  state in the header's value (`spokenValue`). Pin Project and Unpin Project stand in the header's context menu and as
+  its VoiceOver action, and both call `ProjectTreeRows.pin`: `RarogNavigation.setProjectPinned` changes the observed
+  `pinnedProjects`, so the list redraws even when the order of the rows stays, and the anchor keeps the selected row
+  in place. Order and memory: `docs/design.md`, "Native app list: project tree", and `native/Rarog/docs/rarog-core.md`.
 - **Rename on the list row (`Model/SessionRename`, `Views/List/SessionRenameField`):** the look and the rules for
   the person are in `docs/design.md`, "Native app list: project tree". `SessionRename` holds the rules (when the row
   offers the item, the field's limit and line breaks, the save, the label the card will get); `SessionRenamer`, one
@@ -752,16 +823,23 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   marked unread by hand (a still blue dot) is in no segment but All, a result held on the list after it was read is
   not Unread (its tone is quiet), and an unread result with a working background task counts under Working. Counts
   take every session, also in folded projects; Needs You is amber (`Palette.wait`), Unread the unread blue, All and
-  Working secondary text, zero muted. The active segment sits on a `surface2` plate with the block radius, the others
-  have no background; a segment's target is at least 44 pt. The row rises 12 pt into the empty space the
-  navigation bar leaves under the title (`ListFilterBar.rise`), so the plates stand close under it; the bar keeps the
-  taps on the top few points of the plates. The segments share the column's width, so the row fits
+  Working secondary text, zero muted; the active segment's zero is secondary text, because muted ink on its plate
+  over a busy list falls under 4.5:1. The four segments share one glass capsule floating over the list, which
+  scrolls beneath it (`FilterGlass`: the list footer card's material, near black and translucent in the dark theme,
+  milky with a light rim in the light one, half the floating cards' shadow outside the shape; Reduce Transparency gives
+  the footer's solid color). The active segment sits on a capsule plate (`Palette.filterGlassPlate`) 4 pt inside the
+  glass (`ListFilterBar.trackInset`); glass and targets are 44 pt tall. The capsule stands 12 pt from the column's
+  sides and under the navigation bar (`ListFilterBar.glassEdge`), with no background of its own, so the bar turns
+  translucent over the rows as before. The Inbox circle stands on the capsule's right in the same row
+  (`SessionListView`). The top inset (banners and this row together, so the
+  opaque row never covers a banner) rises 4 pt into the empty space the navigation bar leaves under the title
+  (`ListFilterBar.rise`), so the plates stand close under it without touching it. The segments share the column's width, so the row fits
   without scrolling; only when even the glyphs do not fit it scrolls sideways instead of truncating. It stands from
   the first frame: on the skeleton and on an empty list the segments are disabled and the counts muted, so the list
   appearing does not move the top inset. VoiceOver hears a "Filter" group and segments such as "Needs You, 4" with
   the selected trait. The filter is a parameter of the tree,
-  `AppState.projectTree(collapsed:filter:held:)`; `RarogNavigation.treeRows` gives the rows to the list and to the
-  anchor's announcement on a fold (`ProjectTreeRows.toggle`), so both see the same rows. Under a segment other than
+  `AppState.projectTree(collapsed:pinned:filter:held:)`; `RarogNavigation.treeRows` gives the rows to the list and to
+  the anchor's announcement on a fold (`ProjectTreeRows.toggle`), so both see the same rows. Under a segment other than
   All an agent row stands when the unfiltered tree shows it and it belongs to the segment, is held, or is the
   selected session (`AppState.listSelection`; recently opened rows are not kept). Held rows are the segment's sessions
   shown under the current segment choice: a row that leaves the segment (an agent finishes, a permission is answered)
@@ -799,3 +877,164 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   the tree cancels it, and while the collection still holds an older tree than the list's rows it waits for the new
   rows, so it never takes the target's old index. No pill on the skeleton, on an empty list or with the list column
   hidden (Cmd+B).
+- **Inbox model (RarogCore: `Inbox`, `InboxRules`, `Reducer+Inbox`, `Selectors+Inbox`, `RarogStore+Inbox`; the screen:
+  next item):** the last message of each agent's turn as one card per session, from the server's Inbox
+  (`docs/implementation-spec.md`, "Inbox"). When a card stands and what counts on the Inbox button live in one file,
+  `InboxRules.swift`; the server decides each card's content and its removals. The global stream always opens with
+  `inbox=1`; `inbox-heads` replaces every head (reconnect, server switch), `inbox-head` updates one, and
+  `inbox-removed` drops the card only when its `turnId` is the stored one. Logout, a server switch and a version
+  probe without the capability `inbox` clear the cards (`inboxAvailable` says whether the server has an Inbox);
+  `inboxOpened()` and `inboxClosed()` mirror navigation and survive that.
+  - **Visible cards** (`inboxItems`): the head's state and the session's live state both show the card
+    (`waiting-input`, `waiting-permission`, `waiting-question`, `error`, `limit-reached`, `interrupted`), whatever the
+    tone, so a background command or a stopped subagent does not hide it. The head is read about half a second after a
+    state change, so a session that just left its turn hides the old card until the new head comes, and a session in
+    any other state (`starting`, `running`, `done`, `resumable`) hides its card at once. Newest `at` first. A card a
+    person acted on stays in place (`holdInboxCard`): visible in any state, ordered by the `at` it had when the hold
+    began, so a new result changes its text without moving it. A head in a visible state (its new result or decision)
+    becomes the held head with its text (`InboxHold`). While its session works, the server's card is the last turn
+    that ended with a result, or none after a decision in the first turn (`inbox-removed`), so a held card shows the
+    last head it took and that head's text until a head in a visible state comes. `inboxClosed()` (another detail on
+    iPad, back to the list on iPhone, not "Open session") ends every hold.
+  - **Counter** (`inboxCount`): every visible card, a received result and a held card of a working session too, so
+    the badge and the Inbox header show the same number. Seeing, scrolling or expanding a card does not mark it
+    received.
+  - **Text:** a card shows the text read for its head's `version` only (`InboxItem.card`, `nil` while it loads). Texts
+    load only while the Inbox is open: `GET /api/inbox` when it opens and after each `inbox-heads`, then one `GET
+    /api/inbox/<id>` per new head version, also when the answer carries a newer version than its head. An answer of
+    another version, or an empty one, does not replace a text of the current head's version (a read that answered
+    late); a list text dropped that way is read again when its head comes.
+  - **Removal and Undo** (`removeInboxCard`, `undoInboxRemoval`): the card hides at once and the request goes out at
+    once. The removal concerns that card only, by its `turnId` and `version`: the next head of the session, also the
+    next decision or the result of the same turn, shows, and the end of the Undo window drops only the removed head. A
+    409 brings the card back and reads its text again, any other failure brings it back, and a 200 with `receipt:
+    "skipped"` is a removal. Undo within `CoreTiming.inboxUndoWindow` (5 s, `inboxUndoable`) sends `restore` with the
+    same `{turnId, version}`, after the removal's answer when it is still in flight; it shows the card again before
+    the server's head, also after `inbox-removed`. The toast belongs to the screen.
+  - **Decisions** (`inboxDecision`): the card's `requestId` names the pending card in the session's transcript, the
+    one source of current dialogs for the session screen and the Inbox; the buttons take the existing actions
+    (`decidePermission`, `answerQuestion`, `releasePermission`) and show their requests in flight. For each visible
+    decision card with a `requestId`, and each card of a dialog in the pane without a card (`InboxHead.paneDialog`, by
+    the head or the text), whose transcript was not loaded for the head's version, the open Inbox opens that
+    session's stream without a cursor, takes its `transcript-snapshot` and closes it: one read at a time, never for
+    the session on screen (its own stream is live), at most for the first `CoreLimits.maxTranscripts` − 1 such cards
+    (more would push each other out of the transcript memory), and again when the head's version changes. A stream
+    that answers 404 (no stream for the session) is not opened again while that head version stays and takes no place
+    in the queue, so the next card's read starts. Versions repeat, so the 404 is forgotten when the head leaves,
+    changes its version or its session goes, and on every `inbox-heads` (reconnect, server switch). The buttons stay
+    current without a live stream because the server changes the head's `version` with the pending card and its
+    buttons. Each SSE stream holds a connection, so the Inbox keeps none open. A card without a `requestId` has no
+    decision and loads no transcript. A pane dialog card has no `inboxDecision` either: its dismiss is `decideDialog`,
+    which needs the signature of the transcript's pane dialog card (`herdrDialogSignature`), so the read gives the
+    dismiss action and its request together. A session in a Rarog terminal has no transcript (`showsTranscript`) and
+    gets no read: its card offers "Open session" only.
+  - **Reply** (`replyFromInbox`, `RarogStore+InboxReply`): a result card takes a reply when its session has a
+    transcript (`InboxHead.takesReply(of:)`, the session screen's `showsTranscript`); a session in a Rarog terminal
+    is answered in its terminal, because the reply's echo has no stream to come back on. The reply is the person's
+    ordinary send (`send(text:attachments:to:)`, no sender pair), also to a session never opened. Before anything
+    goes out the card must still stand with the turn the person answered (`inboxReplyTarget`, from `inboxItems`); a
+    card that hid (its session works), moved to another turn, became a decision or whose session moved into a Rarog
+    terminal gives `cardChanged` and nothing goes out. A refusal the send would give anyway (a dialog that came while
+    the head still shows the result) gives the send's own refusal. Otherwise the card is held before the request, so
+    it stays in place while its session works on the reply. The entry of a session whose stream is not open waits for
+    the opening before any deadline, where the transcript snapshot reconciles it (`native/Rarog/docs/rarog-core.md`).
+  - Tests: `InboxModelTests`, `StoreInboxTests`, `InboxClientTests`; the fold of a long card: `MarkdownFoldTests`.
+- **Inbox screen (`Views/Inbox/`; the rules in `Model/InboxCardModel.swift` and `Model/Navigation+Inbox.swift`):**
+  - **Button** (`InboxButton`): the tray glyph in a 44 pt glass circle (`FilterGlass`) on the right of the filter
+    capsule, apart from it because it opens a screen instead of filtering, only while the server has an Inbox
+    (`inboxAvailable`); no row of its own. The counter (`inboxCount`) is an amber badge on the circle's top right
+    (`PaletteTokens.inboxBadge`, digit `inboxBadgeInk`); no badge at zero. The name is the pointer's tip and what
+    VoiceOver says. The open Inbox has the filter's plate. A tap opens `Detail.inbox`.
+  - **Route** (`Detail.inbox`): the screen stands in the right column on the iPad, without the inspector (Cmd+I opens
+    nothing) and without the session's status line, tabs and icons. The header title is "Inbox" followed by the number
+    of cards on the screen (`HeaderTitleSlot.count`: every standing card, not the button's counter), in quiet
+    monospaced digits (`muted2`), none at zero; VoiceOver reads it as "7 cards".
+  - **Cards** (`InboxViewController`): a UIKit list, one cell per session in the order of `inboxCardModels`, the card
+    drawn by SwiftUI (`InboxCardView`) on the `surface` block. The header is the list row's model (dot, "project ·
+    session", state word and clock) with "Open session" (↗) and "Remove from Inbox" (×) on the right, 44 pt each. The
+    message is the transcript's markdown (`InboxMessageText`); a long one shows the fold of `MarkdownFold` (the first
+    paragraph, the row "N more lines · Show all" and the "To you:" block with the transcript's question stripe), "Show
+    less" folds it again; three skeleton bars while the text loads; a message the server cut says so above it. Under
+    the message: a decision card with buttons takes the transcript's permission card (`PermissionCardView`,
+    `InboxDecisionHost`); a dialog in the pane without a card takes "Open session", and above it the transcript's pane
+    dialog card (dismiss with Esc) once the transcript read gave it, by the session screen's rule (`herdrDialogShown`,
+    with its grace before the card; the footer renders once more when the grace ends); a decision whose buttons are
+    not known here takes "Open session"; a result takes the reply field, or "Open session" when its session stands in
+    a Rarog terminal; a stop takes nothing.
+  - **Reply field** (`InboxReplyFieldView`, `InboxReplyHost`, the pure state in `Model/InboxReplies`): one to six lines,
+    the dictation mic, the voice agent button (where the app offers it) and ↑ (44 pt each) under a result card's
+    message. Its text is the session's draft (`ComposerDrafts`, the draft the session screen's field takes): read
+    without taking it when the field first shows (`peek`), so a field left untouched leaves a waiting text and its
+    reason to the session screen; written after a typing pause, on ↑, before "Open session" and when the screen
+    leaves, with the session's unsent attachments, which the field does not show.
+    The write replaces the draft, so before each one the field takes the texts that came into the draft after its
+    read (a send that came back, a late queue take-back) on top of its text, as the session screen does, with their
+    reason when it is a new one (`ComposerDrafts.takeWaiting(for:after:)`, `InboxReplies.placeWaiting`); the first
+    write takes the draft over. Each field is read again after the screen comes back, so a draft the session screen
+    changed in between shows. The first character records the turn the card shows; ↑ sends with that turn
+    (`replyFromInbox`) and empties the field.
+    A reply that did not go out comes back on top of the field with its reason while the card still has the field on
+    screen ("The card changed before sending…" or the send's sentence, by `MessageSendRecovery`), now answering the
+    turn shown; otherwise the text goes to the session's draft with the reason, also when the person left the Inbox
+    and the screen let the host go before the answer. A card that lost its field before the answer (it hid or became
+    a decision) first writes what the person typed after ↑ to the draft, typing pause or not, and the reply's text
+    stacks on top of it; a field no longer there writes nothing.
+    **Dictation** (`InboxDictation`, the field as its target in `Model/InboxDictationTarget`): the mic records straight
+    into the card's field by the dictation route (`RarogStore.dictationRoute`): the asking route opens the Dictation
+    sheet and records nothing, the system's speech recognition or Soniox record; a second tap ends the recording with
+    its last words in the field. One card records at a time, the dictated text goes at the end of the field like typed
+    text, and the line under the field says the recording's state or why it stopped. Every change of the field during
+    a recording (typing, a reply that came back, a text waiting in the draft) is a new starting point, so the next
+    words neither write over it nor double it. ↑ during a recording ends it, waits for the last words and sends the
+    whole text once; ↑ stays enabled while the field records. The background ends the recording and writes the field
+    to the draft at once; leaving the Inbox, "Open session" and another place taking the microphone make the
+    hypothesis the field's text and write it to the draft. While the card's own voice conversation runs or connects,
+    the voice strip stands in the row's place, so the dictation mic is not there and does not end the conversation;
+    a conversation started during a recording takes the microphone and the hypothesis stays in the field. A recording
+    whose card loses its field (the card hid or became a decision) keeps writing into the field the host still holds,
+    which goes to the draft, until its end; a reply's outcome that lets that field go ends the recording first, with
+    the hypothesis as its text.
+  - **Voice agent** (`InboxVoice.swift`, the owner `VoiceAgentInboxConversation`, the strip's state and the
+    read-along split in `Model/InboxVoiceStrip.swift`): with the voice agent offered, a result or decision card of a
+    session with a transcript has the waveform button (44 pt ring, like the mic) in its bottom row, also as a VoiceOver
+    action of the card: in the reply row between the mic and ↑, in a row of its own under a permission card's buttons
+    (never inside `PermissionCardView`, which the session screen shares), and on the right of "Open session"
+    elsewhere. It is dimmed to 40 % while another card's conversation runs.
+    - **Voice strip.** While the card's conversation runs or connects, that bottom row becomes the strip: five bars from
+      the conversation's levels (`VoiceAgentBars`, still with reduced motion), the state sentence of the session
+      screen's status row (`UICopy.voiceAgentStatus`; "Reading the prompt" while the app reads the prompt block) on a
+      tint of the state's color (`VoiceAgentIndicator.tone`), then Mute in the mic's place (the microphone turned off
+      shows the slashed mic in the error tone) and End filled with the state's color with the bars in it. Mute and End
+      are also VoiceOver actions of the card. After the end the reply row comes back, and the end sentence stands under
+      the card's bottom row until a tap; one of a card no longer on screen shows as a notice.
+    - **Prompt block.** On a result card the agent's prompt stands in its own block above the strip ("Prompt for the
+      agent", on `surface2`): while the app reads it, the heard part is in the text's ink, the word being said has the
+      prompt highlight and the rest is quiet; without a reading the text is plain. Edit turns the same block into a
+      text field with the agent's text and an amber frame ("Edited · send with the button"), Cancel goes back to the
+      agent's text; Send (amber) sends the block's text, the edited one while editing, and is dimmed while a send is
+      in flight or the text is blank. While the edited text goes, the block keeps showing it under the edited label. A
+      send that comes back leaves the block with its text and the reason under it in the error tone. A decision card
+      has no block. Mute while the conversation connects shows at once and holds once it runs.
+    The conversation itself: `docs/companion.md`, "Conversation from an Inbox card".
+  - **New cards above** (`InboxNewCards`): when the screen is not at its top, a new card does not move it (the first
+    visible card keeps its place on screen) and the pill "N new ↑ · 1 waiting, 1 unread" stands over the cards in the
+    list pill's look; a tap scrolls to the top, and reaching the top clears it.
+  - **Removal:** "×", the swipe to the left on the iPhone (trailing action "Remove", a full swipe removes), the
+    VoiceOver action, and ⌫ or forward delete on the card with the keyboard focus all take the same path
+    (`InboxScreen.remove`): the card goes at once, the request goes out, and the toast "Removed “…”" offers "Undo" for
+    the Undo window; a removal or an Undo that did not happen says why in a toast. The keys are not repeatable and are
+    not the Inbox's while a field is typing, a sheet stands over the screen or no card has the focus
+    (`InboxCardModel.keyRemovalTarget`). A card takes the keyboard focus (Tab, arrows) and shows it with the decision
+    cards' ring (`CardFocusRing`), because the cell's background is clear.
+  - **VoiceOver:** each card is a container with the header as a heading and the actions "Remove from Inbox", "Show
+    all"/"Show less" and "Open session", so nothing needs a gesture.
+  - **Empty:** "Nothing new" and one sentence under it, from the left like the empty transcript.
+  - **iPhone stack:** while the Inbox stands it is the root of the detail stack (`InboxStackRoot`, with its own
+    header, toast and banners), and "Open session" pushes the session above it (`compactInboxPath`), so Back and the
+    edge swipe uncover the Inbox, not the list (`compactInboxPopped`). A Claude session in a Rarog terminal takes its
+    terminal's route right after it opens (`settleHostedRoute`); the Inbox origin (`InboxOrigin`) follows that route
+    and keeps the session's push, so the screen stays above the Inbox and the holds stay. The list does not select
+    that session: a new list selection makes the collapsed split pop its detail stack. Back from the Inbox to the list
+    ends the holds. On the iPad "Open session" replaces the Inbox in the column, and the Inbox button brings it back.
+  - Tests: `InboxScreenTests` (UIKit: button, cards, decisions, pill, removal, keys, header number, iPhone stack,
+    reply field), `InboxCardModelTests`, `InboxRepliesTests`.

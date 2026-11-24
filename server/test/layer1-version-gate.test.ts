@@ -5,8 +5,11 @@
  *
  * - the table of the rule per release V and request kind R (main thread, subagents), first matching row wins:
  *   `RAROG_CONSENT_PROOF=screen` or an MCP tool → `screen`; an entry of V with R = `fail` → `screen`; V not above the
- *   package constant → `channel`; an entry of V with R = `pass` → `channel`; anything else (no entry, `unmeasured`,
- *   no file, a file that is not read) → `screen`; only exact releases from the file count;
+ *   package constant and not on its exclusion list → `channel`; an entry of V with R = `pass` → `channel`; anything
+ *   else (no entry, `unmeasured`, no file, a file that is not read) → `screen`; only exact releases from the file
+ *   count;
+ * - the package base per release, without a canary file and with the canary results it stands on: the measured
+ *   release and the passed releases under it → `channel`, the excluded release and the release above → `screen`;
  * - any doubt about `<dataDir>/consent-canary.json` (not JSON, another format or shape, mode other than `0600`, not
  *   a regular file, a symlink, over the size cap) gives the package base, never more;
  * - the file is read again after it changes (memory by inode, size, `mtime` and `ctime`), so a new entry changes the
@@ -261,6 +264,49 @@ describe('table "canary file": rule per release and request kind', () => {
     expect(loose).toEqual({ kind: 'ignored', why: 'mode-644' });
     expect(consentProofRules('channel', NEWER, loose)).toEqual(BOTH_SCREEN);
     expect(consentProofRules('channel', MEASURED, loose)).toEqual(BOTH_CHANNEL);
+  });
+});
+
+describe('package base: the measured release and its exclusions, per release', () => {
+  /** The canary results the package base stands on: one entry per release, as the canary command wrote them. */
+  const MEASURED_RESULTS = {
+    '2.1.325': { main: 'pass', subagents: 'pass' },
+    '2.1.326': { main: 'pass', subagents: 'pass' },
+    '2.1.327': { main: 'fail', subagents: 'unmeasured' },
+    '2.1.328': { main: 'pass', subagents: 'pass' },
+    '2.1.329': { main: 'pass', subagents: 'pass' },
+    '2.1.330': { main: 'pass', subagents: 'pass' },
+  } as const;
+
+  it.each([
+    ['2.1.325', 'channel', 'channel'],
+    ['2.1.326', 'channel', 'channel'],
+    ['2.1.327', 'screen', 'screen'],
+    ['2.1.328', 'channel', 'channel'],
+    ['2.1.329', 'channel', 'channel'],
+    ['2.1.330', 'channel', 'channel'],
+    ['2.1.331', 'screen', 'screen'],
+  ] as const)('%s → `%s` for both kinds without a canary file, `%s` with the measured results',
+    (release, withoutFile, withResults) => {
+      expect(consentProofRules('channel', release, CONSENT_CANARY_ABSENT)).toEqual(rules(withoutFile, withoutFile));
+      expect(consentProofRules('channel', release, readOf(canaryText(MEASURED_RESULTS))))
+        .toEqual(rules(withResults, withResults));
+    });
+
+  it('an excluded release is outside the package base: its own canary entry decides it as above the constant', () => {
+    const read = (main: Result, subagents: Result): ConsentCanaryRead =>
+      readOf(canaryText({ '2.1.327': { main, subagents } }));
+    expect(consentProofRules('channel', '2.1.327', read('pass', 'pass'))).toEqual(BOTH_CHANNEL);
+    expect(consentProofRules('channel', '2.1.327', read('pass', 'unmeasured'))).toEqual(rules('channel', 'screen'));
+    expect(consentProofRules('channel', '2.1.327', read('fail', 'pass'))).toEqual(rules('screen', 'channel'));
+    expect(consentProofRules('channel', '2.1.327', read('fail', 'fail'))).toEqual(BOTH_SCREEN);
+  });
+
+  it('a `fail` in the file takes `channel` away from a release the package covers, for that kind', () => {
+    expect(consentProofRules('channel', '2.1.330', readOf(canaryText({ '2.1.330': { main: 'fail' } }))))
+      .toEqual(rules('screen', 'channel'));
+    expect(consentProofRules('channel', '2.1.328', readOf(canaryText({ '2.1.328': { subagents: 'fail' } }))))
+      .toEqual(rules('channel', 'screen'));
   });
 });
 

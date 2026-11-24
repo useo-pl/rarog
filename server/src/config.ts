@@ -48,6 +48,9 @@ import {
   HERDR_SEND_ENV,
   HERDR_SOCKET_ENV,
   HERDR_TAB_LABELS_ENV,
+  INBOX_ENV,
+  FILES_ENV,
+  FILES_MAX_MB_ENV,
   IROH_ENV,
   IROH_KEY_ENV,
   IROH_PORT_ENV,
@@ -96,9 +99,10 @@ import type { DemoReviewConfig } from './config/demo.ts';
 import {
   COMPANION_MODEL_DEFAULT, COMPANION_MODEL_PATTERN, parseAgentFiles, parseCliWaiting, parseCodexStatusEnabled,
   parseCompanionEnabled, parseCompanionModel, parseCompanionSessionsEnabled, parseConsentRestartGrace,
-  parseGitFileDetails, parseNotesEnabled,
+  parseGitFileDetails, parseInboxEnabled, parseNotesEnabled,
   parsePrStatusEnabled, parsePromptBlock, parseQueueEcho, parseRefusalDumps, parseSseGzip,
 } from './config/flags.ts';
+import { parseFilesEnabled, parseFilesMaxBytes } from './config/files.ts';
 import {
   DEFAULT_MAX_PANES, defaultHerdrSocket, parseHerdrLaunch, parseHerdrSeenFocus, parseHerdrSend, parseHerdrSocket,
   parseHerdrTabLabels, parseMaxPanes,
@@ -386,12 +390,12 @@ export interface RarogConfig {
    */
   readonly consentChannel: HookChannelMode;
   /**
-   * Reguła dowodu „dialog stoi” kanału zgód (`RAROG_CONSENT_PROOF`, domyślnie `channel`; `docs/server-config.md`,
-   * „Preferences and feature flags”, i `docs/dialogs.md`, „Proof rule”). `channel` = przycisk zgody prośby wątku
-   * głównego spoza MCP z żywego hooka i świeżego rejestru CLI `waiting: permission`, bez wierzchu ekranu, w sesji
-   * z wersją CLI nie wyższą niż `CONSENT_CHANNEL_MEASURED_CLI` albo zaliczoną w pliku kanarka w katalogu danych
-   * (bramka wersji per rodzaj prośby, `layer1/version-gate.ts`; reszta = `screen`); `screen` = dowód z wierzchu
-   * ekranu dla każdej prośby, także przy pliku kanarka. Bez skutku przy kanale `off` i `shadow` i w demo.
+   * The "dialog stands" proof rule of the consent channel (`RAROG_CONSENT_PROOF`, default `channel`;
+   * `docs/server-config.md`, "Preferences and feature flags", and `docs/dialogs.md`, "Proof rule"). `channel` = the
+   * approve button of a main-thread request outside MCP from a live hook and a fresh registry read `waiting:
+   * permission`, without the screen top, in a session on a release in the package base `CONSENT_CHANNEL_MEASURED_CLI`
+   * or passed in the canary file (version gate per request kind, `layer1/version-gate.ts`; the rest = `screen`);
+   * `screen` = the screen top for every request, whatever the canary file says. No effect at `off`, `shadow`, demo.
    */
   readonly consentProof: ConsentProofRule;
   /**
@@ -457,6 +461,19 @@ export interface RarogConfig {
    * `state` field of a session's PRs never goes out. In demo mode the states come from a fixed map, never from `gh`.
    */
   readonly prStatusEnabled: boolean;
+  /**
+   * Inbox (`RAROG_INBOX`, on by default; `docs/server-config.md`): `false` = no card tracker, no Inbox event on the
+   * stream, no `inbox` capability, and the Inbox routes answer 503. The demo reads its cards from its own sessions
+   * and obeys the flag the same way.
+   */
+  readonly inboxEnabled: boolean;
+  /**
+   * Session files (`RAROG_FILES`, on by default; `docs/server-config.md`): `false` = the file routes answer 404 as
+   * unknown routes and the `files` capability is absent. The demo lists its fixed tree and obeys the flag the same way.
+   */
+  readonly filesEnabled: boolean;
+  /** The largest file of a session the server sends, in bytes (`RAROG_FILES_MAX_MB` × 1 MiB, 50 MiB by default). */
+  readonly filesMaxBytes: number;
   /**
    * Base environment of the `gh` process of the PR status: the server's start environment cut to
    * {@link PR_STATUS_ENV_PASSTHROUGH}, empty values dropped (same reason as {@link companionEnvBase}).
@@ -1249,6 +1266,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, mode: InstallMo
     companionModel: parseCompanionModel(readEnv(env, COMPANION_MODEL_ENV)),
     // On in demo too: the demo has its own fixed source (`bootstrap/pr-status.ts`); a wrong value stops the start.
     prStatusEnabled: parsePrStatusEnabled(readEnv(env, PR_STATUS_ENV)),
+    inboxEnabled: parseInboxEnabled(readEnv(env, INBOX_ENV)),
+    filesEnabled: parseFilesEnabled(readEnv(env, FILES_ENV)),
+    filesMaxBytes: parseFilesMaxBytes(readEnv(env, FILES_MAX_MB_ENV)),
     prStatusEnvBase: parsePrStatusEnvBase(env),
     /*
      * Terminal jest wyłączony w demo BEZWARUNKOWO: demo nie dotyka dysku ani procesów

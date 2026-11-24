@@ -20,7 +20,8 @@ public struct ListCacheState: Sendable, Equatable {
 
 /// Zdarzenia pamięci podręcznej listy (gałąź `CoreEvent.listCache`).
 public enum ListCacheEvent: Sendable, Equatable {
-  /// Odczyt pliku przy starcie z kluczem: lista sprzed uśpienia, rysowana jako nieświeża.
+  /// The file read at the start with a key, or when a key enters a space or pairs again into it: the list from before,
+  /// drawn as stale.
   case restored(CachedList)
 }
 

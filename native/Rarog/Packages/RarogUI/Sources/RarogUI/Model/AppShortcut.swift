@@ -15,7 +15,7 @@ import UIKit
 /// their default. Właściciel: skróty.
 public enum AppShortcut: String, CaseIterable, Sendable {
   // Menu poleceń sceny (działa wszędzie, także nad arkuszem).
-  case newSession, newTerminal, toggleList, toggleInspector, previousProject, nextSession, previousSession, toggleRead
+  case newSession, newTerminal, toggleList, toggleInspector, previousProject, toggleRead
   case popupShell, popupLazygit, note
   /// The app's text size (`TextScale`): ⌘+ (registered as ⌘= and ⇧⌘=), ⌘- and ⌘0.
   case textBigger, textSmaller, textActualSize
@@ -106,7 +106,6 @@ public enum AppShortcut: String, CaseIterable, Sendable {
     case .toggleList: .character("b")
     case .toggleInspector: .character("i")
     case .previousProject: .character("l")
-    case .nextSession, .previousSession: .character("s")
     case .toggleRead: .character("u")
     case .popupShell: .character("f")
     case .popupLazygit: .character("g")
@@ -126,7 +125,7 @@ public enum AppShortcut: String, CaseIterable, Sendable {
 
   private var defaultModifiers: Modifiers {
     switch self {
-    case .newTerminal, .previousSession, .toggleRead: [.shift, .command]
+    case .newTerminal, .toggleRead: [.shift, .command]
     // ⌥⌘M, nie ⌘M: gołe ⌘M od iPadOS 26 to systemowe „Zminimalizuj okno” i wygrywa ze skrótem apki mimo
     // `wantsPriorityOverSystemBehavior` (zmierzone w symulatorze).
     case .dictation: [.option, .command]
@@ -139,8 +138,8 @@ public enum AppShortcut: String, CaseIterable, Sendable {
 
   public var scopes: Set<Scope> {
     switch self {
-    case .newSession, .newTerminal, .toggleList, .toggleInspector, .previousProject, .nextSession, .previousSession,
-      .toggleRead, .popupShell, .popupLazygit, .note, .textBigger, .textSmaller, .textActualSize:
+    case .newSession, .newTerminal, .toggleList, .toggleInspector, .previousProject, .toggleRead, .popupShell,
+      .popupLazygit, .note, .textBigger, .textSmaller, .textActualSize:
       [.app]
     // ⌘X zamyka zakładkę sesji (`SessionViewController+KeysTabs`) i terminal (`TerminalKeyMap`).
     case .closeTab: [.session, .terminal]

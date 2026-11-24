@@ -13,8 +13,9 @@ final class SessionControlUITests: XCTestCase {
   }
 
   /// „Wyślij" staje się Stopem: przy pracującej sesji i pustym polu przycisk pola
-  /// (`composer.send`) mówi „Stop", litera przywraca „Wyślij", skasowanie — znów Stop. Tap przerywa turę
-  /// i oddaje ostatni prompt do pustego pola; po wyczyszczeniu pola przycisk wysyła, bo tura już stoi. Esc
+  /// (`composer.send`) mówi „Stop", litera przywraca „Wyślij", skasowanie — znów Stop. Tap przerywa turę.
+  /// The demo server reports no prompt handed back by Claude Code, so the field stays empty and the button sends,
+  /// because the turn has stopped. Esc
   /// z klawiatury idzie tą samą drogą (`interruptTurn`), ale XCUITest nie dowozi Esc do skrótów apki
   /// w symulatorze (pomiar: ani skrót pola, ani ekranu nie dostał zdarzenia) — Esc sprawdza się
   /// ręcznie na iPadzie, regułę rozstrzygania pokrywa `InterruptPresentationTests`.
@@ -37,22 +38,18 @@ final class SessionControlUITests: XCTestCase {
     XCTAssertTrue(wait("label == %@", button, argument: "Stop"), "puste pole: znów Stop")
 
     button.tap()
+    // The demo server reports no prompt handed back by Claude Code, so the field stays empty, as in the terminal.
     XCTAssertTrue(
-      wait("value == %@", field, argument: "Policz pokrycie testami modułu transkryptu i wypisz luki.", timeout: 20),
-      "ostatni prompt wrócił do pustego pola: \(field.value as? String ?? "")")
+      wait("label == %@", button, argument: "Wyślij", timeout: 20), "tura przerwana: puste pole, przycisk „Wyślij”")
+    XCTAssertEqual(field.value as? String ?? "", "", "no handed-back prompt: the field stays empty")
     XCTAssertFalse(element(app, "composer.hint").exists, "po udanym przerwaniu linia pod polem gaśnie")
-    // Prompt w polu to szkic jak każdy inny — czyścimy, żeby nie został na dysku symulatora. Kasowanie znak po
-    // znaku: zaznaczenie Cmd+A stawia menu edycji, przy którym XCUITest czekał na bezczynność apki po minucie
-    // na krok. Puste pole po przerwaniu: tura stoi, więc przycisk wysyła.
-    let restored = (field.value as? String ?? "").count
-    field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: restored))
-    XCTAssertTrue(wait("value == %@", field, argument: ""), "pole wyczyszczone")
-    XCTAssertTrue(wait("label == %@", button, argument: "Wyślij"), "tura przerwana: puste pole, przycisk „Wyślij”")
   }
 
   /// Szybki podwójny tap „Wyślij" wysyła raz i niczego nie przerywa: przez 700 ms po wysyłce przycisk zostaje
   /// „Wyślij", choć wpis w locie (echo wstrzymane w demo) to już tura do przerwania; drugi tap trafia w pustą
-  /// wysyłkę. Po oknie przycisk staje się Stopem, a pole zostaje puste — przerwanie oddałoby do niego prompt.
+  /// wysyłkę. Po oknie przycisk staje się Stopem. An interrupt leaves no trace this test can see (the demo hands no
+  /// prompt back), so the count of interrupts is checked by
+  /// `ComposerPrimaryButtonTests.testDoubleSendRightAfterTypingSendsOnceInterruptsNever` (RarogUIKitTests).
   @MainActor
   func testDoubleTapSendSendsOnceInterruptsNever() async throws {
     let port = try DemoServer.requirePort()
@@ -73,7 +70,6 @@ final class SessionControlUITests: XCTestCase {
     _ = try await control.wait("jedna wysyłka", until: { $0.receivedMessages.count >= 1 })
     _ = try await control.stays("druga wysyłka nie wyszła", for: .seconds(1.5)) { $0.receivedMessages.count == 1 }
     XCTAssertTrue(wait("label == %@", button, argument: "Stop", timeout: 5), "po oknie wpis w locie daje Stop")
-    XCTAssertEqual(field.value as? String ?? "", "", "pole puste: przerwania nie było (oddałoby prompt)")
     try await control.release("all")
     app.terminate()
     try await control.reset()

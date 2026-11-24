@@ -401,6 +401,34 @@ describe('strumień sesji', () => {
   });
 });
 
+describe('new card under an open session id', () => {
+  it('each open stream of that id gets a fresh transcript-snapshot; other streams get nothing', () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' }), makeSummary({ id: 's2' })]);
+    const hub = makeHub(manager);
+    const open = new FakeRes();
+    const other = new FakeRes();
+    const global = new FakeRes();
+    hub.openSession('s1', open, null);
+    hub.openSession('s2', other, null);
+    hub.openGlobal(global);
+    const counts = [open, other, global].map((res) => res.frames().length);
+    manager.transcriptResult = { messages: [message(41), message(42)], pendingPermissions: [], pendingQuestions: [] };
+
+    manager.resetTranscript('s1');
+
+    const fresh = open.frames().slice(counts[0]);
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0]?.id).toBeNull();
+    const event = fresh[0]?.event;
+    if (event?.type !== 'transcript-snapshot') throw new Error('no snapshot');
+    expect(event.messages.map((m) => m.seq)).toEqual([41, 42]);
+    expect(other.frames()).toHaveLength(counts[1] ?? 0);
+    expect(global.frames()).toHaveLength(counts[2] ?? 0);
+    // A push the server starts is not an opening of the transcript: no git refresh.
+    expect(manager.calls.filter((c) => c.method === 'transcript').at(-1)?.args).toEqual(['s1', { peek: true }]);
+  });
+});
+
 /*
  * A frame-by-frame replay reaches the phone in batches and each batch renders separately, so entering
  * a session after a break would "scroll down" in several jumps. From two missed messages on, the server

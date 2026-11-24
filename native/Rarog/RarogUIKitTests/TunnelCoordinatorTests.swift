@@ -164,6 +164,117 @@ final class TunnelCoordinatorTests: XCTestCase {
     XCTAssertEqual(Set(rig.system.stopped).count, 20, "każde zadanie zamknięte dokładnie raz")
   }
 
+  // MARK: - Voice hold (locked-phone trial)
+  // Without a hold the grace cases above hold as they are.
+
+  /// Catches a hold that does not keep the generation past the 8 s grace (the server connection of a locked phone
+  /// would close under a running conversation), and a release after the grace that leaves a work or the grace task.
+  func testVoiceHoldKeepsGenerationPastGraceAndReleaseAfterItCloses() async throws {
+    let rig = try await GraceRig.make()
+    rig.coordinator.scene(.background)
+    try await rig.inGrace()
+    rig.coordinator.holdForVoice(true)
+    try await rig.held()
+    rig.clock.advance(by: .seconds(30))
+    try await Task.sleep(for: .milliseconds(100))
+    try await rig.expectHeld("30 s after entering the background")
+    guard case let .ready(generation) = await rig.runtime.generation() else { return XCTFail("no generation") }
+    XCTAssertEqual(generation.number, 1, "a request in the background gets the held generation")
+    XCTAssertEqual(rig.system.stopped, [], "the grace task stays open while the generation is held")
+    rig.coordinator.holdForVoice(false)
+    try await Self.eventually("released after the grace: the generation closes") {
+      await rig.runtime.machineState == .idle
+    }
+    try await rig.expectReleased()
+  }
+
+  /// Catches a hold set in the foreground that the background does not see (the generation would fall to the grace
+  /// rule and close after 8 s).
+  func testVoiceHoldSetBeforeBackgroundKeepsGeneration() async throws {
+    let rig = try await GraceRig.make()
+    rig.coordinator.holdForVoice(true)
+    rig.coordinator.scene(.background)
+    try await rig.held()
+    XCTAssertEqual(rig.system.started, [TunnelCoordinator.graceTaskName])
+    rig.clock.advance(by: .seconds(9))
+    try await Task.sleep(for: .milliseconds(100))
+    try await rig.expectHeld("past the grace deadline")
+    rig.coordinator.holdForVoice(false)
+    try await Self.eventually("the generation closes") { await rig.runtime.machineState == .idle }
+    try await rig.expectReleased()
+  }
+
+  /// Catches a system expiry of the grace task that closes a held generation, and a release after that expiry that
+  /// waits for a grace the stay no longer has (the machine's rule: the expiry takes the grace of this stay).
+  func testSystemExpiryDuringVoiceHoldKeepsGenerationAndReleaseClosesAtOnce() async throws {
+    let rig = try await GraceRig.make()
+    rig.coordinator.scene(.background)
+    try await rig.inGrace()
+    rig.coordinator.holdForVoice(true)
+    try await rig.held()
+    rig.system.expire(1)
+    try await Task.sleep(for: .milliseconds(100))
+    try await rig.expectHeld("after the system expired the grace task")
+    XCTAssertEqual(rig.system.stopped, [1], "the adapter closed the expired task")
+    rig.coordinator.holdForVoice(false)
+    try await Self.eventually("the generation closes at once") { await rig.runtime.machineState == .idle }
+    XCTAssertEqual(rig.clock.now, .zero, "within the 8 s, without waiting for the deadline")
+    try await rig.expectReleased()
+  }
+
+  /// Catches a release within the grace that closes the generation at once or keeps it past the deadline: the
+  /// grace rule of this stay applies as if the hold never happened.
+  func testVoiceHoldReleasedWithinGraceReturnsToGraceDeadline() async throws {
+    let rig = try await GraceRig.make()
+    rig.coordinator.scene(.background)
+    try await rig.inGrace()
+    rig.coordinator.holdForVoice(true)
+    try await rig.held()
+    rig.clock.advance(by: .seconds(3))
+    rig.coordinator.holdForVoice(false)
+    try await rig.inGrace()
+    rig.clock.advance(by: .milliseconds(4_900))
+    try await Task.sleep(for: .milliseconds(100))
+    let before = await rig.runtime.machineState
+    guard case .backgroundGrace(1, _, _) = before else { return XCTFail("before the deadline: \(before)") }
+    XCTAssertEqual(rig.system.stopped, [], "the grace task lasts until the generation closes")
+    rig.clock.advance(by: .milliseconds(100))
+    try await Self.eventually("closed at the grace deadline") { await rig.runtime.machineState == .idle }
+    try await rig.expectReleased()
+  }
+
+  /// Catches a hold that changes the foreground: a new generation, a request that waits, a release that closes the
+  /// ready generation, or a system task started without the background.
+  func testVoiceHoldInForegroundChangesNothing() async throws {
+    let rig = try await GraceRig.make()
+    rig.coordinator.holdForVoice(true)
+    try await TunnelCoordinatorTests.settle(rig.runtime)
+    try await rig.expectReady("held in the foreground")
+    XCTAssertEqual(rig.coordinator.liveWorks, [TunnelCoordinator.voiceHoldWork])
+    rig.coordinator.holdForVoice(false)
+    try await TunnelCoordinatorTests.settle(rig.runtime)
+    try await rig.expectReady("released in the foreground")
+    XCTAssertEqual(rig.coordinator.liveWorks, [])
+    let works = await rig.runtime.machineWorks
+    XCTAssertEqual(works, [])
+    XCTAssertEqual(rig.system.started, [], "no system task in the foreground")
+    rig.coordinator.scene(.background)
+    try await rig.inGrace()
+  }
+
+  /// Catches a repeated hold that adds a second work (one release would leave the other holding the connection),
+  /// and a reserved identifier a system task identifier could reach.
+  func testRepeatedVoiceHoldIsOneWorkUnderTheReservedId() {
+    let coordinator = Self.coordinator()
+    coordinator.holdForVoice(true)
+    coordinator.holdForVoice(true)
+    XCTAssertEqual(coordinator.liveWorks, [TunnelCoordinator.voiceHoldWork])
+    XCTAssertLessThan(UInt64(Int.max), TunnelCoordinator.voiceHoldWork.raw)
+    coordinator.holdForVoice(false)
+    coordinator.holdForVoice(false)
+    XCTAssertEqual(coordinator.liveWorks, [])
+  }
+
   // MARK: - Reset testów UI
 
   func testUITestResetDeletesIrohIdentity() {
@@ -759,6 +870,36 @@ final class GraceRig {
     }
     let napping = await clock.waitForSleepers(1)
     XCTAssertTrue(napping, "sen terminu łaski")
+  }
+
+  /// The machine keeps generation 1 as a background work (the voice hold).
+  func held() async throws {
+    try await TunnelCoordinatorTests.eventually("held as a background work") {
+      if case .backgroundWork(1, _) = await runtime.machineState { return true }
+      return false
+    }
+  }
+
+  func expectHeld(_ when: String) async throws {
+    let state = await runtime.machineState
+    guard case .backgroundWork(1, _) = state else { return XCTFail("\(when): \(state)") }
+  }
+
+  /// Generation 1 ready, and a request gets it.
+  func expectReady(_ when: String) async throws {
+    let state = await runtime.machineState
+    guard case .ready(1, _) = state else { return XCTFail("\(when): \(state)") }
+    guard case let .ready(generation) = await runtime.generation() else { return XCTFail("\(when): no generation") }
+    XCTAssertEqual(generation.number, 1, when)
+  }
+
+  /// After a release: no work in the coordinator or the machine, and the one grace task ended once.
+  func expectReleased() async throws {
+    XCTAssertEqual(coordinator.liveWorks, [])
+    let works = await runtime.machineWorks
+    XCTAssertEqual(works, [])
+    try await TunnelCoordinatorTests.eventually("the grace task ended") { system.stopped == [1] }
+    XCTAssertEqual(system.started.count, 1)
   }
 }
 

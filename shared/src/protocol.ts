@@ -5,9 +5,8 @@
  * `null`, a klient loguje i ignoruje zdarzenie. Dzięki temu starszy klient przeżyje nowszy
  * serwer bez wysypywania strumienia SSE.
  *
- * Types and schemas of separate areas live in `./protocol/`, one file per area. This file re-exports every
- * name from them, so code imports the contract from `protocol.ts` (`@rarog/shared`) only. An area file does
- * not import this file.
+ * Types and schemas of separate areas live in `./protocol/`, one file per area, re-exported here, so code imports
+ * the contract from `protocol.ts` (`@rarog/shared`) only. An area file does not import this file.
  */
 import { z } from 'zod';
 import { type SentenceRef, say, sentenceRefSchema } from './sentences/index.ts';
@@ -24,6 +23,7 @@ import {
   type GitCommit, type GitFileDetail, type GitFileKinds, gitCommitSchema, gitFileDetailSchema, gitFileKindsSchema,
 } from './protocol/git.ts';
 import { type HerdrMode, type HerdrStatus, herdrModeSchema, herdrStatusSchema } from './protocol/herdr.ts';
+import { type InboxEventOf, inboxEventSchemas } from './protocol/inbox.ts';
 import { type EffortLevel, effortLevelSchema, modelIdSchema } from './protocol/model.ts';
 
 export type { SentenceRef };
@@ -36,8 +36,10 @@ export * from './protocol/consent.ts';
 export * from './protocol/dictation.ts';
 export * from './protocol/diff.ts';
 export * from './protocol/directories.ts';
+export * from './protocol/files.ts';
 export * from './protocol/git.ts';
 export * from './protocol/herdr.ts';
+export * from './protocol/inbox.ts';
 export * from './protocol/model.ts';
 export * from './protocol/notes.ts';
 export * from './protocol/resume.ts';
@@ -342,7 +344,7 @@ export interface SessionSummary {
    * Pole jest ADDYTYWNE i czysto informacyjne: o przyciskach decyduje wyłącznie
    * `herdrDialog`. Sens jest taki, że karta fallbacku ma powiedzieć „wielokrotny wybór
    * zrób w terminalu" zamiast jednego zdania na wszystkie przyczyny (`REFUSE_MESSAGES`).
-   * Ustawia je ta sama ocena, która woła `#auditRefusal`; znika razem z kartą.
+   * Ustawia je ta sama ocena, która woła `auditRefusal`; znika razem z kartą.
    */
   herdrDialogReason?: RefuseReason;
   /**
@@ -988,7 +990,8 @@ export type ServerEvent =
    * projekt MA notatkę, a bez tego bitu każdy klient musiałby po każdym autosave robić `GET`
    * całego dokumentu tylko po to, żeby zapalić albo zgasić kolor ikony.
    */
-  | { type: 'notes'; cwd: string; empty: boolean };
+  | { type: 'notes'; cwd: string; empty: boolean }
+  | InboxEventOf<SessionState>;
 
 export type ServerEventType = ServerEvent['type'];
 
@@ -1007,7 +1010,7 @@ export type ServerEventType = ServerEvent['type'];
  *   z przyciskami; nikt jeszcze o nic nie prosił, więc nie ma żądania, na które odpowiedzieć;
  * - **decyzja** (`multi-select` … `send-failed`) — człowiek tapnął, a klawisz nie wyszedł;
  * - **blokada** (`in-flight`) — powstaje w MANAGERZE, nie w driverze: decyzja o tej karcie
- *   właśnie leci z drugiego urządzenia. Do dziennika audytu nie trafia nigdy (`#auditRefusal`
+ *   właśnie leci z drugiego urządzenia. Do dziennika audytu nie trafia nigdy (`auditRefusal`
  *   woła wyłącznie driver), więc obietnicy „wpisy się SUMUJĄ" nie narusza.
  *
  * Lista stoi PRZED sekcją schematów, bo `sessionSummarySchema.herdrDialogReason` jej używa,
@@ -1419,10 +1422,7 @@ export const herdrStatusEventSchema = z.object({
   detailRef: sentenceRefSchema.optional(),
 });
 
-/**
- * Zmiana notatek projektu. Katalog i bit „pusty po zapisie", zero treści — powód przy
- * wariancie w {@link ServerEvent}.
- */
+/** Project notes changed: the directory and the "empty after the write" bit, no content ({@link ServerEvent}). */
 export const notesEventSchema = z.object({
   type: z.literal('notes'),
   cwd: z.string().min(1),
@@ -1447,6 +1447,7 @@ export const serverEventSchema = z.discriminatedUnion('type', [
   usageEventSchema,
   herdrStatusEventSchema,
   notesEventSchema,
+  ...inboxEventSchemas(sessionStateSchema),
 ]);
 
 /**
@@ -1692,21 +1693,20 @@ export type InterruptDelivery = (typeof INTERRUPT_DELIVERY)[number];
 export const interruptDeliverySchema = z.enum(INTERRUPT_DELIVERY);
 
 /**
- * Odpowiedź `POST /api/sessions/:id/interrupt` — **202**.
+ * Answer of `POST /api/sessions/:id/interrupt`: **202**.
  *
- * `session` niesie ŚWIEŻE `SessionSummary`: stan przestawia się
- * synchronicznie, więc odpowiedź na POST-a naprawia widok także wtedy, gdy `EventSource`
- * umarł po cichu i nie zgłosił błędu.
- *
- * Oba pola poza `ok` są OPCJONALNE i to nie jest asekuracja: `session` odpada przy odpowiedzi
- * starszego serwera, a `delivered` — dopóki endpoint nie czeka na obietnicę drivera. Klient
- * bez `delivered` degraduje się do dwóch gałęzi (sukces / wyjątek) — i to jest jedyna dozwolona
- * reakcja na jego brak.
+ * `session` carries a FRESH `SessionSummary`: the state changes synchronously, so the answer fixes the view even when
+ * `EventSource` died silently. Every field but `ok` is OPTIONAL: `session` is absent from an older server, `delivered`
+ * from a route that does not wait for the driver; a client without `delivered` has two branches (success, exception),
+ * the only allowed reaction. `returnedPrompt` stands only after a delivered key whose Esc put the interrupted turn's
+ * prompt back into Claude Code's prompt field (CLI 2.1.329), proven by the whole field equal to that prompt; it is the
+ * prompt as the server sent or read it. Absent: no hand-back was proven.
  */
 export const interruptResponseSchema = z.object({
   ok: z.literal(true),
   session: sessionSummarySchema.optional(),
   delivered: interruptDeliverySchema.optional(),
+  returnedPrompt: z.string().min(1).optional(),
 });
 
 export const clientLogBodySchema = z.object({

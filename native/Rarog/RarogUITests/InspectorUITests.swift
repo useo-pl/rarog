@@ -55,7 +55,9 @@ final class InspectorUITests: XCTestCase {
     // Inna sesja: preferencja stoi (na 11" lista wraca, a stojący panel trzyma się przy 890 pt).
     setList(app, visible: true)
     open(app, "demo-data-loader")
-    XCTAssertTrue(element(app, "inspector.git.clean").waitForAppearance(timeout: 10), "panel innej sesji: czysto")
+    XCTAssertTrue(
+      wait(NSPredicate(format: "selected == true"), element(app, "tab.demo-data-loader")), "the other session in view")
+    XCTAssertTrue(element(app, "inspector.git.title").waitForAppearance(timeout: 10), "the other session's Files")
     XCTAssertTrue(panel.exists)
 
     // Ponowne uruchomienie BEZ resetu: zalogowany plikiem podpisu, panel wraca sam.
@@ -293,12 +295,13 @@ final class InspectorUITests: XCTestCase {
     try await control.reset()
   }
 
-  /// Scenariusz z gitem: ZMIANY W KATALOGU z `fileDetails` (litera, nazwa, liczniki) i ZERO żądań diffa bez
-  /// stuknięcia — przy otwarciu panelu, napływie ramki `git-status` i zmianie sesji. Stuknięcie pliku otwiera okno
-  /// diffa: trzy nagłówki, rozwinięty tylko stuknięty plik, do serwera idzie lista i patch TEGO pliku;
-  /// stuknięcie drugiego nagłówka dokłada jego ścieżkę, a zwinięcie i ponowne rozwinięcie nie pobiera nic. Nagłówek
-  /// sekcji zwija całe drzewo i zwinięcie przeżywa zmianę sesji. Przy panelu tap w linię gita nie otwiera
-  /// popovera, bez panelu — otwiera (droga powrotu bez builda), także bez żądań diffa.
+  /// The Files section against the demo project (`server/src/demo/files.ts`): the whole tree from the listings,
+  /// the change markers from the change list (letter, name, counts), and ZERO patch reads without the Diff item of a
+  /// file's menu: at the panel opening, a `git-status` frame and a session switch. A tap on an existing file does not
+  /// open the diff window; a tap on a deleted file opens it on that file. Long press → Diff opens the window: three
+  /// headers, only that file open, the patch of THAT file goes to the server; the second header adds its path, and
+  /// folding and unfolding fetches nothing. The section header folds the whole tree and the fold survives a session
+  /// switch. With the panel the git line tap opens no popover, without it it does.
   @MainActor
   func testChangesFromFileDetailsWithoutDiff() async throws {
     let port = try DemoServer.requirePort()
@@ -313,33 +316,50 @@ final class InspectorUITests: XCTestCase {
     button.tap()
     let panel = element(app, "inspector.panel")
     XCTAssertTrue(panel.waitForAppearance(timeout: 5))
-    XCTAssertTrue(element(app, "inspector.git.noData").waitForAppearance(timeout: 5), "ramka gita jeszcze nie przyszła")
-    _ = try await control.stays("otwarcie panelu bez odczytu diffa", for: .seconds(2)) { $0.diffRequests == 0 }
 
-    // Ramka `git-status` z `fileDetails` przy otwartym transkrypcie: trzy pliki demo z rodzajem i licznikami.
-    try await control.emit("git-status", sessionId: id)
+    // The tree of the demo project with the three demo changes, before any git frame.
     let modified = element(app, "inspector.git.file.src/notes.ts")
-    XCTAssertTrue(modified.waitForAppearance(timeout: 10), "lista zmian z ramki")
-    XCTAssertEqual(modified.label, "src/notes.ts, zmieniony, 2 dodane linie, 2 usunięte linie")
-    XCTAssertEqual(element(app, "inspector.git.file.src/notes.test.ts").label, "src/notes.test.ts, nowy, 9 dodanych linii")
-    XCTAssertEqual(element(app, "inspector.git.file.src/notes-legacy.ts").label, "src/notes-legacy.ts, usunięty, 4 usunięte linie")
+    XCTAssertTrue(modified.waitForAppearance(timeout: 10), "the tree from the listings and the change list")
+    XCTAssertEqual(modified.label, "notes.ts, zmieniony, 2 dodane linie, 2 usunięte linie")
+    XCTAssertEqual(element(app, "inspector.git.file.src/notes.test.ts").label, "notes.test.ts, nowy, 9 dodanych linii")
+    let deleted = element(app, "inspector.git.file.src/notes-legacy.ts")
+    XCTAssertEqual(deleted.label, "notes-legacy.ts, usunięty, 4 usunięte linie")
+    let unchanged = element(app, "inspector.git.file.package.json")
+    XCTAssertEqual(unchanged.label, "package.json", "an unchanged file of the listing")
+    XCTAssertEqual(element(app, "inspector.git.dir.dist").label, "dist, ignorowany")
     XCTAssertFalse(element(app, "inspector.git.commit").exists, "panel nie pokazuje ostatniego commita")
-    // Drzewo: katalog stoi nad swoimi plikami; stuknięcie zwija go (pliki znikają) i rozwija z powrotem.
+    _ = try await control.stays("opening the panel reads no patch", for: .seconds(2)) { $0.diffFileRequests == 0 }
+
+    // A git frame changes nothing in the reads of patches.
+    try await control.emit("git-status", sessionId: id)
+    _ = try await control.stays("a git frame reads no patch", for: .seconds(2)) { $0.diffFileRequests == 0 }
+    // A directory with changes starts open; a tap folds it (its files leave) and unfolds it.
     let directory = element(app, "inspector.git.dir.src")
-    XCTAssertTrue(directory.exists, "katalog drzewa zmian")
-    XCTAssertEqual(directory.label, "katalog src, 3 pliki")
+    XCTAssertTrue(directory.exists, "katalog drzewa")
+    XCTAssertEqual(directory.label, "src, zmiany w środku: 3")
     XCTAssertEqual(directory.value as? String, "rozwinięty")
+    DemoServer.hideKeyboard(app)
+    settle()
     directory.tap()
     XCTAssertTrue(modified.waitForDisappearance(timeout: 5), "zwinięty katalog chowa pliki")
     XCTAssertEqual(directory.value as? String, "zwinięty")
     directory.tap()
     XCTAssertTrue(modified.waitForAppearance(timeout: 5), "rozwinięty katalog oddaje pliki")
-    // Osobnego przycisku diffa nie ma (otwiera go stuknięcie pliku); nagłówek sekcji jest przełącznikiem drzewa.
+    // No separate diff button; the section header is the toggle of the tree.
     let title = element(app, "inspector.git.title")
     XCTAssertFalse(element(app, "inspector.git.diff").exists, "bez pigułki „Diff”")
     XCTAssertEqual(title.value as? String, "rozwinięte", "drzewo startuje rozwinięte")
     snapshot(app, "zmiany")
-    _ = try await control.stays("ramka gita bez odczytu diffa", for: .seconds(2)) { $0.diffRequests == 0 }
+
+    // A tap on an existing file is its preview, not the diff window; QuickLook's close button returns to the panel.
+    unchanged.tap()
+    let close = element(app, "QLOverlayDoneButtonAccessibilityIdentifier")
+    XCTAssertTrue(close.waitForAppearance(timeout: 10), "a tap on an existing file opens its preview")
+    XCTAssertFalse(element(app, "diff.sheet").exists, "a tap on an existing file opens no diff")
+    _ = try await control.stays("a tap on an existing file reads no patch", for: .seconds(1)) { $0.diffFileRequests == 0 }
+    close.tap()
+    XCTAssertTrue(close.waitForDisappearance(timeout: 5), "the preview closed")
+    XCTAssertTrue(unchanged.waitForAppearance(timeout: 5), "closing the preview returns to the panel")
 
     // Linia gita przy panelu przewija panel, popovera nie ma.
     let git = element(app, "header.git")
@@ -348,8 +368,7 @@ final class InspectorUITests: XCTestCase {
     settle()
     XCTAssertFalse(element(app, "header.git.panel").exists, "przy panelu tap w gita nie otwiera popovera")
 
-    // Całe drzewo zwinięte do nagłówka: katalogi i pliki znikają, liczba w nagłówku zostaje. Klawiatura ekranowa
-    // (pasek skrótów nad nią przykrywa pas panelu) schodzi przed stuknięciem, jak w `screens`.
+    // Całe drzewo zwinięte do nagłówka: katalogi i pliki znikają, liczba w nagłówku zostaje.
     DemoServer.hideKeyboard(app)
     settle()
     title.tap()
@@ -358,13 +377,15 @@ final class InspectorUITests: XCTestCase {
     XCTAssertEqual(title.value as? String, "zwinięte")
     XCTAssertTrue(title.label.hasSuffix("3"), "liczba zmian w nagłówku: \(title.label)")
 
-    // Zmiana sesji: panel innej sesji bez plików poprzedniej, dalej zero odczytów; powrót — lista tej sesji. Na 11"
-    // lista wraca, a stojący panel trzyma się przy 890 pt (histereza).
+    // Session switch: the other session's panel, the fold stays, still no patch read; back — this session's tree.
+    // On 11" the list comes back and the standing panel holds at 890 pt (hysteresis).
     setList(app, visible: true)
     open(app, "demo-willow")
-    XCTAssertTrue(element(app, "inspector.git.noData").waitForAppearance(timeout: 10), "dane tej sesji")
-    XCTAssertFalse(modified.exists, "zero danych poprzedniej sesji")
-    _ = try await control.stays("zmiana sesji bez odczytu diffa", for: .seconds(2)) { $0.diffRequests == 0 }
+    XCTAssertTrue(
+      wait(NSPredicate(format: "selected == true"), element(app, "tab.demo-willow")), "the other session in view")
+    XCTAssertTrue(title.waitForAppearance(timeout: 10), "Files of the other session")
+    XCTAssertFalse(modified.exists, "the folded tree shows no rows")
+    _ = try await control.stays("a session switch reads no patch", for: .seconds(2)) { $0.diffFileRequests == 0 }
     // Powrót wierszem sesji odbioru w drzewie; zwinięty projekt rozwija stuknięcie w nagłówek.
     DemoServer.openRow(app, id, project: "rarog")
     XCTAssertTrue(
@@ -377,46 +398,88 @@ final class InspectorUITests: XCTestCase {
     XCTAssertTrue(modified.waitForAppearance(timeout: 10), "rozwinięte drzewo: lista tej sesji")
     XCTAssertEqual(title.value as? String, "rozwinięte")
 
-    // Stuknięcie pliku — jedyna droga do diffa. Okno pobiera listę i patch TEGO pliku, reszta to same nagłówki.
-    modified.tap()
+    // Long press → Diff: the window reads the patch of THAT file only, the rest are headers.
+    menu(app, modified, "Diff")
     XCTAssertTrue(element(app, "diff.sheet").waitForAppearance(timeout: 10))
     let opened = element(app, "diff.file.src/notes.ts")
     let second = element(app, "diff.file.src/notes.test.ts")
     let third = element(app, "diff.file.src/notes-legacy.ts")
-    XCTAssertTrue(opened.waitForAppearance(timeout: 10), "nagłówek stukniętego pliku")
+    XCTAssertTrue(opened.waitForAppearance(timeout: 10), "header of the chosen file")
     XCTAssertTrue(second.exists && third.exists, "pozostałe pliki jako nagłówki")
-    XCTAssertEqual(opened.value as? String, "rozwinięty", "stuknięty plik rozwinięty od razu")
+    XCTAssertEqual(opened.value as? String, "rozwinięty", "the chosen file open at once")
     XCTAssertEqual(second.value as? String, "zwinięty")
     XCTAssertEqual(third.value as? String, "zwinięty")
     XCTAssertEqual(opened.label, "src/notes.ts, zmieniony, 2 dodane linie, 2 usunięte linie")
     XCTAssertTrue(element(app, "diff.title").label.hasPrefix("Zmiany · 3"), element(app, "diff.title").label)
-    _ = try await control.wait("lista i patch stukniętego pliku") {
-      $0.diffListRequests == 1 && $0.diffFilePaths == ["src/notes.ts"]
-    }
-    _ = try await control.stays("pliki zwinięte bez patcha", for: .seconds(2)) { $0.diffRequests == 2 }
-    // Drugi nagłówek: dochodzi patch TEGO pliku, lista nie idzie drugi raz.
+    _ = try await control.wait("the patch of the chosen file") { $0.diffFilePaths == ["src/notes.ts"] }
+    _ = try await control.stays("folded files without a patch", for: .seconds(2)) { $0.diffFileRequests == 1 }
+    // Drugi nagłówek: dochodzi patch TEGO pliku.
     second.tap()
     XCTAssertTrue(wait(NSPredicate(format: "value == %@", "rozwinięty"), second), "stuknięty nagłówek rozwija plik")
-    _ = try await control.wait("patch drugiego pliku") {
-      $0.diffListRequests == 1 && $0.diffFilePaths == ["src/notes.ts", "src/notes.test.ts"]
-    }
+    _ = try await control.wait("patch drugiego pliku") { $0.diffFilePaths == ["src/notes.ts", "src/notes.test.ts"] }
     // Zwinięcie nie kasuje pobranego patcha: ponowne rozwinięcie niczego nie pobiera.
     second.tap()
     XCTAssertTrue(wait(NSPredicate(format: "value == %@", "zwinięty"), second), "nagłówek zwija plik")
     second.tap()
     XCTAssertTrue(wait(NSPredicate(format: "value == %@", "rozwinięty"), second))
-    _ = try await control.stays("zwinąć i rozwinąć bez ponownego żądania", for: .seconds(2)) { $0.diffRequests == 3 }
+    _ = try await control.stays("zwinąć i rozwinąć bez ponownego żądania", for: .seconds(2)) { $0.diffFileRequests == 2 }
     element(app, "diff.close").tap()
     XCTAssertTrue(element(app, "diff.sheet").waitForDisappearance(timeout: 5))
 
-    // Zamknięty panel: linia gita otwiera popover jak przed panelem — z wierszami z ramki i bez żądań diffa.
+    // A tap on a deleted file opens the diff window on that file.
+    deleted.tap()
+    XCTAssertTrue(element(app, "diff.sheet").waitForAppearance(timeout: 10), "a deleted file opens the diff")
+    XCTAssertTrue(
+      wait(NSPredicate(format: "value == %@", "rozwinięty"), element(app, "diff.file.src/notes-legacy.ts")),
+      "the deleted file open in the window")
+    _ = try await control.wait("the patch of the deleted file") { $0.diffFilePaths.last == "src/notes-legacy.ts" }
+    element(app, "diff.close").tap()
+    XCTAssertTrue(element(app, "diff.sheet").waitForDisappearance(timeout: 5))
+    let reads = try await control.stats().diffFileRequests
+
+    // Zamknięty panel: linia gita otwiera popover jak przed panelem — z wierszami z ramki i bez żądań patcha.
     button.tap()
     XCTAssertTrue(panel.waitForDisappearance(timeout: 5))
     git.tap()
     XCTAssertTrue(element(app, "header.git.panel").waitForAppearance(timeout: 5), "bez panelu — popover gita")
     XCTAssertTrue(element(app, "header.git.file.src/notes.ts").waitForAppearance(timeout: 5), "wiersze dymka z ramki")
-    _ = try await control.stays("dymek gita bez żądań diffa", for: .seconds(2)) { $0.diffRequests == 3 }
+    _ = try await control.stays("the git popover reads no patch", for: .seconds(2)) { $0.diffFileRequests == reads }
     app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
+    app.terminate()
+    try await control.reset()
+  }
+
+  /// Closing a full-screen file preview keeps what the app knows about the server. Two previews of an unchanged file,
+  /// the second within the version probe's 10 s floor: right after the second close the Files tree still lists that
+  /// file from the server's listing, instead of only the changed files until the next probe.
+  @MainActor
+  func testFilesTreeKeepsListingAfterTwoPreviews() async throws {
+    let port = try DemoServer.requirePort()
+    let control = DemoControl(port: port)
+    try await control.reset()
+    let id = try await control.create("idle", label: "M1 preview")
+    let app = try launch(port: port)
+    openTab(app, id)
+    makeRoom(app)
+    let button = element(app, "header.inspector")
+    XCTAssertTrue(button.waitForAppearance(timeout: 15))
+    button.tap()
+    XCTAssertTrue(element(app, "inspector.panel").waitForAppearance(timeout: 5))
+    let unchanged = element(app, "inspector.git.file.package.json")
+    XCTAssertTrue(unchanged.waitForAppearance(timeout: 10), "an unchanged file of the listing")
+    DemoServer.hideKeyboard(app)
+
+    // No pause between the two previews: the second close falls inside the probe floor of the first.
+    let close = element(app, "QLOverlayDoneButtonAccessibilityIdentifier")
+    for round in 1...2 {
+      XCTAssertTrue(unchanged.waitForAppearance(timeout: 5), "package.json listed before preview \(round)")
+      unchanged.tap()
+      XCTAssertTrue(close.waitForAppearance(timeout: 10), "preview \(round) opens")
+      close.tap()
+      XCTAssertTrue(close.waitForDisappearance(timeout: 5), "preview \(round) closed")
+    }
+    XCTAssertTrue(unchanged.waitForAppearance(timeout: 5), "package.json listed right after the second close")
+    XCTAssertFalse(unchanged.waitForDisappearance(timeout: 3), "package.json stays listed after the second close")
     app.terminate()
     try await control.reset()
   }
@@ -445,7 +508,7 @@ final class InspectorUITests: XCTestCase {
 
     // Serwer sprzed tras per plik: lista odpowiada 405, okno mówi zdaniem i daje ponowienie.
     try await control.configure(diffList: "outdated")
-    modified.tap()
+    menu(app, modified, "Diff")
     XCTAssertTrue(element(app, "diff.sheet").waitForAppearance(timeout: 10), "okno diffa")
     let failure = element(app, "diff.failure")
     XCTAssertTrue(failure.waitForAppearance(timeout: 10), "zdanie zamiast listy")
@@ -460,7 +523,7 @@ final class InspectorUITests: XCTestCase {
     let opened = element(app, "diff.file.src/notes.ts")
     let second = element(app, "diff.file.src/notes.test.ts")
     let third = element(app, "diff.file.src/notes-legacy.ts")
-    XCTAssertTrue(opened.waitForAppearance(timeout: 10), "ponowienie otwiera okno od stukniętego pliku")
+    XCTAssertTrue(opened.waitForAppearance(timeout: 10), "the retry opens the window at the chosen file")
     XCTAssertEqual(opened.value as? String, "rozwinięty")
     XCTAssertTrue(element(app, "diff.loading.src/notes.ts").waitForAppearance(timeout: 5), "„Wczytuję…” pod nagłówkiem")
     _ = try await control.wait("patch pierwszego pliku wstrzymany") { $0.held.diffs == 1 }
@@ -495,9 +558,9 @@ final class InspectorUITests: XCTestCase {
     try await control.configure(diffFile: "pass")
     element(app, "diff.failed.src/notes-legacy.ts.retry").tap()
     XCTAssertTrue(failed.waitForDisappearance(timeout: 10), "ponowienie pobiera plik")
+    // The list count is not asserted: the Files tree reads the change list too.
     _ = try await control.wait("jedno ponowienie, jedno żądanie") {
       $0.diffFilePaths == ["src/notes.ts", "src/notes.test.ts", "src/notes-legacy.ts", "src/notes-legacy.ts"]
-        && $0.diffListRequests == 2
     }
     element(app, "diff.close").tap()
     XCTAssertTrue(element(app, "diff.sheet").waitForDisappearance(timeout: 5))
@@ -530,7 +593,7 @@ final class InspectorUITests: XCTestCase {
     try await control.emitGitStatus(sessionId: id) { file.exists }
     DemoServer.hideKeyboard(app)
     try await control.configure(diffFile: "long")
-    file.tap()
+    menu(app, file, "Diff")
     let sheet = element(app, "diff.sheet")
     XCTAssertTrue(sheet.waitForAppearance(timeout: 10), "okno diffa")
     let first = element(app, "diff.file.src/notes.ts")
@@ -872,8 +935,8 @@ final class InspectorUITests: XCTestCase {
       settle()
       try shot(app, "zmiany-wskaznik", theme)
     }
-    // Okno diffa: stuknięty plik rozwinięty, pozostałe jako nagłówki; potem drugi plik rozwinięty obok.
-    element(app, "inspector.git.file.src/notes.ts").tap()
+    // The diff window from the menu: the chosen file open, the rest as headers; then the second file open beside it.
+    menu(app, element(app, "inspector.git.file.src/notes.ts"), "Diff")
     let diff = element(app, "diff.sheet")
     XCTAssertTrue(diff.waitForAppearance(timeout: 10), "okno diffa")
     XCTAssertTrue(element(app, "diff.file.src/notes.ts").waitForAppearance(timeout: 10), "nagłówek stukniętego pliku")
@@ -884,6 +947,15 @@ final class InspectorUITests: XCTestCase {
     try shot(app, "okno-diff-dwa", theme)
     element(app, "diff.close").tap()
     XCTAssertTrue(diff.waitForDisappearance(timeout: 5), "okno diffa zamknięte")
+    // A tap on an existing file: its preview over the panel, closed by QuickLook's close button.
+    element(app, "inspector.git.file.src/notes.ts").tap()
+    let close = element(app, "QLOverlayDoneButtonAccessibilityIdentifier")
+    XCTAssertTrue(close.waitForAppearance(timeout: 10), "the file preview stands")
+    // The first preview starts the QuickLook process, which draws the content later than the frame.
+    settle(4)
+    try shot(app, "podglad", theme)
+    close.tap()
+    XCTAssertTrue(close.waitForDisappearance(timeout: 5), "the file preview closed")
     // Drzewo zwinięte do nagłówka i z powrotem (zwinięcie pamięta urządzenie, więc test je cofa).
     title.tap()
     XCTAssertTrue(element(app, "inspector.git.file.src/notes.ts").waitForDisappearance(timeout: 5), "zwinięte drzewo")
@@ -897,11 +969,11 @@ final class InspectorUITests: XCTestCase {
     XCTAssertTrue(element(app, "inspector.background.empty").waitForAppearance(timeout: 10))
     settle()
     try shot(app, "pusto", theme)
-    // Czysto (sesja bez zmian).
+    // Another session with the Files tree of the demo project.
     open(app, "demo-data-loader")
-    XCTAssertTrue(element(app, "inspector.git.clean").waitForAppearance(timeout: 10))
+    XCTAssertTrue(element(app, "inspector.git.title").waitForAppearance(timeout: 10))
     settle()
-    try shot(app, "czysto", theme)
+    try shot(app, "inna-sesja", theme)
     app.terminate()
     try await control.reset()
   }
@@ -923,13 +995,15 @@ final class InspectorUITests: XCTestCase {
   }
 
   @MainActor
-  private func launch(
-    port: Int, theme: String? = nil, largest: Bool = false, shortcuts: Bool = false
+  func launch(
+    port: Int, theme: String? = nil, largest: Bool = false, shortcuts: Bool = false,
+    environment: [String: String] = [:]
   ) throws -> XCUIApplication {
     try landscape()
     let app = DemoServer.makeApp()
     app.launchEnvironment["RAROG_UI_TEST_BASE_URL"] = "http://127.0.0.1:\(port)"
     app.launchEnvironment["RAROG_UI_TEST_RESET"] = "1"
+    app.launchEnvironment.merge(environment) { $1 }
     if let theme { app.launchEnvironment["RAROG_UI_TEST_THEME"] = theme }
     if largest {
       app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
@@ -964,7 +1038,7 @@ final class InspectorUITests: XCTestCase {
   /// Miejsce na panel: przycisk panelu już stoi — nic do zrobienia; inaczej (11" poziomo z listą: 890 pt) zwinięcie
   /// listy daje kolumnę 1210 pt.
   @MainActor
-  private func makeRoom(_ app: XCUIApplication) {
+  func makeRoom(_ app: XCUIApplication) {
     let button = element(app, "header.inspector")
     if button.waitForAppearance(timeout: 3) { return }
     setList(app, visible: false)
@@ -976,7 +1050,7 @@ final class InspectorUITests: XCTestCase {
   /// stoi na ekranie. Apka pamięta zwinięcie także po ponownym uruchomieniu i resecie testów, więc testy zostawiają
   /// listę rozwiniętą.
   @MainActor
-  private func setList(_ app: XCUIApplication, visible: Bool) {
+  func setList(_ app: XCUIApplication, visible: Bool) {
     let toggle = element(app, "header.listToggle")
     XCTAssertTrue(toggle.waitForAppearance(timeout: 10), "przycisk listy w nagłówku")
     let hide = "Ukryj listę sesji"
@@ -991,7 +1065,7 @@ final class InspectorUITests: XCTestCase {
 
   /// Sesja z listy; pole wiadomości bierze fokus samo, więc klawiatura ekranowa symulatora idzie w dół.
   @MainActor
-  private func open(_ app: XCUIApplication, _ id: String) {
+  func open(_ app: XCUIApplication, _ id: String) {
     DemoServer.hideKeyboard(app)
     let row = DemoServer.reveal(app, id)
     XCTAssertTrue(row.waitForAppearance(timeout: 10), "wiersz \(id)")
@@ -1002,14 +1076,14 @@ final class InspectorUITests: XCTestCase {
 
   /// Sesja odbioru z listy; zwinięty projekt „rarog" rozwija stuknięcie w nagłówek (`DemoServer.openRow`).
   @MainActor
-  private func openTab(_ app: XCUIApplication, _ id: String) {
+  func openTab(_ app: XCUIApplication, _ id: String) {
     DemoServer.openRow(app, id, project: "rarog")
     settle(0.5)
     DemoServer.hideKeyboard(app)
   }
 
   @MainActor
-  private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+  func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
     app.descendants(matching: .any)[id].firstMatch
   }
 
@@ -1069,13 +1143,22 @@ final class InspectorUITests: XCTestCase {
     return element(app, first.identifier)
   }
 
-  private func wait(_ predicate: NSPredicate, _ object: Any, timeout: TimeInterval = 10) -> Bool {
+  func wait(_ predicate: NSPredicate, _ object: Any, timeout: TimeInterval = 10) -> Bool {
     XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: object)], timeout: timeout) == .completed
   }
 
   /// Chwila na koniec animacji przed pomiarem ramek.
-  private func settle(_ seconds: TimeInterval = 0.8) {
+  func settle(_ seconds: TimeInterval = 0.8) {
     Thread.sleep(forTimeInterval: seconds)
+  }
+
+  /// Long press on a row of the Files section (a right click on a Mac) and one item of its menu.
+  @MainActor
+  func menu(_ app: XCUIApplication, _ row: XCUIElement, _ item: String) {
+    row.press(forDuration: 1.2)
+    let button = app.buttons[item]
+    XCTAssertTrue(button.waitForAppearance(timeout: 5), "menu item \(item)")
+    button.tap()
   }
 
   @MainActor
@@ -1092,7 +1175,7 @@ final class InspectorUITests: XCTestCase {
   /// `<plik>.request` i czeka, aż skrypt po stronie Maca zrobi zrzut `xcrun simctl io … screenshot`; bez odpowiedzi
   /// w 20 s zostaje zrzut XCUITest.
   @MainActor
-  private func shot(_ app: XCUIApplication, _ name: String, _ theme: String) throws {
+  func shot(_ app: XCUIApplication, _ name: String, _ theme: String) throws {
     let screenshot = app.screenshot()
     let attachment = XCTAttachment(screenshot: screenshot)
     attachment.name = "panel-\(name)-\(theme)"

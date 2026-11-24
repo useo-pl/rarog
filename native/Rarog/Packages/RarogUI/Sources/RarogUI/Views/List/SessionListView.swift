@@ -7,11 +7,11 @@ import UIKit
 // Kontener listy sesji: drzewo projektów, szkielet, nagłówek z „łączę…”, baner i stopka.
 // Właściciel: kontener; wiersz w `SessionRow`, wiersze drzewa w `ProjectTreeList`, stopka w `ListFooter`.
 
-/// Lista sesji jako drzewo projektów: nagłówki projektów w kolejności doby aktywności i alfabetu, pod nimi
-/// agenci od najstarszego, projekty zwijane wyłącznie ręcznie.
+/// The session list as a project tree: project headers in alphabetical order, agents under them from the oldest,
+/// projects collapsed by hand only.
 ///
 /// The filter segments over the list (`ListFilterBar`) hide the rows outside the chosen segment and never reorder
-/// the rest (`AppState.projectTree(collapsed:filter:held:)`).
+/// the rest (`AppState.projectTree(collapsed:pinned:filter:held:)`).
 ///
 /// The footer card floats over the list (`safeAreaBar`), and the last agent scrolls above it.
 /// Lista żyje w kolumnie bocznej przez cały czas
@@ -91,12 +91,24 @@ struct SessionListView: View {
     // about the whole app comes before a control of the list. The segments stand from the first frame.
     .safeAreaInset(edge: .top, spacing: 0) {
       VStack(spacing: 0) {
+        // The voice conversation's waiting prompt or end sentence right under the header line it belongs to; nothing
+        // while it only runs, so the list does not move.
+        VoiceAgentSessionsListStrip()
         BannerStack(
           banners: state.banners(in: .list, global: memory, transcript: transcriptLink.connection(for: state.viewedSessionId)),
           pushPrompt: state.pushPromptVisible(in: .list, global: memory, now: Date()) ? store : nil,
           deviceNotices: state.pairing.newDevices.isEmpty ? nil : store)
-        ListFilterBar(store: store, navigation: navigation, background: columnFill)
+        // The filter capsule and the Inbox circle float over the list: no background, so rows scroll beneath the
+        // glass, and a gap from the navigation bar above.
+        HStack(spacing: 8) {
+          ListFilterBar(store: store, navigation: navigation)
+          InboxButton(store: store, navigation: navigation)
+        }
+        .padding(.horizontal, ListFilterBar.glassEdge)
+        .padding(.top, ListFilterBar.glassEdge)
+        .padding(.bottom, ListFilterBar.trackInset)
       }
+      .padding(.top, -ListFilterBar.rise)
     }
     // The footer bar is docked over the list: `safeAreaBar` instead of `safeAreaInset`, without a background,
     // so the list scrolls under the translucent bar and its last row still scrolls above it. No bottom scroll edge effect: the
@@ -127,14 +139,8 @@ struct SessionListView: View {
     .toolbar {
       // Jeden element na całą szerokość między krawędzią a przyciskami, tytuł po lewej.
       ToolbarItem(placement: .principal) {
-        HStack(spacing: 0) {
-          ListHeaderTitle(count: state.sessions.count)
-          Spacer(minLength: 0)
-        }
-        // Bez systemowego uchwytu pasek centrował ten element, kiedy mieścił się symetrycznie, i „AGENCI”
-        // odjeżdżało od lewej krawędzi (16 → 69 pt). Minimum szersze niż miejsce symetryczne trzyma go przy lewej.
-        .frame(minWidth: SessionListMetrics.headerMinWidth(columnWidth: column.width), idealWidth: 2_000,
-               maxWidth: .infinity)
+        // "AGENTS (N)" with the minimum width that keeps it at the leading edge.
+        ListHeaderLine(count: state.sessions.count, columnWidth: column.width)
       }
       // Napisy, nie przyciski — bez szklanej kapsuły paska narzędzi.
       .sharedBackgroundVisibility(.hidden)
@@ -217,7 +223,12 @@ struct SessionListView: View {
   /// albo rozwija bez ruszania trasy, a bez agentów wchodzi w projekt jedną nawigacją (`ProjectTreeHeaderModel.tap`).
   /// Zaznaczony zostaje wiersz sesji na ekranie.
   private func treeSelection(_ rows: [ProjectTreeRow]) -> Binding<ProjectTreeID?> {
-    Binding(get: { navigation.listSelection(store.state).map(ProjectTreeID.session) }, set: { next in
+    // In the stack, a session opened from an Inbox card is not the list's selection: a new selection makes the
+    // collapsed split pop its detail stack, which would take the session pushed above the Inbox straight off.
+    Binding(get: {
+      guard besideDetail || !navigation.inboxBehindSession else { return nil }
+      return navigation.listSelection(store.state).map(ProjectTreeID.session)
+    }, set: { next in
       switch next {
       case let .project(cwd)?:
         switch rows.header(cwd)?.tap ?? .open {

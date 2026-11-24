@@ -52,18 +52,18 @@ Read this before you add or change a text in the app, add a language, or change 
 
 ## Usage descriptions
 
-The camera, local network, microphone and speech recognition texts that iOS shows in its permission dialogs
-(`NSCameraUsageDescription`, `NSLocalNetworkUsageDescription`, `NSMicrophoneUsageDescription`,
-`NSSpeechRecognitionUsageDescription`) are in English in the app's `Info.plist`. Their translations live in the String
-Catalog `native/Rarog/Rarog/InfoPlist.xcstrings` (source language `en`, an `en` and a `pl` value per key, a translator
-comment), which Xcode builds into `en.lproj/InfoPlist.strings` and `pl.lproj/InfoPlist.strings` of the app. The `en`
-value equals the `Info.plist` text. A text names the button that turns the device on exactly as the app shows it
-("Scan QR Code", the microphone button next to the prompt field). The microphone text names no speech recognition
-provider: dictation audio goes only to the speech recognition chosen on the "Dictation" screen. It names OpenAI for the
-voice agent, whose audio goes there only after the user turns on "Voice Agent" in Settings. The speech recognition text
-says when the audio stays on the device and when it goes to Apple's speech recognition servers. The local network text
-says that the app connects directly to its own server on the same network and does not look for other devices. The
-widget and the notification extension have no usage descriptions.
+The camera, local network, microphone, photo library and speech recognition texts that iOS shows in its permission
+dialogs (`NSCameraUsageDescription`, `NSLocalNetworkUsageDescription`, `NSMicrophoneUsageDescription`,
+`NSPhotoLibraryAddUsageDescription`, `NSSpeechRecognitionUsageDescription`) are in English in the app's `Info.plist`.
+Their translations live in the String Catalog `native/Rarog/Rarog/InfoPlist.xcstrings` (source language `en`, an `en`
+and a `pl` value per key, a translator comment), which Xcode builds into `en.lproj/InfoPlist.strings` and
+`pl.lproj/InfoPlist.strings` of the app. The `en` value equals the `Info.plist` text. A text names the button that turns
+the device on exactly as the app shows it ("Scan QR Code", the microphone button next to the prompt field). The
+microphone text names no speech recognition provider: dictation audio goes only to the speech recognition chosen on the
+"Dictation" screen. It names OpenAI for the voice agent, whose audio goes there only after the user turns on "Voice
+Agent" in Settings. The speech recognition text says when the audio stays on the device and when it goes to Apple's
+speech recognition servers. The local network text says that the app connects directly to its own server on the same
+network and does not look for other devices. The widget and the notification extension have no usage descriptions.
 
 ## Measured iOS behavior (iOS 27.0 simulator)
 
@@ -108,8 +108,11 @@ Each copy package has a catalog `Copy/Localizable.xcstrings` and a function `Cop
 - **RarogUI**: the registry `Copy/UICopy*.swift` (a facade), the verb dictionary `Copy/ToolActivity.swift`, and
   `Copy/Formatting.swift` (relative time, server time and date), which reads its words and patterns from `format.*`;
 - **RarogCore**: the gate refusal sentences in `Copy/CoreCopy.swift`;
-- **RarogActivity**: the Live Activity copy in `LiveActivityPresentation.swift`, built as finished `String` values
-  before the views.
+- **RarogActivity**: the Live Activity copy in `LiveActivityPresentation.swift` (the sessions board) and
+  `VoiceActivityPresentation.swift` (the voice recording: `voiceActivity.kind.*`, `voiceActivity.end` and `.stop`,
+  the phase words `voiceActivity.phase.working|listening|answering|reading|prompt|muted|dictating` and the subject
+  line's words `voiceActivity.subject.allSessions|oneSession|sayYesOrNo`), built as finished `String` values before
+  the views.
 
 **RarogContract** holds `CopyLanguage`, `CopyLookup`, `CopyLocale` and `CopyDate`, the server sentence catalog
 `Copy/Localizable.xcstrings` with its argument descriptors `Copy/SentenceDescriptors.swift` (see "Server sentence
@@ -119,7 +122,7 @@ catalog"), and a sample catalog with `en` and `pl` for `CopyLookupTests`
 `L(_ key:, language:, arguments:)`, all on its own `Bundle.module`.
 
 **Keys.** The prefix is the registry file (`composer.` from `UICopy+Composer`, `app.` from `UICopy.swift`, `format.`,
-`toolActivity.`, `core.`, `liveActivity.`), then the declaration name without the repeated area word
+`toolActivity.`, `core.`, `liveActivity.`, `voiceActivity.`), then the declaration name without the repeated area word
 (`terminalTitle` → `terminal.title`), then the variant: a `switch` case (`cards.refuseEyebrow.noJsonl`), an argument
 label (`cards.herdrDialog.trust.text`) or a sentence form with an extra parameter (`.named`, `.withText`, `.at`).
 Plurals are variations of one key, not keys of their own. Every entry has `extractionState: manual` (Xcode does not

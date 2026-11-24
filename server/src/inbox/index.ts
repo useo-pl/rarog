@@ -10,11 +10,14 @@
  *   a decision card's dialog;
  * - `segments.ts`: the read of the conversation file a session writes now, through `readInputSegments`;
  * - `removals.ts`: `inbox.json`, the removals with their atomic write chain;
- * - `inbox.ts`: the tracker that reads cards again after the session manager's events, and remove and restore.
+ * - `inbox.ts`: the tracker that reads cards again after the session manager's events, and remove and restore;
+ * - `heads.ts`: the heads of the visible cards and the stream events of their changes.
  */
 export { cardKindOf, composeCard, removalKeyOf, shownTurnFor } from './card.ts';
 export type { InboxCard, InboxCardKind, InboxDialog, RemovalKey, RequestOf, ShownTurn } from './card.ts';
 export { PendingDialogs } from './dialogs.ts';
+export { InboxHeads, byNewest, headOf } from './heads.ts';
+export type { InboxEvent, InboxHead } from './heads.ts';
 export { INBOX_DEBOUNCE_MS, INBOX_SLOW_READ_MS, Inbox } from './inbox.ts';
 export type { InboxActionResult, InboxCardRef, InboxConfig, InboxPort } from './inbox.ts';
 export { INBOX_CLOSED_LIMIT, INBOX_FILENAME, INBOX_FORMAT } from './removals.ts';

@@ -9669,14 +9669,14 @@ describe('dialogi z listy terminalowej', () => {
     expect(keys(fx)).toEqual([]);
   });
 
-  it('po zejściu z blokady (pauza rozstrzygnięta, tura ruszyła) przerwanie idzie jak dotąd, bez odczytu', async () => {
+  it('after the pause resolved and the turn started, the interrupt goes without the dialog read', async () => {
     const fx = await blockedOn(PAUZA);
     fx.emit({ type: 'status', status: 'working', stateChangeSeq: 9, title: '' });
     await quiet();
-    const before = reads(fx.client);
+    const before = fx.client.calls.filter((c) => c.method === 'read' && c.source === 'detection').length;
     await expect(fx.driver.interrupt()).resolves.toBe(true);
     expect(keys(fx)).toEqual([['escape']]);
-    expect(reads(fx.client)).toBe(before);
+    expect(fx.client.calls.filter((c) => c.method === 'read' && c.source === 'detection').length).toBe(before);
   });
 });
 

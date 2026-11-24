@@ -230,3 +230,19 @@ enum DictationReadyTrace {
       + "socket \(ms(readiness.streaming - readiness.keyReceived)) ms), backlog \(ms(readiness.backlog)) ms"
   }
 }
+
+/// The reason word of `dictation: ended <reason>` for a recording that ended by itself, from its notice; never the
+/// notice's sentence (a key refusal carries the server's text).
+enum DictationEndTrace {
+  static func reason(_ notice: VoiceNotice) -> String {
+    switch notice {
+    case .silence: "silence"
+    case .sessionLimit: "session-limit"
+    case .interrupted: "interrupted"
+    case .streamFailed: "stream-failed"
+    case .microphone: "microphone"
+    case .dictation: "dictation-failed"
+    case .message: "refused"
+    }
+  }
+}

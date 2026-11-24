@@ -38,7 +38,7 @@ extension TerminalScreenTests {
         === h.screen.container,
       "without the window Cmd+Down is the terminal's key")
     var time: TimeInterval = 10
-    var opened: [String] = []
+    var opened: [ProjectTabRef] = []
     let switcher = SessionSwitcher()
     switcher.now = { time }
     switcher.onOpen = { opened.append($0) }
@@ -51,7 +51,7 @@ extension TerminalScreenTests {
     responder.attach(to: switcher)
     func open() {
       time += 1
-      switcher.command(backward: false, keyboard: true, snapshot: ["cur", "a"], current: "cur")
+      switcher.openByTap(keyboard: true, tabs: [.session("cur"), .session("a")], current: .session("cur"))
       XCTAssertTrue(responder.isFirstResponder, "the window holds the keyboard")
     }
 
@@ -83,7 +83,7 @@ extension TerminalScreenTests {
       XCTAssertFalse(responder.isFirstResponder)
       _ = proxy.becomeFirstResponder()
     }
-    XCTAssertEqual(opened, ["a", "a"], "Return and Cmd+Return jump")
+    XCTAssertEqual(opened, [.session("a"), .session("a")], "Return and Cmd+Return jump")
 
     // The safety net: a window without the keyboard over the terminal. A lone Esc byte from the surface (also a key
     // SwiftTerm handled itself), the kitty keyboard protocol's Cmd+Esc and its release (Claude Code: sequences, not a
@@ -97,7 +97,7 @@ extension TerminalScreenTests {
     ]
     for (name, send) in escapes {
       time += 1
-      switcher.command(backward: false, keyboard: false, snapshot: ["cur", "a"], current: "cur")
+      switcher.openByTap(keyboard: false, tabs: [.session("cur"), .session("a")], current: .session("cur"))
       XCTAssertTrue(proxy.isFirstResponder && switcher.windowShown, name)
       send()
       XCTAssertFalse(switcher.windowShown, "\(name) closes the window")
@@ -109,6 +109,6 @@ extension TerminalScreenTests {
     h.screen.handleKey(TerminalHardwareKey(".", command: true))
     await eventually { self.inputs(socket).count == 2 }
     XCTAssertEqual(inputs(socket), ["x", "\u{1B}"])
-    XCTAssertEqual(opened, ["a", "a"])
+    XCTAssertEqual(opened, [.session("a"), .session("a")])
   }
 }

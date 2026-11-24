@@ -11,20 +11,44 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   1.5 × the `hello.heartbeatMs` of the last global `hello`, 60 s without a valid one, like a drop; each `hello`
   sets the shared `StallThreshold` and logout resets it), the persistent outbox (`RarogStore+Send`,
   `OutboxPersistence`), the Not confirmed countdown, presence, and the `kontrakt:` report in `client.log`.
-- **Outbox (format v2):** a manifest `<id>.json` and the attachment content files in `<id>/` (an image already as
+- **Outbox (format v2, v3):** a manifest `<id>.json` and the attachment content files in `<id>/` (an image already as
   JPEG, a file byte for byte). Creating: content first, then the manifest; deleting: the manifest first. A crash in
   between leaves at most a directory without a manifest, which the next start cleans up. A v1 manifest (text only) is
   read; a newer format is skipped. An entry whose content file is gone comes back as a refusal without Retry. Writes
-  go through one chain (`persistInOrder`), so a delete after the echo cannot overtake the creation.
+  go through one chain (`persistInOrder`), so a delete after the echo cannot overtake the creation. A prompt of the
+  voice agent across sessions keeps its sender pair (`OutboxEntry.sender`: `source` and the `conversation` token
+  it read) and is written as v3, so an app that does not know the pair skips it; every other entry stays v2. Every
+  attempt of such an entry, a person's Retry included, puts the pair on the wire as `source` and
+  `expectedConversation`.
 - **Sending:** the entry id is the `clientMessageId`, the same on every Retry, which sends the same bytes
   (`MessageBodyWriter` streams the body to a temporary file off the main actor). Limit for the WHOLE send: 10 s for
   text, 200 s with an attachment. A 202 with `replayed: true` settles the entry as accepted; a foreign
-  `clientMessageId` in the reply means Not confirmed; a 409 `client-id-conflict` is a refusal without Retry. Upload
-  progress (`sendProgress`) lives only on a `queued` entry. An accepted entry becomes Not confirmed when no echo
-  arrives within 15 s of the 202 for text and 120 s with an attachment (`CoreTiming.unconfirmedAfter(for:)`, the same
-  rule in `deliver` and, after an app restart, in `restoreOutbox`): on iroh the 202 of an upload comes back through
-  its own connection, while the echo rides the main connection's stream, which a large upload can hold back. An echo
-  or a transcript snapshot with the entry's `clientMessageId` still clears a Not confirmed entry.
+  `clientMessageId` in the reply means Not confirmed; a 409 `client-id-conflict` and the 409 of a changed engine
+  conversation (sentence code `session.conversation-changed`, only for a voice agent's prompt) are refusals without
+  Retry. Upload progress (`sendProgress`) lives only on a `queued` entry. An accepted entry becomes Not confirmed
+  when no echo arrives within 15 s of the 202 for text and 120 s with an attachment
+  (`CoreTiming.unconfirmedAfter(for:)`, the same rule in `deliver`, after an app restart, at a session stream's
+  opening and when the wait for it ends): on iroh the 202 of an upload comes back through its own connection, while
+  the echo rides the main connection's stream, which a large upload can hold back. An echo or a transcript snapshot
+  with the entry's `clientMessageId` still clears a Not confirmed entry. An accepted entry waits for its session's
+  stream (`AppState.waitsForOpenStream`), whoever sent it (the session screen it left, an Inbox card, the voice
+  agent), only while the session is on a fresh list (`sessions-snapshot`), can open a transcript stream
+  (`SessionSummary.showsTranscript`, so not a Rarog terminal) and that stream is not open. Without a fresh list (none
+  yet, or one from the cache) nobody knows whether the session is still there, so its entries wait too. Every check
+  (the countdown after the 202, and the idle period and the cap below) is decided when it comes: a waiting entry stays
+  accepted, because no echo can reach the app, and opening the session reconciles it with the transcript snapshot; an
+  entry that does not wait turns Not confirmed. The countdown starts at the 202 (`deliver`) and again from an app
+  restart (`restoreOutbox`; an entry in the CLI queue gets the cap's check from `queuedAt` there). When the wait ends
+  without the stream coming online (the session left a fresh list, moved into a Rarog terminal, or the first fresh
+  list came without it), the entry gets the countdown again from that moment (`AppState.countdownsAfterTheWait`, run
+  by `apply` around every event), also when its check already came while it waited; an entry in the CLI queue turns
+  Not confirmed at that check only past its cap. So a session off the list for a moment and back before the countdown
+  ends keeps its entries waiting. When the session's stream comes online, the countdown after the 202 starts from then
+  (`CoreEffect.scheduleUnconfirmedCheck`) and supersedes the one the entry had (`AppState.unconfirmedOpenings`): a check
+  scheduled before changes nothing, and a new 202 brings back the countdown of `deliver`. For an entry in the CLI
+  queue the idle period opens as for a typed entry, and the cap's check runs for what is left of the cap since
+  `queuedAt` (`CoreEffect.scheduleQueuedCeilingCheck`), also when its check came while the stream was closed and after
+  an app restart.
 - **Stop (`cancelSend`):** the stop in the progress ring ends the send in flight. Each delivery attempt runs in a task
   of its own, registered under the entry id (`sendFlights`); the registration is the attempt token, so a late result
   or progress report of a stopped attempt never touches the entry, also after an immediate Retry. The stop ends the
@@ -44,14 +68,19 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   the echo (`queuedIdleSince`, `syncQueuedIdle` after every event; a turn, work or a pending decision closes the
   period) or after the 30 min cap from `queuedAt`. A `replayed` without `queued` for an entry sent with
   `queueAware` (the flag is saved BEFORE the request) does NOT settle it: after a server restart `queued` does not
-  come back, so the entry waits for the echo by signature or for Not confirmed. `restoreOutbox` gives an entry with
-  `queuedAt` only the cap. `queuedAt` is optional in format v2. Constants: `CoreTiming.queuedIdleAfter`,
-  `queuedUnconfirmedAfter`.
+  come back, so the entry waits for the echo by signature or for Not confirmed. After an app restart an entry with
+  `queuedAt` gets only the cap, at its session stream's opening. `queuedAt` is optional in format v2. Constants:
+  `CoreTiming.queuedIdleAfter`, `queuedUnconfirmedAfter`.
 - **Pairing and device key (`Pairing.swift`, `RarogStore+Pairing`, `RarogStore+Forget`, `Reducer+Pairing`):** the
   only way to a server; the app has no token login.
   - **Endpoint:** `RarogStore.live(connector:…)` picks the endpoint (`ServerEndpoint`) from the Keychain: a key gives
     its server (`device`), no key gives `none` (the pairing screen alone). A `locked` Keychain (before the first
-    unlock) makes the start wait (`auth == .unknown`) and retry on `protectedDataBecameAvailable()`.
+    unlock) makes the start wait (`auth == .unknown`) and retry on `protectedDataBecameAvailable()`. The start takes
+    effect once per store: a second `start()` (the scene root runs its `.task` again whenever a full-screen cover over
+    it closes or `interfaceEpoch` changes) returns at once, and every login after it goes through `enterLoggedIn`.
+    A space the store enters after the start (pairing, unpairing) reads its outbox itself (`restoreEnteredSpace` in
+    `RarogStore+Spaces`). A pairing logs in as the start does (`switchEndpoint`): the outbox read first, then the list
+    cache, then `.loggedIn` and the streams, so no echo and no send from a session on screen comes before the read.
   - **Pairing:** every path (`offerPairing`, `openLink(.pair)`) ends in the "Pair with <host>?" card
     (`AppState.pairing.flow = .confirming(link)`; a bad link gives `.rejected`). A link with `k` also shows the
     server key fingerprint, the first 16 characters of the EndpointId in groups of 4
@@ -107,10 +136,11 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     server. An older build skips `successor`.
   - **Correctness does not depend on deleting:** a directory the pointer does not name is garbage nobody reads. A
     late write of an old instance lands in the previous space and never comes back into the state
-    (`serverRuntime.spaceChanges`). The state is cleared when the OWNER of in-memory data changes
-    (`serverRuntime.holder`), so a session without a space does not carry state from server A to B either. With a
-    `locked` Keychain the space comes only after the unlock (`spacesReady`). The outbox of a session without a space
-    lives in this process's directory in the trash (`ServerSpaces.scratch`).
+    (`serverRuntime.spaceChanges`); neither does an outbox read of the previous space (the store's `persistence` is
+    swapped at each entry). The state is cleared when the OWNER of in-memory data changes (`serverRuntime.holder`), so
+    a session without a space does not carry state from server A to B either. With a `locked` Keychain the space comes
+    only after the unlock (`spacesReady`). The outbox of a session without a space lives in this process's directory
+    in the trash (`ServerSpaces.scratch`).
   - **Forget Server** first invalidates the data on disk (`dropSpace`), and a disk that refuses aborts Forget before
     the request and the key (`forgetServer()` returns `false`, `PairingState.forgetFailed`). Then
     `POST /api/devices/forget` with the limit of one tunnel attempt (`serverRuntime.forgetLimit`,
@@ -145,7 +175,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     the interface opens that Settings page and calls `consumeSettingsScreenRequest()`. Tests: `PairingLinkTests`,
     `StorePairingTests`, `PairingLinkWireTests`.
 - **UI inputs:** store methods, one area per file (`RarogStore+<Area>`): `Send`, `Catalog`, `Session`, `Answers`,
-  `Decisions`, `SessionControl`, `NewSession`, `Uploads`, `Voice`, `Pairing`. Results are typed (`SendOutcome`,
+  `Decisions`, `SessionControl`, `NewSession`, `Uploads`, `Voice`, `Companion`, `CompanionSend`, `Pairing`. Results are
+  typed (`SendOutcome`,
   `DecisionOutcome`, `DiffFetchOutcome`…); RarogUI composes the sentences. Two inputs write to `client.log` through
   the `kontrakt:` buffer and login gate, never with conversation content: `reportUnhandled(_:)` (an unhandled error,
   level `error`, with the report's dedup and cap of 50) and `trace(_:budget:)` (level `debug`, with its OWN budget of
@@ -182,7 +213,9 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   button (`ComposerPrimaryAction.resolve`: an interruptible turn and an empty field, outside 700 ms after a send). The
   gesture gate holds until the request settles, at most 4 s; limit 10 s and one retry after a network error. Verdict:
   `delivered` (missing means success), a 4xx is a Rarog refusal, a 5xx means the pane did not take it, the network
-  means "unknown". `lastPrompt` is one definition for Esc and the prompt bar. Every request of the area goes through
+  means "unknown". `delivered(returnedPrompt:)` carries the prompt Claude Code handed back to its field
+  (`InterruptResponse.returnedPrompt`, an empty one is none); the app never fills the field from its own
+  memory. `AppState.promptText` is one definition of a prompt for the prompt bar. Every request of the area goes through
   `tracked`, so the login number drops late results.
 - **Queue take-back (`QueueTakeBack`, `RarogStore+QueueTakeBack`, `Reducer+QueueTakeBack`):**
   `takeBackQueue(_:handOver:)` is `startTakeBack(_:)` (synchronous: the gate, the id and `started`, so the screen
@@ -200,6 +233,9 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   entries of the returned `clientMessageId`s of that session, whatever their state, and frees the id; `false` keeps
   both (`notSaved`). Verdict: a 4xx is a refusal with the server's sentence, a 404 a server without the route.
   `canTakeBackQueue` (a queued bubble, or a kept id: `keepsTakeBack`) decides whether the gestures exist.
+- **Inbox (`Inbox`, `InboxRules`, `RarogStore+Inbox`, `Reducer+Inbox`, `Selectors+Inbox`):** the heads, texts,
+  removals with Undo and held cards of the Inbox, and the transcript read that gives a decision card its buttons. When
+  a card stands and what counts sit in `InboxRules`; the rules stand in `rarog-ui.md`, in the "Inbox model" entry.
 - **Send echo:** `clientMessageId` first: an echo with an id settles ONLY that entry, a foreign id settles nothing. An
   echo without an id goes by the full signature (text plus attachment names and sizes), oldest entry first, and must
   be NEWER than the boundary saved with the entry: the same server process (`serverStartId`) needs a higher `seq`,
@@ -225,11 +261,57 @@ Part of the app description: [native/Rarog/README.md](../README.md).
 - **Images for thumbnails (`RarogStore+Uploads`):** `GET …/uploads/<file>`, the bytes in process memory
   (`UploadImageCache`, LRU 32 MB). A 404 is remembered until the end of the login; another failure asks again at the
   next display. A logout cancels the reads and clears the memory.
+- **Session files (`RarogStore+Files`):** `GET …/files?dir=`, `GET …/files/index` and `GET …/files/raw?path=` go out
+  only while the version answer lists the capability `files` (`AppState.filesAvailable`), the index only with
+  `file-index` too (`AppState.fileIndexAvailable`); without them the routes return `.unavailable` and send nothing.
+  The fetch writes a private copy that the caller owns (`SessionFileFetch.saved`); a file over the limit is
+  `.tooLarge(size:maxBytes:)`, from the server's 413 or from a `Content-Length` over the `maxBytes` the caller took
+  from the session's latest listing or its file index. A logout cancels the requests in flight
+  (`forgetSessionFileReads`), and a result or failure from an ended login (a logout or a new login) is `.loggedOut`,
+  with its copy deleted first.
+- **File tree of the panel (`FileTreeStore`, `FileTreeRules`, `RarogStore+FileTree`):** `RarogStore.fileTree`, a
+  separate `@Observable` object, not a field of `AppState` (listings of up to 1000 entries would be copied by the
+  reducer on every frame). It keeps the listings by directory, the latest change list (`GET …/diff/files`), the
+  directories that answered 404, the file index of the search and `maxBytes` of the latest listing, else of the
+  index (`maxBytes(_:)`), for the open session and the ones opened just before it, three in all
+  (`FileTreeStore.retainedSessions`); the hand toggles are kept apart, so
+  dropping a session's listings keeps them. A session gone from the server's list loses both. The screen calls
+  `panelOpened(_:)`, `panelClosed()` and `setExpanded(_:_:in:)` and reads `snapshot(_:)`; the store itself asks for a
+  refresh on the return to the foreground, on a changed `git-status` frame of the open session, on the end of its turn
+  (it leaves `starting` or `running`) and when `files` appears, and `retire` drops everything. One rule opens
+  directories (`FileTreeRules.isExpanded`: a hand toggle, else a change under it); a directory is listed only when its
+  parent's listing shows it and it is open, so a directory known only from the changes (deleted, under a hidden
+  directory) is never asked for. At most four requests at once (`FileTreeStore.maxInFlight`), the change list
+  included; triggers fold into passes at least `CoreTiming.fileTreeRefreshGap` (1 s) apart, and a request found in
+  flight is asked once more after its answer. A directory that becomes reachable and open in the middle of a pass (a new
+  change list opens it) is listed in that pass even with a listing in memory. An answer after a switch of the panel's
+  session, after `retire` or from an ended login is dropped. A 404 `not-found` of a listing drops that directory's
+  listings; a 400 `codex` or `out-of-scope` turns the session to the fallback source (`FileTreeSource.fallback`), as
+  do a server without `files`, a Codex entry and a session out of scope: no request, the tree comes from the
+  `git-status` frame.
+  The file index (`FileTreeStore+Index`, `GET …/files/index`) is read through `fileIndex(_:)` (`FileIndexState`:
+  unsupported, not loaded, loading, ready, failed; the last three keep the previous index). The screen reports
+  `setSearchActive(_:in:)` when the session's search field starts or stops holding a query that searches the index
+  and again on appearing, also without such a query (a logout, a session gone from the list and the panel moving
+  to another session forget the query), and
+  `reloadFileIndex(_:)` for Retry. A start asks at once when there is no index, it failed, it was invalidated or
+  it is older than `CoreTiming.fileIndexRefreshGap` (30 s). The end of the open session's turn, the return to the
+  foreground, `panelOpened(_:)` and `file-index` appearing invalidate it, also with an empty field; with a query
+  standing an invalidation asks again, no sooner than the gap after the previous answered request (inside the
+  gap one request waits for its end). One index request at a time, outside the four of the tree; a `git-status` frame does not
+  touch the index. No request without `file-index`, for the fallback source, with the panel closed or for another
+  session than the panel's; a 400 `codex` or `out-of-scope` turns the session to the fallback source, any other
+  failure is the failed state without a retry of its own. An answer after a switch of the panel's session, after
+  `retire` or from an ended login is dropped.
 - **APNs notifications (`RarogStore+Push`, `Reducer+Push`):** the system comes in through the `PushSystem` and
   `BackgroundWork` protocols (`PushSystem.swift`); the app plugs in adapters with `attachSystem(…)`, tests pass fakes.
   `BackgroundWork.begin(_:needsServer:)` says whether the work talks to the Rarog server (presence, Live Activity,
   note save, dictation key); only that work keeps a tunnel generation alive. Only the adapter `UIKitBackgroundWork`
-  calls `beginBackgroundTask` (guard `server/test/native-background-work-guard.test.ts`).
+  calls `beginBackgroundTask` (guard `server/test/native-background-work-guard.test.ts`). One such work has no
+  system task: the voice hold of the app's tunnel coordinator (`TunnelCoordinator.holdForVoice(_:)`,
+  `native/Rarog/Rarog/TunnelCoordinator+VoiceHold.swift`), a work under the reserved identifier `UInt64.max` that
+  only its release ends. It keeps the generation as a background work does; after the release the generation
+  follows the grace of that background stay (`docs/companion.md`, "Locked phone (trial)").
   - **Registration:** after a login the core asks for a token and reads the permission. `POST /api/push/apns` goes
     out after the full list state of the current connection (`AppState.listLive`, not from the cache), once per
     cycle (login, return from the background, new token, permission change); a failure retries at the next
@@ -305,6 +387,39 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   advance. A 404 or a 503 `voice_unconfigured` makes `AppState.sonioxOnServer` unavailable until a new
   `serverStartId`, a login, a logout or another server; it does not hide the microphone, it changes the route: with
   Soniox chosen the next tap opens the Dictation screen. Another 503, a 429 and a 5xx mean "not now".
+- **Voice agent across sessions (`RarogStore+Companion`, `Selectors+Companion`):** two reads without state in
+  `AppState`: `loadCompanionSessions()` (`GET /api/companion/sessions`) and `loadCompanionTurns(sessionId:count:)`
+  (`GET /api/sessions/:id/companion/turns`, `count` 1–3 checked before the request). A 404 of the catalog and both
+  503 codes (`companion-disabled`, `companion-sessions-disabled`) read as "off"; a 404 of the turns route is a
+  session outside the catalog, with the server's sentence. The turns come back whole, so `conversation` and
+  `readMark` can go back to the server: `pickUpCompanionResult(sessionId:conversation:readMark:)` sends them byte for
+  byte with `by: voice-agent` (`POST /api/sessions/:id/seen`, a mutation through the gate) and writes nothing into
+  `AppState`, also on success: the session frame brings `seenBy`. Its outcome (`CompanionPickUpOutcome`) names a 409
+  (`resultChanged`: the result is not the one read), a 404 (`outsideCatalog`) and both 503 codes (`disabled`); a 401
+  logs out the login the request went out in, and an answer after another login is `loggedOut` and changes nothing.
+  `AppState.companionSessionsOffered(sonioxAllowed:)` offers the mode only
+  where the voice agent is offered and `/api/version` has both `companionSessions` and the capability
+  `companion-sessions` (`Capabilities.companionSessions`).
+- **Voice agent's prompt (`RarogStore+CompanionSend`):** `sendCompanionPrompt(sessionId:text:conversation:clientMessageId:)`
+  sends the text exactly as given through the outbox as a text-only send (`queueAware`), with the sender pair in
+  the entry (`OutboxEntry.sender`), and returns `CompanionSendOutcome` after the server's answer: `sent`, `queued`
+  (a 202 with `queued: true`), `conversationChanged` (the 409 whose sentence code is
+  `session.conversation-changed`, read from `APIFailure.sentenceCode`), `refused` (the app's send gate
+  `AppState.sendBlock(for:)` before anything goes out, or a client gate or server refusal with its code and
+  sentence), `loggedOut`, `cancelled`, `timedOut` and `failed` (the last two: not known whether it arrived). The
+  caller owns the `clientMessageId`, which is the entry id: a call with the id of an accepted entry, or of one
+  its echo already settled, answers `sent` or `queued` without a request; a call while another with the same id
+  runs shares that send (`companionSends`), and a call while a person's Retry of that entry runs, from its
+  manifest write on, waits for that Retry's outcome (`retrying`); a call with the id of a Not confirmed or retryable
+  refused entry sends that entry again, with its saved text and pair. Each of these answers only the id's first
+  session, text and token, which stay with the send in flight, in the entry and, after the echo, in
+  `AppState.echoedPrompts`; another text, session or token under the same id is refused as `client-id-conflict`
+  without a request. After the 409 the entry stays as a final refusal with the server's sentence, so no Retry sends
+  the prompt into the other conversation; a repeat of that id answers `conversationChanged` again. An end that does
+  not know whether the prompt arrived (no answer, a dropped connection, the entry gone while a repeat's manifest was
+  written) answers `sent` when the echo of that id already came (`AppState.echoed`), so the model does not ask the
+  user to send it again. A person's stop of the send (`cancelSend`) answers `cancelled`; once the request went out,
+  the entry stays Not confirmed, because the prompt may have arrived.
 - **Dictation route (`Dictation/`):** `DictationPolicy.route` takes the device's choice (`DictationChoiceStore`,
   `UserDefaults` key `rarog.dictation.choice`, kept through Forget Server), `sonioxOnServer` and the build flag
   `RAROG_VOICE_SONIOX` (`DictationServices.sonioxAllowed`) and gives `ask` (the Dictation screen), `system` or
@@ -316,7 +431,10 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   `CoreEvent.<area>(<Area>Event)` with branches in `Reducer+<Area>`, a state field at the end of `AppState`, transport
   methods at the end of `RarogTransporting` (and `FakeTransport`), REST types in `RarogContract/RestResponses+<Area>`.
 - **Device memory (`ProjectMemory`):** the project tab (32 entries, LRU), the directory history under Cmd+L (16), the
-  list collapse and the remembered model of a new session, through `PreferenceStore` (`UserDefaults` in the app,
+  list collapse, the projects folded in the tree (`CollapsedProjects`), the projects pinned in the tree
+  (`PinnedProjects`, key `rarog.pinnedProjects`: a cap of 64 that drops the earliest pinned directory not in the tree
+  and never unpins a project standing in it; a damaged record means no pins) and the remembered model of a new
+  session, through `PreferenceStore` (`UserDefaults` in the app,
   `MemoryPreferences` in tests): paths and identifiers only. The same store carries the transcript's "read up to here"
   (`LastSeenMemory`, 32 sessions).
 - **Gates:** `MutationRules` is the HTTP client's `MutationPolicy`: it waits up to 5 s for the first `hello` and
@@ -325,11 +443,16 @@ Part of the app description: [native/Rarog/README.md](../README.md).
 - **List cache (`SnapshotCache`, `SnapshotCacheFile`, `RarogStore+Cache`):** one file with the last fresh list (24 h,
   2 MB), without the content of decisions, the screen, activity and background task commands
   (`SnapshotCacheFile.scrub`). It is written at every fresh `sessions-snapshot` and on going to the background, read in
-  `start()` before `.loggedIn` (so the first frame with a key is the list), and never written back. It lives in
-  `<space>/list/`; a 401 deletes it (`clearCaches`).
+  `start()` and at every pairing before `.loggedIn` (so the first frame with a key is the list), and never written
+  back. It lives in `<space>/list/`; a 401 deletes it (`clearCaches`).
   - **Stale list:** `listCache.staleSince` goes away only at a fresh `sessions-snapshot` and at logout; until then
     `listStale` disables project and tab actions, and `awaitingTranscripts` blocks the viewed session's actions until
-    its first transcript. Closing waits only for a fresh list (`MutationRules.listOnlyRoutes`).
+    its first transcript. Closing waits only for a fresh list (`MutationRules.listOnlyRoutes`), and so does a message
+    whose body carries `expectedConversation` (the voice agent's prompt): the request tells the gate so
+    (`MessageUpload.expectsConversation`, `MutationGate.check(method:path:expectsConversation:)`), because the agent
+    read the session from the server and the server checks the conversation. The voice agent's question about a
+    session (`companion/ask`, in `listOnlyRoutes`) needs only the fresh list as well, because the server answers it
+    from the session it reads. A typed message still waits for the transcript.
 - **List memory (`Reducer+List`):** `AppState.turnStage` holds the last turn stage of each session in a turn (the line
   under the row stays until the end of the turn). `AppState.heldUnread` keeps a seen session with an unread result at
   rank 1 after `seen`, so reading does not move the row, until its `stateSince` changes, a full list state, the

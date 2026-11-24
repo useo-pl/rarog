@@ -1200,6 +1200,258 @@
           }
         }
       }
+    },
+    "voiceActivity.end" : {
+      "comment" : "Voice Live Activity: button that ends the voice conversation (Lock Screen and expanded Dynamic Island). Its VoiceOver label too. About 10 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zakończ"
+          }
+        }
+      }
+    },
+    "voiceActivity.kind.conversation" : {
+      "comment" : "Voice Live Activity (Lock Screen and Dynamic Island): what records, a voice conversation. Small line before the timer (Voice agent · 0:42), also the start of the VoiceOver label. About 16 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice agent"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent głosowy"
+          }
+        }
+      }
+    },
+    "voiceActivity.kind.dictation" : {
+      "comment" : "Voice Live Activity (Lock Screen and Dynamic Island): what records, a message-field dictation. Small line before the timer (Dictation · 0:42), also the start of the VoiceOver label. About 16 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dyktowanie"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.answering" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. About 12 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answering"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odpowiadam"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.dictating" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. About 12 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictating"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dyktuję"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.listening" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. About 12 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Słucham"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.muted" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. The user muted the conversation's microphone. About 12 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muted"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyciszony"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.prompt" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. A prompt the voice agent showed waits for the user's spoken yes or no. About 20 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send the prompt?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wysłać prompt?"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.reading" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. The voice agent reads a session to answer. About 20 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading the session"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprawdzam w sesji"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.working" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. About 12 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Working"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pracuję"
+          }
+        }
+      }
+    },
+    "voiceActivity.stop" : {
+      "comment" : "Voice Live Activity: button that stops the message-field dictation; the dictated text stays in the field (Lock Screen and expanded Dynamic Island). Its VoiceOver label too. About 10 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        }
+      }
+    },
+    "voiceActivity.subject.allSessions" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): the muted line under the large word, what a voice conversation across all sessions is about while it discusses no single session. Also part of the VoiceOver label after a comma. One line, about 20 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All sessions"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wszystkie sesje"
+          }
+        }
+      }
+    },
+    "voiceActivity.subject.oneSession" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): the muted line under the large word, in place of the project and session name when the app cannot name the one session the recording is about. Also part of the VoiceOver label after a comma. One line, about 20 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One session"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jedna sesja"
+          }
+        }
+      }
+    },
+    "voiceActivity.subject.sayYesOrNo" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): the start of the muted line while a prompt waits for the user's spoken answer, before the tile's dot and the project and session name (Say yes or no · atlas · demo). No period; also part of the VoiceOver label before a comma. About 20 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Say yes or no"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Powiedz tak albo nie"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

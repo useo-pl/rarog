@@ -19,7 +19,7 @@ struct ProjectTreeRows: View {
   let besideDetail: Bool
   /// Kotwica zaznaczonej sesji (`TreeListAnchor`): most komórki wiersza zgłasza jej kolekcję, gest zapowiada zmianę.
   let anchor: TreeListAnchor
-  /// Hardware keyboard: the active project's agent rows show their tab digits (`RarogNavigation.treeTabDigits`).
+  /// Hardware keyboard: the rename field's Return and Escape handling (`SessionRenameField`).
   var hardwareKeyboard = false
   /// Renaming in place: which row is a field and the names waiting for the server (`SessionRenamer`).
   let renamer: SessionRenamer
@@ -75,14 +75,13 @@ struct ProjectTreeRows: View {
     let layouts = Dictionary(
       zip(rows.map(\.id), ProjectTreeRowLayout.layout(rows, activeCwd: navigation.currentProjectCwd(state))),
       uniquingKeysWith: { first, _ in first })
-    let digits = navigation.treeTabDigits(state, hardwareKeyboard: hardwareKeyboard)
     ForEach(rows) { row in
       let layout = layouts[row.id] ?? ProjectTreeRowLayout()
       let insets = Self.insets(row, layout)
       let plateInset = row.isHeader ? SessionListMetrics.rowPlateInset : Self.agentPlateInset
       // Cechy wiersza listy (wcięcia, tło, akcje przesunięcia) na zewnątrz rozgałęzienia: postawione w gałęzi `switch`
       // lista gubi je dla drugiej gałęzi (wiersz agenta bez wcięcia drzewa).
-      content(row, state: state, selected: selected, digits: digits)
+      content(row, state: state, selected: selected)
         // Prowadnica w treści wiersza, rozciągnięta na całą komórkę razem z wcięciami (`ProjectTreeGuide`).
         .overlay(alignment: .topLeading) {
           // An agent's leading swipe actions stand next to its plate, not at the column edge
@@ -112,7 +111,7 @@ struct ProjectTreeRows: View {
   }
 
   @ViewBuilder private func content(
-    _ row: ProjectTreeRow, state: AppState, selected: String?, digits: [String: Int]
+    _ row: ProjectTreeRow, state: AppState, selected: String?
   ) -> some View {
     switch row {
     case let .header(header):
@@ -125,7 +124,8 @@ struct ProjectTreeRows: View {
         openNote: { openNote(header.row.cwd, state: state) },
         openRecent: presenter.map { presenter in { presenter.openRecent(cwd: header.row.cwd) } },
         openTerminal: navigation.showsProjectPopupGlyph(state)
-          ? { navigation.togglePopup(.popup, in: header.row.cwd, state: store.state) } : nil
+          ? { navigation.togglePopup(.popup, in: header.row.cwd, state: store.state) } : nil,
+        pin: { pin(header.row.cwd, pinned: !header.pinned) }
       ) { toggle([header.row.cwd], collapse: !header.collapsed, gesture: .project) }
         .contextMenu {
           newTabMenu(header.row.cwd, state: state)
@@ -133,8 +133,12 @@ struct ProjectTreeRows: View {
           if state.notesAvailable, notes != nil {
             Button(UICopy.noteProject, systemImage: "note.text") { openNote(header.row.cwd, state: state) }
               .accessibilityIdentifier("tree.note")
-            Divider()
           }
+          // Pin or unpin: a finger opens this menu with a touch and hold, the pointer with the secondary click.
+          Button(header.pinned ? UICopy.treeUnpin : UICopy.treePin,
+                 systemImage: header.pinned ? "pin.slash" : "pin") { pin(header.row.cwd, pinned: !header.pinned) }
+            .accessibilityIdentifier("tree.pin")
+          Divider()
           allProjectsMenu(rows)
         }
         .popover(isPresented: noteShown(header.row.cwd), arrowEdge: .trailing) {
@@ -149,7 +153,7 @@ struct ProjectTreeRows: View {
       } else {
         SessionRow(
           row: renamer.pendingName(session.id).map(session.renamed) ?? session,
-          selected: highlighted(row, selected: selected), tabDigit: digits[session.id])
+          selected: highlighted(row, selected: selected))
           .background {
             if renameEntry(row, state: state) != nil {
               RenameDoubleClick { renamer.begin(session.id, name: shownName(session)) }.accessibilityHidden(true)
@@ -276,6 +280,23 @@ struct ProjectTreeRows: View {
       toggle(headers.filter(\.collapsed).map(\.row.cwd), collapse: false, gesture: .allProjects)
     }
     .disabled(!headers.contains(where: \.collapsed))
+  }
+
+  private func pin(_ cwd: String, pinned: Bool) {
+    Self.pin(cwd, pinned: pinned, navigation: navigation, store: store, anchor: anchor)
+  }
+
+  /// Pins or unpins a project from the header's menu or reader action. The rows change like with "Collapse All": the
+  /// header moves to its new place and the selected row stays where it stood (`TreeListAnchor`), so the change goes
+  /// without animation, the way a change from the server does.
+  @MainActor
+  static func pin(
+    _ cwd: String, pinned: Bool, navigation: RarogNavigation, store: RarogStore, anchor: TreeListAnchor
+  ) {
+    // Every project with sessions, also one a filter segment hides now: the memory's cap must not unpin it.
+    let present = Set(store.state.projectGroups().map(\.cwd))
+    guard navigation.setProjectPinned(cwd, pinned: pinned, present: present) else { return }
+    anchor.expect(nil)
   }
 
   private func toggle(_ cwds: [String], collapse: Bool, gesture: TreeToggleGesture) {

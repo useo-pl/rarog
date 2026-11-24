@@ -30,7 +30,9 @@ import {
 import type { LabelGuide, ScreenOption } from './options.ts';
 import { contentEscalates } from '../policy/escalation.ts';
 import type { TerminalDialogId } from '../policy/terminal.ts';
-import { dialogBlock, fileDialogTitle, lineBelow, regionCallTrace, toolNaming } from './block.ts';
+import {
+  blockFromSubagent, dialogBlock, fileDialogTitle, lineBelow, regionCallTrace, toolNaming,
+} from './block.ts';
 import { PLAN_DIALOG_PATTERN, PLAN_EXIT_CONFIRM_PATTERN, SANDBOX_NETWORK_TOOL, dialogKind } from './kinds.ts';
 import type { ScreenDialogKind } from './kinds.ts';
 import { FORM_IDENTITY } from './identity.ts';
@@ -47,6 +49,16 @@ import { digitlessChoiceBelow, lastRunStart } from './option-run.ts';
 export function screenOnlyDialog(text: string): boolean {
   const dialog = parseOptions(text);
   return dialog !== null && dialog.toolName === SANDBOX_NETWORK_TOOL;
+}
+
+/**
+ * Whether the dialog standing on screen is a subagent's: the title line of its block carries the subagent suffix
+ * ({@link blockFromSubagent}). No dialog with a complete option list = not a subagent's.
+ */
+export function subagentDialogOnScreen(text: string): boolean {
+  const lines = trimmedLines(text);
+  const found = optionRegion(lines);
+  return found !== null && blockFromSubagent(lines, dialogBlock(lines, found.firstOption));
 }
 
 export interface ScreenDialog {

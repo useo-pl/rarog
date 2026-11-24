@@ -204,6 +204,16 @@ export function fileDialogTitle(block: DialogBlock): 'edit' | 'write' | null {
   return block.title.tool === 'Write' ? 'write' : null;
 }
 
+/**
+ * Whether the block's own title line (the line under its top rule, {@link DialogBlock.titleLine}) ends with the subagent
+ * suffix (` · from the Explore agent`). Only that line counts, never a line of the transcript above the block; an
+ * ambiguous block or one without a known title is not a subagent's.
+ */
+export function blockFromSubagent(lines: readonly string[], block: DialogBlock): boolean {
+  if (block.ambiguous || block.titleLine < 0) return false;
+  return SUBAGENT_TITLE_SUFFIX.test(unbox(lines[block.titleLine] ?? ''));
+}
+
 /** Pierwsza niepusta linia pod kreską `rule`, przed `limit`, bez krawędzi ramki `╭──╮`; `-1` = brak. */
 export function lineBelow(lines: readonly string[], rule: number, limit: number): number {
   for (let i = rule + 1; i < limit; i += 1) {

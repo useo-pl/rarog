@@ -24,9 +24,4 @@ extension PaletteTokens {
   /// The active project's guide, the project on screen, brighter than the others. Still
   /// decoration: below 3:1, above `treeGuide`.
   public static let treeGuideActive = Pair(dark: 0x55555C, light: 0xA5A5AD)
-  /// The tab digit squares in the active project's agent rows (`TreeTabKey`), toned down a step:
-  /// the edge halfway between the two guides, quieter than the line beside it; the digit quieter than the row's
-  /// metadata, ≥ 3:1. Below 4.5:1 on purpose: the digit repeats the tab bar's key and VoiceOver does not read it.
-  public static let treeTabKeyEdge = Pair(dark: 0x38383D, light: 0xC2C2C8)
-  public static let treeTabDigit = Pair(dark: 0x6E6E75, light: 0x85858D)
 }

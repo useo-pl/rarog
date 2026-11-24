@@ -40,10 +40,11 @@ struct HeaderChromeSourceTests {
     let tabs = try Self.code("Views/Projects/ProjectTabBar.swift")
     // Klawiatura zmienia szerokość zakładek; pierwszy układ paska na iPhonie też (`onAppear` nie wystarcza).
     #expect(tabs.contains(
-      ".onScrollGeometryChange(for: CGFloat.self) { $0.contentSize.width } action: { _, _ in center(proxy) }"),
+      ".onScrollGeometryChange(for: CGFloat.self) { $0.contentSize.width } action: { _, width in recenter(content: width) }"),
       "środkowanie przy zmianie szerokości treści")
-    #expect(tabs.contains(".onChange(of: currentId) { center(proxy) }"), "środkowanie przy zmianie bieżącej")
-    #expect(tabs.contains("DispatchQueue.main.async { center(proxy) }"), "drugi raz po układzie paska świeżo na stosie")
+    #expect(tabs.contains(".onChange(of: currentId) { slide(to: currentId) }"),
+            "centring on a change of the current tab, on the clock of the “×” rooms")
+    #expect(tabs.contains("DispatchQueue.main.async { center() }"), "drugi raz po układzie paska świeżo na stosie")
     let slot = try Self.code("Views/Header/HeaderTabsSlot.swift")
     #expect(slot.contains("ShortcutMenu.tabDigits(tabs.compactMap(\\.target), hardwareKeyboard: hardwareKeyboard)"),
             "jedno źródło numeracji i jedna reguła widoczności")
@@ -61,7 +62,7 @@ struct HeaderChromeSourceTests {
   @Test("wygaszenie krawędzi przewiniętego paska: maska z geometrii scrolla, od wcięcia treści")
   func tabsEdgeFade() throws {
     let tabs = try Self.code("Views/Projects/ProjectTabBar.swift")
-    #expect(tabs.contains(".mask { TabEdgeMask(fade: fade) }"), "maska na scrollu paska, tło paska poza nią")
+    #expect(tabs.contains(".mask {\n      TabEdgeMaskFollow(\n        fade: fade,"), "maska na scrollu paska, tło paska poza nią")
     #expect(tabs.contains("TabTokens.edgeFade("), "krycie z jednej reguły")
     #expect(tabs.contains("leadingInset: geometry.contentInsets.leading"), "na iPadzie ramka paska sięga pod listę sesji")
   }

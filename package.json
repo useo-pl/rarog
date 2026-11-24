@@ -1,8 +1,8 @@
 {
   "name": "rarog",
-  "version": "1.0.1",
+  "version": "1.1.0-beta.1",
   "private": true,
-  "description": "Server for Rarog, the iPhone and iPad app for Claude Code sessions running in herdr",
+  "description": "Rarog is a free, open-source (MIT) iPhone and iPad app, plus a server on your Mac or Linux machine, that shows the Claude Code sessions running in Herdr TUI and lets you drive them.",
   "keywords": [
     "claude-code",
     "herdr",

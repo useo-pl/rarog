@@ -1,0 +1,13 @@
+{
+  "paths": [
+    "package.json",
+    "README.md",
+    "docs/brief.pdf",
+    "docs/recording.mov",
+    "src/App.vue",
+    "src/index.ts",
+    "src/util.go"
+  ],
+  "truncated": false,
+  "maxBytes": 52428800
+}

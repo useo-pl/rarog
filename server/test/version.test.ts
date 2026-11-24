@@ -10,7 +10,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.ts';
 import { SERVER_SYSTEMS } from '@rarog/shared/rest';
 import {
-  RAROG_VERSION, ROOT_PACKAGE_JSON, SERVER_CAPABILITIES, readPackageVersion, serverSystem,
+  FILE_INDEX_CAPABILITY, FILES_CAPABILITY, INBOX_CAPABILITY, RAROG_VERSION, ROOT_PACKAGE_JSON, SERVER_CAPABILITIES,
+  readPackageVersion, serverCapabilities, serverSystem,
 } from '../src/version.ts';
 
 const rootVersion = (JSON.parse(readFileSync(ROOT_PACKAGE_JSON, 'utf8')) as { version: string }).version;
@@ -55,6 +56,15 @@ describe('możliwości serwera (`capabilities`)', () => {
   it('nazwy są krótkie, małymi literami z myślnikiem i bez powtórzeń', () => {
     for (const name of SERVER_CAPABILITIES) expect(name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
     expect(new Set(SERVER_CAPABILITIES).size).toBe(SERVER_CAPABILITIES.length);
+  });
+
+  it('`files` and `file-index` only when the caller says the file routes answer; a caller that does not say leaves '
+    + 'them out', () => {
+    expect(serverCapabilities({ inbox: true })).toEqual([...SERVER_CAPABILITIES, INBOX_CAPABILITY]);
+    expect(serverCapabilities({ inbox: false, files: false })).toEqual([...SERVER_CAPABILITIES]);
+    expect(serverCapabilities({ inbox: true, files: true }))
+      .toEqual([...SERVER_CAPABILITIES, INBOX_CAPABILITY, FILES_CAPABILITY, FILE_INDEX_CAPABILITY]);
+    expect(serverCapabilities({ inbox: false, files: true })).toEqual([...SERVER_CAPABILITIES, 'files', 'file-index']);
   });
 });
 

@@ -57,6 +57,45 @@ struct VoiceAgentSettingsModelTests {
     #expect(!model.showsShortcut)
   }
 
+  @Test("the switch across sessions stands where the mode is offered, and with the voice agent off removes its consent")
+  func sessionsSwitchShown() {
+    let model = VoiceAgentSettingsModel(settings: .memory())
+    #expect(!model.showsSessions(offered: false))
+    model.acceptConsent()
+    model.acceptSessionsConsent()
+    model.toggle(false)
+    #expect(model.showsSessions(offered: true) && model.sessionsIsOn, "the voice agent off keeps the mode's consent")
+    model.toggleSessions(false)
+    #expect(!model.settings.sessionsEnabled, "and the switch still removes it")
+  }
+
+  @Test("the switch across sessions: on opens its consent and stores nothing, Cancel leaves it off, accept stores it")
+  func sessionsConsentGate() {
+    let model = VoiceAgentSettingsModel(settings: .memory())
+    model.acceptConsent()
+    model.toggleSessions(true)
+    #expect(model.sessionsConsentShown && !model.sessionsIsOn && !model.settings.sessionsAllowed)
+    #expect(!model.consentShown, "the voice agent's consent is not asked again")
+    model.cancelSessionsConsent()
+    #expect(!model.sessionsConsentShown && !model.sessionsIsOn)
+    model.toggleSessions(true)
+    model.acceptSessionsConsent()
+    #expect(!model.sessionsConsentShown && model.sessionsIsOn && model.settings.sessionsAllowed)
+    model.toggleSessions(true)
+    #expect(!model.sessionsConsentShown, "on: no second consent")
+  }
+
+  @Test("the switch across sessions off removes the mode's consent and keeps the voice agent on")
+  func sessionsOff() {
+    let model = VoiceAgentSettingsModel(settings: .memory())
+    model.acceptConsent()
+    model.acceptSessionsConsent()
+    model.toggleSessions(false)
+    #expect(!model.sessionsIsOn && !model.settings.sessionsEnabled && model.isOn)
+    model.toggleSessions(true)
+    #expect(model.sessionsConsentShown, "on again asks again")
+  }
+
   /// The app state after a version probe with `field` appended to the answer; `nil` = no answer yet.
   private static func state(_ field: String?) -> AppState {
     var state = Sample.state(session: Sample.session())

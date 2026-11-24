@@ -2,7 +2,8 @@ import Foundation
 import RarogContract
 
 // The filter segments over the session list: which sessions a segment holds and how many. The tree applies the
-// filter (`AppState.projectTree(collapsed:filter:held:)`); the segment row and its copy live in RarogUI. Owner: list.
+// filter (`AppState.projectTree(collapsed:pinned:filter:held:)`); the segment row and its copy live in RarogUI.
+// Owner: list.
 
 /// A segment of the list filter. The chosen segment and its held rows live in `RarogNavigation`, in memory only:
 /// the app always starts on ``all``.

@@ -63,6 +63,10 @@ extension UICopy {
     case .disabled: L("voiceAgent.call.closed.disabled")
     case .background: L("voiceAgent.call.closed.background")
     case .fieldHidden: L("voiceAgent.call.closed.fieldHidden")
+    case .connectionLost: L("voiceAgent.call.closed.connectionLost")
+    case .cardGone: L("voiceAgent.call.closed.cardGone")
+    case .cardChanged: L("voiceAgent.call.closed.cardChanged")
+    case .inboxLeft: L("voiceAgent.call.closed.inboxLeft")
     }
   }
 }

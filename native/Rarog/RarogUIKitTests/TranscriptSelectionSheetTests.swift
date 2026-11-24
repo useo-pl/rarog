@@ -217,7 +217,7 @@ final class TranscriptSelectionSheetTests: XCTestCase {
         .first { $0.accessibilityIdentifier == identifier }, identifier)
   }
 
-  private static func host(_ store: RarogStore) -> (SessionViewController, UIWindow) {
+  static func host(_ store: RarogStore) -> (SessionViewController, UIWindow) {
     let controller = SessionViewController(store: store, sessionId: "s1", drafts: ComposerDrafts())
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 834, height: 1194))
     window.overrideUserInterfaceStyle = .dark
@@ -237,6 +237,19 @@ final class TranscriptSelectionSheetTests: XCTestCase {
   /// agenta po kilka akapitów. `emoji`: pierwsza wiadomość niesie emoji z łącznikiem i flagę. `table`: druga wiadomość
   /// to sama tabela Markdown.
   private static func store(count: Int, emoji: Bool = false, table: Bool = false) throws -> RarogStore {
+    try store(messages: (1...count).map { seq in
+      let text = emoji && seq == 1
+        ? "Wiadomość 1. Zespół 👩‍💻 gotowy 🇵🇱"
+        : table && seq == 2
+        ? "| Kolumna | Wartość |\n|---|---|\n| pierwsza | 1 |\n| druga | 2 |"
+        : "Wiadomość \(seq). " + Array(repeating: "Akapit z treścią, która zawija się na kilka linii w oknie.", count: 3)
+          .joined(separator: "\n\n")
+      return (seq == 1 ? "user" : "assistant", text)
+    })
+  }
+
+  /// Session `s1` after a full state from the server with `messages` (role, Markdown text) as seq 1, 2, …
+  static func store(messages: [(role: String, text: String)]) throws -> RarogStore {
     let store = RarogStore.live(
       config: RarogConfig(baseURL: URL(string: "http://127.0.0.1:9")!, clientLabel: "test·Rarog", build: 1),
       outboxDirectory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
@@ -250,16 +263,11 @@ final class TranscriptSelectionSheetTests: XCTestCase {
       """#, source: .global)
     store.dispatch(.viewSession("s1"))
     store.dispatch(.streamOpened(.session(id: "s1"), resumedWithCursor: false))
-    let body = (1...count).map { seq in
-      let role = seq == 1 ? "user" : "assistant"
-      let text = emoji && seq == 1
-        ? "Wiadomość 1. Zespół 👩‍💻 gotowy 🇵🇱"
-        : table && seq == 2
-        ? #"| Kolumna | Wartość |\n|---|---|\n| pierwsza | 1 |\n| druga | 2 |"#
-        : "Wiadomość \(seq). " + Array(repeating: "Akapit z treścią, która zawija się na kilka linii w oknie.", count: 3)
-          .joined(separator: "\\n\\n")
+    let body = try messages.enumerated().map { index, message in
+      let seq = index + 1
       let at = "2026-10-06T10:\(String(format: "%02d", seq % 60)):00.000Z"
-      return #"{"seq":\#(seq),"role":"\#(role)","at":"\#(at)","blocks":[{"type":"text","text":"\#(text)"}]}"#
+      let text = String(decoding: try JSONEncoder().encode(message.text), as: UTF8.self)
+      return #"{"seq":\#(seq),"role":"\#(message.role)","at":"\#(at)","blocks":[{"type":"text","text":\#(text)}]}"#
     }.joined(separator: ",")
     try SessionToastTests.frame(store, #"""
       {"type":"transcript-snapshot","sessionId":"s1","messages":[\#(body)],"pendingPermissions":[],"pendingQuestions":[]}

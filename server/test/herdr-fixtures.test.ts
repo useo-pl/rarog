@@ -105,7 +105,7 @@ describe('pochodzenie fixture’ów (`provenance.json`)', () => {
    */
   const KATEGORIE_POMIARU: readonly string[] = ['artefakty', 'blokada-promptu', 'dialogi', 'katalog-komend', 'kolejka',
     'komendy-na-żywo', 'komendy-z-docs', 'schemat-api', 'ultracode', 'zabranie-kolejki', 'zadania-w-tle',
-    'zestaw-kontrolny', 'zgody'];
+    'zestaw-kontrolny', 'zgody', 'zgody-bez-hooka'];
   const kategoriaPomiaru = (source: string): string | null => /^pomiar:(.+)$/u.exec(source)?.[1] ?? null;
 
   /*

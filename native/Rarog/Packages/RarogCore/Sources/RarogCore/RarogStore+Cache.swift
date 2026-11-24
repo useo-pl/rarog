@@ -1,10 +1,10 @@
 import Foundation
 import RarogContract
 
-// Pamięć podręczna listy: odczyt przy zimnym starcie, zapis świeżej listy, kasowanie
-// przy wylogowaniu. Właściciel: łączność. Rdzeń woła `restoreListCache()` ze `start()`,
-// `persistListCache()` przy zejściu w tło i ze skutku `persistListCache`, `clearListCache()` ze
-// skutku `clearCaches`.
+// The list cache: read at the start with a key and at every pairing, a fresh list saved, the file deleted at logout.
+// Owner: connectivity. The core calls `readListCache()` and `applyRestoredList(_:)` from `start()` and from the
+// pairing's login (`switchEndpoint` in `RarogStore+Pairing`), `persistListCache()` when going to the background and
+// from the `persistListCache` effect, `clearListCache()` from the `clearCaches` effect.
 
 /// Dysk pamięci podręcznej magazynu i łańcuch jego operacji (po kolei: zapis zlecony przed
 /// wylogowaniem nie wyląduje PO skasowaniu).

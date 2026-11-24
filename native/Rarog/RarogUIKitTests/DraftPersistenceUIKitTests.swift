@@ -11,6 +11,32 @@ import XCTest
 final class DraftPersistenceUIKitTests: XCTestCase {
   private typealias Fixture = CommandSuggestionsKeysTests.Fixture
 
+  /// Catches background time of a dictation's end released while the Send that end woke is still on its way: the
+  /// send emptied the field, so a process removed before the message is stored loses the text.
+  func testDictationEndWaitsForTheSendOfTheField() async throws {
+    let fixture = try Fixture(state: "waiting-input")
+    defer { fixture.close() }
+    fixture.calls.record { $0.holdSends = true }
+    fixture.controller.composer.text = "Run"
+    fixture.controller.composer.onSend?()
+    let settled = Flag()
+    let wait = Task { @MainActor in
+      await fixture.controller.dictationEndWait()()
+      settled.set()
+    }
+    try await Task.sleep(for: .milliseconds(150))
+    XCTAssertFalse(settled.isSet, "the wait stands while the send is on its way")
+    fixture.calls.record { $0.holdSends = false }
+    await wait.value
+    XCTAssertTrue(settled.isSet)
+  }
+
+  @MainActor
+  private final class Flag {
+    private(set) var isSet = false
+    func set() { isSet = true }
+  }
+
   /// The send fails under the presentation; back in the window the user types, and the write after the pause keeps the
   /// failed text above the typed one, in the field and on disk.
   func testFieldWriteKeepsAFailedSendThatWaitsInMemory() throws {

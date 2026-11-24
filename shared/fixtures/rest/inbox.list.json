@@ -1,0 +1,77 @@
+{
+  "cards": [
+    {
+      "sessionId": "demo-willow",
+      "turnId": "pX8n2cHq5zKe4uTy9bWa1f",
+      "version": "bIBuAIREwSMFhgbBviB9Mr",
+      "kind": "decision",
+      "state": "waiting-permission",
+      "at": "2026-10-04T09:56:00.000Z",
+      "text": "Running the notes tests now.",
+      "truncated": false,
+      "dialog": {
+        "kind": "permission",
+        "waitingFor": {
+          "kind": "permission",
+          "tool": "Bash",
+          "text": "npm test -- --run src/notes.test.ts",
+          "subject": "tool"
+        },
+        "requestId": "demo-perm-willow"
+      }
+    },
+    {
+      "sessionId": "demo-inbox-result",
+      "turnId": "kT3q9sVb1xRm0aLp2wEc7d",
+      "version": "g2adfkYL2aR8dd2uvoKs5O",
+      "kind": "result",
+      "state": "waiting-input",
+      "at": "2026-10-04T09:52:00.000Z",
+      "text": "All 1446 tests pass; the note is saved before the event.",
+      "truncated": true
+    },
+    {
+      "sessionId": "demo-inbox-question",
+      "turnId": "sC9w4fNt7yRj2oEb5mKv8g",
+      "version": "ao-C35UTcVvJFMASeiVGgI",
+      "kind": "decision",
+      "state": "waiting-question",
+      "at": "2026-10-04T09:50:00.000Z",
+      "text": "Two databases fit the notes store.",
+      "truncated": false,
+      "dialog": {
+        "kind": "question",
+        "waitingFor": {
+          "kind": "question",
+          "text": "Which database?",
+          "count": 2
+        }
+      }
+    },
+    {
+      "sessionId": "demo-inbox-panel",
+      "turnId": "uE1y6hQv9aTl4qGd7oMx0j",
+      "version": "dkJUe3ZlB8nzgIKvlS9KOs",
+      "kind": "decision",
+      "state": "waiting-permission",
+      "at": "2026-10-04T09:48:00.000Z",
+      "text": "Opening the new project.",
+      "truncated": false,
+      "dialog": {
+        "kind": "panel",
+        "herdrDialog": "trust",
+        "herdrDialogReason": "terminal-only"
+      }
+    },
+    {
+      "sessionId": "demo-inbox-failed",
+      "turnId": "rB6m1dLs3vQo8iGh0nZx4k",
+      "version": "1t0L1udAUPbbhhKaR-IyJq",
+      "kind": "failed",
+      "state": "error",
+      "at": "2026-10-04T09:46:00.000Z",
+      "text": "The build failed in step two.",
+      "truncated": false
+    }
+  ]
+}

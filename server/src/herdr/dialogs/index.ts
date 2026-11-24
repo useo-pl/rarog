@@ -19,6 +19,8 @@
  * - `consent-gate.ts`   — the digit gate of consent channel mode: effective mode, blocked digit, consent card without
  *                        its allow button.
  * - `screen-unavailable.ts` — the reason of a consent card without `channel` and without the approve button.
+ * - `no-hook.ts`        — consent without a hook: its cause, the `no hook` and `no approve button` log lines, and
+ *                        whether the card of the `off` path has the approve button.
  * - `policy/options.ts` — wybór opcji po treści etykiety: „ten jeden raz" i „zawsze" (`docs/dialogs.md`, „Rules: what must not be relaxed”).
  * - `policy/escalation.ts` — słownik eskalacji (`docs/dialogs.md`, „Rules: what must not be relaxed”): treść, etykieta opcji, przełącznik trybu.
  * - `policy/terminal.ts`   — dialogi tylko z terminala: lista, dopasowanie, sufit treści.
@@ -93,6 +95,8 @@
  * - `layer1/observe.ts` — obserwacja jednej sesji (zrzuty, pula, `ps`, sygnały z wierzchem ekranu, karty bez
  *                        zrzutu) dla serwera i procesu pomiaru kanału.
  * - `layer1/hook-list/hook-list.ts` — the session's `PermissionRequest` hooks, read-only, as evidence.
+ * - `layer1/hook-list/session-facts.ts` — the session facts without a hook dump: process, `cwd`, call `cwd`, the hook
+ *                        list verdict and the settings layers past `changed`, cached per process, `cwd` and episode.
  * - `layer1/mode.ts`    — tryb efektywny kanału zgód: `main` wyłącznie przy komplecie warunków (hook `ok`, oba
  *                        gniazda, próg buildu apki), inaczej `shadow` z powodem; `off` do rozstrzygnięcia po starcie
  *                        gniazd i po wyłączniku (do restartu); źródło trybu ze słuchaczem zmian.
@@ -187,6 +191,8 @@ export {
 } from './router.ts';
 export { consentDigitRefused, consentModeNow, consentOnlyEvent } from './consent-gate.ts';
 export type { ConsentGateSource } from './consent-gate.ts';
+export { noApproveButtonLine, noHookCause, noHookLine, offPathApprove } from './no-hook.ts';
+export type { NoHookFacts, NoHookThread, StatuslineFreshness } from './no-hook.ts';
 export type { ConsentDeskRelease } from './layer1/desk-reason.ts';
 export {
   applyMultiSelectOverride, competingHook, hookMatchesPending, hookPendingFrom, olderBashHook,
@@ -207,7 +213,7 @@ export {
 export { dialogShapeOf } from './decide/reasons.ts';
 export { FORM_SUBMIT_KEY, confirmFormSubmit } from './send/form-submit.ts';
 export { ASK_USER_QUESTION_TOOL, resolveOptions } from './screen/resolve.ts';
-export { parseOptions } from './screen/parse.ts';
+export { parseOptions, subagentDialogOnScreen } from './screen/parse.ts';
 export { blockVisible } from './screen/block-visible.ts';
 export { SANDBOX_NETWORK_TOOL } from './screen/kinds.ts';
 export { matchKnownDialog } from './screen/known.ts';

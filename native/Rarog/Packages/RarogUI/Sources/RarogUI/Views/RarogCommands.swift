@@ -11,9 +11,8 @@ import SwiftUI
 /// z Cmd niczego nie wpisują do pola. Stan menu (numery zakładek, cel Cmd+L) przychodzi
 /// z korzenia widoków jako wartość sceny — numer wskazuje to, co widać na pasku w chwili rysowania.
 ///
-/// Cmd+S and Shift+Cmd+S open the session switcher: a window of the recently visited sessions that
-/// stays until Return, a tap or Esc. `SessionSwitcherHost` routes them, not `RarogShortcut` — the window has its own
-/// state machine.
+/// The session switcher has no command here: only a tap on the current tab opens it. While it stands, Cmd+1–9 ask it
+/// first (`switcherDigit`); Cmd+0 does not.
 ///
 /// Kombinacje (poza cyframi zakładek) przychodzą z `AppShortcut` — z tej samej definicji podpowiedź przycisku „Nazwa
 /// (⌘B)”, więc podpowiedź i skrót nie rozjadą się.
@@ -77,14 +76,8 @@ public struct RarogCommands: Commands {
       Button(UICopy.shortcutPreviousProject(menu.previousProject)) { shortcuts?.perform(.previousProject) }
         .keyboardShortcut(AppShortcut.previousProject.keyboardShortcut)
         .disabled(menu.previousProject == nil)
-      // Session switcher. Tytuły stałe, pozycje zawsze aktywne: tytuł albo stan
-      // zmieniany w locie odpala polecenie drugi raz. Gdy nie ma dokąd iść, polecenie milczy.
-      Button(UICopy.switcherNext) { shortcuts?.switchSession(false) }
-        .keyboardShortcut(AppShortcut.nextSession.keyboardShortcut)
-      Button(UICopy.switcherPrevious) { shortcuts?.switchSession(true) }
-        .keyboardShortcut(AppShortcut.previousSession.keyboardShortcut)
-      // Przeczytane ↔ nieprzeczytane zaznaczonej sesji. Stały tytuł i zawsze aktywne, z tego samego powodu co
-      // przełącznik wyżej; bez stojącego wyniku polecenie milczy.
+      // Read ↔ unread of the selected session. A constant title and always enabled: a title or state changed on the
+      // fly fires the command a second time. Without a standing result the command is silent.
       Button(UICopy.shortcutReadToggle) { shortcuts?.perform(.toggleRead) }
         .keyboardShortcut(AppShortcut.toggleRead.keyboardShortcut)
       Divider()
@@ -106,9 +99,9 @@ public struct RarogCommands: Commands {
 
   /// The app's text size (`TextScale`). Make Text Bigger shows “⌘+” in tips and the shortcut sheet and is registered
   /// here as ⌘=; its ⇧⌘= sits on an invisible button at the root of the views (`TextScaleAlternateKeys`). The commands
-  /// work over sheets and next to the open session switcher, which stays open; only ⌘0 goes to the switcher first,
-  /// where it picks row 0, in whichever order UIKit delivers the press. A command at the end of its range is disabled,
-  /// and so is every command while the scene has given no state yet, like the other commands of the menu.
+  /// work over sheets and next to the open session switcher, which stays open and picks nothing. A command at the end
+  /// of its range is disabled, and so is every command while the scene has given no state yet, like the other commands
+  /// of the menu.
   @ViewBuilder private var textSizeCommands: some View {
     // The state comes as a value of the scene (drawn by the root view), so the menu draws again after each step.
     let size = shortcuts?.textSize ?? TextSizeMenu()
@@ -119,10 +112,7 @@ public struct RarogCommands: Commands {
     Button(UICopy.textSizeSmaller) { shortcuts?.textScale.shrink() }
       .keyboardShortcut(AppShortcut.textSmaller.keyboardShortcut)
       .disabled(!size.canShrink)
-    Button(UICopy.textSizeActualSize) {
-      guard shortcuts?.switcherDigit(0) != true else { return }
-      shortcuts?.textScale.reset()
-    }
+    Button(UICopy.textSizeActualSize) { shortcuts?.textScale.reset() }
     .keyboardShortcut(AppShortcut.textActualSize.keyboardShortcut)
     .disabled(!size.canReset)
   }

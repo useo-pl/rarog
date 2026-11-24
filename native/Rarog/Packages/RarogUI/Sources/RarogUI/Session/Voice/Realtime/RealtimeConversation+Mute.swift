@@ -13,7 +13,8 @@ import Foundation
 //   `speech_started` after the unmute starts a new utterance. Noise over the answer drops its utterance the same way
 //   (`RealtimeConversation+Noise.swift`).
 // - Mute during the window of speech over the answer closes it: no cut, the volume back, the answer goes on; the tool
-//   calls the window held are dropped. Tool results that wait for a noise's `committed` go at once.
+//   calls the window held are dropped, and a tool's reading whose end waited for the window ends. Tool results that
+//   wait for a noise's `committed` go at once.
 // - The mute lasts until unmute or the end of the conversation; every conversation starts unmuted (`reset`, `end`).
 
 extension RealtimeConversation {
@@ -28,7 +29,11 @@ extension RealtimeConversation {
     handlers.diagnostic(on ? .muted : .unmuted)
     guard on else { return }
     dropHeld(closeBargeInWindow())
+    // No cut, so a reading whose end waited for the window ends now.
+    completeWaitingReadings()
     releaseResultsAfterNoise()
+    // The cut utterance's start dates no utterance (`RealtimeConversation+Reading.swift`).
+    readings.speechStart = nil
     // Before the readiness gate nothing was appended, so there is nothing to clear.
     if audioRunning {
       send(RealtimeClientEvent.clearAudio())

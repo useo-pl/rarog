@@ -1,12 +1,12 @@
 import Foundation
 
-// Device history of visited sessions for the session switcher (Cmd+S): session ids only,
+// Device history of visited sessions for the mark of the last visit on the session list: session ids only,
 // no content. Entries are a HINT: the reader keeps only sessions the app still knows (`recent(limit:alive:)`).
 // Stored under `NavigationPreferences.sessionHistory`, cleared with a new data space. Owner: projects and
 // tabs.
 
-/// Sessions this device visited, without duplicates, ceiling 32 (a reserve for deleted sessions; the switcher shows
-/// 10). Newest at the END, like ``ProjectHistory``.
+/// Sessions this device visited, without duplicates, ceiling 32 (a reserve for deleted sessions). Newest at the END,
+/// like ``ProjectHistory``.
 public struct SessionHistory: Sendable, Equatable, Codable {
   public static let capacity = 32
 

@@ -1,5 +1,6 @@
 import Foundation
 import RarogContract
+import RarogContractFixtures
 import RarogTransport
 @testable import RarogCore
 import Testing
@@ -29,6 +30,33 @@ struct StoreConnectionTests {
     await until("lista") { store.state.sessionsLoaded }
     #expect(store.state.compat == .ok)
     #expect(store.state.sessions.count == 10)
+  }
+
+  @Test("a second start in the same process keeps what the store knows about the server, with no second login")
+  func secondStartKeepsServerState() async throws {
+    let (store, transport) = makeStore()
+    await store.start()
+    await until("online") { store.state.global == .online }
+    transport.push(.global, json: #"{"type":"hello","protocolVersion":3,"serverStartId":"s"}"#)
+    transport.push(.global, json: #"{"type":"sessions-snapshot","sessions":[\#(Frames.summary("s1"))]}"#)
+    await until("list") { store.state.sessionsLoaded && store.state.compat == .ok }
+    let version = #"{"version":"1.0.0","protocolVersion":3,"serverStartId":"s","capabilities":["files"]}"#
+    store.dispatch(.versionProbed(try JSONDecoder().decode(VersionInfo.self, from: Data(version.utf8))))
+    let fixture = try GoldenFrames.repoRoot().appending(path: "shared/fixtures/rest/usage.json")
+    let usage = try JSONDecoder().decode(PlanUsage.self, from: Data(contentsOf: fixture))
+    store.dispatch(.planUsageResult(.loaded(usage), at: Date()))
+    #expect(store.fileTree.source("s1") == .files)
+    let streams = transport.streamCalls.count
+
+    // The scene root runs its `.task` again each time a full-screen cover over it closes.
+    await store.start()
+    try await Task.sleep(for: .milliseconds(40))
+    #expect(store.state.auth == .loggedIn && store.state.global == .online && store.state.compat == .ok)
+    #expect(store.state.filesAvailable)
+    #expect(store.state.sessions["s1"] != nil)
+    #expect(store.fileTree.source("s1") == .files)
+    #expect(store.state.planUsage.usage == usage)
+    #expect(transport.streamCalls.count == streams, "no second login: the global stream stays the one it was")
   }
 
   @Test("401 strumienia: wylogowanie, bez ponawiania")

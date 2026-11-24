@@ -4,8 +4,8 @@ import RarogCore
 import RarogTransport
 import Synchronization
 
-// The one `RarogTransporting` of the UIKit test target, with its shared behaviours: a held close
-// (`CloseHold`) and the results of the dictation token in order (`VoiceTokenScript`). A new route of the protocol
+// The one `RarogTransporting` of the UIKit test target, with its shared behaviours: a held close (`CloseHold`), a held
+// read (`ReadHold`) and the results of the dictation token in order (`VoiceTokenScript`). A new route of the protocol
 // changes this file only (a refusal, plus an `on<Route>` handler when a test needs the route); a new test file uses
 // this transport instead of its own copy. Tests: `UIKitTransportTests`. Owner: UIKit tests.
 
@@ -23,6 +23,19 @@ struct UIKitTransport: RarogTransporting {
   var onIssuePairingCode: (@Sendable () async throws(TransportError) -> PairingIssued)?
   var onCancelPairingCode: (@Sendable () async throws(TransportError) -> Void)?
   var onTakeBackQueue: (@Sendable (_ sessionId: String, _ operationId: UUID) async throws(TransportError) -> QueueTakeBackResponse)?
+  var onInboxCards: (@Sendable () async throws(TransportError) -> InboxList)?
+  var onRemoveInboxCard: (@Sendable (_ sessionId: String, _ body: InboxActionBody) async throws(TransportError) -> InboxActionResponse)?
+  /// The JSON frames a stream of `scope` sends at once; the stream then stays open until its reader ends it.
+  var onOpenStream: (@Sendable (_ scope: StreamScope) async throws(TransportError) -> [String])?
+  var onDecideDialog: (@Sendable (_ sessionId: String, _ body: PermissionDecisionBody) async throws(TransportError) -> Void)?
+  /// The voice agent's keys: the Realtime token and the Soniox speech key.
+  var onCompanionToken: (@Sendable () async throws(TransportError) -> CompanionToken)?
+  var onCompanionSpeechToken: (@Sendable () async throws(TransportError) -> CompanionSpeechToken)?
+  var onSessionFiles: (@Sendable (_ sessionId: String, _ dir: String) async throws(TransportError) -> FileListing)?
+  var onFetchSessionFile: (@Sendable (_ sessionId: String, _ path: String, _ maxBytes: Int) async throws(TransportError) -> SessionFileFetch)?
+  var onSessionFileIndex: (@Sendable (_ sessionId: String) async throws(TransportError) -> FileIndex)?
+  /// The voice agent's session catalog, which a start across sessions reads before it opens the conversation.
+  var onCompanionSessions: (@Sendable () async throws(TransportError) -> CompanionSessions)?
 
   /// Every close waits in `hold` until the test releases it by its session id.
   static func holdingCloses(_ hold: CloseHold) -> UIKitTransport {
@@ -71,7 +84,17 @@ struct UIKitTransport: RarogTransporting {
   func mac() async throws(TransportError) -> MacLoad { try refused() }
   func openStream(
     _ scope: StreamScope, lastEventId: String?, watch: StreamStallGuard
-  ) async throws(TransportError) -> AsyncThrowingStream<SSEParser.Output, any Error> { try refused() }
+  ) async throws(TransportError) -> AsyncThrowingStream<SSEParser.Output, any Error> {
+    guard let onOpenStream else { return try refused() }
+    let frames = try await onOpenStream(scope)
+    let (stream, continuation) = AsyncThrowingStream<SSEParser.Output, any Error>.makeStream()
+    continuation.onTermination = { _ in watch.ended() }
+    // The stall guard hears the request and its first bytes, as `RarogClient` reports them.
+    watch.sent()
+    watch.received()
+    for frame in frames { continuation.yield(.event(SSEEvent(data: frame))) }
+    return stream
+  }
   func recentProjects() async throws(TransportError) -> RecentProjectList { try refused() }
   func createSession(_ body: CreateSessionBody) async throws(TransportError) -> CreateSessionResponse { try refused() }
   func models() async throws(TransportError) -> ModelList { try refused() }
@@ -91,7 +114,8 @@ struct UIKitTransport: RarogTransporting {
     try refused() as Void
   }
   func decideDialog(sessionId: String, _ body: PermissionDecisionBody) async throws(TransportError) {
-    try refused() as Void
+    guard let onDecideDialog else { return try refused() }
+    try await onDecideDialog(sessionId, body)
   }
   func resumeSession(sessionId: String) async throws(TransportError) -> ResumeResponse { try refused() }
   func markSeen(sessionId: String) async throws(TransportError) { try refused() as Void }
@@ -110,14 +134,50 @@ struct UIKitTransport: RarogTransporting {
     try await onCancelPairingCode()
   }
 
-  func companionToken() async throws(TransportError) -> CompanionToken { try refused() }
-  func companionSpeechToken() async throws(TransportError) -> CompanionSpeechToken { try refused() }
+  func companionToken() async throws(TransportError) -> CompanionToken {
+    guard let onCompanionToken else { return try refused() }
+    return try await onCompanionToken()
+  }
+  func companionSpeechToken() async throws(TransportError) -> CompanionSpeechToken {
+    guard let onCompanionSpeechToken else { return try refused() }
+    return try await onCompanionSpeechToken()
+  }
   func takeBackQueue(sessionId: String, operationId: UUID) async throws(TransportError) -> QueueTakeBackResponse {
     guard let onTakeBackQueue else { return try refused() }
     return try await onTakeBackQueue(sessionId, operationId)
   }
   func companionAsk(sessionId: String, _ body: CompanionAskBody) async throws(TransportError) -> CompanionAnswer {
     try refused()
+  }
+  func companionSessions() async throws(TransportError) -> CompanionSessions {
+    guard let onCompanionSessions else { return try refused() }
+    return try await onCompanionSessions()
+  }
+  func companionTurns(sessionId: String, count: Int) async throws(TransportError) -> CompanionTurns { try refused() }
+  func pickUpResult(sessionId: String, _ pickUp: SeenPickUp) async throws(TransportError) { try refused() as Void }
+  func inboxCards() async throws(TransportError) -> InboxList {
+    guard let onInboxCards else { return try refused() }
+    return try await onInboxCards()
+  }
+  func inboxCard(sessionId: String) async throws(TransportError) -> InboxCardResponse { try refused() }
+  func removeInboxCard(sessionId: String, _ body: InboxActionBody) async throws(TransportError) -> InboxActionResponse {
+    guard let onRemoveInboxCard else { return try refused() }
+    return try await onRemoveInboxCard(sessionId, body)
+  }
+  func restoreInboxCard(sessionId: String, _ body: InboxActionBody) async throws(TransportError) -> InboxActionResponse {
+    try refused()
+  }
+  func sessionFiles(sessionId: String, dir: String) async throws(TransportError) -> FileListing {
+    guard let onSessionFiles else { return try refused() }
+    return try await onSessionFiles(sessionId, dir)
+  }
+  func fetchSessionFile(sessionId: String, path: String, maxBytes: Int) async throws(TransportError) -> SessionFileFetch {
+    guard let onFetchSessionFile else { return try refused() }
+    return try await onFetchSessionFile(sessionId, path, maxBytes)
+  }
+  func sessionFileIndex(sessionId: String) async throws(TransportError) -> FileIndex {
+    guard let onSessionFileIndex else { return try refused() }
+    return try await onSessionFileIndex(sessionId)
   }
   func registerApns(
     token: String, environment: ApnsEnvironment, topic: String?, alerts: Bool, test: Bool
@@ -152,6 +212,32 @@ actor CloseHold {
   func releaseAll() {
     for continuation in waiting.values { continuation.resume() }
     waiting = [:]
+  }
+}
+
+/// A held read: each call of `pause()` waits until the test calls `release()`, and a call after the release returns at
+/// once. `reached` hears each call once it waits, so a release that follows it always finds the call.
+actor ReadHold {
+  private let reached: @Sendable () -> Void
+  private var released = false
+  private var waiting: [CheckedContinuation<Void, Never>] = []
+
+  init(reached: @escaping @Sendable () -> Void = {}) {
+    self.reached = reached
+  }
+
+  func pause() async {
+    guard !released else { return }
+    await withCheckedContinuation { continuation in
+      waiting.append(continuation)
+      reached()
+    }
+  }
+
+  func release() {
+    released = true
+    for continuation in waiting { continuation.resume() }
+    waiting = []
   }
 }
 

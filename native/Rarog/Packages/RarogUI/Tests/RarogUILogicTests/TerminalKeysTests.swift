@@ -218,16 +218,19 @@ struct TerminalKeyMapTests {
     #expect(TerminalKeyMap.resolve(key("d", cmd: true, alt: true)) == nil)
   }
 
-  @Test("Cmd+litera → Meta z wielkością litery; poza [bcfglnvxy]")
+  @Test("Cmd+litera → Meta z wielkością litery; poza [bcfglnuvxy]")
   func meta() {
     #expect(TerminalKeyMap.resolve(key("d", cmd: true)) == .bytes(esc + "d"))
     #expect(TerminalKeyMap.resolve(key("a", cmd: true)) == .bytes(esc + "a"))
     #expect(TerminalKeyMap.resolve(key("d", cmd: true, shift: true)) == .bytes(esc + "D"))
-    for letter in ["b", "f", "g", "l", "n", "s", "u"] {
+    // The app has no Cmd+S shortcut, so Meta+s and Meta+S go to the shell.
+    #expect(TerminalKeyMap.resolve(key("s", cmd: true)) == .bytes(esc + "s"))
+    #expect(TerminalKeyMap.resolve(key("s", cmd: true, shift: true)) == .bytes(esc + "S"))
+    for letter in ["b", "f", "g", "l", "n", "u"] {
       #expect(TerminalKeyMap.resolve(key(letter, cmd: true)) == nil, "Cmd+\(letter) zostaje apce")
       #expect(TerminalKeyMap.resolve(key(letter, cmd: true, shift: true)) == nil, "Cmd+Shift+\(letter) zostaje apce")
     }
-    #expect(TerminalKeyMap.appLetters == ["b", "c", "f", "g", "l", "n", "s", "u", "v", "x", "y"])
+    #expect(TerminalKeyMap.appLetters == ["b", "c", "f", "g", "l", "n", "u", "v", "x", "y"])
     #expect(TerminalKeyMap.resolve(key("ą", cmd: true)) == nil, "litera narodowa to nie Meta")
   }
 
@@ -285,9 +288,9 @@ struct TerminalKeyMapTests {
     #expect(commands.contains(key("x", cmd: true)))
     #expect(!commands.contains { $0.command && TerminalKeyMap.appLetters.subtracting(["x", "y"]).contains($0.input) })
     #expect(!commands.contains { $0.command && Int($0.input) != nil })
-    // 15 liter Meta (S i U zostają apce), każda także z Shiftem, plus Esc, Return, Tab, Shift+Tab,
+    // 16 liter Meta (U zostaje apce), każda także z Shiftem, plus Esc, Return, Tab, Shift+Tab,
     // Cmd+., cztery strzałki, Cmd+Y i Cmd+X.
-    #expect(commands.count == 15 * 2 + 11)
+    #expect(commands.count == 16 * 2 + 11)
   }
 }
 

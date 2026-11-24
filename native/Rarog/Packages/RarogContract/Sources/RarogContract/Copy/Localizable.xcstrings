@@ -5965,6 +5965,96 @@
         }
       }
     },
+    "server.rest.file-too-large" : {
+      "comment" : "Server sentence, area rest, code rest.file-too-large. Arguments: 1. size (int), 2. limit (int).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file has %1$lld MB. The server sends files up to %2$lld MB (RAROG_FILES_MAX_MB)."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ten plik ma %1$lld MB. Serwer wysyła pliki do %2$lld MB (RAROG_FILES_MAX_MB)."
+          }
+        }
+      }
+    },
+    "server.rest.files-codex" : {
+      "comment" : "Server sentence, area rest, code rest.files-codex. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog only observes the Codex pane, so it doesn't show the files in its directory."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panel Codexa Rarog tylko obserwuje, więc nie pokazuje plików z jego katalogu."
+          }
+        }
+      }
+    },
+    "server.rest.files-no-pane" : {
+      "comment" : "Server sentence, area rest, code rest.files-no-pane. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This session has no herdr pane, so Rarog doesn't show the files in its directory."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta sesja nie ma panelu herdr, więc Rarog nie pokazuje plików z jej katalogu."
+          }
+        }
+      }
+    },
+    "server.rest.files-not-found" : {
+      "comment" : "Server sentence, area rest, code rest.files-not-found. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That file or directory isn't there, or Rarog doesn't show it."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tego pliku albo katalogu nie ma albo Rarog go nie pokazuje."
+          }
+        }
+      }
+    },
+    "server.rest.files-out-of-scope" : {
+      "comment" : "Server sentence, area rest, code rest.files-out-of-scope. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The pane is outside RAROG_HERDR_ROOTS. Rarog shows its state but not the files in its directory."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panel jest poza RAROG_HERDR_ROOTS — Rarog pokazuje jego stan, ale nie pliki z katalogu."
+          }
+        }
+      }
+    },
     "server.rest.image-not-found" : {
       "comment" : "Server sentence, area rest, code rest.image-not-found. No arguments.",
       "extractionState" : "manual",
@@ -5979,6 +6069,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nie ma takiego zdjęcia."
+          }
+        }
+      }
+    },
+    "server.rest.inbox-card-changed" : {
+      "comment" : "Server sentence, area rest, code rest.inbox-card-changed. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Inbox card changed in the meantime, so nothing happened."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta karta Inboxa zmieniła się w międzyczasie, więc nic się nie stało."
+          }
+        }
+      }
+    },
+    "server.rest.inbox-disabled" : {
+      "comment" : "Server sentence, area rest, code rest.inbox-disabled. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Inbox is turned off on the server (RAROG_INBOX)."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inbox jest wyłączony na serwerze (RAROG_INBOX)."
+          }
+        }
+      }
+    },
+    "server.rest.inbox-save-failed" : {
+      "comment" : "Server sentence, area rest, code rest.inbox-save-failed. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save the change to the Inbox."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się zapisać zmiany w Inboxie."
           }
         }
       }

@@ -2,8 +2,9 @@ import Foundation
 import RarogContract
 
 // Drzewo projektów listy: nagłówki projektów w kolejności karty PROJEKTY, pod nimi
-// agenci od najstarszego. Czyste odczyty stanu — zwinięte projekty podaje pamięć urządzenia (``CollapsedProjects``),
-// zaznaczenie i ostatnio otwarte wiersze trzyma reduktor (`Reducer+List`). Copy i wygląd składa RarogUI.
+// agenci od najstarszego. Czyste odczyty stanu — zwinięte i przypięte projekty podaje pamięć urządzenia
+// (``CollapsedProjects``, ``PinnedProjects``), zaznaczenie i ostatnio otwarte wiersze trzyma reduktor
+// (`Reducer+List`). Copy i wygląd składa RarogUI.
 // Właściciel: lista i projekty.
 
 /// Tożsamość węzła drzewa. Typowana, bo `List(selection:)` bierze DOWOLNY tag za zaznaczenie, a katalog
@@ -50,11 +51,12 @@ public struct ProjectTreeNode: Sendable, Equatable, Identifiable {
 }
 
 extension AppState {
-  /// Drzewo listy: nagłówki w kolejności ``projectGroups(calendar:)`` (doba aktywności, alfabet `CopyLocale.current`,
-  /// ścieżka) — stan agenta NIGDY nie przestawia projektu; pod nagłówkiem agenci od najstarszego, wszyscy
-  /// z katalogu, także Codex w terminalu Raroga (ten sam skład co ``projectSessions(_:)``, nie ``projectTabs(_:)``).
-  /// Projekt bez sesji nie ma nagłówka. Zwinięty projekt chowa agentów, których
-  /// ``treeShows(_:collapsed:)`` nie pokazuje; projekt spoza `collapsed` jest rozwinięty.
+  /// List tree: headers in ``projectGroups(pinned:)`` order (projects in `pinned` first, then the rest, each part by
+  /// name alphabetically in `CopyLocale.current`, then path), so neither activity nor agent state ever moves a
+  /// project; only the human's pin does. Under a header stand the project's agents from the
+  /// oldest, all of the directory, Codex in a Rarog terminal included (the same set as ``projectSessions(_:)``, not
+  /// ``projectTabs(_:)``). A project without sessions has no header. A collapsed project hides the agents that
+  /// ``treeShows(_:collapsed:)`` does not show; a project outside `collapsed` is expanded.
   ///
   /// `filter` other than ``ListFilter/all`` hides rows the human did not choose, and never reorders anything: an
   /// agent row stands when the unfiltered tree shows it and the session belongs to the segment, is in `held` (it was
@@ -63,11 +65,12 @@ extension AppState {
   /// header stands only over a project with a visible row, and its `shown` counts the filtered rows. When no visible
   /// row belongs to the segment, the tree starts with ``ProjectTreeNode/Kind/emptyFilter(_:)``.
   public func projectTree(
-    collapsed: CollapsedProjects, filter: ListFilter = .all, held: Set<String> = [], calendar: Calendar = .current
+    collapsed: CollapsedProjects, pinned: PinnedProjects = PinnedProjects(), filter: ListFilter = .all,
+    held: Set<String> = []
   ) -> [ProjectTreeNode] {
     var nodes: [ProjectTreeNode] = []
     var member = false
-    for group in projectGroups(calendar: calendar) {
+    for group in projectGroups(pinned: pinned) {
       let folded = !group.sessions.isEmpty && collapsed.contains(group.cwd)
       let shown = group.sessions.filter { session in
         guard treeShows(session, collapsed: folded) else { return false }

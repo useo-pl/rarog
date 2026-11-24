@@ -194,6 +194,20 @@ struct ToastLifecycleTests {
     #expect(ToastPlacement.resolve(navigation: navigation, state: state()) == .terminalWindow, "także nad trasą terminala")
   }
 
+  @Test("placement: the open panel sheet of the phone has the toast at its bottom; closed, the session screen has it")
+  func placementInspectorSheet() {
+    let navigation = RarogNavigation(prefs: MemoryPreferences())
+    navigation.selectSession("s1")
+    #expect(ToastPlacement.resolve(navigation: navigation, state: state()) == .sessionScreen, "no sheet")
+    navigation.openInspectorSheet(sessionId: "s1", anchor: InspectorModel.backgroundAnchor)
+    #expect(ToastPlacement.resolve(navigation: navigation, state: state()) == .inspectorSheet)
+    navigation.closeInspectorSheet()
+    #expect(ToastPlacement.resolve(navigation: navigation, state: state()) == .sessionScreen, "sheet closed")
+    // A sheet left for another session (the screen changed under it) stands nowhere, so it takes no toast.
+    navigation.openInspectorSheet(sessionId: "s2", anchor: InspectorModel.backgroundAnchor)
+    #expect(ToastPlacement.resolve(navigation: navigation, state: state()) == .sessionScreen, "a sheet of another session")
+  }
+
   @Test("osadzenie: ekran sesji z transkryptem ma dymek u siebie; Codex, projekt, terminal i pusta kolumna — nakładka")
   func placement() {
     var state = state()

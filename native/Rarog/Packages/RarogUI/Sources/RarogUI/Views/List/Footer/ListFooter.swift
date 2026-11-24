@@ -10,9 +10,9 @@ import SwiftUI
 /// list scrolls under the bar and shows faintly through it (`SessionListView`, `safeAreaBar`). Polling is the core's (`RarogStore+Usage`,
 /// `RarogStore+Mac`): in the foreground only. Owner: list.
 ///
-/// A server older than the app's release (``AppState/serverUpdate``): the card's first line is a quiet
-/// "Server update available" row, the card's one tap target, that opens the "Usage" sheet with the update command
-/// (the only place that shows it).
+/// A server older than the app's release (``AppState/serverUpdate``): the card's first line is a
+/// "Server update available" row in link ink, the card's one tap target, that opens the update steps
+/// (`ServerUpdateSheet`).
 struct ListFooter: View {
   let store: RarogStore
   /// Split view collapsed to a stack (iPhone, narrow iPad window) — the WINDOW size from `MainSplitView` through
@@ -29,11 +29,14 @@ struct ListFooter: View {
     let mac = MacLoadModel.make(store.state.macLoad, tailnet: store.state.tailnet, machine: store.state.serverMachine)
     let resets = usage.isSkeleton ? [] : usage.slots.compactMap { $0.segment?.resetsAt }
     card(resets: resets, mac: mac)
-      // The update row's sheet: beside the detail a popover, in the stack a sheet.
+      // The update row's steps: beside the detail a popover, in the stack a sheet.
       .popover(isPresented: $sheetOpen, arrowEdge: .bottom) {
-        usageSheet
-          .popoverSurface()
-          .presentationCompactAdaptation(.sheet)
+        if let sheet = updateSheet {
+          sheet
+            .popoverSurface()
+            .presentationCompactAdaptation(.sheet)
+            .textScaleHost(Fonts.scale)
+        }
       }
       // The surface fills the whole bar to the edges. The bar keeps the floating card's height, and the content sits
       // `contentDrop` lower in it: more air under the top line, less over the screen edge.
@@ -67,7 +70,8 @@ struct ListFooter: View {
     }
   }
 
-  /// Update row: quiet ink, one line, its own tap target ≥ 44 pt. The row keeps the card's usual top padding
+  /// Update row: link ink (glyph and text, no underline, like the inspector's artifact link), one line, its own tap
+  /// target ≥ 44 pt. The row keeps the card's usual top padding
   /// and line gap; the target reaches down over the gap and the next line (`updateRowTargetReach`) instead of a
   /// 44 pt frame, which put all the spare height above the text.
   private var updateRow: some View {
@@ -79,7 +83,7 @@ struct ListFooter: View {
         Text(UICopy.serverUpdate).lineLimit(1)
       }
       .appFont(.caption)
-      .foregroundStyle(Color(uiColor: Palette.muted))
+      .foregroundStyle(Color(uiColor: Palette.linkInk))
       .padding(.top, ListFooterMetrics.cardPaddingTop)
       .padding(.horizontal, ListFooterMetrics.cardPaddingSide)
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,10 +95,12 @@ struct ListFooter: View {
     .accessibilityIdentifier("list.serverUpdate")
   }
 
-  /// The "Usage" sheet of the update row. Beside the detail a popover sized to its content
-  /// (600 pt ceiling), in the stack a sheet with detents.
-  var usageSheet: UsageSheet {
-    UsageSheet(store: store, compact: stacked, ownSurface: false) { sheetOpen = false }
+  /// The update row's steps. Beside the detail a popover sized to its content (600 pt ceiling), in the stack a sheet
+  /// with detents. `nil` = the server is not older than the app.
+  var updateSheet: ServerUpdateSheet? {
+    store.state.serverUpdate.map { update in
+      ServerUpdateSheet(update: update, machine: store.state.serverMachine, compact: stacked) { sheetOpen = false }
+    }
   }
 }
 

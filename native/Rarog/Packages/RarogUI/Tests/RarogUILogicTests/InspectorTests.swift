@@ -5,8 +5,8 @@ import RarogCore
 import Testing
 
 // Prawy panel sesji na iPadzie: widoczność z histerezą, preferencja ruszana
-// wyłącznie ręką, skrót Cmd+I, pigułka „w tle" przy widocznym panelu i dane sekcji SKOŃCZONE OSTATNIO i ZMIANY
-// W KATALOGU (bez pobierania diffa).
+// wyłącznie ręką, skrót Cmd+I, pigułka „w tle" przy widocznym panelu i dane sekcji SKOŃCZONE OSTATNIO i stan zmian
+// sekcji PLIKI.
 
 /// Sesja Claude `s1`, wpis Codexa bez terminala `cx` i wpis Codexa w terminalu Raroga `ct`.
 @MainActor
@@ -106,8 +106,6 @@ struct InspectorToggleTests {
     #expect(prefs.bool(forKey: NavigationPreferences.inspectorChangesCollapsed))
     navigation.detail = .session("s2")
     #expect(navigation.inspector.changesCollapsed, "jedna flaga urządzenia, nie sesji")
-    navigation.inspector.collapsedDirs["s1", default: []].insert("src")
-    #expect(navigation.inspector.changesCollapsed, "zwinięcie katalogu nie rusza zwinięcia drzewa")
 
     let restarted = RarogNavigation(prefs: prefs)
     #expect(restarted.inspector.changesCollapsed, "zwinięte po ponownym uruchomieniu")
@@ -115,6 +113,64 @@ struct InspectorToggleTests {
     #expect(!prefs.bool(forKey: NavigationPreferences.inspectorChangesCollapsed))
     #expect(!RarogNavigation(prefs: prefs).inspector.changesCollapsed, "rozwinięte też się pamięta")
     #expect(!restarted.inspector.open, "zwinięcie drzewa nie otwiera ani nie zamyka panelu")
+  }
+
+  @Test("the Files mode and the regex button are device preferences; an unknown stored mode reads as Files")
+  func filesModeAndRegexAreDevicePreferences() {
+    let prefs = MemoryPreferences()
+    let navigation = roomy(prefs)
+    #expect(navigation.inspector.filesMode == .all && !navigation.inspector.searchRegex, "Files, plain text")
+    navigation.inspector.setFilesMode(.changed)
+    navigation.inspector.setSearchRegex(true)
+    navigation.detail = .session("s2")
+    #expect(navigation.inspector.filesMode == .changed, "one choice for the device, not per session")
+
+    let restarted = RarogNavigation(prefs: prefs)
+    #expect(restarted.inspector.filesMode == .changed && restarted.inspector.searchRegex, "both kept after a relaunch")
+    restarted.inspector.setFilesMode(.all)
+    restarted.inspector.setSearchRegex(false)
+    #expect(RarogNavigation(prefs: prefs).inspector.filesMode == .all)
+    #expect(!RarogNavigation(prefs: prefs).inspector.searchRegex)
+
+    prefs.set("tree", forKey: InspectorFilesPreferences.mode)
+    #expect(RarogNavigation(prefs: prefs).inspector.filesMode == .all)
+    prefs.set(7, forKey: InspectorFilesPreferences.mode)
+    #expect(RarogNavigation(prefs: prefs).inspector.filesMode == .all)
+  }
+
+  @Test("the search text lives in memory per session; clearing it drops the folds of its result")
+  func searchTextPerSession() throws {
+    let prefs = MemoryPreferences()
+    let inspector = roomy(prefs).inspector
+    inspector.setSearchText("main", for: "s1")
+    #expect(inspector.searchText(for: "s1") == "main")
+    #expect(inspector.searchText(for: "s2").isEmpty, "another session has its own field")
+    let src = FileTreeDirectoryRow(
+      path: "src", name: "src", depth: 0, expanded: true, changes: 0, added: nil, deleted: nil, virtual: false,
+      ignored: false, loading: false)
+    inspector.toggleResultFold(src, in: "s1")
+    #expect(inspector.resultFolds(for: "s1") == ["src"])
+    inspector.setSearchText("main.ts", for: "s1")
+    #expect(inspector.resultFolds(for: "s1") == ["src"], "typing on keeps the folds")
+    inspector.setSearchText("  ", for: "s1")
+    #expect(inspector.resultFolds(for: "s1").isEmpty, "the fold goes with the query")
+    #expect(RarogNavigation(prefs: prefs).inspector.searchText(for: "s1").isEmpty, "the text is not saved")
+  }
+
+  @Test("a fold made in Changed Only hides no hit: a query that starts and a mode change drop it")
+  func changedOnlyFoldsDoNotReachTheResult() throws {
+    let inspector = roomy(MemoryPreferences()).inspector
+    let src = FileTreeDirectoryRow(
+      path: "src", name: "src", depth: 0, expanded: true, changes: 1, added: nil, deleted: nil, virtual: false,
+      ignored: false, loading: false)
+    inspector.setFilesMode(.changed)
+    inspector.toggleResultFold(src, in: "s1")
+    inspector.setSearchText("notes", for: "s1")
+    #expect(inspector.resultFolds(for: "s1").isEmpty, "the query starts with every directory open")
+    inspector.setSearchText("", for: "s1")
+    inspector.toggleResultFold(src, in: "s1")
+    inspector.setFilesMode(.all)
+    #expect(inspector.resultFolds(for: "s1").isEmpty, "Files does not keep Changed Only's folds")
   }
 
   @Test("za wąska kolumna: Cmd+I mówi „nie mieści się” i NIE rusza preferencji — otwarty panel wraca sam")
@@ -332,7 +388,7 @@ struct FinishedTasksTests {
   }
 }
 
-@Suite("prawy panel: ZMIANY W KATALOGU bez pobierania diffa")
+@Suite("right panel: the change state of the Files section from the git-status frame")
 struct InspectorChangesTests {
   private func git(_ fields: String) -> GitStatusEvent {
     Sample.decode(GitStatusEvent.self, #"{"sessionId":"s1","branch":"main",\#(fields)}"#)
@@ -354,7 +410,7 @@ struct InspectorChangesTests {
       Issue.record("lista plików: \(changes.body)")
       return
     }
-    #expect(changes.count == 3 && changes.shown == nil && changes.collapsible, "jest drzewo: nagłówek je zwija")
+    #expect(changes.count == 3)
     #expect(rows.map(\.status) == [.modified, .added, .modified])
     #expect(rows[0].name == "SessionListView.swift")
     #expect(rows[1].name == "ProjectTree.swift" && rows[1].added == nil, "plik nieśledzony: bez zgadywanych zer")
@@ -363,7 +419,7 @@ struct InspectorChangesTests {
     #expect(rows[0].spoken == "RarogUI/Views/List/SessionListView.swift, zmieniony, 42 dodane linie, 18 usuniętych linii")
   }
 
-  @Test("bez pola fileDetails same nazwy z files; ucięta lista mówi „pokazano 50 z N”")
+  @Test("without fileDetails only the names of files; the count is every change of the frame")
   func namesOnlyAndShown() {
     let files = (1...50).map { "\"f\($0).txt\"" }.joined(separator: ",")
     let fresh = git(#""dirtyCount":73,"files":[\#(files)]"#)
@@ -373,10 +429,8 @@ struct InspectorChangesTests {
       return
     }
     #expect(rows.count == 50 && rows.allSatisfy { $0.status == nil && $0.added == nil })
-    #expect(changes.shown == InspectorChanges.Shown(rows: 50, of: 73))
-    #expect(UICopy.inspectorChangesShown(50, of: 73) == "pokazano 50 z 73")
     #expect(changes.stale, "ostatni znany stan przy utracie strumienia")
-    #expect(UICopy.inspectorChangesTitle(changes.count) == "Zmiany w katalogu · 73")
+    #expect(changes.count == 73)
   }
 
   @Test("trzy stany pustki: czysto od commita, brak danych (nic nie przyszło), czysto bez commita")
@@ -384,13 +438,11 @@ struct InspectorChangesTests {
     let clean = Sample.session(extra: #""branch":"main","dirtyCount":0,\#(commit)"#)
     let fromList = InspectorChanges.make(meta: GitMeta(session: clean, fresh: nil), fresh: nil, stale: false)
     #expect(fromList.body == .clean(commit: "7cdfbe4b"))
-    #expect(!fromList.collapsible, "czysto: zdanie stoi zawsze, nie ma czego zwinąć")
-    #expect(UICopy.inspectorChangesTitle(fromList.count) == "Zmiany w katalogu")
 
     let dirty = Sample.session(extra: #""branch":"main","dirtyCount":2"#)
     let waiting = InspectorChanges.make(meta: GitMeta(session: dirty, fresh: nil), fresh: nil, stale: false)
     #expect(waiting.body == .noData, "ramka jeszcze nie przyszła")
-    #expect(waiting.count == 2 && !waiting.collapsible, "liczba z listy, drzewa jeszcze nie ma")
+    #expect(waiting.count == 2, "the count from the list, no frame yet")
 
     let unknown = InspectorChanges.make(meta: GitMeta(session: Sample.session(), fresh: nil), fresh: nil, stale: false)
     #expect(unknown.body == .noData && unknown.count == nil)
@@ -398,172 +450,6 @@ struct InspectorChangesTests {
     let frame = git(#""dirtyCount":0,"files":[]"#)
     let fresh = InspectorChanges.make(meta: GitMeta(session: nil, fresh: frame), fresh: frame, stale: false)
     #expect(fresh.body == .clean(commit: nil))
-  }
-}
-
-@Suite("prawy panel: drzewo zmian w katalogu")
-struct ChangesTreeTests {
-  private func file(_ path: String, _ added: Int? = nil, _ deleted: Int? = nil) -> InspectorFileRow {
-    InspectorFileRow(path: path, kind: .modified, added: added, deleted: deleted, binary: false)
-  }
-
-  /// Wiersze jako tekst: wcięcie = poziom, katalog z ukośnikiem na końcu (zwinięty z „>").
-  private func shape(_ rows: [ChangesTreeRow]) -> [String] {
-    rows.map { row in
-      let pad = String(repeating: "  ", count: row.depth)
-      switch row {
-      case let .directory(dir): return "\(pad)\(dir.collapsed ? ">" : "")\(dir.label)/"
-      case let .file(file, _): return pad + file.name
-      }
-    }
-  }
-
-  private let ui = "native/Rarog/Packages/RarogUI"
-
-  @Test("litera pliku stoi w osi nazwy katalogu nad nim, a nazwa pliku zostaje na swoim miejscu")
-  func letterAlignsWithDirectoryLabel() {
-    for depth in 0..<4 {
-      let label = ChangesTree.indent * Double(depth) + ChangesTree.labelInset
-      let letter = ChangesTree.indent * Double(depth + 1) + ChangesTree.letterInset
-      #expect(letter == label, "poziom \(depth)")
-    }
-    #expect(ChangesTree.letterInset == 4, "życzenie: 3–5 pt w prawo")
-    #expect(ChangesTree.nameInset == 20, "nazwa tam, gdzie stała przy literze w osi strzałki")
-    // Litera mono `footnote` ma ~8 pt: mieści się między swoją osią a nazwą.
-    #expect(ChangesTree.nameInset - ChangesTree.letterInset >= 12)
-    #expect(ChangesTree.rowHeight == 26, "odstęp między liniami o połowę mniejszy niż przy 36 pt")
-  }
-
-  @Test("łańcuch katalogów z jednym dzieckiem to jeden wiersz; w katalogu najpierw podkatalogi, potem pliki")
-  func squashedChainsAndOrder() {
-    let rows = ChangesTree.rows(
-      [
-        file("docs/design.md"), file("docs/guides/intro.md"), file("native/Rarog/README.md"),
-        file("\(ui)/Sources/RarogUI/Copy/Formatting.swift"), file("\(ui)/Sources/RarogUI/Model/Inspector.swift"),
-        file("\(ui)/Tests/RarogUILogicTests/InspectorTests.swift"), file("native/Rarog/RarogUITests/PanelTests.swift"),
-      ], collapsed: [])
-    #expect(shape(rows) == [
-      "docs/",
-      "  guides/",
-      "    intro.md",
-      "  design.md",
-      "native/Rarog/",
-      "  Packages/RarogUI/",
-      "    Sources/RarogUI/",
-      "      Copy/",
-      "        Formatting.swift",
-      "      Model/",
-      "        Inspector.swift",
-      "    Tests/RarogUILogicTests/",
-      "      InspectorTests.swift",
-      "  RarogUITests/",
-      "    PanelTests.swift",
-      "  README.md",
-    ])
-    #expect(Set(rows.map(\.id)).count == rows.count, "każdy wiersz ma własny identyfikator (cel kotwicy)")
-  }
-
-  @Test("zwinięty katalog chowa dzieci i mówi sumę; klucz to ścieżka najgłębszego katalogu łańcucha")
-  func collapsed() {
-    let files = [
-      file("\(ui)/Sources/RarogUI/Switcher/SessionSwitcher.swift", 2, 2),
-      file("\(ui)/Sources/RarogUI/Switcher/SessionSwitcherOverlay.swift", 5, 5),
-      file("\(ui)/Tests/RarogUILogicTests/SessionSwitcherTests.swift", 1, 1),
-      file("native/Rarog/RarogUITests/SwitcherUITests.swift", 2, 2),
-    ]
-    let open = ChangesTree.rows(files, collapsed: [])
-    #expect(shape(open) == [
-      "native/Rarog/",
-      "  Packages/RarogUI/",
-      "    Sources/RarogUI/Switcher/",
-      "      SessionSwitcher.swift",
-      "      SessionSwitcherOverlay.swift",
-      "    Tests/RarogUILogicTests/",
-      "      SessionSwitcherTests.swift",
-      "  RarogUITests/",
-      "    SwitcherUITests.swift",
-    ])
-    guard case let .directory(switcher) = open[2], case let .directory(top) = open[0] else {
-      Issue.record("katalogi: \(open)")
-      return
-    }
-    #expect(switcher.path == "\(ui)/Sources/RarogUI/Switcher" && switcher.files == 2)
-    #expect(top.path == "native/Rarog" && top.files == 4 && top.added == 10 && top.deleted == 10)
-    #expect(switcher.spoken == "katalog Sources/RarogUI/Switcher, 2 pliki")
-
-    let shut = ChangesTree.rows(files, collapsed: [switcher.path, "nie/ma/takiego"])
-    #expect(shape(shut) == [
-      "native/Rarog/",
-      "  Packages/RarogUI/",
-      "    >Sources/RarogUI/Switcher/",
-      "    Tests/RarogUILogicTests/",
-      "      SessionSwitcherTests.swift",
-      "  RarogUITests/",
-      "    SwitcherUITests.swift",
-    ])
-    guard case let .directory(closed) = shut[2] else {
-      Issue.record("zwinięty katalog: \(shut)")
-      return
-    }
-    #expect(closed.collapsed && closed.sum == "+7 −7", "suma tego, co schowało zwinięcie (minus U+2212)")
-    #expect(shape(ChangesTree.rows(files, collapsed: ["native/Rarog"])) == [">native/Rarog/"])
-  }
-
-  @Test("zwinięcie przeżywa kolejną ramkę gita: katalog, który przestał się rozgałęziać, nie rozwija się jako łańcuch")
-  func collapsedSurvivesChangingBranches() {
-    let collapsed: Set<String> = ["src"]
-    #expect(shape(ChangesTree.rows([file("src/a/x.swift"), file("src/b/y.swift")], collapsed: collapsed)) == [">src/"])
-    // Zmiana w `src/b` zniknęła: `src` ma jedno dziecko, ale człowiek zwinął `src`, nie `src/a`.
-    let after = ChangesTree.rows([file("src/a/x.swift")], collapsed: collapsed)
-    #expect(shape(after) == [">src/"], "sklejanie staje na zwiniętym katalogu")
-    guard case let .directory(src) = after[0] else {
-      Issue.record("katalog: \(after)")
-      return
-    }
-    #expect(src.path == "src" && src.files == 1)
-    // Rozwinięty z powrotem skleja się jak zawsze, a zwinięty łańcuch po nowej gałęzi zostaje zwinięty u siebie.
-    #expect(shape(ChangesTree.rows([file("src/a/x.swift")], collapsed: [])) == ["src/a/", "  x.swift"])
-    #expect(
-      shape(ChangesTree.rows([file("src/a/x.swift"), file("src/b/y.swift")], collapsed: ["src/a"]))
-        == ["src/", "  >a/", "  b/", "    y.swift"])
-  }
-
-  @Test("ścieżka w cytowaniu gita stoi w tej samej gałęzi co zwykła; plik dalej nazywa oryginał")
-  func gitQuotedPaths() {
-    let quoted = #""src/za\305\274\303\263\305\202\304\207.swift""#
-    #expect(PathText.gitUnquoted(quoted) == "src/zażółć.swift")
-    #expect(PathText.gitUnquoted(#""a\tb \"c\" \\d.txt""#) == "a\tb \"c\" \\d.txt")
-    #expect(PathText.gitUnquoted("src/zwykla.swift") == "src/zwykla.swift", "bez cudzysłowów bez zmian")
-    #expect(PathText.gitUnquoted(#""\377\376.bin""#) == #""\377\376.bin""#, "bajty spoza UTF-8: zostaje oryginał")
-    #expect(PathText.gitUnquoted("\"") == "\"")
-
-    let rows = ChangesTree.rows([file("src/a.swift"), file(quoted, 3, 1)], collapsed: [])
-    #expect(shape(rows) == ["src/", "  a.swift", "  zażółć.swift"])
-    guard case let .file(row, _) = rows[2] else {
-      Issue.record("plik: \(rows)")
-      return
-    }
-    #expect(row.path == quoted, "adres pliku dla diffa zostaje dosłowny")
-    #expect(row.spoken == "src/zażółć.swift, zmieniony, 3 dodane linie, 1 usunięta linia")
-    #expect(shape(ChangesTree.rows([file("src/a.swift"), file(quoted)], collapsed: ["src"])) == [">src/"])
-  }
-
-  @Test("pliki w korzeniu, nieśledzony katalog jako liść i liczniki, których nie znamy")
-  func rootFilesUntrackedDirectoryAndUnknownCounts() {
-    let rows = ChangesTree.rows(
-      [file("README.md", 1, 0), file("scripts/nowy/"), file("scripts/check.sh")], collapsed: ["scripts"])
-    #expect(shape(rows) == [">scripts/", "README.md"])
-    guard case let .directory(scripts) = rows[0] else {
-      Issue.record("katalog: \(rows)")
-      return
-    }
-    #expect(scripts.files == 2 && scripts.added == nil && scripts.deleted == nil && scripts.sum == nil)
-    #expect(shape(ChangesTree.rows([file("scripts/nowy/")], collapsed: [])) == ["scripts/", "  nowy/"])
-    #expect(file("scripts/nowy/").name == "nowy/", "nieśledzony katalog zostaje z ukośnikiem")
-    #expect(UICopy.inspectorDirectorySum(added: 3, deleted: 0) == "+3")
-    #expect(UICopy.inspectorDirectorySum(added: 0, deleted: 0) == nil)
-    #expect(UICopy.inspectorDirectorySpoken(label: "docs", files: 5) == "katalog docs, 5 plików")
-    #expect(ChangesTree.rows([], collapsed: []).isEmpty)
   }
 }
 

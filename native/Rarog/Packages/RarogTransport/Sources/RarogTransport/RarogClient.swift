@@ -50,14 +50,15 @@ public struct APIResponse: Sendable, Equatable {
 
 /// Zakres strumienia SSE.
 public enum StreamScope: Sendable, Equatable {
-  /// `/api/stream`: `hello` → `sessions-snapshot` → zmiany listy.
+  /// `/api/stream?inbox=1`: `hello` → `sessions-snapshot` → zmiany listy. `inbox=1` asks for the Inbox heads; a server
+  /// without an Inbox ignores the parameter and sends none.
   case global
   /// `/api/sessions/<id>/stream`: transkrypt sesji (kursor `Last-Event-ID`).
   case session(id: String)
 
   var path: String {
     switch self {
-    case .global: "/api/stream"
+    case .global: "/api/stream?inbox=1"
     case let .session(id): "/api/sessions/\(RarogClient.segment(id))/stream"
     }
   }
@@ -343,7 +344,8 @@ public struct RarogClient: Sendable {
     let retryAfter = readsRetryAfter ? response.value(forHTTPHeaderField: "Retry-After").flatMap { Int($0) } : nil
     let message = parsed.message.map { renderer($0, parsed.messageRef) }
     let failure = APIFailure(
-      status: status, code: parsed.code, message: message, reason: parsed.reason, retryAfter: retryAfter
+      status: status, code: parsed.code, message: message, reason: parsed.reason, retryAfter: retryAfter,
+      sentenceCode: parsed.messageRef?.code
     )
     switch status {
     case 401: return .unauthorized(failure)

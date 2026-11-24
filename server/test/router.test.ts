@@ -470,7 +470,7 @@ describe('Origin check (CSRF)', () => {
        */
       apnsEnabled: false,
       // Server capabilities by name (`version.ts`): device keys and pairing, the voice agent and its mode across sessions.
-      capabilities: ['device-auth', 'pair', 'pair-from-device', 'push-relay', 'push-e2e-v2', 'companion', 'companion-sessions'],
+      capabilities: ['device-auth', 'pair', 'pair-from-device', 'push-relay', 'push-e2e-v2', 'companion', 'companion-sessions', 'files', 'file-index'],
       // System maszyny: harness go nie wstrzykuje, więc router mówi system procesu testu (Mac albo Linux w CI).
       system: serverSystem(),
       // Serwer iroh: serwer bez nasłuchu iroh mówi `null`, apka łączy się przez HTTPS.

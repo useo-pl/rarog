@@ -29,6 +29,24 @@ final class UIKitTransportTests: XCTestCase {
     XCTAssertTrue(firstDone.withLock { $0 })
   }
 
+  /// A held read waits until the release, which `reached` always precedes; a read after the release returns at once.
+  func testReadWaitsUntilReleased() async throws {
+    let reached = expectation(description: "the read waits")
+    let hold = ReadHold { reached.fulfill() }
+    let done = Mutex(false)
+    let read = Task {
+      await hold.pause()
+      done.withLock { $0 = true }
+    }
+    await fulfillment(of: [reached], timeout: 3)
+    try await Task.sleep(for: .milliseconds(50))
+    XCTAssertFalse(done.withLock { $0 }, "the read waits until the release")
+    await hold.release()
+    await read.value
+    XCTAssertTrue(done.withLock { $0 })
+    await hold.pause()
+  }
+
   /// `voiceToken()` answers from the queue in order, then `otherwise`; a script without `otherwise` falls back to the
   /// result from `init`. Every call counts.
   func testVoiceTokenResultsInOrder() async throws {
@@ -65,6 +83,9 @@ final class UIKitTransportTests: XCTestCase {
     }
     await assertThrows(UIKitTransport.refusal("commands(sessionId:)")) { () throws(TransportError) in
       _ = try await transport.commands(sessionId: "s1")
+    }
+    await assertThrows(UIKitTransport.refusal("companionSessions()")) { () throws(TransportError) in
+      _ = try await transport.companionSessions()
     }
     try await transport.presence(PresenceBody(clientId: "c1", visible: true))
     XCTAssertTrue(transport.hasCredential)

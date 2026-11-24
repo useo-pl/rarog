@@ -844,6 +844,11 @@ describe('gitArgv — osłony konfiguracji repo', () => {
     expect(gitArgv({ sub: 'ls-files', rest: ['-z'] })).toEqual([...G, 'ls-files', '-z']);
   });
 
+  it('check-ignore: on the list, with no flag of its own; the names follow the guards', () => {
+    expect(gitArgv({ sub: 'check-ignore', rest: ['--', './-a', './:b'] }))
+      .toEqual([...G, 'check-ignore', '--', './-a', './:b']);
+  });
+
   it('diff dostaje `--no-textconv` zaraz po podkomendzie; opcja globalna stoi po osłonach', () => {
     expect(gitArgv(numstatArgs(['a.ts']))).toEqual([
       ...G, '--literal-pathspecs', ...D, '--no-ext-diff', '--relative', '--numstat', '-z', 'HEAD',

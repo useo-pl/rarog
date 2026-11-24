@@ -14,19 +14,38 @@ import { historyWithoutEcho, readHistoryTail, readRange, sizeOf } from '../herdr
 import { HISTORY_MAX_BYTES } from '../herdr/jsonl-follow.ts';
 import { locateTranscript } from '../herdr/transcript-path.ts';
 import { RING_MAX_BYTES, jsonBytes } from '../sessions/ring-buffer.ts';
-import { transcriptMessage } from '../sessions/session.ts';
+import { MESSAGE_TRIMMED_MARK, transcriptMessage } from '../sessions/session.ts';
 import type { ImportedMessage } from '../transcript-import.ts';
 import { conversationToken } from './conversation.ts';
 
 /** First window of the tail read: enough for three turns of most sessions; it doubles up to the history ceiling. */
 export const TURNS_FIRST_WINDOW = 256 * 1024;
 
-/** The session as the route took it: directory, current engine conversation and `stateSince`, read together. */
+/**
+ * `readMark` of an answer that did not read the session's result: an answer with no messages (a failed read, i.e. no
+ * file, a lookup that throws, a size or a first read that fails, and a conversation with nothing to read alike) and an
+ * answer with a message trimmed to the per-message ceiling ({@link hasTrimmedMessage}). The mark names no read: it has
+ * no dot, while `Session.readMark` always has three dot-separated parts, so the voice agent's pick-up built from it
+ * never meets the session's mark and gets the 409. Inside the 1–64 character bound of the turns answer and of the
+ * pick-up body.
+ */
+export const NO_READ_MARK = 'no-read';
+
+/**
+ * The session as the route took it before the read: directory, current engine conversation, `stateSince` and the read
+ * mark of its memory, read together.
+ */
 export interface CompanionTurnsTarget {
   readonly cwd: string;
   /** `undefined` before the session's first engine conversation: no file, no turns. */
   readonly agentSessionId: string | undefined;
   readonly stateSince: string;
+  /**
+   * `Session.readMark`: a message that reaches the session's memory during or after the read gives another one, and so
+   * does a new `stateSince`. The answer carries it only when it has messages and none of them is trimmed, else
+   * {@link NO_READ_MARK}.
+   */
+  readonly readMark: string;
 }
 
 export interface CompanionTurnsOptions {
@@ -90,6 +109,22 @@ function wireHistory(entries: readonly ImportedMessage[], now: string): Transcri
   }));
 }
 
+/**
+ * Whether a returned message lost its end: `transcriptMessage` keeps the start of a message over the per-message
+ * ceiling and closes it with {@link MESSAGE_TRIMMED_MARK}, a server sentence known by its `ref` (a text from the file
+ * never carries one). The history merges consecutive agent entries into one message, while the server's memory of a
+ * live session got them one by one, so the newest result can be in the memory and lost in the answer. Any trimmed
+ * message counts, also one of an older returned turn: the answer is what the agent relays as the session's last turns.
+ * The other cuts of the read (the window, the message limit, the cut to turns and the byte ceiling) drop from the old
+ * end and keep the newest message.
+ */
+function hasTrimmedMessage(messages: readonly TranscriptMessage[]): boolean {
+  return messages.some((m) => {
+    const last = m.blocks.at(-1);
+    return last?.type === 'text' && last.ref?.code === MESSAGE_TRIMMED_MARK.ref.code;
+  });
+}
+
 /** Byte ceiling of the session's transcript (`Session.appendMessage`): the oldest messages drop first. */
 function capBytes(messages: TranscriptMessage[]): { messages: TranscriptMessage[]; dropped: boolean } {
   let bytes = messages.reduce((sum, m) => sum + jsonBytes(m), 0);
@@ -109,25 +144,31 @@ export function createCompanionTurns(opts: CompanionTurnsOptions): CompanionTurn
 
   return {
     async read(target, count) {
-      const base = { conversation: token(target.agentSessionId), stateSince: target.stateSince };
+      const conversation = token(target.agentSessionId);
+      const nothing: CompanionTurns = {
+        messages: [], conversation, stateSince: target.stateSince, readMark: NO_READ_MARK, complete: true,
+      };
       const file = target.agentSessionId === undefined
         ? null
         : await opts.locate(target.cwd, target.agentSessionId).catch(() => null);
       const size = file === null ? null : await sizeOf(file);
-      if (file === null || size === null) return { messages: [], ...base, complete: true };
+      if (file === null || size === null) return nothing;
       const at = now();
       // One turn start more than asked: the oldest wanted turn then lies whole inside the window.
       const tail = await readHistoryTail(readRange, file, size, {
         firstWindow, maxBytes, limit: HERDR_HISTORY_MESSAGES, promptBlock: opts.promptBlock,
         enough: (entries) => wireHistory(entries, at).filter(isTurnStart).length > count,
       });
-      if (tail === null) return { messages: [], ...base, complete: true };
+      if (tail === null) return nothing;
       const wholeFile = tail.start === 0 && tail.messages.length < HERDR_HISTORY_MESSAGES;
       const turns = lastTurns(wireHistory(tail.messages, at), count, wholeFile);
       const capped = capBytes(turns.messages);
+      if (capped.messages.length === 0) return { ...nothing, complete: turns.complete };
       return {
         messages: capped.messages.map((m, index) => ({ ...m, seq: index + 1 })),
-        ...base,
+        conversation,
+        stateSince: target.stateSince,
+        readMark: hasTrimmedMessage(capped.messages) ? NO_READ_MARK : target.readMark,
         complete: turns.complete && !capped.dropped,
       };
     },

@@ -10,9 +10,6 @@ import SwiftUI
 struct SessionRow: View {
   let row: SessionRowModel
   let selected: Bool
-  /// The tab digit at the end of the row, in the tree's active project with a hardware keyboard
-  /// (`RarogNavigation.treeTabDigits`); `nil` — no square.
-  var tabDigit: Int?
   @Environment(\.dynamicTypeSize) private var typeSize
   /// Kropka w osi małych liter tytułu przy każdym rozmiarze pisma (stałe 4 pt kładło ją w AX5 na linii bazowej).
   @AppScaledMetric(relativeTo: .subheadline) private var dotLift: CGFloat = 4
@@ -61,9 +58,10 @@ struct SessionRow: View {
             StageLine(text: stage, dot: row.backgroundDot, quiet: quiet)
           }
         }
-        if let tabDigit {
+        // The wall clock, not the row clock: a frozen row stops its status time, but a cron still expires.
+        if let scheduled = row.scheduledText(now: timeline.date, separator: .dot) {
           Spacer(minLength: 0)
-          TreeTabKey(digit: tabDigit)
+          ScheduledClock(tip: scheduled, ink: secondary)
         }
       }
       .padding(.vertical, SessionListMetrics.agentRowPadding)
@@ -78,7 +76,7 @@ struct SessionRow: View {
       // Bez gasnącej plamy przy zmianie rangi: na iPhonie czyta się jak zaznaczenie, które samo znika.
       // Zmianę rangi niosą kropka i miejsce na liście.
       .accessibilityElement(children: .ignore)
-      .accessibilityLabel(row.spoken(now: now))
+      .accessibilityLabel(row.spoken(now: now, scheduleNow: timeline.date))
       .accessibilityAddTraits(.isButton)
     }
     .onChange(of: row.frozen, initial: true) { _, frozen in
@@ -106,7 +104,7 @@ extension SessionRow {
 /// The status dot. A fresh unread result glows: the dot keeps its full color and a soft halo of the same color
 /// breathes under it, 1.8 s a cycle; Reduce Motion keeps the plain dot. The halo is a background, so the row keeps its
 /// size, and it is stronger in light mode, where a pale glow on a pale row would not show.
-private struct StatusDot: View {
+struct StatusDot: View {
   let tone: StatusTone
   let pulses: Bool
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -183,20 +181,18 @@ private struct WorkflowBar: View {
   }
 }
 
-/// The tab digit square at the end of an agent row of the active project, without a fill: the digit of the strip's
-/// Cmd key for this session's tab, on the column background with a hairline edge,
-/// both in a quiet colour (`treeTabKeyEdge`, `treeTabDigit`). The state stays with the dot, so the square has no state
-/// colour. Decoration: the shortcut menu reads the tabs.
-struct TreeTabKey: View {
-  let digit: Int
+/// The scheduled-task clock at the end of a session row: the session has armed crons. In the row's metadata ink, not
+/// a state colour: amber means "needs you", and a cron is information. The pointer shows the count and the next run;
+/// VoiceOver hears the same in the row sentence (`SessionRowModel.spoken`), so the glyph itself is hidden.
+struct ScheduledClock: View {
+  let tip: String
+  let ink: Color
 
   var body: some View {
-    Text(String(digit))
-      .appFont(.caption2.monospaced().weight(.medium))
-      .foregroundStyle(Color(uiColor: Palette.dynamic(PaletteTokens.treeTabDigit)))
-      .padding(.horizontal, 5)
-      .padding(.vertical, 1)
-      .overlay(RoundedRectangle.ghost.strokeBorder(Color(uiColor: Palette.dynamic(PaletteTokens.treeTabKeyEdge))))
+    Image(systemName: "clock")
+      .appFont(.caption)
+      .foregroundStyle(ink)
+      .pointerTip(tip)
       .accessibilityHidden(true)
   }
 }

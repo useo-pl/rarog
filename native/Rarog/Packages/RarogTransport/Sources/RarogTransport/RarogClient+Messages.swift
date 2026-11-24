@@ -30,7 +30,7 @@ extension RarogClient {
   ) async throws(TransportError) -> MessageAccepted? {
     let path = "/api/sessions/\(Self.segment(sessionId))/messages"
     do {
-      try await gate.check(method: "POST", path: path)
+      try await gate.check(method: "POST", path: path, expectsConversation: upload.expectsConversation)
     } catch {
       throw .refused(error)
     }

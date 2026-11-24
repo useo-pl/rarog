@@ -148,6 +148,30 @@ struct DraftsDiskTests {
     #expect(ComposerDrafts.inSpace(space).take(for: "s1")?.text == "A")
   }
 
+  // Catches a wait that returns while the draft write still stands in the queue: a dictation that ends in the
+  // background lets its background time go after this wait, and a write that has not run is lost with the process.
+  @MainActor
+  @Test("the wait for the composer draft's disk returns only after the queued write ran")
+  func writtenWaitsForTheQueuedWrite() async throws {
+    let base = root()
+    defer { try? FileManager.default.removeItem(at: base) }
+    let space = base.appending(path: "a")
+    let composer = ComposerDrafts.inSpace(space)
+    composer.flush()
+    let pause = Pause(space.appending(path: "drafts"))
+    composer.persist(text: "A", attachments: [], for: "s1")
+    #expect(await pause.waitPaused(), "the write stands before its file")
+    let wait = Task { @MainActor in
+      await composer.written()
+      return pause.released.load(ordering: .acquiring)
+    }
+    for _ in 0..<50 { await Task.yield() }
+    pause.release(afterMilliseconds: 200)
+    let afterRelease = await wait.value
+    #expect(afterRelease, "the wait returned only after the paused write was released")
+    #expect(ComposerDrafts.inSpace(space).take(for: "s1")?.text == "A")
+  }
+
   @Test("preferencje zależne od serwera, kasowane przy nowej przestrzeni, obejmują pamięć doczytania transkryptu")
   func serverScopedPreferencesCoverLastSeen() {
     #expect(NavigationPreferences.serverScoped.contains(LastSeenMemory.key))

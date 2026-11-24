@@ -4,6 +4,7 @@
  * Apple, `console.log` → linia logu.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RELAY_VERSION } from '../src/config.ts';
 import worker from '../src/worker.ts';
 import type { Env } from '../src/worker.ts';
 import { tokenHashOf } from '../src/pass.ts';
@@ -56,7 +57,7 @@ describe('worker.ts', () => {
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const response = await fetchWorker(new Request('https://push.rarog.ai/v1/health'), await env());
     expect(await response.json()).toEqual({
-      v: 1, ok: true, version: '1.0.1+abc1234', environments: ['development', 'production'], alertPolicy: 'v2',
+      v: 1, ok: true, version: `${RELAY_VERSION}+abc1234`, environments: ['development', 'production'], alertPolicy: 'v2',
     });
   });
 

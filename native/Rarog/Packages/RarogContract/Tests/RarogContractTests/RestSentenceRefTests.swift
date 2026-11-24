@@ -254,6 +254,10 @@ struct RestSentenceRefTests {
     var bare = try decode(InterruptResponse.self, #"{"ok":true}"#)
     try expectRoundTrip(InterruptResponse.self, #"{"ok":true}"#)
     bare.translate(Self.renderer)
-    #expect(bare.session == nil && bare.delivered == nil)
+    #expect(bare.session == nil && bare.delivered == nil && bare.returnedPrompt == nil)
+
+    let handed = #"{"ok":true,"delivered":"yes","returnedPrompt":"Fix the parser"}"#
+    try expectRoundTrip(InterruptResponse.self, handed)
+    #expect(try decode(InterruptResponse.self, handed).returnedPrompt == "Fix the parser")
   }
 }

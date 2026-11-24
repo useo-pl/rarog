@@ -28,6 +28,9 @@ struct ProjectTreeHeaderRow: View {
   var openRecent: (() -> Void)?
   /// Opens the project's shell in the pop-up window; `nil` — no glyph (terminal off on the server).
   var openTerminal: (() -> Void)?
+  /// Pins or unpins the project (the reader's action; the menu item stands in the list's context menu); `nil` — no
+  /// action (view without a list).
+  var pin: (() -> Void)?
   let toggle: () -> Void
   @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -50,7 +53,8 @@ struct ProjectTreeHeaderRow: View {
       } else {
         Color.clear.frame(width: Self.chevronTarget, height: Self.chevronTarget).accessibilityHidden(true)
       }
-      ProjectTreeHeaderLabel(row: header.row, note: note, recent: openRecent != nil, terminal: openTerminal != nil)
+      ProjectTreeHeaderLabel(
+        row: header.row, pinned: header.pinned, note: note, recent: openRecent != nil, terminal: openTerminal != nil)
         .padding(.top, SessionListMetrics.projectRowPadding)
         .padding(.bottom, SessionListMetrics.projectRowBottomPadding)
         .frame(maxWidth: .infinity, minHeight: SessionListMetrics.projectRowMinHeight, alignment: .leading)
@@ -60,7 +64,7 @@ struct ProjectTreeHeaderRow: View {
         .accessibilityValue(header.spokenValue)
         .accessibilityAddTraits([.isHeader, .isButton])
         .accessibilityIdentifier("project.\(header.row.name)")
-        .modifier(TreeHeaderActions(header: header, toggle: toggle))
+        .modifier(TreeHeaderActions(header: header, toggle: toggle, pin: pin))
         .overlayPreferenceValue(TreeHeaderButtonAnchors.self) { anchors in
           GeometryReader { proxy in
             // Targets from the same geometry that placed the placeholders (`TreeHeaderButtonsLayout`): they touch,
@@ -220,16 +224,31 @@ struct TreeChevron: View {
   }
 }
 
-/// Akcje czytnika na nagłówku: „Zwiń” albo „Rozwiń” (bez szukania strzałki obok).
+/// Screen reader actions on the header: Collapse or Expand (without looking for the chevron next to it), and Pin or
+/// Unpin, the same item as the context menu.
 private struct TreeHeaderActions: ViewModifier {
   let header: ProjectTreeHeaderModel
   let toggle: () -> Void
+  let pin: (() -> Void)?
 
   func body(content: Content) -> some View {
-    if header.collapsible {
-      content.accessibilityAction(named: header.collapsed ? UICopy.treeExpand : UICopy.treeCollapse, toggle)
-    } else {
-      content
+    content
+      .modifier(NamedAction(
+        action: header.collapsible ? toggle : nil, name: header.collapsed ? UICopy.treeExpand : UICopy.treeCollapse))
+      .modifier(NamedAction(action: pin, name: header.pinned ? UICopy.treeUnpin : UICopy.treePin))
+  }
+
+  /// A named reader action only when there is something to do.
+  private struct NamedAction: ViewModifier {
+    let action: (() -> Void)?
+    let name: String
+
+    func body(content: Content) -> some View {
+      if let action {
+        content.accessibilityAction(named: name, action)
+      } else {
+        content
+      }
     }
   }
 }
@@ -238,6 +257,8 @@ private struct TreeHeaderActions: ViewModifier {
 /// PROJEKTY.
 private struct ProjectTreeHeaderLabel: View {
   let row: ProjectRowModel
+  /// Pinned on this device: a small pin glyph after the name and the count.
+  let pinned: Bool
   let note: NoteTabModel?
   /// Placeholder of the Recent Sessions clock before the note (`TreeRecentButton`).
   let recent: Bool
@@ -263,6 +284,17 @@ private struct ProjectTreeHeaderLabel: View {
           Text(badge)
             .appFont(.footnote.monospaced())
             .monospacedDigit()
+            .foregroundStyle(Color(uiColor: Palette.dynamic(PaletteTokens.treeHeaderCount)))
+            .fixedSize()
+            .layoutPriority(1)
+            .accessibilityHidden(true)
+        }
+        if pinned {
+          // The pin after the name and the count, in the count's quiet colour. Fixed size: the name truncates before
+          // it, and it never pushes the header buttons out. Decoration for the screen reader: the header's value
+          // says "pinned".
+          Image(systemName: "pin.fill")
+            .appFont(.caption2)
             .foregroundStyle(Color(uiColor: Palette.dynamic(PaletteTokens.treeHeaderCount)))
             .fixedSize()
             .layoutPriority(1)

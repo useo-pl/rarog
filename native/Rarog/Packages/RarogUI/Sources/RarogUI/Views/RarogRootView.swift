@@ -21,16 +21,20 @@ public struct RarogRootView: View {
   @State private var drafts: ComposerDrafts
   /// Dymek o innej sesji i komunikaty apki.
   @State private var toasts = ToastCenter()
-  /// The session switcher under Cmd+S: recently visited sessions (directory `Switcher/`).
+  /// The session switcher window: the tabs of the current project (directory `Switcher/`).
   @State private var switcher = SessionSwitcher()
   /// Notatki projektów: jeden dokument na katalog, dłużej niż dymek i formularz; szkice na urządzeniu.
   @State private var notes: ProjectNotes
+  /// The voice conversation across sessions: one owner above navigation, so going from the list to a session and back
+  /// keeps the conversation; the list button starts it, and the lit circle in the header on screen shows and ends it.
+  @State private var voiceSessions: VoiceAgentSessionsConversation
   @Environment(\.scenePhase) private var scenePhase
 
   public init(store: RarogStore) {
     self.store = store
     _drafts = State(initialValue: ComposerDrafts.inSpace(store.dataSpaceDirectory))
     _notes = State(initialValue: ProjectNotes.live(store: store, drafts: NoteDrafts.inSpace(store.dataSpaceDirectory)))
+    _voiceSessions = State(initialValue: VoiceAgentSessionsConversation.live(store: store))
   }
 
   public var body: some View {
@@ -44,6 +48,10 @@ public struct RarogRootView: View {
       case .loggedIn:
         MainSplitView(
           store: store, navigation: navigation, memory: memory, transcriptLink: transcriptLink, drafts: drafts)
+          // The voice conversation across sessions: in the list header where it is on screen, else in the header of
+          // the detail column's screen (the session's, or the Inbox's at the root of the stack) with the waiting
+          // prompt and the end sentence above the screen.
+          .modifier(VoiceAgentSessionsBarHost(owner: voiceSessions, navigation: navigation))
       }
     }
     // Szerokość CAŁEGO okna dla ramy okien apki (`WindowLayout`): kolumna szczegółu jest węższa od okna,
@@ -61,6 +69,7 @@ public struct RarogRootView: View {
     .environment(toasts)
     .environment(switcher)
     .environment(notes)
+    .environment(voiceSessions)
     // Sygnały notatek ze strumienia: nowa epoka (powrót z przerwy), zmiany katalogów, flaga serwera.
     .onChange(of: store.state.notesEpoch) { notes.sync(store.state) }
     .onChange(of: store.state.notesRevision) { notes.sync(store.state) }
@@ -86,6 +95,8 @@ public struct RarogRootView: View {
       memory.observeScene(
         RarogCore.ScenePhase(phase), from: RarogCore.ScenePhase(previous), stream: store.state.global,
         loggedIn: store.state.auth == .loggedIn, now: Date())
+      // In the background the conversation across sessions ends and no start begins.
+      voiceSessions.scene(RarogCore.ScenePhase(phase))
       switch phase {
       case .background: NoteBackgroundSave.run(notes, store: store)
       case .active: notes.enterForeground()
@@ -128,7 +139,7 @@ public struct RarogRootView: View {
       // Notatki: odpowiedzi z tego zalogowania już nic nie zmienią, szkice zostają na urządzeniu.
       if !loggedIn { notes.loggedOut() }
     }
-    .onChange(of: store.state.transcriptTarget(navigation.selectedSessionId)) { _, target in
+    .onChange(of: store.state.transcriptTarget(navigation.transcriptSessionId)) { _, target in
       // Rdzeń pamięta oglądaną sesję także przez wylogowanie; strumień wstaje, gdy pozna listę. Cel liczony
       // z danych sesji: wpis Codexa i agent w terminalu Raroga transkryptu nie mają, a `termId` potrafi
       // przyjść albo zniknąć bez zmiany wyboru.
@@ -193,7 +204,12 @@ public struct RarogRootView: View {
     .onChange(of: visitKey, initial: true) {
       navigation.noteVisit(store.state)
     }
-    .onChange(of: navigation.detail != nil, initial: true) { _, onProject in
+    .onChange(of: navigation.inboxStands, initial: true) { _, stands in
+      // The core mirrors the Inbox route: texts load and held cards stay only while it stands; leaving it (another
+      // screen on the iPad, Back to the list on the iPhone) ends every hold. A session opened from a card keeps it.
+      if stands { store.inboxOpened() } else { store.inboxClosed() }
+    }
+    .onChange(of: navigation.detail != nil && navigation.detail != .inbox, initial: true) { _, onProject in
       // Zakładki terminali: lista `GET /api/term` co ≤ 5 s, dopóki na ekranie stoi projekt.
       store.watchTerminals(onProject)
     }
@@ -223,27 +239,18 @@ public struct RarogRootView: View {
         switcher.cancel(.otherCommand)
         navigation.perform(shortcut, store: store)
       },
-      switchSession: { [store, navigation, switcher] backward in
-        SessionSwitcherHost.command(backward: backward, switcher: switcher, store: store, navigation: navigation)
-      },
       switcherDigit: { [switcher] number in switcher.menuDigit(number) },
       textScale: TextScale.shared,
       textSize: TextSizeMenu(TextScale.shared))
   }
 
-  /// Cmd+X z ekranu sesji: pierwsze naciśnięcie uzbraja, drugie zamyka — ten sam stan
-  /// co „×" w nagłówku.
+  /// Cmd+X from the session screen: the first press arms, the second closes; the same state as the tab's "×". The
+  /// arming speaks when it arms (`RarogNavigation.requestClose`); the shortcut says nothing itself.
   private func closeShortcut(_ sessionId: String) {
-    // Pod arkuszem skrót milczy: „×" uzbrojone pod oknem zamknęłoby sesję, której nie widać.
+    // Under a sheet the shortcut stays silent: a "×" armed under the window would close a session out of sight.
     guard navigation.sheet == nil else { return }
-    guard let session = store.state.sessions[sessionId] else { return }
-    switch navigation.requestClose(sessionId, state: store.state, now: Date()) {
-    case .armed:
-      Announcer.shared.say(UICopy.closeArmed(session))
-    case .confirmed:
+    if navigation.requestClose(sessionId, state: store.state, now: Date()) == .confirmed {
       Task { await navigation.close(sessionId, store: store) }
-    case .unavailable:
-      break
     }
   }
 }
@@ -263,8 +270,6 @@ extension RarogCore.ScenePhase {
 public struct RarogShortcutContext {
   public let menu: ShortcutMenu
   public let perform: @MainActor (RarogShortcut) -> Void
-  /// Cmd+S (`false`) i Shift+Cmd+S (`true`): przełącznik aktywnych sesji.
-  public let switchSession: @MainActor (Bool) -> Void
   /// Cmd+1 to Cmd+9 asks the switcher first; `true`: the open window took the digit (or a digit has just closed it)
   /// and the tab shortcut stays silent.
   public let switcherDigit: @MainActor (Int) -> Bool
@@ -324,8 +329,18 @@ struct MainSplitView: View {
         // Zdanie pod paskiem nad listą w stosie.
         .modifier(ListNoticeOverlay(navigation: navigation, stacked: sizeClass == .compact))
     } detail: {
-      NavigationStack {
-        DetailView(store: store, navigation: navigation, drafts: drafts, memory: memory, transcriptLink: transcriptLink)
+      NavigationStack(path: inboxPath) {
+        // iPhone: while the Inbox stands it is the stack's root and the session opened from a card is pushed above
+        // it, so Back uncovers the Inbox, not the list. iPad: one screen, replaced in place.
+        Group {
+          if sizeClass == .compact, navigation.inboxStands {
+            InboxStackRoot(
+              store: store, navigation: navigation, memory: memory, transcriptLink: transcriptLink, drafts: drafts)
+          } else {
+            detailView
+          }
+        }
+        .navigationDestination(for: InboxSessionPush.self) { _ in detailView }
       }
       // Achromatycznie: przyciski systemowe szczegółu i jego arkuszy bez błękitu
       // akcentu — wyróżnia je kontrast, nie kolor (`docs/design.md` „Core principle").
@@ -335,6 +350,22 @@ struct MainSplitView: View {
     // Jedyny arkusz apki: okna (terminal Cmd+F/Cmd+G, historia, diff) i formularze („Nowa sesja",
     // „Ostatnie sesje") — jeden naraz, nad dowolnym ekranem.
     .modifier(SheetHost(store: store, navigation: navigation))
+  }
+
+  private var detailView: some View {
+    DetailView(store: store, navigation: navigation, drafts: drafts, memory: memory, transcriptLink: transcriptLink)
+  }
+
+  /// The detail stack above its root: on the iPhone the session opened from an Inbox card; elsewhere always empty.
+  /// The stack's pop (Back, the edge swipe) writes an empty path, which puts the Inbox back on the route.
+  private var inboxPath: Binding<[InboxSessionPush]> {
+    Binding(
+      get: { sizeClass == .compact ? navigation.compactInboxPath : [] },
+      set: { path in
+        guard sizeClass == .compact, path.isEmpty else { return }
+        navigation.compactInboxPopped()
+      }
+    )
   }
 
   private var columns: Binding<NavigationSplitViewVisibility> {

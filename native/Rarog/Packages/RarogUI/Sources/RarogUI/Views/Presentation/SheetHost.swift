@@ -17,6 +17,8 @@ struct SheetHost: ViewModifier {
   @Environment(\.appWindowWidth) private var rootWidth
   /// Notatki projektów — arkusz staje z korzenia sceny, więc rejestr idzie do niego jawnie, jak nawigacja.
   @Environment(ProjectNotes.self) private var notes: ProjectNotes?
+  /// The owner of the voice conversation across sessions from the root; its consent sheet starts it.
+  @Environment(VoiceAgentSessionsConversation.self) private var voiceSessions: VoiceAgentSessionsConversation?
   @State private var measuredWidth: CGFloat?
   @State private var presenter: NewSessionPresenter
   /// Żeton arkusza, którego treść stanęła na ekranie jako ostatnia. Zostaje po zamknięciu: zapis `nil`, który
@@ -88,6 +90,10 @@ struct SheetHost: ViewModifier {
       SettingsSheet(store: store, navigation: navigation, request: request)
     case let .dictation(request):
       DictationSheet(store: store, navigation: navigation, request: request)
+    case let .voiceAgentSessionsConsent(request):
+      VoiceAgentSessionsConsentSheet(
+        settings: store.voiceAgent, request: request, close: { navigation.closeSheet(id: request.id) },
+        start: { [voiceSessions] in Task { await voiceSessions?.start() } })
     }
   }
 

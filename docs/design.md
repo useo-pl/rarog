@@ -128,10 +128,11 @@ rest. The quote bar above the transcript wears the same plate.
 - An agent row has NO state rail on its left edge: the dot and the word in the state line carry state
   (`waiting for permission · 4m`: the clock follows the state word without a second "waiting", in every language).
   The branch with `↑`/`↓` sits in the project header.
-- List order: projects by the day of their last activity, then by name; under a project, agents from the oldest. An
-  agent's state NEVER moves a project or a row: the agent dot colors answer "is anyone waiting?", and a folded
-  project keeps showing the agents that wait. The session
-  switcher (Cmd+S) lists the sessions visited last, newest first.
+- List order: pinned projects first, then the rest; in both parts projects by name, alphabetically in the app language
+  with numbers in natural order ("app2" before "app10"), then by path; under a project, agents from the oldest. Pins
+  are kept per device. Activity and an agent's state NEVER move a project or a row: the agent dot colors answer "is
+  anyone waiting?", and a folded project keeps showing the agents that wait. The session switcher (a tap on the
+  current tab) lists the tabs of the current project in the order of the tab bar.
 
 ## Signature
 
@@ -472,14 +473,16 @@ repeating it.
 - Hairlines instead of strong outlines; where a list is dense (git files, question options), a hairline between rows
   instead of full cards.
 - Touch targets STAY ≥ 44 pt: compactness comes from visual padding, not from smaller hit areas. The exceptions live
-  in the continuous transcript content: the tool card header (36 pt) and the code block copy icon (44 × 36 pt).
+  in the continuous transcript content: the tool card header (36 pt) and the code block copy icon (44 × 36 pt). One
+  more stands in the tab bar: the "×" of the current tab is 28 × 44 pt (at least the tab's height), because
+  a 44 pt width would push the glyph far from the label it closes; the tab's label beside it is a target of its own.
 
 ### Tab bar in the session header
 
 The sibling bar navigates the sessions of THIS project, so its 44 pt is a fixed cost of every session screen. Siblings
 have no chrome: outlined pills would give seven frames in a row with five sessions and a "you are here" to hunt for.
-A tab is its text and a state mark before the label; the current tab adds a plate. Numbers: `TabTokens`; view:
-`Views/Projects/ProjectTabBar.swift`.
+A tab is its text and a state mark before the label; the current tab adds a plate and its
+"×". Numbers: `TabTokens`; views: `Views/Projects/ProjectTabBar.swift`, `Views/Projects/TabCloseButton.swift`.
 
 - **State is a MARK before the label, in the color of the session list dot** (`PaletteTokens.tone`): a small square,
   or with a hardware keyboard a tile with the shortcut digit. Quiet tabs are neutral; working, unread, waiting, error
@@ -487,7 +490,8 @@ A tab is its text and a state mark before the label; the current tab adds a plat
   (`onRunSmoked` `#0A0A0A`), because white keeps only 3.5:1 there; with "Differentiate Without Color" that tab has an
   hourglass mark, opaque also on a sibling tab (other marks sit at 70 % there, `TabTokens.markAlpha`), and its
   VoiceOver sentence adds "waiting on a background task" after the status word. The mark is ALWAYS there and the tab
-  width does not depend on state (`HeaderChromeTests`), so a sibling's state change does not shift the bar. The tile
+  width does not depend on state (`HeaderChromeTests`), so a sibling's state change does not shift the bar; only
+  being the current tab adds width (the "×", below). The tile
   is opaque, so its digit keeps 4.5:1 on the current plate too (`PaletteContrastTests`).
 - **"You are here" is the plate and the label.** The current tab sits on a plate in the color of a selected agent row
   (`tabPlate`) with a semibold `--text` label; siblings have no background and a `--muted-2` label, and under the
@@ -503,11 +507,56 @@ A tab is its text and a state mark before the label; the current tab adds a plat
   reads as a rendering bug, not as "there is more". The fade grows with the scroll, and the mask covers the scroll
   alone.
 - **The current tab sits in the middle of the bar, as far as scrolling allows**, always fully on screen. The bar
-  scrolls to it on entering the screen, on a change of the current tab and on every change of the content width (a
-  hardware keyboard, a new or renamed tab; `PhoneTabsUITests` on iPhone). The cost: a renamed sibling brings the bar
-  back to the current tab even right after a manual scroll.
+  scrolls to it on entering the screen, on a change of the current tab (in the tabs' slide, below) and on every
+  other change of the content width (a hardware keyboard, a new or renamed tab; `PhoneTabsUITests` on iPhone). The cost:
+  a renamed sibling brings the bar back to the current tab even right after a manual scroll.
 - **Each tab is its full-height box**, so the 44 pt target needs no extension; the content sits slightly below the
   middle (`HeaderMetrics.tabLabelDrop`), nearer the git line.
+- **The current tab carries its "×"**, so the close sits on the tab it closes: a session tab, and a terminal tab,
+  also one with an agent inside it and New Terminal while it opens. After the label stands a divider, the one of the
+  N new messages pill: 1 pt in `--border`, half the plate's height, 6 pt after the label. Then the "×": a quiet
+  `xmark` in `--muted-2` (`--text` under the pointer) in a target of its own, 28 pt wide and as tall as the tab
+  ("Shape, surfaces and density"), outside the tab's button. A tap on the label still opens the session switcher;
+  VoiceOver hears the "×" as its own element named by its effect (Close Pane in herdr, for a finished session Remove
+  from List, on a terminal Close Terminal), and the tab's sentence goes without it. The plate spans the label, the
+  divider and the "×". Siblings, the invite and + have neither. The header's top right corner has no "×", with one
+  exception: a terminal opened from a link before the list knows its project has no tab bar, so its "×" stands in
+  the header icon group, where an armed press asks "Sure?" in text.
+- **A running voice conversation across sessions lights a circle first in the header icon group** where the list
+  header is off screen (iPhone with a detail screen over the list, iPad with the list column hidden): the list
+  header's 32 pt circle filled with the state's tone, with the voice bars inside, in the same 44 pt target; a tap
+  ends the conversation. The group holds three icons at most, so on a terminal without a tab bar Pop-Up Terminal
+  gives way to it (`HeaderTrailingIcons`). The Inbox at the root of the iPhone's stack shows the same circle after
+  its title. Beside the list column it stands in the list header only. After an end, the end sentence stands in one
+  line, a dot in the state's tone and the whole sentence, under the list header or above the screen; a tap removes
+  it.
+- **The current tab is wider by the divider and the "×", and only by them.** The place for the "×" depends on
+  lasting traits alone (a session or terminal tab, current), so a passing state changes the glyph and never the
+  width: the list from the cache and a session the app cannot close (Codex, an unknown engine) show a dimmed "×"
+  without an action, and so does a terminal whose screen is not attached yet; a close on its way shows a spinner
+  (`HeaderChromeTests`).
+- **A change of the current tab slides the siblings instead of jumping them.** Every tab has the room for the
+  divider and the "×" after its label, open only on the current tab: the old current tab's room closes while the new
+  one's opens, in 180 ms ease-out (`TabTokens.closeRoomSlide`), so the tabs between them glide by the room's width.
+  Nothing else moves or fades: the plate leaves the old tab and stands on the new one at once and grows with its
+  room, and the weight, the colors and the "×" switch in one step, because a plate or a label that eased in would
+  look like a tab lighting up. The room clips the "×" while it opens, so it never lies over the next tab. Centring on
+  the new tab runs on the rooms' clock: the scroll takes the centred offset at once (`TabBarCentring`), and the row
+  and the edge fade are drawn shifted back by the distance still to cover, from the same animation as the rooms
+  (`TabBarFollow`), so frames that the new screen's build holds are lost to both alike and the bar never runs ahead
+  of the slide. Only a change of the current tab within the same list slides: when a tab comes or goes with it (New
+  Terminal, closing the current tab) and with Reduce Motion, the bar takes its new layout and its centring at once
+  (`TabCloseRoomMotion`).
+- **Closing takes two presses.** The first press, by the "×", ⌘X or the state card's close button, arms for 5 s: the
+  "×" turns `--err` on an `--err` wash in the same width, and a card under the bar, on the notice's surface, says
+  what the next press does ("Press again to close the pane.", for a finished session "Press again to remove the
+  session from the list.", on a terminal "Close terminal: press again to end the shell on the Mac", or on the VPS).
+  VoiceOver hears that sentence once, when the close arms, also while an error notice shows instead of the card. The
+  card follows the arming: it goes after 5 s, on a tap on another tab, when the message field takes or gives up
+  focus, on a screen change, when the app leaves the foreground, and on the confirmation. It takes down only itself,
+  and a newer error notice shows instead of it. A second press within the 5 s, by any of the three ways, closes, with
+  a spinner in the glyph's place on the way. A terminal arms by its "×" or ⌘X and keeps its own 5 s on the terminal
+  screen; the late result of a terminal's close leaves the arming of the tab the human moved to.
 - **The shortcut tile.** With a hardware keyboard, every tab that `Cmd+digit` opens shows that digit on a tile:
   positions 1–8, and 9 on the last tab when it sits past the eighth. The other tabs from the ninth on have a square,
   and the terminal invite and + have neither. An open terminal window (Cmd+F, Cmd+G) keeps the tiles, although the
@@ -619,6 +668,14 @@ knows**
   that the interrupt went through. You can try again." and EVERY refusal. The transcript is sometimes mute (a refusal
   at Rarog's gate writes nothing there, and an event stream can die silently), and without this line a failed
   interrupt would look like a successful one. After a SUCCESSFUL interrupt the line goes out: one event, one trace.
+- **The message field** ends as Claude Code's own field does. It gets only the prompt the CLI handed back to its
+  field, as the interrupt answer reports it (`returnedPrompt`), never a text from the app's memory: a queued prompt
+  runs after Esc, so a copy in the field would be sent twice. An empty field holds the handed-back prompt; text typed
+  while the answer travelled stays, with the prompt on its own line before it (the queue take-back's order) and the
+  cursor where the typing stopped. Without a hand-back the field stays as it was. VoiceOver hears "Interrupted. The
+  prompt is back in the field." or "Interrupted." The prompt belongs to the session, not to the screen of the
+  gesture: an answer after that screen closed or gave way to another goes to the field of the session's screen that stands
+  then, or else into the session's saved draft, by the same rule. Only an answer from before a logout is dropped.
 
 **A refusal says WHO refused, because the person's next move depends on it.** When Rarog cut the key off before the
 pane (sending to herdr disabled, read-only mode, a pane outside the allowed directories, an unknown session), the
@@ -709,13 +766,15 @@ and the VoiceOver back gesture close it; every close only detaches, and the pane
 decides about the grabber, not the window width. History is a page of the same window (‹, Copy All; Esc, Cmd+W and
 Cmd+Y go back to the terminal). Esc in lazygit reaches the program only while it runs.
 
-**The Transcript Text window** (`Session/TranscriptSelectionSheet.swift`) exists because a system selection lives in
-one text view and does not cross transcript cells. Select More… at the end of a message's selection menu (a table
-cell's too) opens it: one read-only text view with the loaded messages as plain text, a role and time header line per
-message, a blank line between messages, a table as tab-separated rows, a tool card as its line and an image as its
-VoiceOver label. A handle drags across messages and the view scrolls under it. The text is taken when the window
-opens, so a reply arriving behind it does not change it. The cursor starts at the message the menu came from; the
-title is the kind and the project, Copy All sits on the right, and Esc, Cmd+W and × close it, as in History.
+**The Transcript Text window** (`Session/TranscriptSelectionSheet.swift`) exists because a system selection (a finger,
+the pencil) lives in one text view and does not cross transcript cells; a pointer drag selects across messages on the
+session screen itself (`native/Rarog/docs/rarog-ui.md`, "RarogUI: how it draws"). Select More… at the end of a
+message's selection menu (a table cell's too) and in the right click menu on a pointer selection opens it: one
+read-only text view with the loaded messages as plain text, a role and time header line per message, a blank line
+between messages, a table as tab-separated rows, a tool card as its line and an image as its VoiceOver label. A handle
+drags across messages and the view scrolls under it. The text is taken when the window opens, so a reply arriving
+behind it does not change it. The cursor starts at the message the menu came from; the title is the kind and the
+project, Copy All sits on the right, and Esc, Cmd+W and × close it, as in History.
 
 **The band around the grid** takes the color of the neighboring cells, so nvim with a theme or lazygit get no frame in
 the app color (`Terminal/TerminalEdgeFill.swift`). A row extends always on the alternate screen, and on the main
@@ -919,18 +978,47 @@ rows in `Views/Header/BackgroundTasksSection.swift`.
   down when unfolded, like the phase and directory chevrons), "Merged and Closed" in `--text-2` and the count
   "(N)" in `--muted-2`. Folded by default; VoiceOver hears "Merged and closed: N" and the expanded or collapsed
   value. With no merged or closed PR the row is absent; with only those the section holds just this row.
-- CHANGES has no diff button: a file tap opens the diff. The header row folds the whole tree, and the device
-  remembers the fold for all sessions (`rarog.inspectorChangesCollapsed`). The changes stand in a TREE
-  (`Model/ChangesTree.swift`): a chain of single-child directories is one row, because every level takes indent from
-  the file name; a folded directory shows its `+a −b` sum; a file row is one line with the kind letter, the name cut in
-  the middle and the balance on the right. Level lines show only while the pointer is over the tree. The last commit
-  stays in the git popover.
+- FILES is the whole tree of the session directory (`Views/Inspector/InspectorFilesSection.swift`, rules in
+  `Model/InspectorFiles.swift`), with the number of changes in the header: the changes the tree marks, from the
+  change list of the session directory (the bare title while that list is cut or not here yet). The header row folds
+  the whole tree, and the device remembers the fold for all sessions (`rarog.inspectorChangesCollapsed`); a directory
+  folds by a tap, and directories with a change under them start open. A file row is one line: the kind letter (`A`/`M`/`D` in the git
+  colours) on the axis of the directory name above, the name in mono cut in the middle, and the balance `+a −b` on the
+  right. A changed file has the name in `--text-2`, an unchanged one in `--muted`, an ignored one in `--muted-2` with
+  a crossed eye (`eye.slash`) on the right, a deleted one in `--err`, struck through. A directory with a
+  change anywhere under it has an orange dot (`--wait`) after its name, open or folded, and a brighter name
+  (`--text-2`); folded, it adds the `+a −b` sum. Under the tree a note says when a listing stopped at the server's
+  ceiling and another when the change list does not carry every change. A tap on an existing file is its preview, a
+  tap on a deleted file opens the diff on that file; a long press (a right click on a Mac) gives Preview (an existing
+  file on a listing), Diff (a changed file) and Copy Path (the path relative to the session directory), on a
+  directory Copy Path alone, and VoiceOver gets the same items as actions. Without the server's `files`, for a Codex
+  entry and out of scope the tree and its count come from the `git-status` frame only, without Preview, and a tap on
+  a changed file opens the diff. A row is 30 pt at the default text size and grows with the text. Under the pointer
+  the name of every row (file and directory) goes to `--text` (a deleted file keeps `--err`), without a plate, the
+  app's tip shows the whole name, which the row may cut, and the level lines show while the pointer is over the
+  tree; a finger lights nothing. The last commit stays in the git popover.
+- Under the FILES header stand the Files / Changed Only toggle in the glass capsule of the list filter (equal
+  segments, the active one on a plate) and the search field (both gone while the section is folded). Files is the
+  whole tree; Changed Only is the tree of the change-list paths with every directory open, a file on a loaded listing
+  or in the file index previewed and the rest opened as a diff. The device remembers the choice
+  (`rarog.inspectorFilesMode`, Files by default). The fallback tree has only changes anyway, so it has no toggle. The
+  field, "Search files" in mono `footnote` on `--input` with a magnifier, matches the path relative to the session
+  directory without letter case, in the whole session directory (the server's file index; files git ignores stay in
+  the tree only). The `.*` button on the right makes the query a regular expression (lit in the accent when on, a
+  device preference `rarog.inspectorFilesRegex`), and "×" clears the field. The result is the tree of the first 500
+  hits with their ancestors open, the change markers, the tap and the menu of the tree; a tap on a directory there, as
+  in Changed Only, folds it in that tree only and leaves the hand toggles of the whole tree alone. Notes under the
+  result: no match, "Showing 500 of N", an invalid or too slow expression (in `--err`), a cut index with the number of
+  files searched, a server without the index ("Searching only the open directories."), the index on its way, and a
+  failed index with Try Again. Esc in a non-empty field clears it and does nothing else; in an empty field it does
+  nothing on the iPad and closes the sheet on iPhone; the field never hands Esc to the session screen, so it never
+  interrupts the turn.
 - The inspector button (`sidebar.right`) in the header icon group looks pressed while the inspector is open.
 
 **On iPhone the inspector is a sheet**, because a phone has no room for a third column. It is the same view with the
 same sections, anchor per session, folds and diff window, in the phone popover container ("Windows, popovers and
 forms in the native app": a title bar, Session Inspector, a grabber, half and full height) on `--surface`, without the
-fixed width and the hairline. The inspector button in the header icon group, left of the "×", opens it at the top
+fixed width and the hairline. The inspector button in the header icon group opens it at the top
 and closes it again, and looks pressed while the sheet is open. A tap on the left part of the status line (the
 context ring and git) also opens it at the top, so on a Claude session that part of the line is always a button.
 Only while the background pill stands beside it, and git has an expansion, does the line open at CHANGES: the pill
@@ -957,8 +1045,9 @@ Readability rules for the transcript and the list. They live on the client; the 
   background starts a new visit: the line moves to where the device saved its place. It stands only above a new
   agent message or notice, never above a human prompt or inside a collapsed step series.
 - **Copying a reply goes through selection, with no role labels**: no copy-all button, the code block icon copies a
-  block, and VoiceOver hears the role ("Turns in the transcript"). A selection across messages goes through Select
-  More… in the selection menu, which opens the Transcript Text window.
+  block, and VoiceOver hears the role ("Turns in the transcript"). With a pointer a drag selects across messages and
+  the list scrolls by itself at its top and bottom edge; with a finger a selection across messages goes through
+  Select More… in the selection menu, which opens the Transcript Text window.
 - **The sticky quote bar is a button** that opens the Prompts in This Session popover: a prompt per row with its time,
   the current one marked, a tap jumps to its turn. The bar hides at the bottom and at the top on purpose: the need to
   navigate comes with scrolling up.
@@ -1013,7 +1102,12 @@ Readability rules for the transcript and the list. They live on the client; the 
   touch and never overlap (`Model/TreeHeaderButtonGeometry`). Narrower than 44 pt on purpose: 44 pt wide targets
   would hold the glyphs about 25 pt apart.
 - **The Settings gear at the top of the list stands over the note glyph** of the project headers
-  (`NewSessionListButton.groupShift`).
+  (`NewSessionListButton.groupShift`). Where the server offers the voice conversation across sessions, a waveform
+  glyph stands before New Session in the same quiet style (`VoiceAgentSessionsListButton`), and the list title keeps
+  room for it (`SessionListMetrics.headerMinWidth`). While that conversation runs, the title stays and a 32 pt circle
+  filled with the state's tone, with the voice bars inside, stands where the waveform stood and ends the conversation
+  on a tap (`VoiceAgentSessionsLitCircle`); with the list off screen the same circle stands in the session header or
+  the Inbox's header.
 - **A WAITING row says what it waits for**, in a quiet line that takes precedence over the stage line, in the grammar
   `<kind>: <what> · <tail>`: `permission: Bash · pnpm test` (a path for `Edit`, `Write` or `Read`), `plan`,
   `question 1/3: Which file?`, `dialog: directory trust`, `dialog in the terminal · no digit`; the kind words are SHARED
@@ -1059,13 +1153,16 @@ row roles in `ProjectTreeRowLayout` (`Model/ProjectTreeRows.swift`), the guide c
   alone. A folded project hides only quiet: an agent that waits, has an unread result or a failure, or works stays
   under its header. The app never folds or unfolds anything by itself; a new project is unfolded.
   Only a project with at least one session has a header: a project leaves the list with its last session and
-  comes back with the next new session in its directory. Recent projects from the session history appear only
-  as pills in the New Session window.
+  comes back with the next new session in its directory (a pinned one comes back on top, its pin kept). Recent
+  projects from the session history appear only as pills in the New Session window.
+- **Pinned project**: a small `pin.fill` glyph after the name and the count, in the count's quiet color, hidden from
+  VoiceOver, which hears "pinned" in the header's value next to the fold state. The name truncates before the glyph,
+  and the glyph never pushes the header buttons out. There is no "Pinned" section header.
 - **Scrolling on collapse.** The list does not jump when a project unfolds: it stays in place and grows downward.
   1. A manual fold or unfold of one project (the chevron, a tap on the header, Return, a VoiceOver action) does not
      scroll: the header stays to the point, and its agents appear or vanish under it with animation. When the list
      sat at its end and the content shrinks, UIKit trims the offset itself; that is not the anchor.
-  2. Any other change of rows (Collapse All, Expand All, a new or closed session, a new project, reordering by day)
+  2. Any other change of rows (Collapse All, Expand All, Pin and Unpin, a new or closed session, a new project)
      keeps the open session that was FULLY on screen at the same point of the visible list (`TreeListAnchor`), as
      close as the content allows at the end. The two "all" actions animate, so the session moves away and comes back
      (measured in the simulator: up to 197 pt on collapse and 940 pt on expand, over ~0.5 s). A height change alone,
@@ -1073,7 +1170,8 @@ row roles in `ProjectTreeRowLayout` (`Model/ProjectTreeRows.swift`), the guide c
   3. The anchor does nothing when the open session is not fully on screen, nothing is selected, a finger is on the
      list or it is decelerating, or the list column is hidden (Cmd+B) or absent.
 - **The header context menu** (touch and hold, or a right click): New Session, New Terminal, Project Note (when notes
-  work), Collapse All, Expand All; the list has no visible +. New Session and New Terminal do what the tab bar's +
+  work), Pin Project or Unpin Project, Collapse All, Expand All; the list has no visible +. VoiceOver gets Pin and
+  Unpin as an action of the header. New Session and New Terminal do what the tab bar's +
   menu does: the session starts at once with the remembered settings, the app enters it, and its row stands selected
   under the header without unfolding a folded project. New Terminal is disabled without a terminal on the server, both
   are disabled while creating, and a start block does not disable New Session: the tap says the reason.
@@ -1105,13 +1203,14 @@ row roles in `ProjectTreeRowLayout` (`Model/ProjectTreeRows.swift`), the guide c
   reapplies cell backgrounds only after the animation (measured: 0.47 s in a UIKit test, 0.7–4 s on a recording), and
   the guide would break apart on fold and unfold.
 - **The active project**, the one whose session or terminal is on screen, has a brighter guide (`treeGuideActive`,
-  about 2.6:1 dark and 2.1:1 light, still under the 3:1 of a rule). With a hardware keyboard each of its agent rows
-  ends in a small square with the digit of its tab on the tab bar, the same digit the Cmd key opens
-  (`RarogNavigation.treeTabDigits` over `ShortcutMenu.tabDigits`): the column background inside, a hairline edge
-  quieter than the active guide (`treeTabKeyEdge`), the digit quieter than the row's metadata (`treeTabDigit`, at
-  least 3:1; it repeats the tab bar and VoiceOver skips it), mono at the tab key's size (`TreeTabKey`). The square
-  carries no state color, the dot does. An agent running in a terminal has no session tab and no digit; with more
-  than nine tabs the middle ones have none, as on the bar. Without a hardware keyboard there are no digits.
+  about 2.6:1 dark and 2.1:1 light, still under the 3:1 of a rule). The Cmd+1–9 digits stand on the tab bar only,
+  not in the agent rows.
+- **The scheduled-task clock:** an agent row whose session has armed crons (`SessionSummary.scheduledTasks`, without
+  the expired ones) ends in a `clock` glyph in the row's metadata ink (`ScheduledClock` in `SessionRow.swift`). Not
+  amber: amber means "needs you", and a cron is information. The pointer shows the count and the next run
+  ("2 scheduled tasks · next 22:14", the time in the device zone); VoiceOver hears the same at the end of the row
+  sentence, and the glyph is hidden (`SessionRowModel.scheduledMark`, `scheduledText`). A list read from the device
+  cache has no clock: the cache drops the field.
 
 ### Native app list: footer bar
 
@@ -1152,39 +1251,45 @@ and an opaque band under it). Code: `Views/List/Footer/`; geometry in `ListFoote
   one tap target (≥ 44 pt). It opens the Usage sheet, the only place that shows the update command: a popover
   beside the detail, a sheet in the stack.
 
-### Session switcher (Cmd+S)
+### Session switcher
 
 A window in the middle of the app window, with no dimming under it, so the screen stays visible around it. Code:
-`Switcher/`. Cmd+S or a tap on the current tab opens it, and it stays open after Cmd is released, until a row is
-picked or the window is closed.
+`Switcher/`. Only a tap (finger or pointer) on the current tab opens it, also on a terminal tab; it has no keyboard
+shortcut, and no default shortcut of the app uses Cmd+S or Shift+Cmd+S. The current tab of a terminal that is still
+being opened has no id yet, so a tap on it opens nothing. It stays open until a row is picked or the window is closed.
 
 - **Window:** width min(560 pt, window − 32 pt), solid `--surface`, a hairline, the block radius, a shadow, no glass.
   At most 8 rows without scrolling, up to 70 % of the app window at the largest type. It appears and vanishes at
   once, without animation.
-- **Row**: a state dot, "project · name #n", under it in mono the state word in its color and the "waiting for" line
-  or the stage line; the time on the right. Rows are never faded: every row is a place the user has been. While the
-  window holds the hardware keyboard each row starts with its digit key before the dot: the row number from 0 at the
-  top, in a key outlined like the footer keys (1 pt `--border`, the ghost radius, `caption` mono in `--muted`, which
-  holds 4.5:1 on the selection and on `--surface`). A row past the ninth would keep the same room empty, so the dots
-  stay in a column. The key is decoration: VoiceOver reads the row sentence without it.
+- **Row**: a session row has a state dot, "project · name #n", under it in mono the state word in its color and the
+  "waiting for" line or the stage line; the time on the right. A terminal row has the terminal glyph in the place of
+  the dot, the tab label (the foreground process) and a quiet line (the slot, "running") in the secondary ink: a
+  terminal has no state color, like its tab. Rows are never faded. While the window holds the hardware keyboard each
+  row starts with its digit key before the dot: the digit its tab carries on the tab bar, in a key outlined like the
+  footer keys (1 pt `--border`, the ghost radius, `caption` mono in `--muted`, which holds 4.5:1 on the selection and
+  on `--surface`). A row without a digit keeps the same room empty, so the dots stay in a column. The key is
+  decoration: VoiceOver reads the row sentence without it.
 - **Selection** uses the `switcherSelection` token, a light text-ink plate, never the accent: color stays for states.
   On it secondary text goes `--muted`, because `--muted-2` does not hold 4.5:1 there. Under the pointer a row gets the
   plate at half opacity (`HoverTokens.agentRowAlpha`); the selection wins, and a finger lights nothing.
-- **The current session** has a you're here pill and takes the first row. Every opening (Cmd+S, Shift+Cmd+S, a tap
-  on the current tab) puts the selection on the first row: the current session, or the newest visit when the app does
-  not know the session on screen. Return on the current session closes the window and gives the focus back.
-- **Header and footer:** RECENT · N, without a state summary. The footer has the key hints (↑↓ select, ↩ go, 0–9
-  jump, esc close) only while the window holds the hardware keyboard; without it a row is picked by a tap.
-- **Order:** up to 10 sessions, the one on screen and the ones visited last on this device, newest at the top, with
-  no state filter, flat, without group headers. The order freezes when the window opens; the words and dots stay
-  live, and a deleted session leaves the list.
-- **Keys:** with a hardware keyboard the window takes the keyboard focus. ↑/↓, S/⇧S and Cmd+S/⇧Cmd+S move the
-  selection with wrap-around, Return goes to the selected session, Esc closes the window and gives the focus back to
-  where it was, also with Cmd held. A digit 0–9, with or without Cmd, from the top row or the keypad, picks the row
-  with that number at once: a digit of another session goes there, 0 (the current session) closes like Return on
-  it, and a digit without a row does nothing. With the window open, Cmd+1…9 belong to the window, not to the tabs;
-  with the window closed they switch tabs. None of these keys and no Tab reach the screen underneath; other keys
-  without Cmd do nothing, and any other Cmd shortcut from the menu closes the window and does its own thing.
+- **The current tab** has a you're here pill. Every opening puts the selection on it; a Rarog terminal with an agent
+  inside is the terminal's tab. Return on the current tab closes the window and gives the focus back.
+- **Header and footer:** PROJECT TABS · N, without a state summary. The footer has the key hints (↑↓ select, ↩ go,
+  1–9 jump, esc close) only while the window holds the hardware keyboard; without it a row is picked by a tap.
+- **Order:** the tabs of the current project in the order of the tab bar (sessions from the oldest, then terminals
+  by slot), from the same list the bar draws, with no limit, flat, without group headers. The terminal invite, a
+  terminal being opened, the note and "+" are no rows. The rows stay live while the window stands: a new tab comes
+  in at its place on the bar, a closed tab leaves, and the selection stays on its tab (on a closed one it goes to
+  the next row, from the last row to the previous one). Picking a row does what a tap on its tab does.
+- **Keys:** with a hardware keyboard the window takes the keyboard focus, also when the keyboard connects while the
+  window stands. ↑/↓, with or without Cmd, move the selection with wrap-around, Return goes to the selected tab,
+  Esc closes the window and gives the focus back to where it was, also with Cmd held. A digit 1–9, with or without
+  Cmd, from the top row or the keypad, picks the tab with that digit on the bar at once (1–8 by position, 9 the last
+  tab, also with eight tabs or fewer): another tab goes there, the current tab's digit closes like Return on it, and
+  a digit without a tab does nothing. 0 is no key of the window: Cmd+0 resets the text size and the window picks
+  nothing. With the window open, Cmd+1…9 belong to the window, not to the tabs; with the window closed they switch
+  tabs. None of these keys and no Tab reach the screen underneath; other keys without Cmd (S included) do nothing,
+  and any other Cmd shortcut from the menu closes the window and does its own thing.
 
 ### Shortcut sheet (held Cmd)
 
@@ -1223,6 +1328,39 @@ radius, no glass, no shadow, no animation.
 - **Neighbors**: with the list open, the Scroll to Bottom button and the toast above the prompt sit ABOVE it. In a low
   window (a phone in landscape with the keyboard) the button stays on screen and covers the list top: a visible button
   matters more than the first row.
+
+### Inbox (native app)
+
+The last message of every agent that stopped, one card per session, newest first, in the right column (on the iPhone
+a screen on the stack). Code: `Views/Inbox/`. The card reads like a short turn of the transcript, not like a
+notification: the agent's own words carry it.
+
+- **Button:** the tray glyph (`--text-2`, `--text` while the Inbox is open or under the pointer) in a 48 pt glass
+  circle on the right of the list's filter capsule, in the same floating row and of the same glass (the list footer
+  card's material, the list scrolls beneath); it stands apart from the capsule because it opens a screen instead of
+  filtering. The counter is an amber badge on the circle's top right (`--wait`, the digit dark in the dark theme and
+  white in the light one, bold monospaced `caption`); zero shows no badge. Amber, like Needs You, because the counter
+  takes the cards that wait for the human or carry an unread result. The open Inbox has the filter's active plate;
+  the pointer gives half of it.
+- **Header:** the title "Inbox" and after it the number of cards on the screen in monospaced `footnote`, `--muted-2`;
+  no number on an empty Inbox. No inspector, status line or tabs.
+- **Card:** a `--surface` block with the block radius, 24 pt from the column sides (12 pt on the iPhone), 12 pt
+  between cards. The header is the agent row: the state dot (pulsing like the list's on a fresh result), "project ·
+  session" in semibold `subheadline`, under it the state word in its color and the clock in `--muted`. On the right
+  two quiet icons with 44 pt targets in `--muted-2`: ↗ Open session and × Remove. The message uses the transcript's
+  text styles.
+- **Long message:** the first paragraph, then a fold row (a hairline on each side of "N more lines · Show all" in
+  medium `footnote`, `--text-2`), then the "To you:" block with the transcript's question stripe, so the question is
+  always visible. "Show less" folds it again. While the text loads, three `--surface-2` bars stand in its place.
+- **Decision:** under the message the transcript's own decision card, unchanged; a stop and a result end with the
+  message.
+- **New cards above** never move the screen under a finger: the pill "N new ↑ · 1 waiting" in the list pill's look
+  stands over the cards, and a tap scrolls up.
+- **Removal** has no confirmation: ×, a swipe to the left on the iPhone (the red "Remove" action with a trash glyph)
+  or ⌫ on the card with the keyboard focus. The card goes, and the toast offers Undo for 5 s. The keyboard focus is
+  the decision cards' 3 pt ring.
+- **Empty:** "Nothing new" in `headline` and one sentence in `--muted` `callout` under it, from the top left, at most
+  560 pt wide.
 
 ### What the direction does not cover
 

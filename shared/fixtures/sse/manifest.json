@@ -139,6 +139,79 @@
       { "path": "/detailRef/code", "value": "" }
     ]
   },
+  "inbox-head.max.json": { "expect": "ok" },
+  "inbox-head.result.json": { "expect": "ok" },
+  "inbox-head.empty-version.json": {
+    "expect": "ignored",
+    "base": "inbox-head.max.json",
+    "patch": [
+      { "path": "/head/version", "value": "" }
+    ]
+  },
+  "inbox-head.unknown-dialog.json": {
+    "expect": "ignored",
+    "base": "inbox-head.max.json",
+    "patch": [
+      { "path": "/head/dialog", "value": "browser" }
+    ]
+  },
+  "inbox-head.unknown-kind.json": {
+    "expect": "ignored",
+    "base": "inbox-head.max.json",
+    "patch": [
+      { "path": "/head/kind", "value": "summary" }
+    ]
+  },
+  "inbox-head.unknown-state.json": {
+    "expect": "ignored",
+    "base": "inbox-head.max.json",
+    "patch": [
+      { "path": "/head/state", "value": "paused" }
+    ]
+  },
+  "inbox-heads.max.json": { "expect": "ok" },
+  "inbox-heads.empty.json": { "expect": "ok" },
+  "inbox-heads.unknown-dialog.json": {
+    "expect": "degraded",
+    "base": "inbox-heads.max.json",
+    "patch": [
+      { "path": "/heads/0/dialog", "value": "browser" }
+    ],
+    "result": [
+      { "path": "/heads/0", "remove": true }
+    ],
+    "degrades": ["inbox.head"]
+  },
+  "inbox-heads.unknown-kind.json": {
+    "expect": "degraded",
+    "base": "inbox-heads.max.json",
+    "patch": [
+      { "path": "/heads/1/kind", "value": "summary" }
+    ],
+    "result": [
+      { "path": "/heads/1", "remove": true }
+    ],
+    "degrades": ["inbox.head"]
+  },
+  "inbox-heads.unknown-state.json": {
+    "expect": "degraded",
+    "base": "inbox-heads.max.json",
+    "patch": [
+      { "path": "/heads/2/state", "value": "paused" }
+    ],
+    "result": [
+      { "path": "/heads/2", "remove": true }
+    ],
+    "degrades": ["inbox.head"]
+  },
+  "inbox-removed.max.json": { "expect": "ok" },
+  "inbox-removed.empty-turn.json": {
+    "expect": "ignored",
+    "base": "inbox-removed.max.json",
+    "patch": [
+      { "path": "/turnId", "value": "" }
+    ]
+  },
   "message.block-without-type.json": {
     "expect": "ignored",
     "base": "message.tool-calls.json",

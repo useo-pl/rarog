@@ -90,19 +90,6 @@ public struct ShortcutMenu: Sendable, Equatable {
 }
 
 extension RarogNavigation {
-  /// The tab digits in the agent rows of the active project in the tree: the strip's own digits
-  /// (`ShortcutMenu.tabDigits`), keyed by session id, so a row shows the key that opens its tab. Empty without a
-  /// hardware keyboard, like the strip; an agent running in a terminal has no session tab and no digit.
-  public func treeTabDigits(_ state: AppState, hardwareKeyboard: Bool) -> [String: Int] {
-    var digits: [String: Int] = [:]
-    for (tab, digit) in ShortcutMenu.tabDigits(tabRefs(state), hardwareKeyboard: hardwareKeyboard) {
-      if case let .session(id) = tab { digits[id] = digit }
-    }
-    return digits
-  }
-}
-
-extension RarogNavigation {
   public func shortcutMenu(_ state: AppState) -> ShortcutMenu {
     var menu = ShortcutMenu()
     // Pod arkuszem (oknem albo formularzem) milczą wszystkie skróty, które zmieniają ekran pod nim:

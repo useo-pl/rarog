@@ -26,6 +26,16 @@ struct ShortcutSheetContentTests {
     #expect(missing.isEmpty, "shortcuts without a row: \(missing)")
   }
 
+  @Test("no row offers ⌘S or ⇧⌘S: the session switcher has no keyboard shortcut")
+  func noSwitcherShortcut() {
+    for place in [ShortcutSheetPlace?.none, .session, .terminal, .window] {
+      let content = Content(place: place, capabilities: everything, language: .en)
+      let groups = [content.here].compactMap { $0 } + content.columns.flatMap { $0 }
+      let combos = groups.flatMap(\.rows).flatMap(\.combos)
+      #expect(!combos.contains("⌘S") && !combos.contains("⇧⌘S"), "\(String(describing: place))")
+    }
+  }
+
   @Test(
     "place → the group under “You're here”; the rest in three columns without it",
     arguments: [
@@ -61,7 +71,7 @@ struct ShortcutSheetContentTests {
     #expect(none.here == nil, "the terminal group is empty without a terminal")
     #expect(!none.columns.joined().contains { $0.kind == .terminal })
     // Rows that only fall silent for a moment stay.
-    for item in [Content.Item.newSession, .nextSession, .closeTab, .send, .stop, .dictation, .closeWindow] {
+    for item in [Content.Item.newSession, .previousProject, .closeTab, .send, .stop, .dictation, .closeWindow] {
       #expect(listed.contains(item), "\(item) stays")
     }
 

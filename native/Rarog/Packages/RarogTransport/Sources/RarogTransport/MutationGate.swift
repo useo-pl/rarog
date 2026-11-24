@@ -12,6 +12,9 @@ public protocol MutationPolicy: Sendable {
   /// `nil` = wolno, inaczej odmowa. `route` = trasa po identyfikatorze (`close`, `messages`,
   /// `answers/<qId>`…) — polityka rozróżnia akcje, które potrzebują tylko listy, od tych na treści sesji.
   func sessionRefusal(sessionId: String, route: String) async -> PolicyRefusal?
+  /// The same for a request that tells the gate whether its body carries `expectedConversation` (a message of the
+  /// voice agent, whose conversation the server checks). Default: ``sessionRefusal(sessionId:route:)``.
+  func sessionRefusal(sessionId: String, route: String, expectsConversation: Bool) async -> PolicyRefusal?
   /// Wejście terminala (WS `in`/`rs`/`sc`): `nil` = wolno, inaczej odmowa TRWAŁA (apka za stara albo
   /// inny protokół). Bez czekania i bez świeżości listy sesji: gniazdo terminala nie zależy od strumienia
   /// SSE, a klawisz wstrzymany na 5 s po powrocie z tła byłby gorszy od PWA, która bramki nie ma wcale.
@@ -21,6 +24,10 @@ public protocol MutationPolicy: Sendable {
 
 extension MutationPolicy {
   public func terminalInputRefusal() async -> PolicyRefusal? { await compatibilityRefusal() }
+
+  public func sessionRefusal(sessionId: String, route: String, expectsConversation: Bool) async -> PolicyRefusal? {
+    await sessionRefusal(sessionId: sessionId, route: route)
+  }
 }
 
 /// Odmowa polityki: zdanie dla człowieka i to, czy minie sama (brak `hello` albo świeżej listy w limicie
@@ -89,13 +96,15 @@ public struct MutationGate: Sendable {
   }
 
   /// Sprawdza żądanie HTTP; rzuca ``MutationRefusal``, gdy któraś bramka odmawia.
-  public func check(method: String, path: String) async throws(MutationRefusal) {
+  /// `expectsConversation`: the body carries `expectedConversation`; the policy decides what it changes.
+  public func check(method: String, path: String, expectsConversation: Bool = false) async throws(MutationRefusal) {
     guard Self.isMutation(method) else { return }
     if !Self.compatibilityExempt.contains(path), let refusal = await policy.compatibilityRefusal() {
       throw MutationRefusal(gate: .compatibility, refusal)
     }
     if let target = Self.sessionTarget(inPath: path),
-      let refusal = await policy.sessionRefusal(sessionId: target.id, route: target.route)
+      let refusal = await policy.sessionRefusal(
+        sessionId: target.id, route: target.route, expectsConversation: expectsConversation)
     {
       throw MutationRefusal(gate: .unsupportedSession(id: target.id), refusal)
     }

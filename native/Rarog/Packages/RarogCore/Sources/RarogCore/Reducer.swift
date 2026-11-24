@@ -9,6 +9,13 @@ extension AppState {
   /// Nakłada zdarzenie na stan. Zwraca skutki uboczne do wykonania przez magazyn.
   @discardableResult
   public mutating func apply(_ event: CoreEvent, now: Date, timing: CoreTiming = .production) -> [CoreEffect] {
+    // An accepted entry whose wait for its session's stream this event ends gets a countdown (`Reducer+Send`).
+    let waiting = entriesWaitingForStream()
+    let effects = reduce(event, now: now, timing: timing)
+    return effects + countdownsAfterTheWait(waiting, now: now, timing: timing)
+  }
+
+  private mutating func reduce(_ event: CoreEvent, now: Date, timing: CoreTiming) -> [CoreEffect] {
     switch event {
     case let .connecting(scope):
       setStatus(scope, .connecting(since: now))
@@ -17,6 +24,8 @@ extension AppState {
       if case let .session(id) = scope {
         if resumed { markGap(sessionId: id) }
         markJoin(sessionId: id)
+        // Entries waiting for this stream (`Reducer+Send`).
+        return unconfirmedChecksOnOpen(sessionId: id, now: now, timing: timing)
       }
     case let .streamDropped(scope):
       setStatus(scope, .offline(since: now))
@@ -59,8 +68,8 @@ extension AppState {
       forgetCommands(unless: id)
     case .outboxEnqueued, .outboxRestored, .outboxAccepted, .outboxUnconfirmedIfStillSent, .outboxUnconfirmed,
       .outboxRefused, .outboxRetrying, .outboxDiscarded, .outboxReplayed, .outboxProgress, .outboxQueued,
-      .outboxUnconfirmedIfQueued, .outboxQueuedIdle:
-      // Kolejka wysyłki: `Reducer+Send`.
+      .outboxUnconfirmedIfQueued, .outboxQueuedIdle, .outboxUnconfirmedAfterOpening:
+      // Kolejka wysyłki: `Reducer+Send` (właściciel: wysyłka).
       return applySend(event, now: now, timing: timing)
     case let .decisionStarted(sessionId, cardId, choice, answers):
       transcripts[sessionId]?.decisions[cardId] = DecisionAttempt(choice: choice, startedAt: now)
@@ -79,6 +88,7 @@ extension AppState {
       applyPlanUsage(outcome, at: at)
     case let .versionProbed(info):
       applyVersion(info)
+      settleInboxCapability()
     case let .catalog(event):
       return applyCatalog(event)
     case let .session(event):
@@ -108,6 +118,8 @@ extension AppState {
       return applyPairing(event)
     case let .queueTakeBack(event):
       return applyQueueTakeBack(event)
+    case let .inbox(event):
+      applyInbox(event)
     }
     return []
   }
@@ -300,6 +312,9 @@ extension AppState {
       let cwd = ProjectPath.normalized(event.cwd)
       notesPresent[cwd] = !event.empty
       notesRevision[cwd, default: 0] += 1
+
+    case .inboxHeads, .inboxHead, .inboxRemoved:
+      applyInboxFrame(frame, source: source)
     }
     return []
   }
@@ -592,6 +607,7 @@ extension AppState {
     cards = CardsState()
     resetTurnControl()
     queueTakeBack = QueueTakeBackState()
+    clearInbox()
     listCache = ListCacheState()
     terminals = TerminalListState()
     signal = nil

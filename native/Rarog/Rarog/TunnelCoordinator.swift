@@ -69,7 +69,8 @@ final class TunnelCoordinator: ServerWorkObserver {
   private let registry: TunnelRegistry
   private let transport: WatchedTunnelTransport
   private let proxyCounters: TunnelProxyCounters
-  private let timing: TunnelRuntime.Timing
+  /// The coordinator's clock; the voice hold (`TunnelCoordinator+VoiceHold.swift`) reads it for its deadline.
+  let timing: TunnelRuntime.Timing
   private let log: @Sendable (String) -> Void
   private let lease: EndpointLease
   /// The limit of iroh failure reports shared by every pairing and revoking runtime: each is a new runtime, so the

@@ -2,7 +2,7 @@
 import UIKit
 
 /// Bramka przełącznika sesji: gdy w oknie apki cokolwiek jest zaprezentowane — arkusz, popover,
-/// okno terminala, historia, potwierdzenie, podgląd załącznika, wybór plików — Cmd+S milczy, a gest w toku kończy
+/// okno terminala, historia, potwierdzenie, podgląd załącznika, wybór plików — okno przełącznika nie staje, a gest w toku kończy
 /// się bez przejścia. Pyta korzeń okna i wszystkich jego potomków: popover paska promptów prezentuje kontroler
 /// sesji, nie korzeń. Jedno miejsce zamiast piętnastu haków przy każdej prezentacji. Właściciel: skróty.
 @MainActor

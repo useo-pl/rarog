@@ -8,13 +8,14 @@ import UIKit
 /// (`InspectorPanel+Sheet.swift`): W TLE (te same wiersze co popover pigułki, ta
 /// sama reguła zamrożenia `BackgroundFreeze`), SKOŃCZONE OSTATNIO (notki zakończenia zadań z ogona transkryptu),
 /// SCHEDULED TASKS (`SessionSummary.scheduledTasks`, `InspectorScheduledSection.swift`),
-/// ARTEFAKTY (`SessionSummary.artifacts`), PULL REQUESTY (`SessionSummary.pullRequests`) i ZMIANY
-/// W KATALOGU (ramka `git-status`) w JEDNYM przewijaniu z JEDNĄ kotwicą — wierszem „w tle" albo nagłówkiem sekcji.
+/// ARTEFAKTY (`SessionSummary.artifacts`), PULL REQUESTY (`SessionSummary.pullRequests`) i FILES
+/// (`InspectorFilesSection.swift`) w JEDNYM przewijaniu z JEDNĄ kotwicą — wierszem „w tle" albo nagłówkiem sekcji.
 /// Co sekundę tyka tylko sekcja W TLE (w każdym wierszu osobno, a zamrożenie liczy niewidoczny zegar panelu poza
-/// stosem); wiersz skończonego zadania, artefaktu i PR liczy „ile temu" od nowa co pół minuty. Panel NIE pobiera
-/// diffa: wiersze plików idą z `fileDetails`, a listę i patch stukniętego pliku pobiera dopiero okno
-/// diffa (`RarogNavigation.openDiff`). Kotwica i rozwinięcia faz należą do sesji (`RarogInspector`), zwinięcie
-/// całego drzewa zmian — do urządzenia; okno diffa zamyka zmiana ekranu (`RarogNavigation.detail`).
+/// stosem); wiersz skończonego zadania, artefaktu i PR liczy „ile temu" od nowa co pół minuty. The Files tree
+/// comes from `RarogStore.fileTree` (listings and the change list, or the `git-status` frame in the fallback
+/// source); the patch of a file is read only by the diff window (`RarogNavigation.openDiff`). Kotwica i rozwinięcia
+/// faz należą do sesji (`RarogInspector`), zwinięcie całego drzewa — do urządzenia; okno diffa zamyka zmiana ekranu
+/// (`RarogNavigation.detail`).
 /// Właściciel: panel.
 struct InspectorPanel: View {
   let store: RarogStore
@@ -38,6 +39,9 @@ struct InspectorPanel: View {
   /// and a task that arrives already expired never shows.
   @State private var scheduleNow = Date()
   @Environment(\.scenePhase) private var scenePhase
+  /// QuickLook for the Files tree, anchored in this panel; the model owns each copy until the preview takes it.
+  @State private var previewPresenter = FilePreviewPresenter()
+  @State private var previewModel: FilePreviewModel?
 
   var body: some View {
     let state = store.state
@@ -89,15 +93,9 @@ struct InspectorPanel: View {
             rows: pullRequests, settledOpen: settledOpen,
             toggleSettled: { settledOpen.toggle() })
         }
-        InspectorChangesSection(
-          changes: changes, sectionCollapsed: inspector.changesCollapsed,
-          toggleSection: { inspector.setChangesCollapsed(!inspector.changesCollapsed) },
-          collapsed: inspector.collapsedDirs[sessionId] ?? [],
-          toggle: { inspector.collapsedDirs[sessionId, default: []].formSymmetricDifference([$0]) }
-        ) { path in
-          // Każde otwarcie okna to świeży odczyt listy i patcha TEGO pliku — panel sam niczego nie pobiera.
-          navigation.openDiff(sessionId: sessionId, path: path)
-        }
+        InspectorFilesContainer(
+          store: store, sessionId: sessionId, git: fresh, changes: changes, placement: placement,
+          actions: filesActions)
       }
       .scrollTargetLayout()
       .padding(.horizontal, 20)
@@ -106,6 +104,7 @@ struct InspectorPanel: View {
     }
     .scrollPosition(id: anchor(inspector), anchor: .top)
     .environment(\.sectionPlace, .inspector))
+    .background { FilePreviewAnchor(presenter: previewPresenter) }
     // Zegar zamrożenia W TLE poza leniwym stosem: żyje, dopóki stoi panel, niezależnie od przewinięcia.
     .background { freezeClock(state) }
     .background { ScheduledTasksClock(tasks: scheduledTasks) { scheduleNow = $0 } }
@@ -118,6 +117,14 @@ struct InspectorPanel: View {
     }
     .onChange(of: state.global, initial: true) { _, status in
       freeze.observe(status, now: Date())
+    }
+    // The tree of this session asks the server only while the panel stands. The panel is rebuilt per session, and
+    // the old one may leave after the new one came: it closes the tree only when the tree is still its own.
+    .onAppear { store.fileTree.panelOpened(sessionId) }
+    .onDisappear {
+      if store.fileTree.openSessionId == sessionId { store.fileTree.panelClosed() }
+      // A fetch in flight has no preview to go to any more: its copy is deleted when it arrives.
+      previewModel?.cancel()
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(UICopy.inspectorLabel)
@@ -157,6 +164,28 @@ struct InspectorPanel: View {
     .accessibilityHidden(true)
   }
 
+  /// The gestures of the Files rows: folding goes to the tree store, the diff window opens on one file (every opening
+  /// is a fresh read of the list and of that file's patch), Copy Path writes the clipboard.
+  private var filesActions: InspectorFilesActions {
+    InspectorFilesActions(
+      toggle: { [store, sessionId] dir, expanded in store.fileTree.setExpanded(dir, expanded, in: sessionId) },
+      preview: { path in preview(path) },
+      diff: { [navigation, sessionId] path in navigation.openDiff(sessionId: sessionId, path: path) },
+      copy: InspectorFilesActions.copyToClipboard)
+  }
+
+  /// A tap on a file the server can send, or Preview in its menu: the file is fetched and shown in QuickLook over
+  /// this panel; a refusal or a lost connection becomes a bubble and the tree stays.
+  private func preview(_ path: String) {
+    let model =
+      previewModel
+      ?? FilePreviewModel.session(
+        sessionId, store: store, present: { [previewPresenter] in previewPresenter.present($0) },
+        notice: { NotificationCenter.default.post(name: .rarogAppNotice, object: $0) })
+    previewModel = model
+    model.open(path)
+  }
+
   /// Rozwinięcia faz TEJ sesji.
   private func expand(_ inspector: RarogInspector, _ change: (inout WorkflowExpansion) -> Void) {
     change(&inspector.expansions[sessionId, default: WorkflowExpansion()])
@@ -191,7 +220,7 @@ private struct InspectorFinishedSection: View {
 
 /// ARTEFAKTY: strony na claude.ai opublikowane w bieżącej rozmowie sesji, najnowsza publikacja pierwsza;
 /// sekcja stoi tylko z wierszami i się nie zwija (zmierzone maksimum to cztery). Nad etykietą kreska jak nad
-/// ZMIANAMI W KATALOGU. Wiersze płasko, bez kontenera — każdy jest celem kotwicy panelu.
+/// PLIKAMI. Wiersze płasko, bez kontenera — każdy jest celem kotwicy panelu.
 private struct InspectorArtifactsSection: View {
   let rows: [ArtifactRow]
 
@@ -469,252 +498,6 @@ struct PullRequestStateLabel: View {
       // 1 pt down, drawing only, the row height does not change.
       .offset(y: 1)
       .accessibilityHidden(true)
-  }
-}
-
-// MARK: - Zmiany w katalogu
-
-/// ZMIANY W KATALOGU: nagłówek z liczbą, przy braku kontaktu „ostatni znany stan", drzewo plików (`ChangesTree`:
-/// katalogi, pod nimi pliki z literą i `+a −b`) albo jedno z dwóch zdań pustki i „pokazano 50 z N". Gdy jest
-/// drzewo, nagłówek jest przełącznikiem ze strzałką po prawej: zwija całe drzewo do samego nagłówka (preferencja
-/// urządzenia, `RarogInspector.changesCollapsed`). Diff otwiera stuknięcie pliku — osobnego przycisku nie ma.
-/// Ostatniego commita panel nie pokazuje
-/// (zostaje w dymku gita). Wiersze płasko, bez kontenera — nagłówek sekcji jest celem kotwicy (tap w linię gita
-/// w nagłówku sesji).
-private struct InspectorChangesSection: View {
-  let changes: InspectorChanges
-  /// Całe drzewo zwinięte do nagłówka (`RarogInspector.changesCollapsed`).
-  let sectionCollapsed: Bool
-  let toggleSection: () -> Void
-  /// Zwinięte katalogi drzewa TEJ sesji (`RarogInspector.collapsedDirs`).
-  let collapsed: Set<String>
-  let toggle: (_ directory: String) -> Void
-  let open: (_ path: String) -> Void
-  /// Wiersze drzewa pod wskaźnikiem: nazwa pliku pod nim stoi w pełnym atramencie, a pionowe linie poziomów widać
-  /// tylko wtedy, gdy wskaźnik stoi nad drzewem.
-  @State private var hovered: Set<String> = []
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  /// The category and the text size path of the commit fragment in the clean line (an `AttributedString` has no
-  /// environment of its own).
-  @Environment(\.dynamicTypeSize) private var typeSize
-  @Environment(\.textStyleFlat) private var flat
-
-  private var title: String { UICopy.inspectorChangesTitle(changes.count) }
-
-  /// Wiersze drzewa na ekranie: bez drzewa i przy zwiniętej sekcji — żadne.
-  private var rows: [ChangesTreeRow] {
-    guard case let .files(files) = changes.body, !sectionCollapsed else { return [] }
-    return ChangesTree.rows(files, collapsed: collapsed)
-  }
-
-  var body: some View {
-    let rows = self.rows
-    Rectangle()
-      .fill(Color(uiColor: Palette.border))
-      .frame(height: 1)
-      .padding(.top, 22)
-      .accessibilityHidden(true)
-    header
-      .id(InspectorModel.changesAnchor)
-      // Wiersz, który zniknął pod wskaźnikiem (zwinięty katalog albo całe drzewo, nowa ramka gita), wyjścia nie
-      // zgłasza. Jego ślad schodzi razem z nim: inaczej po powrocie stałby podświetlony bez wskaźnika.
-      .onChange(of: Set(rows.map(\.id))) { _, ids in hovered.formIntersection(ids) }
-    if changes.stale {
-      Label(UICopy.workflowStale, systemImage: "clock")
-        .appFont(.caption)
-        .foregroundStyle(Color(uiColor: Palette.muted))
-        .padding(.bottom, 8)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(UICopy.workflowStaleSpoken)
-        .accessibilityAddTraits(.isStaticText)
-        .accessibilityIdentifier("inspector.git.stale")
-    }
-    switch changes.body {
-    case .files:
-      if !sectionCollapsed {
-        // Liczą się wiersze stojące na ekranie (ślad po znikniętym schodzi dopiero po tym przebiegu).
-        let guides = rows.contains { hovered.contains($0.id) }
-        ForEach(rows) { row in
-          ChangesTreeRowView(row: row, guides: guides, hovered: hovered.contains(row.id), toggle: toggle, open: open)
-            .onHover { inside in
-              if inside { hovered.insert(row.id) } else { hovered.remove(row.id) }
-            }
-        }
-        if let shown = changes.shown {
-          Text(UICopy.inspectorChangesShown(shown.rows, of: shown.of))
-            .appFont(.caption)
-            .foregroundStyle(Color(uiColor: Palette.muted))
-            .padding(.top, 4)
-            .accessibilityIdentifier("inspector.git.shown")
-        }
-      }
-    case let .clean(commit):
-      clean(commit)
-    case .noData:
-      Text(UICopy.inspectorChangesNoData)
-        .appFont(.subheadline)
-        .foregroundStyle(Color(uiColor: Palette.muted))
-        .accessibilityIdentifier("inspector.git.noData")
-    }
-  }
-
-  /// Etykieta sekcji; przy drzewie cały wiersz jest przyciskiem (strzałka po prawej, jak przy fazach workflow),
-  /// bez drzewa — samą etykietą. Ten sam identyfikator i ta sama wysokość w obu stanach.
-  @ViewBuilder
-  private var header: some View {
-    if changes.collapsible {
-      Button(action: toggleSection) {
-        HStack(spacing: 8) {
-          BackgroundSectionTitle(text: title)
-          Spacer(minLength: 8)
-          Image(systemName: "chevron.right")
-            .appFont(.caption.weight(.semibold))
-            .imageScale(.small)
-            .foregroundStyle(Color(uiColor: Palette.muted2))
-            .rotationEffect(.degrees(sectionCollapsed ? 0 : 90))
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: sectionCollapsed)
-            .frame(width: ChangesTree.guideInset * 2)
-        }
-        .padding(.top, 18)
-        .padding(.bottom, 8)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel(title)
-      .accessibilityValue(sectionCollapsed ? UICopy.disclosureCollapsed : UICopy.disclosureExpanded)
-      .accessibilityAddTraits(.isHeader)
-      .accessibilityIdentifier("inspector.git.title")
-    } else {
-      BackgroundSectionTitle(text: title)
-        .padding(.top, 18)
-        .padding(.bottom, 8)
-        .accessibilityIdentifier("inspector.git.title")
-    }
-  }
-
-  /// „Czysto od 7cdfbe4b" — skrót commita w mono (zdanie z katalogu, commit wyróżniony w nim po wartości).
-  private func clean(_ commit: String?) -> some View {
-    let text: Text =
-      if let commit {
-        Text({
-          var line = AttributedString(UICopy.inspectorChangesClean(commit))
-          if let range = line.range(of: commit) {
-            line[range].font = AppFont.footnote.monospaced().resolve(typeSize: typeSize, flat: flat)
-          }
-          return line
-        }())
-      } else {
-        Text(UICopy.inspectorChangesCleanNoCommit)
-      }
-    return text
-      .appFont(.subheadline)
-      .foregroundStyle(Color(uiColor: Palette.muted))
-      .accessibilityIdentifier("inspector.git.clean")
-  }
-}
-
-/// Wiersz drzewa zmian. Katalog: strzałka, sklejona ścieżka (ucinana od początku — zostaje najgłębszy człon), przy
-/// zwiniętym suma `+a −b`; stuknięcie zwija i rozwija. Plik: litera rodzaju (kolor jak w rozwinięciu gita) w osi
-/// nazwy katalogu nad nim, nazwa w `text2` (pod wskaźnikiem w `text`), `+a −b` w kolorach znaku, binarny — „bin"
-/// zamiast liczników (`GitFileStats`, wspólne z dymkiem gita i oknem diffa); stuknięcie otwiera diff na tym pliku.
-private struct ChangesTreeRowView: View {
-  let row: ChangesTreeRow
-  /// Wskaźnik stoi nad drzewem: widać pionowe linie poziomów.
-  let guides: Bool
-  /// Wskaźnik stoi nad TYM wierszem: nazwa pliku w pełnym atramencie.
-  let hovered: Bool
-  let toggle: (_ directory: String) -> Void
-  let open: (_ path: String) -> Void
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  var body: some View {
-    switch row {
-    case let .directory(directory):
-      Button {
-        toggle(directory.path)
-      } label: {
-        HStack(spacing: ChangesTree.chevronGap) {
-          Image(systemName: "chevron.right")
-            .appFont(.caption.weight(.semibold))
-            .imageScale(.small)
-            .foregroundStyle(Color(uiColor: Palette.muted2))
-            .rotationEffect(.degrees(directory.collapsed ? 0 : 90))
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: directory.collapsed)
-            .frame(width: ChangesTree.guideInset * 2)
-          Text(directory.label)
-            .appFont(.caption.monospaced())
-            .foregroundStyle(Color(uiColor: Palette.muted))
-            .lineLimit(1)
-            .truncationMode(.head)
-          Spacer(minLength: 8)
-          if directory.collapsed, let sum = directory.sum {
-            Text(sum)
-              .appFont(.caption.monospacedDigit())
-              .foregroundStyle(Color(uiColor: Palette.muted2))
-          }
-        }
-        .modifier(TreeRowFrame(depth: row.depth, guides: guides))
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel(directory.spoken)
-      .accessibilityValue(directory.collapsed ? UICopy.inspectorDirectoryCollapsed : UICopy.inspectorDirectoryExpanded)
-      .accessibilityIdentifier("inspector.git.dir.\(directory.path)")
-    case let .file(file, _):
-      Button {
-        open(file.path)
-      } label: {
-        HStack(alignment: .firstTextBaseline, spacing: 0) {
-          // Kolumna litery kończy się tam, gdzie zaczyna się nazwa: przesunięcie litery nazwy nie rusza.
-          Text(file.status?.rawValue ?? " ")
-            .appFont(.footnote.monospaced())
-            .foregroundStyle(Color(uiColor: GitInk.color(file.status)))
-            .padding(.leading, ChangesTree.letterInset)
-            .frame(width: ChangesTree.nameInset, alignment: .leading)
-          Text(file.name)
-            .appFont(.footnote.monospaced())
-            .foregroundStyle(Color(uiColor: hovered ? Palette.text : Palette.text2))
-            .lineLimit(1)
-            .truncationMode(.middle)
-          Spacer(minLength: 8)
-          GitFileStats(added: file.added, deleted: file.deleted, binary: file.binary)
-        }
-        .modifier(TreeRowFrame(depth: row.depth, guides: guides))
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel(file.spoken)
-      .accessibilityIdentifier("inspector.git.file.\(file.path)")
-    }
-  }
-}
-
-/// Rama wiersza drzewa: wcięcie poziomu, wysokość wiersza (26 pt przy domyślnym piśmie, rośnie z pismem) i pionowe
-/// linie poziomów w osi strzałek katalogów. Linie widać tylko pod wskaźnikiem nad drzewem —
-/// pod palcem drzewo niesie samo wcięcie.
-private struct TreeRowFrame: ViewModifier {
-  let depth: Int
-  let guides: Bool
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @AppScaledMetric(relativeTo: .footnote) private var height = CGFloat(ChangesTree.rowHeight)
-
-  func body(content: Content) -> some View {
-    content
-      .padding(.leading, ChangesTree.indent * Double(depth))
-      .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
-      .contentShape(Rectangle())
-      .background(alignment: .leading) {
-        HStack(spacing: 0) {
-          ForEach(0..<depth, id: \.self) { _ in
-            Rectangle()
-              .fill(Color(uiColor: Palette.border))
-              .frame(width: 1)
-              .frame(width: ChangesTree.indent, alignment: .leading)
-          }
-        }
-        .padding(.leading, ChangesTree.guideInset)
-        .opacity(guides ? 1 : 0)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: guides)
-        .accessibilityHidden(true)
-      }
   }
 }
 

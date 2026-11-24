@@ -8,7 +8,11 @@ import Observation
 // - Jedyna droga do włączenia to zgoda z ekranu zgody (`acceptConsent`); przełącznik bez zgody wraca do „wyłączone”.
 //   Zgoda dotyczy wersji tekstu (`consentVersion`): zgoda na starszy tekst przy starcie znaczy brak zgody.
 // - Wyłączenie kasuje zgodę, więc ponowne włączenie znów pyta.
+// - The voice conversation across sessions has its own consent with its own version (`sessionsConsentVersion`),
+//   given and withdrawn apart from the consent above. Its text adds to the voice agent's, so the mode runs only
+//   with both (`sessionsAllowed`); the conversation at a session needs only the consent above.
 // - Soniox reading speed from `speechSpeeds`; it applies from the next conversation.
+// - The locked-phone trial switch (`LockedPhoneTrial`, its own key) stands on the same settings page.
 // Ekran: `RarogUI/Views/VoiceAgent/`.
 
 /// Ustawienia agenta głosowego na tym urządzeniu.
@@ -22,28 +26,43 @@ public final class VoiceAgentSettings {
   /// Version 4: Soniox always reads the answers (no OpenAI voice), so the Soniox sentence has no condition, and the
   /// cost names the measured price of the text-only conversation and the Soniox account.
   public static let consentVersion = 4
+  /// Version of the consent text of the voice conversation across sessions (its own text, apart from
+  /// ``consentVersion``).
+  public static let sessionsConsentVersion = 1
 
   @ObservationIgnored private let preferences: VoiceAgentPreferences
 
   /// Włączone na tym urządzeniu (zgoda na bieżący tekst). Czy serwer daje rozmowę, mówi on sam.
   public private(set) var enabled: Bool
+  /// The voice conversation across sessions has the consent to its current text on this device. Stored apart from
+  /// ``enabled``: the conversation at a session needs only its own consent, and turning the voice agent off
+  /// (``disable()``) leaves this one stored.
+  public private(set) var sessionsEnabled: Bool
+  /// The voice conversation across sessions may run on this device: the voice agent is on and the mode has its
+  /// consent. The mode's text names only what it adds to the voice agent's.
+  public var sessionsAllowed: Bool { enabled && sessionsEnabled }
   /// Soniox reading speed (`speed` of the start frame), one of ``speechSpeeds``.
   public private(set) var speechSpeed: Double
+  /// The locked-phone trial switch of this device (its own key, off by default).
+  public let lockedPhoneTrial: LockedPhoneTrial
 
   /// Reading speeds the page offers. Soniox takes 0.7–1.3, 1.0 normal; the owner asked only for faster reading.
   public static let speechSpeeds: [Double] = [1.0, 1.1, 1.2, 1.3]
   public static let defaultSpeechSpeed = 1.0
 
-  public init(preferences: VoiceAgentPreferences) {
+  public init(preferences: VoiceAgentPreferences, lockedPhoneTrial: LockedPhoneTrial = .memory()) {
     self.preferences = preferences
+    self.lockedPhoneTrial = lockedPhoneTrial
     enabled = preferences.consent == Self.consentVersion
+    sessionsEnabled = preferences.sessionsConsent == Self.sessionsConsentVersion
     speechSpeed =
       preferences.speechSpeed.flatMap { Self.speechSpeeds.contains($0) ? $0 : nil } ?? Self.defaultSpeechSpeed
   }
 
   /// Apka: preferencje w `UserDefaults`.
   public static func live(defaults: UserDefaults) -> VoiceAgentSettings {
-    VoiceAgentSettings(preferences: VoiceAgentPreferences(defaults: defaults))
+    VoiceAgentSettings(
+      preferences: VoiceAgentPreferences(defaults: defaults), lockedPhoneTrial: .live(defaults: defaults))
   }
 
   /// Testy i tryb testów UI: preferencje w pamięci.
@@ -61,6 +80,18 @@ public final class VoiceAgentSettings {
   public func disable() {
     preferences.consent = nil
     enabled = false
+  }
+
+  /// The consent of the mode across sessions: stores the version of its text.
+  public func acceptSessionsConsent() {
+    preferences.sessionsConsent = Self.sessionsConsentVersion
+    sessionsEnabled = true
+  }
+
+  /// Withdrawing the consent of the mode across sessions: a running conversation across sessions ends.
+  public func withdrawSessionsConsent() {
+    preferences.sessionsConsent = nil
+    sessionsEnabled = false
   }
 
   /// Reading speed from ``speechSpeeds``; any other value — no change.

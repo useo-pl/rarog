@@ -18,6 +18,8 @@ extension SessionViewController {
       var base = self.textConfiguration(row)
       // Pod stojącą decyzją kolory składni wracają do atramentu linii (przygaszony tekst ≥ 7:1).
       base.plainSyntax = self.ui.reading.decisionShown
+      // The pointer selection belongs to the screen, so a reused cell takes its highlight from there.
+      base.pointerRange = self.pointerChrome.ranges[id]
       cell.contentConfiguration = DimmedContentConfiguration(base: base, alpha: self.dimAlpha(row))
     }
     let hostedCell = UICollectionView.CellRegistration<UICollectionViewListCell, String> { [weak self] cell, _, id in
@@ -110,9 +112,9 @@ extension SessionViewController {
     }
   }
 
-  private func messageConfiguration(
-    id: String, role: MessageRole, voice: VoiceLabel?, source: String, turn: TurnMark
-  ) -> MessageContentConfiguration {
+  /// The render style of a closed message of `role`. The pointer selection renders rows with it too
+  /// (`+PointerSelection`), so both get the same cached text.
+  func messageStyle(_ role: MessageRole) -> MarkdownRenderer.Style {
     // Odpowiedź agenta: proza o ton ciemniejsza, pogrubienie i nagłówki jaśniejsze; dymek człowieka: `text`.
     let color = switch role {
     case .system: Palette.muted
@@ -127,7 +129,13 @@ extension SessionViewController {
       questions: role == .assistant)
     style.fullWidth = role != .user && transcriptWidth.full
     style.spacing = transcriptSpacing
-    let text = markdown.text(source, style: style)
+    return style
+  }
+
+  private func messageConfiguration(
+    id: String, role: MessageRole, voice: VoiceLabel?, source: String, turn: TurnMark
+  ) -> MessageContentConfiguration {
+    let text = markdown.text(source, style: messageStyle(role))
     var config = MessageContentConfiguration(
       voice: voice.map(UICopy.roleLabel), text: text,
       plate: role == .user, dimmed: false, accessibilityIdentifier: "message.\(id)",
@@ -172,12 +180,16 @@ extension SessionViewController {
     dataSource.apply(snapshot, animatingDifferences: false)
   }
 
-  private func openMessageConfiguration(voice: VoiceLabel?, source: String, turn: TurnMark) -> MessageContentConfiguration {
-    let style = MarkdownRenderer.Style(
+  /// The render style of the streaming answer (`.open`).
+  func openMessageStyle() -> MarkdownRenderer.Style {
+    MarkdownRenderer.Style(
       textColor: Palette.prose, strongColor: Palette.strong, base: MarkdownRenderer.transcriptStyle, traits: traitCollection,
       questions: true, fullWidth: transcriptWidth.full, spacing: transcriptSpacing)
+  }
+
+  private func openMessageConfiguration(voice: VoiceLabel?, source: String, turn: TurnMark) -> MessageContentConfiguration {
     var config = MessageContentConfiguration(
-      voice: voice.map(UICopy.roleLabel), text: markdown.live(source, style: style),
+      voice: voice.map(UICopy.roleLabel), text: markdown.live(source, style: openMessageStyle()),
       plate: false, dimmed: false, accessibilityIdentifier: "message.open", accessibilityPrefix: UICopy.rolePrefix(.assistant),
       gap: turn.gap)
     config.spacing = transcriptSpacing

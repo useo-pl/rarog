@@ -5,7 +5,7 @@ import UIKit
 // The shortcut sheet in the app: key events from `HardwareKeys` go to the hold (`CommandHold`), a timer asks it
 // at `nextCheck`, and its changes put the panel (`ShortcutSheetPanel`) on the window or take it off, with a line in
 // `client.log`. The panel is a subview of the window, not a presentation: it stands over the sheets, leaves the first
-// responder alone and does not silence Cmd+S (`SwitcherPresentationGate`). Everything the controller reads comes
+// responder alone and does not silence the session switcher (`SwitcherPresentationGate`). Everything the controller reads comes
 // through `Environment`, so UIKit tests pass key events and a clock themselves. Owner: shortcuts.
 
 @MainActor
@@ -28,7 +28,7 @@ final class ShortcutSheetController {
   private var timer: Task<Void, Never>?
   private var observers: [NSObjectProtocol] = []
   /// Places whose first countdown since the keyboard came went to the trace. One line per place answers whether the
-  /// events reach the app there; a line per Cmd press (every ⌘S starts a countdown) would eat the shared budget.
+  /// events reach the app there; a line per Cmd press (every ⌘1 starts a countdown) would eat the shared budget.
   private var tracedStarts: Set<String> = []
 
   init(environment: Environment) {

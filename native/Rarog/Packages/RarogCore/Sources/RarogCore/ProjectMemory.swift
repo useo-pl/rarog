@@ -37,6 +37,8 @@ public enum NavigationPreferences {
   public static let newSession = "rarog.newSession"
   /// Projekty zwinięte w drzewie listy (``CollapsedProjects``).
   public static let collapsedProjects = "rarog.collapsedProjects"
+  /// Projects pinned in the list tree (``PinnedProjects``).
+  public static let pinnedProjects = "rarog.pinnedProjects"
   /// Prawy panel sesji na iPadzie otwarty: zmienia go wyłącznie człowiek.
   public static let inspectorOpen = "rarog.inspectorOpen"
   /// Drzewo sekcji ZMIANY W KATALOGU prawego panelu zwinięte do nagłówka: jedna flaga
@@ -44,12 +46,12 @@ public enum NavigationPreferences {
   public static let inspectorChangesCollapsed = "rarog.inspectorChangesCollapsed"
   /// Width of the iPad right panel (Double, pt), set by dragging its divider; no entry means the default width.
   public static let inspectorWidth = "rarog.inspectorWidth"
-  /// Sessions visited on this device, for the session switcher (``SessionHistory``).
+  /// Sessions visited on this device, for the mark of the last visit on the list (``SessionHistory``).
   public static let sessionHistory = "rarog.sessionHistory"
   /// Preferencje zależne od serwera — ścieżki projektów i identyfikatory sesji: magazyn kasuje je przy wejściu
   /// w nową przestrzeń danych (`RarogStore+Spaces`). Ostatni klucz należy do RarogUI (`LastSeenMemory.key`).
   public static let serverScoped = [
-    projectTabs, projectHistory, collapsedProjects, sessionHistory, "rarog.transcript.lastSeen",
+    projectTabs, projectHistory, collapsedProjects, pinnedProjects, sessionHistory, "rarog.transcript.lastSeen",
   ]
 
   public static func load<T: Decodable>(_ type: T.Type, key: String, from store: PreferenceStore) -> T? {
@@ -159,7 +161,7 @@ public struct ProjectTabMemory: Sendable, Equatable, Codable {
 }
 
 /// Pusty dekoder przesuwający kontener za wpis, którego nie umiemy przeczytać.
-private struct SkippedEntry: Decodable {
+struct SkippedEntry: Decodable {
   init(from decoder: any Decoder) throws {}
 }
 

@@ -43,7 +43,9 @@ On Linux the only path is the `systemd --user` unit `rarog.service`. `rarog serv
 which starts `rarog serve`. Never mix supervisors: `rarog restart` picks the path, so `KeepAlive` and `nohup` do not
 fight over the port. The log is `<dataDir>/server.log` (appended under launchd, overwritten on a `nohup` start).
 Every line the server writes to stdout and stderr starts with the time in UTC, ISO 8601 with milliseconds, and one
-space (`2026-11-10T16:59:23.123Z `); each line of a multi-line error gets its own prefix. Bytes that bypass the
+space (`2026-11-10T16:59:23.123Z `). A line that starts after a newline inside the same write continues one log
+call (a stack trace, a value with a newline): its time is followed by `| ` (`2026-11-10T16:59:23.123Z |     at …`),
+so a value that carries a whole log line never reads as a line the server wrote. Bytes that bypass the
 server's stdout and stderr writes, such as Node's own report of an uncaught exception, have no prefix. Output of the
 `rarog` commands for a person (`rarog doctor`, `rarog pair`) has no prefix either.
 
@@ -274,20 +276,29 @@ a `fix:` line, `warn` with a `fix:` line (works, but with a defect), `info` (no 
     agent would get the owner's power or could block channel cards), and so is a second `PermissionRequest` hook
     besides Rarog's (it can answer the same dialog). Doctor does not see project settings, so this warns and does
     not protect; a clean file is `info`;
-11. **`statusLine`**: a command in `~/.claude/settings.json` plus a `*.json` file in `~/.claude/statusline/` younger
+11. **consent without a hook** (`server/src/cli/doctor-no-hook.ts`): the `consent: no hook` lines of the last 7 days
+    (`docs/dialogs.md`, "Refusal diagnostics") from the end of `<dataDir>/server.log` (at most 32 MiB; a line
+    without the time prefix does not count), one line per cause with the count, Claude Code versions, tools and
+    sessions. `hooks-disabled` is `warn` with `disableAllHooks` (or `allowManagedHooksOnly` in managed settings) as
+    the fix, `outside-work-area` is `warn` with a root of the work area (`RAROG_HERDR_ROOTS`, then `rarog restart`),
+    `not-in-session-hooks` is `warn` with `rarog hooks doctor`, `rarog setup` and a session restart;
+    `hook-running`, `unexplained` and a cause doctor does not know are `info`, and so is no line at all. No data
+    directory or an unreadable log is `unknown`. Under the service the log is appended to and never rotated; a start
+    without the service (`restart.sh` with `nohup`) rewrites it, so the window then begins at that start;
+12. **`statusLine`**: a command in `~/.claude/settings.json` plus a `*.json` file in `~/.claude/statusline/` younger
     than an hour; no command is `ERROR` with `rarog setup` (block to paste: `rarog hooks statusline`); a command
     pointing to `~/.claude/hooks/rarog/rarog-statusline.mjs` while that copy is missing or differs from the repo is
     `ERROR` `stale`: review `rarog hooks doctor`, then run `rarog hooks install` (`docs/dialogs.md`, "`statusLine`
     script from the copy");
-12. **herdr socket** (`RAROG_HERDR_SOCKET` or `~/.config/herdr/herdr.sock`); a missing socket is `ERROR` with
+13. **herdr socket** (`RAROG_HERDR_SOCKET` or `~/.config/herdr/herdr.sock`); a missing socket is `ERROR` with
     `start herdr`, or `launchctl kickstart gui/<uid>/ai.rarog.herdr` when the macOS herdr agent is loaded and not
     running. On macOS with `~/Library/LaunchAgents/ai.rarog.herdr.plist` present, a **herdr agent** line follows
     with the verdict of the setup step ("`rarog setup`"): running is `ok`, herdr running outside it or a start at the
     next login is `info`, a stopped agent, an unloaded one while herdr is not running, a missing program, another
     socket or an unreadable plist is `ERROR` with its command, and an undetermined `launchctl print` is `unknown`;
-13. **`rarog` in `PATH`** (in a clone the symlink `~/.local/bin/rarog`, in the package the package manager's bin
+14. **`rarog` in `PATH`** (in a clone the symlink `~/.local/bin/rarog`, in the package the package manager's bin
     directory: npm `<prefix>/bin`, pnpm `pnpm bin -g`); a symlink to another installation ahead of it is `warn`;
-14. **PR status** (`docs/pull-requests.md`, "State on GitHub"; `server/src/cli/doctor-pr-status.ts`): `gh` looked
+15. **PR status** (`docs/pull-requests.md`, "State on GitHub"; `server/src/cli/doctor-pr-status.ts`): `gh` looked
     for in the server's directory list with `HOME` from the service environment, then
     `gh auth status --active --no-refresh --hostname github.com` with the same closed environment as the server's
     reads: only the active account, the one the reads use, and no token refresh, so the check writes nothing.
@@ -309,7 +320,7 @@ take the flag's port, and the data directory and the expected `RAROG_DATA_DIR` t
 trial's `--env` variables differ from `config.json`, so the live environment line shows them as `ERROR`; for a
 trial that is expected and needs no fix. Tests:
 `server/test/rarog-doctor.test.ts`, `server/test/rarog-doctor-linux.test.ts`,
-`server/test/doctor-pr-status.test.ts`.
+`server/test/doctor-pr-status.test.ts`, `server/test/doctor-no-hook.test.ts`.
 
 ### `rarog setup`
 
@@ -728,7 +739,8 @@ a complete installation setup only reports: no questions and no writes. Tests:
 
 ### `rarog update`
 
-`rarog update [--data-dir <dir>] [--verbose]` updates the npm package installed on this machine, in a terminal, from
+`rarog update [--beta] [--data-dir <dir>] [--verbose]` updates the npm package installed on this machine, in a
+terminal, from
 that installation (`server/src/cli/update.ts`). It shows the step screen of `rarog setup` (a line per step that
 changed something or needs attention, one line for the steps without a change before Check only in a run that changed
 nothing, the details in the run log `<data directory>/logs/update-<yyyymmdd-hhmmss>.log`, `--verbose` puts every step
@@ -767,7 +779,10 @@ first step, **Download** (`server/src/cli/update-registry.ts`), runs the `npm-cl
    proxy and certificate ones pass (no `prefix`, `global` or `ignore-scripts`).
    No version old enough (npm `ETARGET` or `ENOVERSIONS`) is `! Download rarog 0.2.0 not installed yet (npm age
    gate)`, exit 0, and nothing else runs; any other npm error is `✗ Download` with `Fix: check the network, then
-   rarog update`.
+   rarog update`. A bound that is a pre-release of the newest's own `X.Y.Z` (an installed `1.1.0-beta.1` below
+   `1.1.0`) lets npm's range admit the betas of that version, and the age gate can pick one; such a tarball is
+   refused before any check: `✗ Download npm gave the pre-release <version>; rarog update without --beta installs
+   only releases`, and its fix names `rarog update --beta`.
 6. The tarball is checked before anything is installed (`server/src/cli/update-provenance.ts`). Its sha512 must equal
    `dist.integrity` from `npm view @rarog/server@<version> dist --json`. Then `npm audit signatures --json
    --include-attestations` runs in an empty project in the temporary directory that names only this version. npm must
@@ -797,6 +812,28 @@ first step, **Download** (`server/src/cli/update-registry.ts`), runs the `npm-cl
    3 days old; npm installs it from <YYYY-MM-DD>`, UTC; with both: `! Download rarog 0.1.2 installed, 0.2.0 is …`).
    The times come from `npm view @rarog/server time versions --json`, and only versions the registry still has
    count (an unpublished version keeps its time). Without those values the line stays as above.
+
+**`--beta`.** Without the flag `rarog update` never installs a beta. With it, steps 3 and 5 change, and a fix that
+runs the update again names `rarog update --beta`:
+
+- Step 3 is `npm view @rarog/server dist-tags --json`. The target is the higher of the `beta` and `latest` tags,
+  because nobody moves `beta` after a release, and a release above the last beta is the newer code. `latest` must be a
+  release `X.Y.Z` (otherwise `✗ Download npm gave no version of @rarog/server`), and `beta` counts only as
+  `X.Y.Z-beta.N`. No `beta` tag, or one that names no beta, leaves `latest` as the target, and the Download line ends
+  with `; npm has no beta tag` (or `; npm's beta tag is not a beta version`) under `!`. A target equal to or lower
+  than this version has nothing to install (`– Download rarog 1.1.0-beta.10 is newer than 1.1.0-beta.9 on npm`), and
+  the finish runs here as in step 3.
+- A higher target is read on its own: `npm view @rarog/server@<target> version engines deprecated --json`. Its
+  `engines.node` is checked as in step 4. A deprecated target is `! Download rarog <target> is deprecated on npm, so
+  <version> stays`, exit 0, and nothing else runs; the deprecation message is not shown.
+- Step 5 is `npm pack @rarog/server@<target>`, exactly that version, and a tarball of another version is `✗ Download
+  npm gave <version>, not <target>`. Steps 6 and 7 follow unchanged. npm's age gate holds an exact version back as it
+  holds a range (`ETARGET`), and the `!` line names the target's own age and day. The gate is read with
+  `npm config get min-release-age before min-release-age-exclude -g`: with `@rarog/server` in
+  `min-release-age-exclude` (a name or a glob such as `@rarog/*`, several joined by commas) npm installs the package
+  however young, so a gate stop is a dependency's and the line has no date.
+
+`--beta` with `--finish` is a usage error: the finish downloads nothing.
 
 After a new version is installed, the run writes `installed` into the update lock and starts that version's own
 `rarog update --finish` (with `--data-dir` and `--verbose` when given) with this node, the lock token in
@@ -1125,6 +1162,23 @@ changes with an entry in `env` and a restart.
   `security-model.md`, "PR status: the state of session PRs from GitHub". `0` = no tracker, no `gh` call and no
   `state` field on the wire; any value other than `1` or `0` stops the start. The demo answers from a fixed map
   and never runs `gh`. `rarog doctor` shows the line "PR status".
+- `RAROG_INBOX=1` (default) keeps an Inbox card per session (`server/src/inbox/`), sends the card heads to a global
+  stream opened with `inbox=1`, serves `GET /api/inbox` and its remove and restore routes, and announces the `inbox`
+  capability (`docs/implementation-spec.md`, "Inbox"). It sends nothing to a pane; a removal of a result card
+  receives the result like opening the session. `0` = no card tracker, no Inbox event, no capability, every Inbox
+  route 503 `inbox-disabled`, and `<dataDir>/inbox.json` stays untouched; any value other than `1` or `0` stops the
+  start. The demo obeys it the same way over its own sessions.
+- `RAROG_FILES=1` (default) lists a directory of a session (`GET /api/sessions/:id/files?dir=`), sends one file of it
+  (`GET /api/sessions/:id/files/raw?path=`), gives the index of its files (`GET /api/sessions/:id/files/index`) and
+  announces the `files` and `file-index` capabilities (`docs/implementation-spec.md`, "Session files"). It sends
+  nothing to a pane; what a device can read through it: `security-model.md`, "Session files: listing and download".
+  `0` = the three routes answer 404 as an unknown route for every method and both capabilities are absent; any value
+  other than `1` or `0` stops the start.
+- `RAROG_FILES_MAX_MB=50` (default) is the file size limit of the session file download, in whole megabytes from 1 to
+  1024: a larger file gets 413 `file-too-large` with its size and the limit, before the first byte. Every listing
+  announces the limit in bytes (`maxBytes`), so the app needs no update when it changes (`config.json` and
+  `rarog restart`). A fraction, an exponent or a value out of range stops the start (`rarog serve --check` names the
+  variable).
 - `RAROG_QUEUE_ECHO=1` (default) holds the echo of a prompt the app sent with `queueAware` while the agent works,
   until Claude Code takes it from its queue, so the message lands in the transcript where the agent read it. `0` =
   echo at once, 202 without `queued`, the app back to its 15 s threshold, e.g. when `queue: … flushed` lines show
@@ -1206,9 +1260,10 @@ changes with an entry in `env` and a restart.
   `channel` a main-thread request outside MCP gets the button from a live, registered hook, the full card content and
   a registry read `waiting: permission` no older than 5 s, without reading the top of the screen. The version gate
   counts the rule per request kind, main thread and subagents: a Claude Code release in that same registry read
-  higher than the measured one (`CONSENT_CHANNEL_MEASURED_CLI`) gets `channel` only with a `pass` for that kind in
-  `<dataDir>/consent-canary.json`, a `fail` there takes `channel` away also from a measured release, and an unknown
-  release (also several live processes of the session) gets `screen`; MCP tools use `screen` (`docs/dialogs.md`,
+  higher than the measured one (`CONSENT_CHANNEL_MEASURED_CLI`) or on its exclusion list gets `channel` only with a
+  `pass` for that kind in `<dataDir>/consent-canary.json`, a `fail` there takes `channel` away also from a measured
+  release, and an unknown release (also several live processes of the session) gets `screen`; MCP tools use
+  `screen` (`docs/dialogs.md`,
   "Proof rule", for the file and the line `consent: session <id> runs Claude Code <version>: proof rule …` at a
   change of a session's rules). At `screen` every request needs its dialog alone on top of the screen, whatever the
   canary file says. It opens no channel and is

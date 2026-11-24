@@ -49,7 +49,8 @@ Packages/RarogCore        @Observable store, reducers, connection loop, compatib
 Packages/RarogUI          SwiftUI and UIKit, copy, presentation models; no domain logic
 Packages/RarogTerminal    terminal renderer: SwiftTerm 1.19.0 behind `TerminalSurface` (the only SwiftTerm
                           import), fallback font with Nerd Font glyphs
-Packages/RarogActivity    Live Activity: ActivityKit attributes, its copy, Lock Screen and Dynamic Island views
+Packages/RarogActivity    Live Activities: the sessions board and the voice recording (ActivityKit attributes, copy,
+                          Lock Screen and Dynamic Island views), the voice recording's End intent
 Packages/RarogIroh        iroh adapter: IrohLib 1.2.0 behind the tunnel protocols of `RarogTransport` (the only
                           IrohLib import), `IrohTunnelTransport` and `IrohSigner`
 Rarog.xcodeproj           app `ai.rarog.app` (target Rarog), widget extension `ai.rarog.app.widgets` (target
@@ -58,11 +59,13 @@ Rarog.xcodeproj           app `ai.rarog.app` (target Rarog), widget extension `a
                           and UIKit tests (RarogUIKitTests, `ai.rarog.app.uikittests`); for scripts:
                           `scripts/ios-identity.sh`
 Rarog/                    app code: App, delegate (APNs), configuration, system signals (network, MetricKit),
-                          system adapters for the core (notifications, background work, Live Activity), icon,
+                          system adapters for the core (notifications, background work, Live Activity), the
+                          voice Live Activity's controller (`VoiceActivityController`), icon,
                           translations of the usage texts (`InfoPlist.xcstrings`), the tunnel coordinator
                           (`TunnelCoordinator`, `TunnelTrace`), the relay registry gate (`RelayGates`,
                           `RelayAccessSetup`)
-RarogWidgets/             WidgetKit extension: the aggregate Live Activity (`ActivityConfiguration`), own Info.plist
+RarogWidgets/             WidgetKit extension: the aggregate Live Activity and the voice Live Activity
+                          (`ActivityConfiguration`), own Info.plist
 RarogNotificationService/ notification service extension (NSE): v3 banner title and body from decryption,
                           `rarogOpen`; own Info.plist (`NSExtension`, `RarogKeychainSharedGroup`)
 RarogUITests/             UI tests against the demo server, plus screenshots on request
@@ -105,8 +108,9 @@ ONLY `RarogContract` and `RarogActivity` (no core, no transport); the `RarogNoti
 Synchronization, Network (the tunnel's loopback proxy) and `RarogContract`). The app links `RarogActivity` next to its
 other packages. Only the `RarogCore` tests depend on `RarogActivity`, the `RarogCore` library does not:
 `RarogActivity` builds the address a Live Activity tap opens, `PushRouting` in the core reads it, and a test checks
-that both agree. Packages without UIKit test on macOS (`RarogActivity`: copy
-and links; views and ActivityKit sit under `#if os(iOS)`, because ActivityKit is in the macOS SDK but unavailable).
+that both agree. Packages without UIKit test on macOS (`RarogActivity`: copy, links and the voice activity's state;
+views, ActivityKit and the End intent sit under `#if os(iOS)`, because ActivityKit is in the macOS SDK but
+unavailable).
 `RarogUI` does not import SwiftTerm (guard `TerminalSurfaceSourceTests`): the renderer comes in as the
 `TerminalSurfaceFactory` from the SwiftUI environment, which the app injects. `RarogIroh → RarogTransport` (tests
 also `RarogContract`): only the app target links it, so the extensions and the `swift test` of the other packages

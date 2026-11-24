@@ -16,18 +16,29 @@ export type InboxCardKind = 'result' | 'decision' | 'failed';
  * The decision a `decision` card waits for, as the session summary carries it: a permission or question card
  * (`waitingFor`, and `requestId`, the `permId` or `qId` of that card in the session stream), or a dialog in the pane
  * without a card (`herdrDialog` when Rarog recognises it, `herdrDialogReason` why it has no buttons). The card does
- * not carry the full pending card of the session stream: reading it (`ManagerApi.transcript`) marks the consent cards
- * it returns as shown on a device, which is true only when the card is delivered to one.
+ * not carry the full pending card of the session stream: reading it (`ManagerApi.transcript`) marks every consent
+ * card of the session as shown on a device, which is true only for a device that gets them all (the session stream).
  */
 export type InboxDialog =
   | { readonly kind: 'permission' | 'question'; readonly waitingFor?: WaitingFor; readonly requestId?: string }
   | { readonly kind: 'panel'; readonly herdrDialog?: KnownDialogId; readonly herdrDialogReason?: RefuseReason };
 
+/** The card a decision stands for: its id in the session stream and the revision of its state and buttons. */
+export interface DialogRequest {
+  /** The `permId` or `qId`. */
+  readonly id: string;
+  /**
+   * Opaque digest of a consent card's state and buttons, which change in place (`PendingDialogs.revision`); none for
+   * a card that does not change in place.
+   */
+  readonly revision?: string;
+}
+
 /**
- * The request id of the card a session's `waitingFor` of `kind` describes (`PendingDialogs.current`); `undefined` when
- * the card is not known for sure to be the one `waitingFor` describes.
+ * The card a session's `waitingFor` of `kind` describes (`PendingDialogs.current`); `undefined` when the card is not
+ * known for sure to be the one `waitingFor` describes.
  */
-export type RequestOf = (kind: 'permission' | 'question', waitingFor: WaitingFor | undefined) => string | undefined;
+export type RequestOf = (kind: 'permission' | 'question', waitingFor: WaitingFor | undefined) => DialogRequest | undefined;
 
 export interface InboxCard {
   readonly sessionId: string;
@@ -35,8 +46,8 @@ export interface InboxCard {
   readonly turnId: string;
   /**
    * Opaque version of the card: the segment's version (late text of the same turn changes it), the kind, the
-   * identity of a decision's dialog and the moment the session entered a failure state. A request built from an
-   * older card does not match.
+   * identity of a decision's dialog, the revision of its consent card's state and buttons, and the moment the session
+   * entered a failure state. A request built from an older card does not match.
    */
   readonly version: string;
   readonly kind: InboxCardKind;
@@ -133,12 +144,15 @@ export function composeCard(
   const kind = carded(session);
   if (kind === null || shown === undefined) return null;
   const at = kind === 'result' ? shown.at : session.stateSince;
-  const dialog = kind === 'decision' ? dialogOf(session, requestOf) : undefined;
+  const decided = kind === 'decision' ? dialogOf(session, requestOf) : undefined;
+  const dialog = decided?.dialog;
   const key: RemovalKey = keyOf(shown.turnId, kind, dialog, at);
+  // The revision changes the version only: a removal of the card holds while its buttons change.
+  const revision = decided?.revision === undefined ? [] : [decided.revision];
   return {
     sessionId: session.id,
     turnId: shown.turnId,
-    version: digest([shown.version, kind, key.dialog ?? '', key.dialogId ?? '', key.since ?? '']),
+    version: digest([shown.version, kind, key.dialog ?? '', key.dialogId ?? '', key.since ?? '', ...revision]),
     kind,
     state: session.state,
     at,
@@ -173,21 +187,27 @@ function dialogIdOf(dialog: InboxDialog): string {
   return digest([dialog.kind, 'summary', JSON.stringify(dialog.waitingFor ?? null)]);
 }
 
-function dialogOf(session: SessionSummary, requestOf: RequestOf): InboxDialog {
+/** The dialog of a decision card, and the revision of its request's state and buttons when it has one. */
+function dialogOf(session: SessionSummary, requestOf: RequestOf): { dialog: InboxDialog; revision?: string } {
   const waiting = session.waitingFor;
   const kind = waiting?.kind ?? (session.state === 'waiting-question' ? 'question' : undefined);
   if (kind === undefined) {
     return {
-      kind: 'panel',
-      ...(session.herdrDialog === undefined ? {} : { herdrDialog: session.herdrDialog }),
-      ...(session.herdrDialogReason === undefined ? {} : { herdrDialogReason: session.herdrDialogReason }),
+      dialog: {
+        kind: 'panel',
+        ...(session.herdrDialog === undefined ? {} : { herdrDialog: session.herdrDialog }),
+        ...(session.herdrDialogReason === undefined ? {} : { herdrDialogReason: session.herdrDialogReason }),
+      },
     };
   }
-  const requestId = requestOf(kind, waiting);
+  const request = requestOf(kind, waiting);
   return {
-    kind,
-    ...(waiting === undefined ? {} : { waitingFor: waiting }),
-    ...(requestId === undefined ? {} : { requestId }),
+    dialog: {
+      kind,
+      ...(waiting === undefined ? {} : { waitingFor: waiting }),
+      ...(request === undefined ? {} : { requestId: request.id }),
+    },
+    ...(request?.revision === undefined ? {} : { revision: request.revision }),
   };
 }
 

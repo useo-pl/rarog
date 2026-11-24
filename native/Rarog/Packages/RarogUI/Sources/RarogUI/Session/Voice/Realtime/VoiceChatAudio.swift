@@ -129,24 +129,27 @@ final class VoiceChatAudio: RealtimeAudio {
   }
 
   /// Kawałki mowy z wątku podsłuchu do rozmowy, na głównym aktorze; po `stop()` nic nie przechodzi.
-  private func inputDelivery() -> @Sendable (Data) -> Void {
-    { [weak self] pcm in
+  /// Each chunk keeps the capture time of its tap buffer, in the order of capture (the main queue is serial).
+  private func inputDelivery() -> @Sendable (Data, TimeInterval?) -> Void {
+    { [weak self] pcm, capturedAt in
       DispatchQueue.main.async {
         MainActor.assumeIsolated {
           guard let self, self.running else { return }
-          self.handlers?.input(pcm)
+          self.handlers?.input(pcm, capturedAt)
         }
       }
     }
   }
 
+  /// The tap's `when` is the time the buffer was captured (the `AVAudioNodeTapBlock` contract); its host time, when
+  /// valid, goes with the converted chunk as seconds on ``RealtimeHostClock``.
   nonisolated static func installTap(
     on node: AVAudioNode, format: AVAudioFormat?, pipeline: RealtimeInputPipeline,
-    deliver: @escaping @Sendable (Data) -> Void
+    deliver: @escaping @Sendable (Data, TimeInterval?) -> Void
   ) {
-    node.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+    node.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, when in
       guard let pcm = pipeline.process(buffer), !pcm.isEmpty else { return }
-      deliver(pcm)
+      deliver(pcm, when.isHostTimeValid ? AVAudioTime.seconds(forHostTime: when.hostTime) : nil)
     }
   }
 

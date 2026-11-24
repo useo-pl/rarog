@@ -90,13 +90,16 @@ struct AppShortcutSettingsTests {
     #expect(scratch.defaults.dictionaryRepresentation().keys.allSatisfy { !AppShortcutSettings.keys.contains($0) })
   }
 
-  @Test("allowed: a digit with ⌥⌘, a letter with ⇧⌃, the shortcut's own current combination")
+  @Test("allowed: a digit with ⌥⌘, a letter with ⇧⌃, the shortcut's own current combination, ⌘S and ⇧⌘S")
   func allowed() {
     let scratch = Scratch()
     let settings = AppShortcutSettings(defaults: scratch.defaults)
     #expect(settings.check(Combination(key: .character("7"), modifiers: [.option, .command]), for: .dictation) == nil)
     #expect(settings.check(Combination(key: .character("k"), modifiers: [.shift, .control]), for: .voiceAgent) == nil)
     #expect(settings.check(Combination(key: .character("m"), modifiers: [.option, .command]), for: .dictation) == nil)
+    // No app shortcut uses ⌘S.
+    #expect(settings.check(Combination(key: .character("s"), modifiers: .command), for: .dictation) == nil)
+    #expect(settings.check(Combination(key: .character("s"), modifiers: [.shift, .command]), for: .voiceAgent) == nil)
   }
 
   @Test("dictation and the voice agent cannot share a combination, whichever moves")

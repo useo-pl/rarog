@@ -15,6 +15,22 @@
   "commands.disk.json": { "route": "GET /api/sessions/:id/commands", "status": 200, "schema": "commandList" },
   "models.json": { "route": "GET /api/models", "status": 200, "schema": "modelList" },
   "diff.files.json": { "route": "GET /api/sessions/:id/diff/files", "status": 200, "schema": "diffFileList" },
+  "files.list.json": { "route": "GET /api/sessions/:id/files?dir=", "status": 200, "schema": "fileListing" },
+  "files.list.truncated.json": {
+    "route": "GET /api/sessions/:id/files?dir=", "status": 200, "schema": "fileListing"
+  },
+  "files.index.json": { "route": "GET /api/sessions/:id/files/index", "status": 200, "schema": "fileIndex" },
+  "error.file-too-large.json": {
+    "route": "GET /api/sessions/:id/files/raw?path=", "status": 413, "schema": "fileTooLargeBody"
+  },
+  "error.files-bad-path.json": {
+    "route": "GET /api/sessions/:id/files/raw?path=", "status": 400, "schema": "errorBody"
+  },
+  "error.files-not-found.json": { "route": "GET /api/sessions/:id/files?dir=", "status": 404, "schema": "errorBody" },
+  "error.files-codex.json": { "route": "GET /api/sessions/:id/files?dir=", "status": 400, "schema": "errorBody" },
+  "error.files-out-of-scope.json": {
+    "route": "GET /api/sessions/:id/files?dir=", "status": 400, "schema": "errorBody"
+  },
   "diff.files.truncated.json": {
     "route": "GET /api/sessions/:id/diff/files", "status": 200, "schema": "diffFileList"
   },
@@ -84,6 +100,9 @@
   "mac.json": { "route": "GET /api/mac", "status": 200, "schema": "macLoad" },
   "mac.partial.json": { "route": "GET /api/mac", "status": 200, "schema": "macLoad" },
   "interrupt.json": {
+    "route": "POST /api/sessions/:id/interrupt", "status": 202, "schema": "interruptResponse"
+  },
+  "interrupt.returned-prompt.json": {
     "route": "POST /api/sessions/:id/interrupt", "status": 202, "schema": "interruptResponse"
   },
   "messages.accepted.json": {
@@ -182,5 +201,19 @@
   },
   "error.companion-speech-upstream.json": {
     "route": "POST /api/companion/speech-token", "status": 502, "schema": "errorBody"
-  }
+  },
+  "version.inbox.json": { "route": "GET /api/version", "status": 200, "schema": "versionResponse" },
+  "inbox.list.json": { "route": "GET /api/inbox", "status": 200, "schema": "inboxList" },
+  "inbox.card.json": { "route": "GET /api/inbox/:id", "status": 200, "schema": "inboxCardResponse" },
+  "inbox.card.none.json": { "route": "GET /api/inbox/:id", "status": 200, "schema": "inboxCardResponse" },
+  "inbox.removed.json": { "route": "POST /api/inbox/:id/remove", "status": 200, "schema": "inboxActionResponse" },
+  "inbox.removed.again.json": {
+    "route": "POST /api/inbox/:id/remove", "status": 200, "schema": "inboxActionResponse"
+  },
+  "inbox.restored.receipt-skipped.json": {
+    "route": "POST /api/inbox/:id/restore", "status": 200, "schema": "inboxActionResponse"
+  },
+  "error.inbox-card-changed.json": { "route": "POST /api/inbox/:id/remove", "status": 409, "schema": "errorBody" },
+  "error.inbox-save-failed.json": { "route": "POST /api/inbox/:id/remove", "status": 500, "schema": "errorBody" },
+  "error.inbox-disabled.json": { "route": "GET /api/inbox", "status": 503, "schema": "errorBody" }
 }

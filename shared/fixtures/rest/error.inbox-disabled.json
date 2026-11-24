@@ -1,0 +1,7 @@
+{
+  "error": "inbox-disabled",
+  "message": "The Inbox is turned off on the server (RAROG_INBOX).",
+  "messageRef": {
+    "code": "rest.inbox-disabled"
+  }
+}

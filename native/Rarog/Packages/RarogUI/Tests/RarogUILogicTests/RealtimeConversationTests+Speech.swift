@@ -80,11 +80,11 @@ extension RealtimeHarness {
   }
 
   /// The text sent on `stream`, joined.
-  fileprivate func speechText(_ stream: String) -> String {
+  func speechText(_ stream: String) -> String {
     speechFrames.filter { $0["stream_id"] as? String == stream }.compactMap { $0["text"] as? String }.joined()
   }
 
-  fileprivate func speechEnded(_ stream: String) -> Bool {
+  func speechEnded(_ stream: String) -> Bool {
     speechFrames.contains { $0["stream_id"] as? String == stream && $0["text_end"] as? Bool == true }
   }
 
@@ -107,7 +107,7 @@ extension RealtimeHarness {
   }
 
   /// Stream ids Soniox was told to cancel.
-  fileprivate var cancelledStreams: [String] {
+  var cancelledStreams: [String] {
     speechFrames.filter { $0["cancel"] as? Bool == true }.compactMap { $0["stream_id"] as? String }
   }
 

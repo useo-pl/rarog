@@ -17,13 +17,15 @@ import RarogCore
 /// (``persistAfterLoading(_:)``).
 ///
 /// A screen alive out of the window (under a full-screen presentation) leaves a failed send's text waiting in memory;
-/// its field takes the waiting texts (``takeWaiting(for:)``) before it writes the draft again, because that write
-/// replaces the draft.
+/// its field takes the waiting texts (``takeWaiting(for:after:)``) before it writes the draft again, because that write
+/// replaces the draft. An Inbox card's reply field reads the draft without taking it (``peek(for:)``) and before each
+/// write takes the texts that came after its read.
 ///
 /// The queue take-back writes and waits for the disk's answer, because the outbox entries of the taken messages leave
 /// only after their texts are on disk: the live field of the session screen that stands at answer time
 /// (``persistConfirmed(text:attachments:for:)``; screens register with ``registerScreen(_:for:)``), and without one
-/// the stored draft (``saveTaken(_:for:)``).
+/// the stored draft (``saveTaken(_:for:)``). A prompt handed back after an interrupt takes the same two routes; without
+/// a screen it goes into the stored draft (``saveReturnedPrompt(_:for:)``).
 ///
 /// Na dysku: `<przestrzeń serwera>/drafts/` (ochrona do pierwszego odblokowania, poza kopią
 /// zapasową — ta sama klasa danych co kolejka wysyłki); bez katalogu (testy) tylko pamięć procesu.
@@ -35,8 +37,8 @@ public final class ComposerDrafts {
     public let note: String?
   }
 
-  /// A draft that waits in process memory for a field (``take(for:)``, ``takeWaiting(for:)``).
-  private struct Waiting: Equatable {
+  /// A draft that waits in process memory for a field (``take(for:)``, ``takeWaiting(for:after:)``).
+  fileprivate struct Waiting: Equatable {
     /// What a screen that opens takes: the waiting texts on top of the stored draft.
     var draft: Draft
     /// The waiting texts alone, without the stored draft under them.
@@ -105,17 +107,56 @@ public final class ComposerDrafts {
   /// Zabiera szkic do pola: z pamięci procesu, a bez niej z dysku (po zabiciu apki). Dysku nie
   /// czyści — robi to pierwszy zapis żywego pola.
   public func take(for sessionId: String) -> Draft? {
-    if let waiting = memory.removeValue(forKey: sessionId) { return waiting.draft }
-    guard let stored = disk?.load(sessionId), !stored.text.isEmpty else { return nil }
-    return Draft(text: stored.text, note: nil)
+    let draft = peek(for: sessionId).draft
+    memory[sessionId] = nil
+    return draft
   }
 
-  /// What a live screen takes into its field before the field writes the draft again: only the texts waiting in
-  /// process memory, without the stored draft under them, which the field already holds (it took that draft when the
-  /// screen opened, and its writes made it). The disk is not read: its draft is a copy of a field, not a text to add.
-  /// `nil`: nothing waits. A screen that opens takes the whole draft (``take(for:)``).
-  func takeWaiting(for sessionId: String) -> Draft? {
-    memory.removeValue(forKey: sessionId).map { Draft(text: $0.onTop, note: $0.draft.note) }
+  /// What a field read with ``peek(for:)``: the draft it shows, and the texts that waited in memory then, which that
+  /// draft holds. ``takeWaiting(for:after:)`` gives the field only the texts that came after the read.
+  struct Shown: Equatable {
+    let draft: Draft?
+    fileprivate var waiting: Waiting?
+
+    /// A field that holds the draft (it took it, or wrote it since): every text waiting in memory is new to it.
+    static let held = Shown(draft: nil)
+
+    init(draft: Draft?) {
+      self.draft = draft
+    }
+
+    fileprivate init(_ waiting: Waiting) {
+      draft = waiting.draft
+      self.waiting = waiting
+    }
+  }
+
+  /// What ``take(for:)`` gives, left where it is: for a field that shows the draft but takes it over only when it
+  /// first writes it (an Inbox card's reply field), so a field left untouched keeps the waiting text and its reason
+  /// for the session screen. Before each write the field takes what came after the read
+  /// (``takeWaiting(for:after:)``).
+  func peek(for sessionId: String) -> Shown {
+    if let waiting = memory[sessionId] { return Shown(waiting) }
+    guard let stored = disk?.load(sessionId), !stored.text.isEmpty else { return Shown(draft: nil) }
+    return Shown(draft: Draft(text: stored.text, note: nil))
+  }
+
+  /// What a live field takes before it writes the draft again, because the write replaces the draft: only the texts
+  /// waiting in process memory that it does not show yet, and their reason when it is not the one it shows. A field
+  /// that holds the draft (`.held`: a session screen took it when it opened, and its writes made the stored one) takes
+  /// every waiting text without the stored draft under them; the disk is not read, its draft is a copy of a field.
+  /// A field that read the draft with ``peek(for:)`` takes only what came after the read. Either way the waiting
+  /// texts leave memory: the field holds them now. `nil`: nothing new. A screen that opens takes the whole draft
+  /// (``take(for:)``).
+  func takeWaiting(for sessionId: String, after shown: Shown = .held) -> Draft? {
+    guard let waiting = memory.removeValue(forKey: sessionId) else { return nil }
+    guard let read = shown.waiting else { return Draft(text: waiting.onTop, note: waiting.draft.note) }
+    guard waiting != read else { return nil }
+    // A text that comes later stands on top of those the field read (`stacked`, `saveReturnedPrompt`). Memory a
+    // session screen took in between starts again without them, and then all of it is new.
+    let below = "\n\(read.onTop)"
+    let text = waiting.onTop.hasSuffix(below) ? String(waiting.onTop.dropLast(below.count)) : waiting.onTop
+    return Draft(text: text, note: waiting.draft.note == read.draft.note ? nil : waiting.draft.note)
   }
 
   /// Załączniki szkicu z dysku jako świeże kopie w katalogu roboczym paska (``AttachmentStaging``).
@@ -127,7 +168,7 @@ public final class ComposerDrafts {
   /// Stan żywego pola. Pusty tekst bez załączników kasuje szkic. `failed` (na głównym aktorze) =
   /// dysk tego stanu nie przyjął (brak miejsca, uprawnienia); na dysku został poprzedni szkic, cały.
   /// The state replaces the draft and drops the texts waiting in memory: the field takes them first
-  /// (``takeWaiting(for:)``).
+  /// (``takeWaiting(for:after:)``).
   public func persist(
     text: String, attachments: [ComposerAttachment], for sessionId: String,
     failed: (@MainActor @Sendable () -> Void)? = nil
@@ -162,12 +203,32 @@ public final class ComposerDrafts {
     return true
   }
 
+  /// A prompt Claude Code handed back after an interrupt when no screen of the session lives: placed against the draft
+  /// waiting in memory, or else the stored one, as the field places it (``InterruptPresentation/place(_:before:)``),
+  /// and written with the attachments of the session's shelf. A screen that opens later takes it with the draft.
+  /// Unlike ``saveTaken(_:for:)`` a refused write keeps the text waiting in memory: nothing replays an interrupt, so
+  /// taking it out would lose the prompt.
+  public func saveReturnedPrompt(_ prompt: String, for sessionId: String) {
+    let kept = memory[sessionId]
+    let previous = previousDraft(for: sessionId)
+    let waiting = Waiting(
+      draft: Draft(text: InterruptPresentation.place(prompt, before: previous?.text ?? "").text, note: previous?.note),
+      onTop: InterruptPresentation.place(prompt, before: kept?.onTop ?? "").text)
+    memory[sessionId] = waiting
+    disk?.write(sessionId, text: waiting.draft.text, attachments: shelf.attachments(for: sessionId))
+  }
+
+  /// The draft waiting in memory, or else the stored one with text.
+  private func previousDraft(for sessionId: String) -> Draft? {
+    memory[sessionId]?.draft
+      ?? disk?.load(sessionId).flatMap { $0.text.isEmpty ? nil : Draft(text: $0.text, note: nil) }
+  }
+
   /// `text` on top of the draft waiting in memory, or else of the stored one; the earlier note stays unless `note`
   /// replaces it.
   private func stacked(_ text: String, note: String?, for sessionId: String) -> Waiting {
     let kept = memory[sessionId]
-    let previous = kept?.draft
-      ?? disk?.load(sessionId).flatMap { $0.text.isEmpty ? nil : Draft(text: $0.text, note: nil) }
+    let previous = previousDraft(for: sessionId)
     return Waiting(
       draft: Draft(text: previous.map { "\(text)\n\($0.text)" } ?? text, note: note ?? previous?.note),
       onTop: kept.map { "\(text)\n\($0.onTop)" } ?? text)
@@ -188,6 +249,12 @@ public final class ComposerDrafts {
   /// Czeka na zapisy w kolejce dysku (testy).
   public func flush() {
     disk?.flush()
+  }
+
+  /// Returns once the disk ran every write asked for so far. It does not need the screen that asked: a recording that
+  /// ends as its screen goes still waits for its draft here.
+  public func written() async {
+    await disk?.written()
   }
 
   private func flushPending(_ sessionId: String) {
@@ -279,6 +346,13 @@ final class DraftDisk: @unchecked Sendable {
 
   func flush() {
     DraftsDisk.shared.flush(ticket)
+  }
+
+  /// Returns once every operation queued so far ran.
+  func written() async {
+    await withCheckedContinuation { continuation in
+      DraftsDisk.shared.async(ticket) { continuation.resume() }
+    }
   }
 
   // MARK: - Na kolejce

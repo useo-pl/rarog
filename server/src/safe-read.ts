@@ -18,9 +18,17 @@
  * wołający ma już własną obsługę „nie da się przeczytać”, a `ensureGitExclude` odróżnia po `ENOENT` brak pliku
  * od pliku, którego nie wolno ruszyć. Pilnuje tego strażnik `server/test/pliki-zwykle-guard.test.ts`: odczyt
  * z `node:fs` poza tym modułem stoi na jego liście wyjątków z powodem.
+ *
+ * A file sent on in pieces opens with {@link openRegularFile} and is read with {@link exactReader}: exactly the bytes
+ * of its `fstat`, from that one descriptor.
+ *
+ * Besides regular files, one directory read lives here, because on Linux it opens the directory:
+ * {@link readDirectoryByIdentity} lists a directory through its `dev` and `ino` rather than its path. On Linux that
+ * binds the read to the checked directory; on macOS it narrows the window of a swap but does not close it.
  */
 import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
-import { open } from 'node:fs/promises';
+import type { BigIntStats, Dirent } from 'node:fs';
+import { open, readdir } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 
 export interface ReadRegularOptions {
@@ -105,6 +113,116 @@ export async function readRegularFile(path: string, opts: ReadRegularOptions): P
       filled += bytesRead;
     }
     return result(buffer, filled, opts.maxBytes);
+  } finally {
+    await handle.close();
+  }
+}
+
+/** A regular file left open: the handle and the `fstat` of that same descriptor, with `dev` and `ino` exact. */
+export interface OpenedRegularFile {
+  readonly handle: FileHandle;
+  readonly stats: BigIntStats;
+}
+
+/**
+ * The open of {@link readRegularFile} without the read, for a caller that sends the file on in pieces: the same
+ * flags and the `fstat` on the descriptor; not a regular file → the handle is closed and the result is `null`. The
+ * caller closes the handle. Throws on an error of the open, like the readers.
+ */
+export async function openRegularFile(
+  path: string, opts: Pick<ReadRegularOptions, 'followSymlink'>,
+): Promise<OpenedRegularFile | null> {
+  const handle = await open(path, openFlags(opts.followSymlink));
+  try {
+    const stats = await handle.stat({ bigint: true });
+    if (stats.isFile()) return { handle, stats };
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
+  await handle.close();
+  return null;
+}
+
+/** One step of {@link exactReader}: the next piece, the end of the first `size` bytes, or a file found shorter. */
+export type ExactPiece =
+  | { readonly kind: 'piece'; readonly bytes: Buffer }
+  | { readonly kind: 'done' }
+  | { readonly kind: 'short'; readonly read: number };
+
+/** Bytes per piece of {@link exactReader} by default. */
+export const EXACT_PIECE_BYTES = 64 * 1024;
+
+/**
+ * Reads the first `size` bytes of a file open on `handle` (the `fstat` size of {@link openRegularFile}), one piece
+ * of at most `pieceBytes` per call, each at its own offset: the position of the descriptor does not matter, and bytes
+ * appended past `size` are never read. `short`: the file ended before `size` bytes, so it was cut since its `fstat`
+ * and what was read is not the file. The caller calls it one step at a time, owns the handle and closes it; an error
+ * of the read rejects.
+ */
+export function exactReader(
+  handle: Pick<FileHandle, 'read'>, size: number, pieceBytes: number = EXACT_PIECE_BYTES,
+): () => Promise<ExactPiece> {
+  let position = 0;
+  return async () => {
+    if (position >= size) return { kind: 'done' };
+    const buffer = Buffer.allocUnsafe(Math.min(pieceBytes, size - position));
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+    if (bytesRead === 0) return { kind: 'short', read: position };
+    position += bytesRead;
+    return { kind: 'piece', bytes: bytesRead === buffer.length ? buffer : buffer.subarray(0, bytesRead) };
+  };
+}
+
+/** `dev` and `ino` of a directory, from a `stat` with `bigint: true`. */
+export interface DirectoryIdentity {
+  readonly dev: bigint;
+  readonly ino: bigint;
+}
+
+/** The system calls of {@link readDirectoryByIdentity}; a test replaces one to run the Linux branch elsewhere. */
+export interface DirectoryReadIo {
+  readonly platform: NodeJS.Platform;
+  /** Opens the directory itself: `O_DIRECTORY | O_NOFOLLOW`, so a symlink in the last segment fails the open. */
+  readonly openDirectory: (dir: string) => Promise<FileHandle>;
+  /** Entries of the directory open on `fd`, through `/proc/self/fd/<fd>`, which leads to the descriptor. */
+  readonly readOpen: (fd: number) => Promise<Dirent<Buffer>[]>;
+}
+
+const DIRECTORY_FLAGS = constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+const entriesOf = (dir: string): Promise<Dirent<Buffer>[]> => readdir(dir, { withFileTypes: true, encoding: 'buffer' });
+
+export const DIRECTORY_IO: DirectoryReadIo = {
+  platform: process.platform,
+  openDirectory: (dir) => open(dir, DIRECTORY_FLAGS),
+  readOpen: (fd) => entriesOf(`/proc/self/fd/${String(fd)}`),
+};
+
+/**
+ * Entries of the directory `dir` whose `stat` gave `identity`, names as bytes, read through that identity instead of
+ * the path:
+ * - macOS: `/.vol/<dev>/<ino>`. The kernel turns the inode back into its current path and looks that path up within
+ *   the one call (a parent without search permission refuses it), so a swap made before the call does not redirect
+ *   it. A swap that lands inside the call still can: Node has no descriptor-based directory read on macOS, so this
+ *   narrows the race and the caller's checks after the read narrow it further, but neither closes it.
+ * - Linux: the directory opened with `O_DIRECTORY | O_NOFOLLOW`, its `fstat` must carry `identity`, and the entries
+ *   come through `/proc/self/fd/<fd>`, that is from the open descriptor. The descriptor is closed on every path.
+ *
+ * `null`: another platform, or another directory stands under `dir` now. Throws on an error of the open or the read,
+ * as `readdir` does (`EACCES` for a directory the server may not read, `ENOENT` for one removed).
+ */
+export async function readDirectoryByIdentity(
+  dir: string, identity: DirectoryIdentity, io: Partial<DirectoryReadIo> = {},
+): Promise<Dirent<Buffer>[] | null> {
+  const { platform, openDirectory, readOpen } = { ...DIRECTORY_IO, ...io };
+  if (platform === 'darwin') return entriesOf(`/.vol/${String(identity.dev)}/${String(identity.ino)}`);
+  if (platform !== 'linux') return null;
+  const handle = await openDirectory(dir);
+  try {
+    const info = await handle.stat({ bigint: true });
+    if (!info.isDirectory() || info.dev !== identity.dev || info.ino !== identity.ino) return null;
+    return await readOpen(handle.fd);
   } finally {
     await handle.close();
   }

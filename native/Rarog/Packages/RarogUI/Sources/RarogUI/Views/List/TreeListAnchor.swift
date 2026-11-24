@@ -6,8 +6,8 @@ import UIKit
 // UIKit, w której SwiftUI hostuje `List`. Czyste liczby i stany: `Model/TreeListAnchorMath.swift`. Właściciel: lista.
 
 /// Zaznaczona sesja zostaje co do punktu w tym samym miejscu widocznej części listy, gdy nad nią albo pod nią
-/// zmienia się drzewo: „Zwiń/Rozwiń wszystkie”, nowa i zamknięta sesja, nowy projekt, zwolnienie trzymanych wierszy,
-/// przestawienie projektów po dobie. Ręczne zwinięcie albo rozwinięcie JEDNEGO projektu kotwicy nie uruchamia
+/// zmienia się drzewo: „Zwiń/Rozwiń wszystkie”, nowa i zamknięta sesja, nowy projekt, zwolnienie trzymanych
+/// wierszy. Ręczne zwinięcie albo rozwinięcie JEDNEGO projektu kotwicy nie uruchamia
 /// (`TreeAnchorSkip`): tam stoi nagłówek. Kotwica nic nie robi, gdy zaznaczona sesja nie
 /// stoi cała na ekranie, nie ma zaznaczenia, palec jest na liście albo lista dobiega, kolumna jest schowana (Cmd+B)
 /// albo kolekcji nie ma w oknie.

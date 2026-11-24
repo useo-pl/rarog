@@ -7,8 +7,10 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { foreign } from '@rarog/shared/sentences';
+import { backdateState, stampState } from '../src/sessions/activity-clocks.ts';
 import {
-  ConversationListeners, companionTargetOf, inCommandScope, sessionCwdInArea,
+  ConversationListeners, companionEntryOf, companionTargetOf, inCommandScope, sessionCwdInArea,
 } from '../src/sessions/companion-scope.ts';
 import { Session } from '../src/sessions/session.ts';
 import type { SessionInit } from '../src/sessions/session.ts';
@@ -108,6 +110,67 @@ describe('companion-scope: the work area on disk', () => {
     expect(companionTargetOf(desktop, config)).toBeNull();
     const inne = session({ herdrKey: 'k1', cwd: join(dom, 'inne', 'x') });
     expect(companionTargetOf(inne, config)).toEqual({ cwd: join(dom, 'inne', 'x'), agentSessionId: undefined });
+  });
+});
+
+/*
+ * The read mark names the newest message the server's memory of the session holds and the session's `stateSince`.
+ * A short turn whose `working` herdr's grace drops changes neither the state nor `stateSince`, so its messages are
+ * the only trace of a new result; a turn whose messages have not reached the memory yet when herdr reports its end
+ * leaves only its state stamps. The frames a session sends while it stands and its seen marks must not refuse a
+ * pick-up of the result the agent read.
+ */
+describe('companion-scope: the read mark of the session\'s memory', () => {
+  const real = { demo: false, herdrRoots: ROOTS };
+  const markOf = (one: Session): string | undefined => companionEntryOf(one, real)?.readMark;
+  const say = (value: string) => [{ type: 'text' as const, text: foreign(value) }];
+  const later = new Date(1_756_000_005_000).toISOString();
+  const earlier = new Date(1_755_999_000_000).toISOString();
+
+  it('every new `stateSince` gives another mark with no message added: a state change, then a history import that '
+    + 'moves it back; the same stamp again leaves it', () => {
+    const one = session({ herdrKey: 'k1' });
+    one.appendMessage('assistant', say('Done.'), AT);
+    const marks = [markOf(one)];
+    stampState(one, 'running', later);
+    marks.push(markOf(one));
+    backdateState(one, earlier);
+    marks.push(markOf(one));
+    expect(new Set(marks).size).toBe(3);
+    backdateState(one, earlier);
+    expect(markOf(one)).toBe(marks[2]);
+    for (const mark of marks) expect(mark?.length).toBeLessThanOrEqual(64);
+  });
+
+  it('every message added to the memory gives another mark: a prompt, an agent message, a notice', () => {
+    const one = session({ herdrKey: 'k1' });
+    const marks = [markOf(one)];
+    one.appendMessage('user', say('run the tests'), AT);
+    marks.push(markOf(one));
+    one.appendMessage('assistant', say('All green.'), AT);
+    marks.push(markOf(one));
+    one.appendMessage('user', say('<task-notification>'), AT, undefined, {
+      notice: { kind: 'agent', outcome: 'waiting', name: 'docs' },
+    });
+    marks.push(markOf(one));
+    expect(new Set(marks).size).toBe(4);
+    for (const mark of marks) expect(mark?.length).toBeLessThanOrEqual(64);
+  });
+
+  it('a state frame and a card frame sent while the state stands leave the mark as it is', () => {
+    const one = session({ herdrKey: 'k1' });
+    one.appendMessage('assistant', say('Done.'), AT);
+    const before = markOf(one);
+    one.pushEvent({ type: 'state', sessionId: 's1', state: 'waiting-input', since: AT });
+    one.pushEvent({ type: 'session-changed', session: one.summary() });
+    expect(markOf(one)).toBe(before);
+  });
+
+  it('another memory of the same session id has another mark, also with the same messages', () => {
+    const first = session({ herdrKey: 'k1' });
+    const second = session({ herdrKey: 'k1' });
+    for (const one of [first, second]) one.appendMessage('assistant', say('Done.'), AT);
+    expect(markOf(first)).not.toBe(markOf(second));
   });
 });
 

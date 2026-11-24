@@ -2481,9 +2481,66 @@
       "retired": null
     },
     {
+      "code": "rest.file-too-large",
+      "args": [
+        {
+          "name": "size",
+          "kind": "int"
+        },
+        {
+          "name": "limit",
+          "kind": "int"
+        }
+      ],
+      "en": "This file has {size} MB. The server sends files up to {limit} MB (RAROG_FILES_MAX_MB).",
+      "retired": null
+    },
+    {
+      "code": "rest.files-codex",
+      "args": [],
+      "en": "Rarog only observes the Codex pane, so it doesn't show the files in its directory.",
+      "retired": null
+    },
+    {
+      "code": "rest.files-no-pane",
+      "args": [],
+      "en": "This session has no herdr pane, so Rarog doesn't show the files in its directory.",
+      "retired": null
+    },
+    {
+      "code": "rest.files-not-found",
+      "args": [],
+      "en": "That file or directory isn't there, or Rarog doesn't show it.",
+      "retired": null
+    },
+    {
+      "code": "rest.files-out-of-scope",
+      "args": [],
+      "en": "The pane is outside RAROG_HERDR_ROOTS. Rarog shows its state but not the files in its directory.",
+      "retired": null
+    },
+    {
       "code": "rest.image-not-found",
       "args": [],
       "en": "That photo doesn't exist.",
+      "retired": null
+    },
+    {
+      "code": "rest.inbox-card-changed",
+      "args": [],
+      "en": "This Inbox card changed in the meantime, so nothing happened.",
+      "retired": null
+    },
+    {
+      "code": "rest.inbox-disabled",
+      "args": [],
+      "en": "The Inbox is turned off on the server (RAROG_INBOX).",
+      "retired": null
+    },
+    {
+      "code": "rest.inbox-save-failed",
+      "args": [],
+      "en": "Couldn't save the change to the Inbox.",
       "retired": null
     },
     {

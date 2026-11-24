@@ -204,9 +204,6 @@ struct FrozenCompositionEquivalenceTests {
       "openSessions", n, old: { "\($0) \(Old.form($0, "otwarta sesja", "otwarte sesje", "otwartych sesji"))" }, new: UICopy.openSessions)
     Self.check("photos", n, old: { "\($0)\(nb)\(Old.form($0, "zdjęcie", "zdjęcia", "zdjęć"))" }, new: UICopy.photos)
     Self.check("files", n, old: { "\($0)\(nb)\(Old.form($0, "plik", "pliki", "plików"))" }, new: UICopy.files)
-    Self.check(
-      "inspectorDirectorySpoken", n, old: { "katalog Sources/X, \($0) \(Old.form($0, "plik", "pliki", "plików"))" },
-      new: { UICopy.inspectorDirectorySpoken(label: "Sources/X", files: $0) })
     Self.check("noteShowAll", n, old: { "Pokaż całość · \($0)\(nb)\(Old.form($0, "linia", "linie", "linii"))" }, new: { UICopy.noteShowAll(lines: $0) })
     Self.check(
       "promptFoldShow", n, old: { "Pokaż całość · \($0)\(nb)\(Old.form($0, "linia", "linie", "linii"))" },

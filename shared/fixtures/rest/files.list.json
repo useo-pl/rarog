@@ -1,0 +1,36 @@
+{
+  "dir": "",
+  "entries": [
+    {
+      "name": "dist",
+      "kind": "dir",
+      "ignored": true
+    },
+    {
+      "name": "docs",
+      "kind": "dir"
+    },
+    {
+      "name": "src",
+      "kind": "dir"
+    },
+    {
+      "name": "coverage.json",
+      "kind": "file",
+      "size": 3,
+      "ignored": true
+    },
+    {
+      "name": "package.json",
+      "kind": "file",
+      "size": 37
+    },
+    {
+      "name": "README.md",
+      "kind": "file",
+      "size": 27
+    }
+  ],
+  "truncated": false,
+  "maxBytes": 52428800
+}

@@ -97,6 +97,8 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
   var pinned = true
   /// Pasek „na dół", przygaszenie, powrót na miejsce. Właściciel: `+Reading` i `+Pinning`.
   let readingChrome = ReadingChrome()
+  /// The pointer selection across transcript rows. Owner: `+PointerSelection`, `+PointerAutoscroll`.
+  let pointerChrome = TranscriptPointerChrome()
   /// Dyktowanie w polu wiadomości. Właściciel: `+Voice` (`Session/Voice/`).
   let dictation = ComposerDictation()
   /// The voice conversation of this screen. Owner: `+VoiceAgent` (`Session/Voice/Realtime/`).
@@ -160,6 +162,7 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
     layout()
     installDecisionDock()
     buildReading()
+    buildPointerSelection()
     buildToast()
     buildCommandSuggestions()
     buildVoice()
@@ -227,6 +230,7 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
     super.viewWillDisappear(animated)
     announcementScope = UUID()
     leaveReading()
+    leavePointerSelection()
     leaveTurnControl()
   }
 
@@ -259,7 +263,7 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
     // Obszar, który zna akcję, rozstrzyga; `nil` = nie jego akcja. Lista jak w `keyCommands`.
     let verdicts = [
       cardKeyVerdict(action), tabKeyVerdict(action), answerKeyVerdict(action), interruptKeyVerdict(action),
-      voiceKeyVerdict(action), voiceAgentKeyVerdict(action),
+      voiceKeyVerdict(action), voiceAgentKeyVerdict(action), pointerSelectionVerdict(action),
     ]
     for case let allowed? in verdicts { return allowed }
     return super.canPerformAction(action, withSender: sender)
@@ -478,6 +482,7 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
     if !changed.isEmpty { snapshot.reconfigureItems(changed) }
     if !retyped.isEmpty { snapshot.reloadItems(retyped) }
     dataSource.apply(snapshot, animatingDifferences: false)
+    refreshPointerSelection()
     finishReading()
     announce(state, rows: built)
     // Okres łaski i jego ślad liczą też kartę i zastępnik w doku — pierwsze, bo dok stoi na pierwszej decyzji kolejki.

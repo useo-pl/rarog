@@ -11,12 +11,6 @@ private let at = Date(timeIntervalSince1970: 1_790_000_000)
 private let seen = #","seen":true"#
 private let background = #","backgroundTasks":[{"id":"t1","kind":"command","command":"pnpm test"}]"#
 
-private let utc: Calendar = {
-  var calendar = Calendar(identifier: .gregorian)
-  calendar.timeZone = TimeZone(identifier: "UTC")!
-  return calendar
-}()
-
 /// Agent w projekcie `/Users/demo/<project>` (``Frames/summary`` składa katalog z tytułu).
 private func agent(
   _ id: String, _ project: String, state: String = "waiting-input", created: String = "2026-10-03T08:00:00.000Z",
@@ -41,14 +35,14 @@ private func collapsed(_ projects: String...) -> CollapsedProjects {
 
 /// Agenci pod nagłówkami, w kolejności drzewa.
 private func shown(_ state: AppState, _ memory: CollapsedProjects) -> [String] {
-  state.projectTree(collapsed: memory, calendar: utc).compactMap {
+  state.projectTree(collapsed: memory).compactMap {
     if case let .session(session) = $0.kind { return session.id }
     return nil
   }
 }
 
 private func headers(_ state: AppState, _ memory: CollapsedProjects) -> [ProjectTreeHeader] {
-  state.projectTree(collapsed: memory, calendar: utc).compactMap {
+  state.projectTree(collapsed: memory).compactMap {
     if case let .project(header) = $0.kind { return header }
     return nil
   }
@@ -75,14 +69,14 @@ struct ProjectTreeOrderTests {
     // Projekt z samej historii CLI (`nowy`) nie ma nagłówka.
     let expected: [ProjectTreeID] = [
       .project("/Users/demo/atlas"), .session("a-1"),
-      .project("/Users/demo/rarog"), .session("p-old"), .session("p-young"),
       .project("/Users/demo/dawny"), .session("d-1"),
+      .project("/Users/demo/rarog"), .session("p-old"), .session("p-young"),
     ]
-    #expect(state.projectTree(collapsed: CollapsedProjects(), calendar: utc).map(\.id) == expected)
+    #expect(state.projectTree(collapsed: CollapsedProjects()).map(\.id) == expected)
     let groups = headers(state, CollapsedProjects())
-    #expect(groups.map(\.group) == state.projectGroups(calendar: utc), "nagłówki = grupy karty PROJEKTY")
-    #expect(groups.map(\.total) == [1, 2, 1])
-    #expect(groups.map(\.shown) == [1, 2, 1])
+    #expect(groups.map(\.group) == state.projectGroups(), "nagłówki = grupy karty PROJEKTY")
+    #expect(groups.map(\.total) == [1, 1, 2])
+    #expect(groups.map(\.shown) == [1, 1, 2])
 
     // Decyzja w atlasie i nowy wynik w Rarogu tego samego dnia: płaska lista przestawia się po randze, drzewo stoi.
     play(&state, [
@@ -91,7 +85,7 @@ struct ProjectTreeOrderTests {
                                       since: "2026-10-03T09:30:00.000Z", activity: "2026-10-03T09:30:00.000Z")),
     ], at: at)
     #expect(state.listOrder.map(\.id).prefix(2) == ["a-1", "p-young"])
-    #expect(state.projectTree(collapsed: CollapsedProjects(), calendar: utc).map(\.id) == expected)
+    #expect(state.projectTree(collapsed: CollapsedProjects()).map(\.id) == expected)
   }
 
   @Test("dzieci = `projectSessions`: Codex w terminalu Raroga stoi w drzewie (pasek zakładek go pomija)")
@@ -123,11 +117,11 @@ struct ProjectTreeOrderTests {
     state.apply(.catalog(.recentProjectsLoaded(try recent([("/Users/demo/p", "2026-10-03T10:00:00.000Z")]), at: at)),
                 now: at)
     play(&state, [try Frames.snapshot([agent("b", "q", extra: seen)])], at: at)
-    #expect(state.projectTree(collapsed: CollapsedProjects(), calendar: utc).map(\.id) == [
+    #expect(state.projectTree(collapsed: CollapsedProjects()).map(\.id) == [
       .project("/Users/demo/q"), .session("b"),
     ])
     play(&state, [try Frames.sessionChanged(agent("c", "p"))], at: at)
-    #expect(state.projectTree(collapsed: CollapsedProjects(), calendar: utc).map(\.id) == [
+    #expect(state.projectTree(collapsed: CollapsedProjects()).map(\.id) == [
       .project("/Users/demo/p"), .session("c"), .project("/Users/demo/q"), .session("b"),
     ])
   }
@@ -240,11 +234,11 @@ struct ProjectTreeHeldOpenTests {
     ])
     let memory = collapsed("p", "q")
     state.apply(.list(.selected("A")), now: at)
-    let before = state.projectTree(collapsed: memory, calendar: utc).map(\.id)
+    let before = state.projectTree(collapsed: memory).map(\.id)
     #expect(before == [.project("/Users/demo/p"), .session("A"), .session("B"), .project("/Users/demo/q"), .session("D")])
     for tap in ["B", "D", "A", "D"] {
       state.apply(.list(.selected(tap)), now: at)
-      #expect(state.projectTree(collapsed: memory, calendar: utc).map(\.id) == before, "tap w \(tap)")
+      #expect(state.projectTree(collapsed: memory).map(\.id) == before, "tap w \(tap)")
     }
   }
 

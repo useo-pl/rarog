@@ -2,8 +2,9 @@ import Foundation
 @testable import RarogCore
 import Testing
 
-// Ustawienia agenta głosowego: zgoda w wersji tekstu jako jedyna droga do włączenia,
-// wyłączenie kasuje zgodę, tempo czytania Soniox. Klucz OpenAI, model i głos trzyma serwer; apka ich nie zna.
+// Voice agent settings: the consent to a version of the text as the only way to turn it on, turning it off removes
+// the consent, the own consent of the mode across sessions, the Soniox reading speed. The server keeps the OpenAI
+// key, the model and the voice; the app does not know them.
 
 @MainActor
 @Suite("agent głosowy: zgoda i tempo czytania")
@@ -49,11 +50,44 @@ struct VoiceAgentSettingsTests {
     #expect(!make(scratch).enabled)
   }
 
-  @Test("no OpenAI voice choice: the keys are the consent and the reading speed; a stale stored voice changes nothing")
+  @Test("the mode across sessions has its own consent: the voice agent's consent and the mode's leave each other alone")
+  func sessionsConsent() {
+    let scratch = ScratchDefaults()
+    let settings = make(scratch)
+    settings.acceptConsent()
+    #expect(!settings.sessionsEnabled, "the voice agent's consent does not turn the mode on")
+    settings.acceptSessionsConsent()
+    #expect(settings.sessionsEnabled && settings.enabled)
+    #expect(make(scratch).sessionsEnabled, "the mode's consent is stored on the device")
+    settings.disable()
+    #expect(!settings.enabled && settings.sessionsEnabled, "turning the voice agent off leaves the mode's consent")
+    settings.acceptConsent()
+    settings.withdrawSessionsConsent()
+    #expect(!settings.sessionsEnabled && settings.enabled, "withdrawing the mode's consent leaves the voice agent's")
+    #expect(!make(scratch).sessionsEnabled && make(scratch).enabled)
+    #expect(scratch.defaults.object(forKey: VoiceAgentPreferences.sessionsConsentKey) == nil)
+  }
+
+  @Test("a consent to an older text of the mode across sessions is none at launch")
+  func oldSessionsConsent() {
+    let scratch = ScratchDefaults()
+    let older = VoiceAgentSettings.sessionsConsentVersion - 1
+    scratch.defaults.set(older, forKey: VoiceAgentPreferences.sessionsConsentKey)
+    let settings = make(scratch)
+    #expect(!settings.sessionsEnabled)
+    settings.acceptSessionsConsent()
+    #expect(make(scratch).sessionsEnabled)
+  }
+
+  @Test("no OpenAI voice choice: the keys are two consents and the reading speed; a stale stored voice stays unread")
   func noVoiceChoice() {
     // A local name: the source guard reads `.keys ==` as a comparison with the answer channel.
     let stored = VoiceAgentPreferences.keys
-    #expect(stored == [VoiceAgentPreferences.consentKey, VoiceAgentPreferences.speechSpeedKey])
+    #expect(
+      stored == [
+        VoiceAgentPreferences.consentKey, VoiceAgentPreferences.speechSpeedKey,
+        VoiceAgentPreferences.sessionsConsentKey,
+      ])
     let scratch = ScratchDefaults()
     scratch.defaults.set("cedar", forKey: "rarog.voiceAgent.voice")
     let settings = make(scratch)

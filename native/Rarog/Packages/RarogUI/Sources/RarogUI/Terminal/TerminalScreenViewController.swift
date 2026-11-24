@@ -7,8 +7,9 @@ import UIKit
 
 // Ekran terminala: linia stanu połączenia, powierzchnia terminala (renderer za
 // `TerminalSurface`, SwiftTerm w `RarogTerminal`) i pasek klawiszy stale na dole — wyłącznie bez klawiatury
-// sprzętowej, nad klawiaturą ekranową przez `keyboardLayoutGuide`. „⋯" (Kopiuj, Wklej, Historia) i „×" stoją
-// w pasku nawigacji (`TerminalChrome`), okno Cmd+F/Cmd+G ma własny wiersz (`TerminalPopup`). Połączenie,
+// sprzętowej, nad klawiaturą ekranową przez `keyboardLayoutGuide`. The "⋯" (Copy, Paste, History) stands in the
+// navigation bar and the "×" in the current tab (`TerminalChrome`); the Cmd+F/Cmd+G window has a row of its own
+// (`TerminalPopup`). Połączenie,
 // ponawianie i kolejkę wyjścia prowadzi `TerminalSession` (RarogCore); magazyn usypia ją w tle i budzi po powrocie (nowe gniazdo `fresh=1`) — ekran trzyma TĘ SAMĄ sesję i TEN SAM
 // cel, więc po blokadzie iPada wraca do tego samego terminala, nie do innego wpisu.
 //
@@ -90,7 +91,8 @@ public final class TerminalScreenViewController: UIViewController {
   /// do programu.
   var inputSuspended = false
   public var terminalId: String? { session.terminalId }
-  /// „⋯" i „×" w pasku nawigacji (trasa). Okno nad ekranem ma własne przyciski i tego nie ustawia.
+  /// The route's "⋯" in the navigation bar and "×" in the current tab. The window over the screen has buttons of
+  /// its own and does not set it.
   public var chrome: TerminalChrome? {
     didSet {
       guard oldValue !== chrome else { return }
@@ -737,19 +739,19 @@ public final class TerminalScreenViewController: UIViewController {
     }
   }
 
-  /// Cmd+X ma co zamknąć: „×" stoi w pasku nawigacji (okno Cmd+F/Cmd+G go nie ma) i nic nie leży nad ekranem.
-  /// Pod arkuszem skrót milczy — klawiaturę przy historii trzyma terminal, więc klawisz tu dochodzi.
+  /// Cmd+X has something to close: the screen's "×" stands in the header (`chrome`; the Cmd+F/Cmd+G window has none)
+  /// and nothing lies over the screen. Under a sheet the key stays silent: by History the terminal keeps the keyboard,
+  /// so the key arrives here.
   var closesByKey: Bool {
     guard chrome != nil, case .nothing = sheetAbove(view) else { return false }
     return true
   }
 
-  /// Cmd+X: to samo co „×" w pasku nawigacji — pierwsze naciśnięcie uzbraja, drugie zamyka powłokę.
-  /// Uzbrojenie mówi czytnik, bo fokus nie stoi na przycisku.
+  /// Cmd+X: the same as the header's "×": the first press arms, the second ends the shell. The arming speaks
+  /// (``closeTapped()``), the key says nothing itself.
   private func closeKeyPressed() {
     guard closesByKey else { return }
     closeTapped()
-    if closeArm.isArmed(now: now()) { announcer.say(UICopy.terminalCloseConfirmSpoken(machine())) }
   }
 
   private func barKey(_ key: TerminalBarKey) {
@@ -836,10 +838,13 @@ public final class TerminalScreenViewController: UIViewController {
     keyBar.setHistoryEnabled(canShowHistory)
   }
 
-  /// „×" z paska nawigacji (`TerminalChrome`): pierwsze uzbraja, drugie w oknie `TerminalCloseArm` zamyka.
+  /// The header's "×" (`TerminalChrome`, the current tab or the corner) and Cmd+X: the first press arms, the second
+  /// within the `TerminalCloseArm` window closes. The arming tells the screen reader what the next press does, once,
+  /// here: the callers say nothing, and the card under the bar says nothing either.
   func closeTapped() {
     guard !closing else { return }
     guard closeArm.press(now: now()) else {
+      announcer.say(UICopy.terminalCloseConfirmSpoken(machine()))
       renderChrome()
       let window = TerminalCloseArm.window
       Task { @MainActor [weak self] in
@@ -897,10 +902,10 @@ public final class TerminalScreenViewController: UIViewController {
     }
   }
 
-  /// Stan „×" i Historii dla paska nawigacji.
+  /// The state of the "×" (with the arming's deadline, the card's identity) and of History for the header.
   private func renderChrome() {
     let close: TerminalChrome.Close = closing ? .closing : (closeArm.isArmed(now: now()) ? .armed : .idle)
-    chrome?.show(close: close, history: canShowHistory, from: self)
+    chrome?.show(close: close, armedUntil: closeArm.until, history: canShowHistory, from: self)
   }
 
   // MARK: - Siatka przy zejściu okna

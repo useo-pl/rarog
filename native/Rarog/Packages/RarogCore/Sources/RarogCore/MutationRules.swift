@@ -55,12 +55,22 @@ public final class MutationRules: MutationPolicy {
   /// istnieje (lista to mówi), a przełącznik „przeczytane / nieprzeczytane" z wiersza działa na stanie
   /// wyniku z listy. Karty, pole, Stop, tryb i „Wznów" działają na treści sesji, więc sesja z cache dostaje je
   /// dopiero po pierwszym transkrypcie; odbiór przy wejściu w sesję czeka na niego sam (`seenTarget`).
-  static let listOnlyRoutes: Set<String> = ["close", "seen", "unseen"]
+  /// The voice agent's question (`companion/ask`) needs only the list too: the server answers it from the session it
+  /// reads, not from the transcript on screen, as for the agent's message with `expectedConversation`.
+  static let listOnlyRoutes: Set<String> = ["close", "seen", "unseen", "companion/ask"]
 
   public func sessionRefusal(sessionId: String, route: String) async -> PolicyRefusal? {
+    await sessionRefusal(sessionId: sessionId, route: route, expectsConversation: false)
+  }
+
+  /// A message whose body carries `expectedConversation` (the voice agent's prompt) needs only a fresh list: the
+  /// agent read the session from the server, not from the transcript on screen, and the server refuses the message
+  /// when the session writes another conversation. So it reaches a session not opened since a start from the cache.
+  public func sessionRefusal(sessionId: String, route: String, expectsConversation: Bool) async -> PolicyRefusal? {
     guard let state = store?.state else { return nil }
     if state.sessions[sessionId]?.isUnsupported == true { return PolicyRefusal(CoreCopy.unsupportedSession) }
-    let stale = Self.listOnlyRoutes.contains(route) ? state.listStale : state.sessionStale(sessionId)
+    let listOnly = Self.listOnlyRoutes.contains(route) || (expectsConversation && route == "messages")
+    let stale = listOnly ? state.listStale : state.sessionStale(sessionId)
     return stale ? Self.noConnection : nil
   }
 

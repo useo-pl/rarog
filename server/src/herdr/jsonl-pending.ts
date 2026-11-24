@@ -19,6 +19,7 @@
  * `bypass permissions` wyglądałby w jsonl na `manual` przez całą następną turę. Do bramki
  * (`commands/guard.ts`, reguła 4) tryb bierze się z odczytu stopki ekranu.
  */
+import path from 'node:path';
 import type { EffortLevel, HerdrMode } from '@rarog/shared';
 import { EFFORT_LEVELS, MODEL_ID_PATTERN } from '@rarog/shared';
 import { asRecord } from '../drivers/tool-text.ts';
@@ -84,6 +85,13 @@ export interface PendingTool {
    * da się potwierdzić, a tylko wykluczyć (`editContradictsScreen` w `herdr/dialogs/cross-check.ts`).
    */
   cwd?: string;
+  /**
+   * The `cwd` field of the transcript entry that carries this `tool_use`, absolute only: the directory the call runs
+   * in, also after a Bash `cd`, when the CLI registry and the herdr agent stay on the session start directory
+   * (measured on CLI 2.1.330). Absent when the entry has no absolute `cwd`. The card decision does not read it;
+   * the session facts take it as the call `cwd` (`herdr/dialogs/layer1/hook-list/session-facts.ts`).
+   */
+  entryCwd?: string;
 }
 
 /**
@@ -216,13 +224,15 @@ export function createPendingTracker(): PendingTracker {
 
       if (type === 'assistant') {
         const at = asText(entry['timestamp']);
+        const cwd = asText(entry['cwd']);
+        const entryCwd = path.isAbsolute(cwd) ? { entryCwd: cwd } : {};
         for (const block of blocks) {
           if (block['type'] !== 'tool_use') continue;
           const id = asText(block['id']);
           const toolName = asText(block['name']);
           if (id === '' || toolName === '') continue;
           if (settled.has(id) || open.some((tool) => tool.id === id)) continue;
-          open.push({ id, toolName, input: block['input'], at });
+          open.push({ id, toolName, input: block['input'], at, ...entryCwd });
         }
         return;
       }

@@ -5,8 +5,8 @@
  * consent channel, dialog layer 2 and tall dialog guard flags stay in `server/src/config.ts`.
  */
 import {
-  COMPANION_ENV, COMPANION_MODEL_ENV, COMPANION_SESSIONS_ENV, CONSENT_RESTART_GRACE_ENV, ConfigError, PR_STATUS_ENV,
-  SSE_GZIP_ENV,
+  COMPANION_ENV, COMPANION_MODEL_ENV, COMPANION_SESSIONS_ENV, CONSENT_RESTART_GRACE_ENV, ConfigError, INBOX_ENV,
+  PR_STATUS_ENV, SSE_GZIP_ENV,
 } from '../config-env.ts';
 import { HOOK_RESTART_GRACE_DEFAULT_MS, HOOK_RESTART_GRACE_MAX_MS } from '../herdr/dialogs/hook/contract.ts';
 
@@ -108,6 +108,14 @@ export function parsePrStatusEnabled(raw: string | undefined): boolean {
   if (value === '' || value === '1') return true;
   if (value === '0') return false;
   throw new ConfigError(`${PR_STATUS_ENV} takes 1 or 0 (got: ${value}).`);
+}
+
+/** Inbox flag; missing, empty or `1` = on, `0` = off, any other value stops the start. */
+export function parseInboxEnabled(raw: string | undefined): boolean {
+  const value = raw?.trim() ?? '';
+  if (value === '' || value === '1') return true;
+  if (value === '0') return false;
+  throw new ConfigError(`${INBOX_ENV} takes 1 or 0 (got: ${value}).`);
 }
 
 /** Voice agent flag; missing or `0` = off, `1` = on, any other value stops the start. */

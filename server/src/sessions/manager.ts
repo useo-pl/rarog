@@ -25,10 +25,10 @@ import {
   MAX_ANSWER_TEXT_CHARS, MAX_RECENT_PROJECTS,
   MAX_RECENT_SESSIONS,
   EXIT_PLAN_MODE_TOOL,
-  MAX_RESUMABLE_SESSIONS, MODEL_CHANGE_WARNING, ULTRACODE_CHANGE_NOTE, WAITING_TEXT_MAX, messageAttachments,
+  MAX_RESUMABLE_SESSIONS, MODEL_CHANGE_WARNING, ULTRACODE_CHANGE_NOTE, messageAttachments,
 } from '@rarog/shared';
 import type {
-  Activity, Block, CommandList, CreateSessionResponse, DiffFileList, DiffFilePatch,
+  Activity, CommandList, CreateSessionResponse, DiffFileList, DiffFilePatch,
   EffortLevel, FileAttachment,
   HerdrMode, HerdrStatus, MessageAttachment, ModelList, PermissionRequest,
   PermissionSubject, Question,
@@ -58,11 +58,11 @@ import { createSendRegistry, sendDigest } from './send-registry.ts';
 import type { SendRegistry } from './send-registry.ts';
 import {
   DECISION_STATES, DRIVER_ERROR_DETAIL,
-  DRIVER_GONE_DETAIL, HERDR_ALLOW_MESSAGE, HERDR_CODEX_CLOSE_MESSAGE, HERDR_CODEX_GIT_MESSAGE,
+  DRIVER_GONE_DETAIL, HERDR_ALLOW_MESSAGE, HERDR_CODEX_CLOSE_MESSAGE,
   HERDR_FOCUS_MESSAGE, HERDR_GONE_DETAIL, HERDR_HIDDEN_DETAIL, HERDR_LAUNCHING_DETAIL,
   HERDR_LAUNCH_OFF_MESSAGE, HERDR_LOST_PROMPT_MESSAGE, HERDR_MODEL_MESSAGE, HERDR_MODE_BYPASS_MESSAGE,
   HERDR_MODE_MESSAGE, HERDR_NOT_OWNED_MESSAGE, HERDR_NO_DRIVER_INTERRUPT_MESSAGE,
-  HERDR_OUT_OF_SCOPE_DIFF_MESSAGE, HERDR_OUT_OF_SCOPE_MESSAGE, HERDR_READ_ONLY_MESSAGE,
+  HERDR_OUT_OF_SCOPE_MESSAGE, HERDR_READ_ONLY_MESSAGE,
   HERDR_RESUME_MESSAGE, HERDR_TERMINAL_UNAVAILABLE_MESSAGE,
   HERDR_THROTTLED_MESSAGE, HERDR_TRUST_PROMPT_MESSAGE, INTERRUPT_DETAIL,
   INTERRUPT_WORKING_GRACE_MS, LATE_TOOL_CALL_MS, LIVE_STATES, MODEL_BUSY_MESSAGE, MODEL_CHANGE_STATES,
@@ -80,6 +80,7 @@ import { DialogTimings } from './dialog-timing.ts';
 import { ClaimWindows } from './claim-window.ts';
 import * as seenMarks from './seen-marks.ts';
 import * as heldEcho from './held-echo.ts';
+import { type DiffMeasureClock, GIT_DIFF_FILE_LOG, GIT_DIFF_LIST_LOG, measureDiff } from './diff-measure.ts';
 import { heldActivity, holdActivity, stampState } from './activity-clocks.ts';
 import type { SeenMarkStore, SeenMarksDeps, SeenPickUp } from './seen-marks.ts';
 import { PendingInteractions } from '../permissions.ts';
@@ -118,6 +119,9 @@ import { AttachSlots } from './attach-slots.ts';
 import { scanProjectRoots } from './project-scan.ts';
 import { recentProjects } from './recent-projects.ts';
 import * as companionScope from './companion-scope.ts';
+import * as sessionScope from './session-scope.ts';
+import { type FileDownloadAnswer, openSessionDownload } from '../files/session-download.ts';
+import { type FileListingAnswer, type SessionFilesPort, listSessionFiles } from '../files/session-files.ts';
 // Jedyny wartościowy import z `herdr/*` w tym pliku: czysta funkcja sklejająca prompt ze
 // ścieżkami załączników. Zero gniazda, zero I/O — patrz komentarz przy re-eksporcie niżej.
 import { appendAttachmentPaths } from '../herdr/uploads.ts';
@@ -155,14 +159,14 @@ import { cardShowsAll, permissionSemantics, toolInputText } from '../drivers/too
 import {
   onlyWaitingAgents, tasksBlockRestart, tasksHoldingDonePush, waitingOnOwnCommand,
 } from '../herdr/background/work.ts';
-// Ta sama etykieta, którą dostaje wiersz tool-calla w transkrypcie — patrz `decisionText`.
-import { summarizeToolInput } from '../drivers/tool-summary.ts';
+import { decisionText, waitingText } from './waiting-line.ts';
 import type { ConsentCardView } from '../herdr/dialogs/layer1/cards.ts';
 import type { ConsentDecision } from '../herdr/dialogs/layer1/contract.ts';
 import { ConsentCards, consentRefusal } from './consent-cards.ts';
 import type { ConsentManagerChannel } from './consent-cards.ts';
 import type { DeviceDecision } from '../permissions.ts';
 import type { DemoSeed } from '../demo/seeds.ts';
+import { type DemoModules, loadDemoModules } from './demo-modules.ts';
 import type { DemoContent } from '../demo/content/types.ts';
 
 /** Wynik zwykłej wysyłki (bez `clientMessageId` albo pierwsze przyjęcie) */
@@ -185,10 +189,8 @@ export {
 export const PROMPT_BLOCKED_LOG = 'rarog: prompt blocked by a hook';
 /** Defined in `held-echo.ts` with the deferred echo; importers keep this path. */
 export { HELD_FLUSHED_LOG, HELD_QUEUE_LOG } from './held-echo.ts';
-/** Fraza linii kosztu listy plików gita czytanej od nowa: `git: diff list <ms> ms`. */
-export const GIT_DIFF_LIST_LOG = 'git: diff list';
-/** Fraza linii kosztu patcha jednego pliku: `git: diff file <ms> ms`. */
-export const GIT_DIFF_FILE_LOG = 'git: diff file';
+/** Defined in `diff-measure.ts` with the line of a diff read; importers keep this path. */
+export { GIT_DIFF_FILE_LOG, GIT_DIFF_LIST_LOG } from './diff-measure.ts';
 
 /*
  * 409 na zakładanie sesji po osiągnięciu sufitu paneli Raroga.
@@ -507,38 +509,10 @@ export interface Manager extends ManagerApi {
   flush(): Promise<void>;
   /** Zamyka drivery i zapisuje rejestr (SIGTERM / koniec testu). */
   dispose(): Promise<void>;
+  onTranscriptReset(cb: (sessionId: string) => void): void;
 }
 
 type EventListener = (scope: 'global' | string, seq: number | null, ev: ServerEvent) => void;
-
-/**
- * Ziarna trybu demo. Manager dostaje je z zewnątrz zamiast importować statycznie, żeby
- * scenariusze demo nie trafiały do procesu produkcyjnego — ani do jego pamięci, ani do grafu
- * zależności. Drivera dla nich daje mock NADZORCY (`demo/mock-herdr.ts`).
- */
-interface DemoModules {
-  readonly demoSeeds: (now: number) => DemoSeed[];
-  readonly demoBlocks: (blocks: readonly Block[]) => InternalBlock[];
-  readonly demoProjects: () => { path: string; name: string }[];
-  readonly demoResumable: (cwd: string, now: number) => ResumableSession[];
-  readonly demoDiff: () => SessionDiff;
-  readonly demoDiffFiles: () => DiffFileList;
-  readonly demoDiffFile: (path: string) => DiffFilePatch | null;
-}
-
-/** Dynamiczny import scenariuszy demo — wołany WYŁĄCZNIE przy `config.demo`; treść z podanego zestawu. */
-async function loadDemoModules(content: DemoContent): Promise<DemoModules> {
-  const seeds = await import('../demo/seeds.ts');
-  return {
-    demoSeeds: (now) => seeds.demoSeeds(content, now),
-    demoBlocks: seeds.demoBlocks,
-    demoProjects: () => seeds.demoProjects(content),
-    demoResumable: (cwd, now) => seeds.demoResumable(content, cwd, now),
-    demoDiff: () => seeds.demoDiff(content),
-    demoDiffFiles: seeds.demoDiffFiles,
-    demoDiffFile: (path) => seeds.demoDiffFile(content, path),
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Etykieta sesji (człon `sesja` w tytule `projekt · sesja`)
@@ -563,6 +537,7 @@ class RarogManager implements Manager {
   readonly #pending = new PendingInteractions();
   readonly #sessions = new Map<string, Session>();
   readonly #listeners: EventListener[] = [];
+  readonly #transcriptResets: ((sessionId: string) => void)[] = [];
   readonly #conversations = new companionScope.ConversationListeners((line) => { this.#config.logger?.(line); });
   /** Git row of cards: reader, `.git` watcher, `git-status` frames and the cost window in the log. */
   readonly #git: SessionGit;
@@ -1060,6 +1035,10 @@ class RarogManager implements Manager {
     this.#listeners.push(cb);
   }
 
+  onTranscriptReset(cb: (sessionId: string) => void): void {
+    this.#transcriptResets.push(cb);
+  }
+
   projects(): { path: string; name: string }[] {
     const configured = this.#config.projects;
     if (configured !== undefined) {
@@ -1318,11 +1297,16 @@ class RarogManager implements Manager {
       paneId: handle.paneId,
       herdrKey: handle.key,
       launchedByRarog: true,
+      ringStartSeq: opts.continuesRing?.lastSeq,
     });
     // Etykieta karty → etykieta taba w herdr. Launcher założył tab z nazwą katalogu;
     // nadzorca przemianuje go, gdy panel dostanie etykietę pochodzenia.
     this.#setLabel(session, label);
     this.#sessions.set(session.id, session);
+    // A card under an existing id: the open transcript streams get a snapshot before the first frame of the new card.
+    for (const listener of opts.continuesRing === undefined ? [] : this.#transcriptResets) {
+      try { listener(session.id); } catch { /* A broken listener must not fail the launch. */ }
+    }
     this.#herdrByKey.set(handle.key, session.id);
     this.#indexEngineSession(session);
     this.#git.watch(session);
@@ -2026,7 +2010,7 @@ class RarogManager implements Manager {
     if (outcome.kind === 'refused') {
       /*
        * Rozpoznanie WRACA tylko po `send-failed`: to jedyna odmowa, przy której z Raroga nie
-       * wyszedł ani jeden bajt, driver karty nie wycofał (`#refuseSend` świadomie nie woła ani
+       * wyszedł ani jeden bajt, driver karty nie wycofał (`refuseSend` świadomie nie woła ani
        * `#clearActive`, ani `#scheduleEvaluate`) i dialog na pewno stoi dalej na ekranie.
        *
        * Pozostałe powody (`screen-changed`, `no-digit`, `multi-select`, `terminal-only`,
@@ -2147,21 +2131,21 @@ class RarogManager implements Manager {
   }
 
   /**
-   * Esc do sesji. Zwraca obietnicę drivera („klawisz poszedł"), a NIE moment przyjęcia
-   * żądania.
+   * Esc to the session. Returns the driver's promise ("the key went"), NOT the moment the request was accepted.
    *
-   * Kolejność w tej metodzie jest wiążąca i nie wolno jej przesunąć za dostarczenie:
-   * `interruptedAtMs` i przejście `interrupt-requested` lecą SYNCHRONICZNIE, bo na tym stoi
-   * odpowiedź POST-a ze świeżym `SessionSummary` — jedyna prawda, gdy
-   * `EventSource` umarł po cichu. Metoda nie jest `async` z tego samego powodu, co w driverze:
-   * odmowy poniżej mają rzucać na wywołaniu, nie odrzuconą obietnicą.
-   *
-   * Idempotencja stoi TUTAJ, a nie w kliencie: żądania przychodzą też z drugiego urządzenia
-   * i z ponowienia sieciowego klienta, których żaden guard w kliencie nie widzi. Okna są
-   * dwa i rozłączne — „w locie" (przed dostarczeniem) i debounce (po), każde na swoim polu.
+   * The order in this method is binding: `interruptedAtMs` and the `interrupt-requested` transition run SYNCHRONOUSLY,
+   * because the POST answer with a fresh `SessionSummary` stands on them, the only truth when `EventSource` died
+   * silently. Not `async` for the same reason as in the driver: the refusals below throw on the call. Idempotency
+   * stands HERE, not in the client: requests also come from a second device and from network retries. The two windows
+   * are disjoint: "in flight" (before delivery) and debounce (after), each on its own field.
    */
   interrupt(id: string): Promise<boolean> {
     return this.#sessionRestart.track(id, () => this.#interrupt(id));
+  }
+
+  /** {@link ManagerApi.returnedPrompt}: the driver's field read after the last delivered `escape`. */
+  returnedPrompt(id: string): Promise<string | null> {
+    return this.#sessions.get(id)?.driver?.returnedPrompt?.() ?? Promise.resolve(null);
   }
 
   #interrupt(id: string): Promise<boolean> {
@@ -2451,7 +2435,8 @@ class RarogManager implements Manager {
     const restore = this.#snapshotIndexes(session);
     this.#forgetHerdrSession(session);
     try {
-      await this.#launch(opts, slotTaken);
+      // The new card numbers on after the old one; `#launch` sends the open streams of this id a snapshot.
+      await this.#launch({ ...opts, continuesRing: session.ring }, slotTaken);
     } catch (error: unknown) {
       /*
        * Wznowienie odbite (400 z `#assertResumable` w `launch-gate.ts`, 429 z throttle'a, padnięty `launch`) —
@@ -2476,9 +2461,9 @@ class RarogManager implements Manager {
     this.#sessionRestart.assertNotRestarting(id);
     /*
      * „Uruchom ponownie i wyślij”: `seq` i `id` z ciała mają wskazywać blokadę, której przycisk
-     * działa — inaczej 409 PRZED rezerwacją i slotem. Sam `seq` nie wystarcza: karta po restarcie numeruje
-     * transkrypt od zera, więc spóźnione tapnięcie spod notki sprzed restartu trafiłoby w nową notkę o tym samym
-     * numerze.
+     * działa — inaczej 409 PRZED rezerwacją i slotem. The `seq` alone is not enough: numbering starts from 1 again
+     * in a new server process, so a late tap from before a server restart could name a new notice under the same
+     * number. The block `id` decides.
      * Ładunek (tekst dla CLI, dymek, wizytówki) bierzemy z serwera, nigdy z ciała: klient podaje wyłącznie,
      * KTÓRĄ blokadę tapnięto.
      */
@@ -2828,50 +2813,48 @@ class RarogManager implements Manager {
   // Git: diff sesji
   // -------------------------------------------------------------------------
 
-  /**
-   * Bramka wspólna WSZYSTKICH tras diffa — starej i obu per plik. Oddaje sesję, z której
-   * katalogu wolno czytać, albo `null` w demo: tam diff to stały mock, bez odczytu z dysku.
-   */
-  #diffSession(id: string): Session | null {
-    const session = this.#require(id);
-    // Bramka zasięgu: diff roboczy to TREŚĆ katalogu, a wpis Codexa obiecuje sam stan. Klient
-    // przycisku dla Codexa nie rysuje — to jest druga linia, dla starego klienta i dla `curl`.
-    if (session.engine === 'codex') throw new BadRequestError(HERDR_CODEX_GIT_MESSAGE);
-    // Panel poza zasięgiem: ta sama granica co transkrypt i wycinek ekranu — treść katalogu zostaje na Macu.
-    if (session.outOfScope === true) throw new BadRequestError(HERDR_OUT_OF_SCOPE_DIFF_MESSAGE);
-    /*
-     * Niżej, za gałęzią demo: `outOfScope` mówi o katalogu, w którym panel stoi TERAZ (nadzorca
-     * liczy go od nowa po `cd`), a diff czyta `session.cwd` — katalog z chwili pojawienia się
-     * panelu, którego reattach nie rusza. Panel, który wystartował poza korzeniami i zrobił `cd` pod korzeń, miał więc zasięg,
-     * a diff dalej czytał stary, prywatny katalog. Bramka pyta o TEN
-     * katalog, z którego pójdzie odczyt, tą samą funkcją co nadzorca (`scopeOf`).
-     */
-    // Demo nie ma korzeni ani prawdziwych katalogów: jego diff to stały mock, bez odczytu z dysku.
-    if (this.#config.demo) return null;
-    if (!companionScope.sessionCwdInArea(session, this.#config)) throw new BadRequestError(HERDR_OUT_OF_SCOPE_DIFF_MESSAGE);
-    return session;
+  /** Port of the diff gate (`diffSession` in `session-scope.ts`): the session lookup and the configuration. */
+  #diffSessionPort(): sessionScope.DiffSessionPort {
+    return { require: (id) => this.#require(id), config: this.#config };
   }
 
   async diff(id: string): Promise<SessionDiff> {
-    const session = this.#diffSession(id);
+    const session = sessionScope.diffSession(id, this.#diffSessionPort());
     if (session === null) return this.#requireDemo().demoDiff();
     const runner = this.#config.diffRunner ?? spawnGitArgs(this.#gitEnv);
     return collectDiff(session.cwd, { run: runner });
   }
 
   async diffFiles(id: string): Promise<DiffFileList> {
-    const session = this.#diffSession(id);
+    const session = sessionScope.diffSession(id, this.#diffSessionPort());
     if (session === null) return this.#requireDemo().demoDiffFiles();
     const injected = this.#config.diffRunner;
-    return this.#measureDiff(GIT_DIFF_LIST_LOG, () => collectDiffList(session.cwd, {
+    return measureDiff(GIT_DIFF_LIST_LOG, this.#diffClock, () => collectDiffList(session.cwd, {
       run: injected ?? spawnGitArgs(this.#gitEnv),
       // Liczniki mają WŁASNY budżet (jak w ramce `git-status`): lista nie czeka na nie dłużej.
       runNumstat: injected ?? spawnGitArgs(this.#gitEnv, GIT_NUMSTAT_BUDGET_MS),
     }));
   }
 
+  filesPort(): SessionFilesPort {
+    return {
+      ...this.#diffSessionPort(), run: this.#config.diffRunner ?? spawnGitArgs(this.#gitEnv),
+      demoEntries: (rel) => this.#requireDemo().demoFileEntries(rel),
+    };
+  }
+
+  listFiles(id: string, dir: string, maxBytes: number): Promise<FileListingAnswer> {
+    return listSessionFiles(id, dir, maxBytes, this.filesPort());
+  }
+
+  openFile(id: string, rel: string, maxBytes: number): Promise<FileDownloadAnswer> {
+    return openSessionDownload(id, rel, maxBytes, {
+      ...this.#diffSessionPort(), demoFile: (file) => this.#requireDemo().demoFileBytes(file),
+    });
+  }
+
   async diffFile(id: string, path: string): Promise<DiffFilePatch> {
-    const session = this.#diffSession(id);
+    const session = sessionScope.diffSession(id, this.#diffSessionPort());
     // Walidacja wstępna stoi PRZED gałęzią demo: `?path=../x` to 400 także tam, jak na produkcji.
     if (validateDiffPath(path) === null) throw new DiffError(DIFF_BAD_PATH_ERROR);
     if (session === null) {
@@ -2880,30 +2863,13 @@ class RarogManager implements Manager {
       return patch;
     }
     const run = this.#config.diffRunner ?? spawnGitArgs(this.#gitEnv);
-    return this.#measureDiff(GIT_DIFF_FILE_LOG, () => collectDiffFile(session.cwd, path, { run }));
+    return measureDiff(GIT_DIFF_FILE_LOG, this.#diffClock, () => collectDiffFile(session.cwd, path, { run }));
   }
 
-  /**
-   * Linia `git: diff list|file <ms>` w logu: koszt list gita czytanych od nowa przy każdym
-   * żądaniu, czyli liczba, po której zapadnie decyzja o pamięci podręcznej. Niesie czas i — przy
-   * odmowie — kod z kontraktu; NIGDY ścieżki ani nazwy pliku.
-   */
-  async #measureDiff<T>(
-    phrase: typeof GIT_DIFF_LIST_LOG | typeof GIT_DIFF_FILE_LOG, read: () => Promise<T>,
-  ): Promise<T> {
-    const startedAt = this.#now();
-    const line = (suffix: string): void => {
-      this.#config.logger?.(`${phrase} ${String(this.#now() - startedAt)} ms${suffix}`);
-    };
-    try {
-      const result = await read();
-      line('');
-      return result;
-    } catch (error) {
-      line(` (${error instanceof DiffError ? error.code : 'error'})`);
-      throw error;
-    }
-  }
+  /** Clock and logger of the diff read lines (`diff-measure.ts`), read at the time of each line. */
+  readonly #diffClock: DiffMeasureClock = {
+    now: () => this.#now(), log: (line) => { this.#config.logger?.(line); },
+  };
 
   // -------------------------------------------------------------------------
   // Cykl życia procesu
@@ -4360,49 +4326,6 @@ function describeError(error: unknown): string {
 }
 
 /**
- * Treść decyzji do JEDNEJ linii karty listy: pierwsza linia, przycięta do `WAITING_TEXT_MAX`.
- *
- * Pierwsza linia, a nie „pierwsze 120 znaków całości": heredoc, wypisana treść `.env` i plan
- * z trzema akapitami mają się tu nie zmieścić Z DEFINICJI. Cięcie po znakach jest wtedy tylko
- * sufitem na długi jednolinijkowiec, a nie jedyną obroną przed wklejeniem pół pliku w sidebar.
- * Wielokropek dokładamy WYŁĄCZNIE tam, gdzie faktycznie uciął — inaczej linia obiecuje ciąg
- * dalszy, którego nie ma.
- */
-function waitingText(raw: string): string {
-  const first = raw.split('\n', 1)[0]?.trim() ?? '';
-  /*
-   * Cięcie po PUNKTACH KODOWYCH, nie po jednostkach UTF-16: `slice(0, 120)` na linii
-   * z emoji na 120. znaku rozcina parę surogatów, `trimEnd()` samotnego surogata nie usuwa
-   * (to nie biały znak) i na karcie staje „�…". Grafem z modyfikatorem (flaga, odcień skóry)
-   * może się tu jeszcze rozpaść na dwa znaki, ale każdy z nich jest wtedy PEŁNY — żaden
-   * nie jest połówką kodu, więc przeglądarka rysuje litery, a nie znak zastępczy.
-   */
-  const points = [...first];
-  if (points.length <= WAITING_TEXT_MAX) return first;
-  return `${points.slice(0, WAITING_TEXT_MAX).join('').trimEnd()}…`;
-}
-
-/**
- * Treść ZGODY do jednej linii karty listy — z `displayText`, ale nie zawsze dosłownie.
- *
- * `displayText` jest jednolinijkowy tylko dla narzędzi z polem `command`. Dla całej reszty
- * (`Edit`, `Write`, `Read`, `Task`, `WebFetch`…) `toolInputText` oddaje pretty-printowany JSON,
- * więc PIERWSZĄ linią jest sama klamra — i karta mówiła „zgoda: Edit · {". Z takiego opisu
- * bierzemy dokładnie to, co bierze etykieta tool-calla w transkrypcie (`summarizeToolInput`:
- * `file_path`, `path`, `pattern`, `url`, `query`), a gdy nie ma czego wziąć — nic: „zgoda: Edit"
- * jest uczciwe, klamra nie. Rozpoznanie idzie po PIERWSZEJ LINII, a nie po `startsWith('{')`,
- * bo komenda Basha też umie zacząć się klamrą (`{ echo a; }` — grupa powłoki).
- *
- * Dwa `displayText` nie są treścią decyzji i tu nie wchodzą wcale:
- *
- * - PLAN (`ExitPlanMode`): treścią jest CAŁY plan, a jego nagłówek („# Plan") nie mówi nic
- *   ponad samo słowo „plan", które karta i tak stawia. Kanał globalny nie ma powodu wozić
- *   danych, których nikt nie rysuje (kontrakt `WaitingFor.text`),
- * - karta ZDEGRADOWANA (`canAllow === false`, `DEGRADED_DISPLAY_TEXT`): tam stoi zdanie
- *   O RAROGU („nie potwierdziłem, czego dotyczy ten dialog"), a nie o decyzji. Powód
- *   degradacji niesie karta sesji (`herdrDialogReason`), nie wiersz listy.
- */
-/**
  * Przedmiot zgody: wyjście z trybu planu albo zwykłe narzędzie. Jedyne miejsce, w którym
  * nazwa `ExitPlanMode` staje się faktem dla klienta — telefon buduje kartę planu z pola
  * `subject`, a nazwy narzędzia CLI nie zna.
@@ -4426,24 +4349,6 @@ function withOptionRoles(questions: readonly Question[]): Question[] {
       option.role === undefined ? { ...option, role: 'answer' as const } : option
     )),
   }));
-}
-
-function decisionText(permission: PermissionRequest): string {
-  if (permission.toolName === EXIT_PLAN_MODE_TOOL) return '';
-  if (permission.canAllow === false) return '';
-  const display = permission.displayText;
-  const first = display.split('\n', 1)[0]?.trim() ?? '';
-  if (first !== '{' && first !== '{}' && first !== '[') return display;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(display);
-  } catch {
-    // Opis przycięty do 20 kB ma na końcu stopkę, więc nie jest już poprawnym JSON-em.
-    return '';
-  }
-  const summary = summarizeToolInput(permission.toolName, parsed);
-  // Bez trafionego klucza `summarizeToolInput` oddaje NAZWĘ narzędzia — a ta stoi już obok.
-  return summary === permission.toolName ? '' : summary;
 }
 
 /**

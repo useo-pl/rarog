@@ -59,7 +59,7 @@ final class TreeAnchorHarness {
     self.window = window
     self.fixture = fixture
     ProjectTreeListTests.spin()
-    let count = store.state.projectTreeRows(collapsed: navigation.collapsedProjects, openCwd: nil, jumpCwd: nil).count
+    let count = navigation.treeRows(store.state, openCwd: nil, jumpCwd: nil).count
     list = try XCTUnwrap(
       ProjectTreeListTests.views(UICollectionView.self, in: window).first {
         $0.numberOfSections > 0 && $0.numberOfItems(inSection: 0) == count
@@ -77,8 +77,9 @@ final class TreeAnchorHarness {
     window.isHidden = true
   }
 
+  /// The rows the list shows (`RarogNavigation.treeRows`: collapsed and pinned projects, the filter).
   func rows() -> [ProjectTreeRow] {
-    store.state.projectTreeRows(collapsed: navigation.collapsedProjects, openCwd: nil, jumpCwd: nil)
+    navigation.treeRows(store.state, openCwd: nil, jumpCwd: nil)
   }
 
   func ids() -> [ProjectTreeID] { rows().map(\.id) }
@@ -104,6 +105,12 @@ final class TreeAnchorHarness {
     ProjectTreeRows.toggle(
       projects.map(TreeAnchorFixture.cwd), collapse: collapse, gesture: gesture, navigation: navigation,
       store: store, anchor: anchor, reduceMotion: false)
+  }
+
+  /// Pin or unpin from the header's menu (`ProjectTreeRows.pin`, the same function the menu item calls).
+  func pin(_ project: String, _ pinned: Bool) {
+    ProjectTreeRows.pin(
+      TreeAnchorFixture.cwd(project), pinned: pinned, navigation: navigation, store: store, anchor: anchor)
   }
 
   // MARK: - Geometria
@@ -264,13 +271,6 @@ struct TreeAnchorFixture {
   func removing(_ ids: Set<String>) -> TreeAnchorFixture {
     var copy = self
     copy.specs.removeAll { ids.contains($0.id) }
-    return copy
-  }
-
-  /// Projekt z aktywnością innej doby: przestawia się w kolejności drzewa (doba aktywności malejąco).
-  func active(_ project: String, at iso: String) -> TreeAnchorFixture {
-    var copy = self
-    for index in copy.specs.indices where copy.specs[index].project == project { copy.specs[index].activity = iso }
     return copy
   }
 

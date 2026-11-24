@@ -55,11 +55,6 @@ struct VoiceAgentSendMark {
   let mark: VoiceAgentSession.SendMark
 }
 
-extension VoiceAgentSession: DictationHost {
-  /// Dictation takes the microphone: the conversation ends.
-  func handOff() { end() }
-}
-
 extension SessionViewController {
   /// Look and action of the button; once, from `buildVoice`.
   func buildVoiceAgent() {
@@ -210,7 +205,9 @@ extension SessionViewController {
       state: store.state, sessionId: sessionId, login: store.loginEpoch, enabled: store.voiceAgent.enabled,
       sonioxAllowed: store.dictation.sonioxAllowed,
       selected: navigation == nil ? sessionId : navigation?.selectedSessionId,
-      background: UIApplication.shared.applicationState == .background, fieldShown: !composer.isHidden)
+      background: UIApplication.shared.applicationState == .background,
+      keepsInBackground: store.voiceAgent.lockedPhoneTrial.keeps(running: voiceAgentChrome.session?.isReady == true),
+      fieldShown: !composer.isHidden)
     #if DEBUG
     if ScriptedVoiceAgent.isOn { input.enabled = true }
     #endif
