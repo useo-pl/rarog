@@ -562,3 +562,30 @@ describe('zmierzony dialog Edit (CLI 2.1.293)', () => {
     }, null), EDIT)).toBe(false);
   });
 });
+
+describe('`Edit` from a transcript entry without a dump: the call `cwd` of the entry', () => {
+  const EDIT = readFileSync(join(import.meta.dirname, 'fixtures', 'herdr', 'measured', 'zgoda-edit-2.1.293.txt'), 'utf8');
+  const entry = (entryCwd?: string): PendingTool => ({
+    id: 'toolu_edit', toolName: 'Edit', at: '2026-08-22T10:00:06.000Z',
+    input: { file_path: '/pomiar/pomiar-dialogow.txt', old_string: 'stara wartosc', new_string: 'nowa wartosc' },
+    ...(entryCwd === undefined ? {} : { entryCwd }),
+  });
+  const buttons = (pending: PendingTool, cwd: string): boolean => {
+    const action = decideCard({
+      pending, hookPending: null, text: EDIT, reqId: 'toolu_edit', active: null, blockedSeq: 7, answeredSeq: -1,
+      hookAnswersEnabled: true, deadAnswerKey: null, canRetry: false, answeredHookCall: null, decided: null,
+      resolve: resolveOptions, excerpt: (t: string) => t.trim() || null, hookRaw: null, cwd,
+    });
+    return action.kind === 'card' && action.card.event.type === 'permission-request' && action.card.event.input !== null
+      && action.card.active.options.length > 0;
+  };
+
+  it('after a `cd` the pane stays on the start directory: the entry `cwd` proves the relative path', () => {
+    expect(buttons(entry('/pomiar'), '/start')).toBe(true);
+  });
+
+  it('without the entry `cwd` the pane directory decides: another directory gives no buttons', () => {
+    expect(buttons(entry(), '/start')).toBe(false);
+    expect(buttons(entry(), '/pomiar')).toBe(true);
+  });
+});

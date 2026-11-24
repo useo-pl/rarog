@@ -18,7 +18,6 @@ extension UICopy {
   static var inboxSwipeRemove: String { L("inbox.swipeRemove") }
   /// The fold row of a long card: "14 more lines · Show all".
   static func inboxShowAll(_ hidden: Int) -> String { L("inbox.showAll", hidden) }
-  static var inboxShowLess: String { L("inbox.showLess") }
   static var inboxLoading: String { L("inbox.loading") }
   static var inboxTruncated: String { L("inbox.truncated") }
   /// The toast after a removal: "Removed “background recording”".

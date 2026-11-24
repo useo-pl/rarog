@@ -14,6 +14,7 @@ import { redact } from './auth/index.ts';
 import { defaultStoreRoot, projectSlug } from './cli-store.ts';
 import type { RarogConfig } from './config.ts';
 import { type WalkDisk, insideWorkArea } from './config/work-area.ts';
+import type { WorkAreaDisk } from './folder-gate/disk.ts';
 import { PATH_NOT_ALLOWED, isListedChild, resolveListedDir } from './fs-browse.ts';
 import {
   MKDIR_CHILD_CODES, type MkdirChildCode, type MkdirChildExit, type MkdirChildRunner, type MkdirSpawnOptions,
@@ -59,6 +60,8 @@ export interface MkdirDeps {
   readonly storeRoot?: string;
   /** The disk calls of the symlink walk; tests record them. */
   readonly walk?: WalkDisk;
+  /** The disk of the parent steps after the walk (`resolveListedDir`). */
+  readonly disk?: WorkAreaDisk;
 }
 
 /** The error code of a refusal: the codes of `shared/src/rest.ts` and the two codes of the listing. */
@@ -168,7 +171,9 @@ export async function makeDirectory(body: MkdirBody, deps: MkdirDeps): Promise<M
 }
 
 async function inSlot(parent: string, name: string, deps: MkdirDeps): Promise<MkdirResult> {
-  const ctx = await resolveListedDir(parent, { roots: deps.config.projectRoots, home: deps.home, walk: deps.walk });
+  const ctx = await resolveListedDir(parent, {
+    roots: deps.config.projectRoots, home: deps.home, walk: deps.walk, disk: deps.disk,
+  });
   if (!ctx.ok) return refused(deps, ctx);
   // From here to the start of the child: no `fs` call and no `await`, so the child gets `realDir` as checked.
   if (!isListedChild(ctx, name)) {

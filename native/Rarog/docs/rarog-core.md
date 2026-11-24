@@ -87,8 +87,10 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     (`ServerIrohConfig.fingerprint`); it only informs. `confirmPairing()` sends `POST /api/pair` along the link's
     target (no credentials, outside the compatibility gate), saves the key in the Keychain (a refusal gives
     `.failed(.keychain)`) and switches over. Over iroh (`.iroh`, `.both`) the relay registry client prepares first;
-    after a fresh sponsorship the card is `.waitingForRelay`, with Cancel, from the first pairing request on
-    (`RarogStore+RelayAccess`; `docs/implementation-spec.md`, "iroh relay registry").
+    when the relay may not admit the server yet (a fresh registration or sponsorship, a preparation that did not
+    finish, or a sponsorship less than 60 s before the preparation ended) the card is `.waitingForRelay`, with Cancel,
+    from the first pairing request on (`RarogStore+RelayAccess`; `docs/implementation-spec.md`, "iroh relay
+    registry").
   - **One server per app:** a link to another server than the paired one gives `PairingState.replacedServer`. The one
     rule is `PairingLink.leadsToAnotherServer`: a link with `k` compares the full EndpointId with the paired iroh key
     (a paired server without one cannot be compared, so it counts as another server), and a link without `k`
@@ -146,7 +148,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     `POST /api/devices/forget` with the limit of one tunnel attempt (`serverRuntime.forgetLimit`,
     `TunnelMachine.attemptBudget`, 15 s), so an iroh tunnel still connecting after a return from the background gets
     through; without an answer within it the server keeps the device, and Forget goes on locally. Then the Keychain item
-    of this `deviceId` goes, `forgetPush` unregisters, the Live Activity ends and the data goes. A `device-revoked`
+    of this `deviceId` goes, `forgetPush` unregisters, the Live Activity ends, the server's
+    `rarog.devices.known.<serverId>` and `rarog.devices.notices.<serverId>` go, and the data goes. A `device-revoked`
     during the operation (`serverRuntime.forgettingDevice`) is its own result, so no revoked screen. Forget and
     pairing exclude each other in the core: the reply of one would delete the key of the other.
   - **A 401 for the key** (`handleUnauthorized` reads `transport.credentialRejection`): `device-revoked` for THIS

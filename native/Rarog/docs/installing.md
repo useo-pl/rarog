@@ -11,13 +11,14 @@ bash scripts/ios-build.sh && bash scripts/ios-install.sh
 A Debug build with automatic signing for the team in the project (`DEVELOPMENT_TEAM` in `project.pbxproj`; another
 team: `RAROG_IOS_TEAM`). The build number is the HEAD commit count from `ios_build_number` (`scripts/ios-lib.sh`): it
 only grows. The server's `RAROG_MIN_CLIENT_BUILD` goes to the app in `hello` as `minClientBuild`, and a build below
-it gets the `tooOld` compatibility state, in which `MutationGate` refuses its mutations ("Client gates in one place"
-above). A build from Xcode alone has number 1. `RAROG_BUILD_NUMBER=<N>` gives a build of an older commit a number
-higher than the installed one. A shallow clone, or an `N` that is not a number or does not exceed the HEAD commit
-count, is refused before the build. The output goes to `native/Rarog/build/` (outside git). `devicectl` installs it
-on a paired, unlocked device: without `RAROG_IOS_DEVICE` the first connected iPad, with it the named device (udid or
-CoreDevice identifier). The iOS scripts run outside the Claude Code sandbox, because xcodebuild, devicectl and swift
-write caches to the system temporary directory.
+it gets the `tooOld` compatibility state, in which `MutationGate` refuses its mutations
+(`code-rules.md`, "Client gates in one place"). A build from Xcode alone has number 1. `RAROG_BUILD_NUMBER=<N>`
+gives a build of an older commit a number higher than the installed one. A shallow clone, or an `N` that is not a
+number or does not exceed the HEAD commit count, is refused before the build. The output goes to
+`native/Rarog/build/` (outside git). `devicectl` installs it on a paired, unlocked device: without
+`RAROG_IOS_DEVICE` the first connected iPad, with it the named device (udid or CoreDevice identifier). The iOS
+scripts run outside the Claude Code sandbox, because xcodebuild, devicectl and swift write caches to the system
+temporary directory.
 
 **New device** (an iPhone, say): connect it by cable once and run `bash scripts/ios-build.sh` with the API key (below;
 `RAROG_IOS_DEVICE` names the iPhone). A build for a connected device registers it with the account

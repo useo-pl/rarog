@@ -8,7 +8,7 @@ import Foundation
 public enum ServerRelease {
   /// Pole `version` z `package.json` korzenia repo w chwili wydania. Podbicie wersji serwera podbija tę stałą w tym
   /// samym commicie: strażnik `server/test/wersja-apki-i-serwera.test.ts` porównuje oba zapisy.
-  public static let version = "1.1.0-beta.1"
+  public static let version = "1.1.0"
 
   /// First package version with `rarog update`: the first version after `0.1.0`. Only the triple counts: a local
   /// build `0.1.1-local.…` from the clone already has `rarog update`.
@@ -44,9 +44,15 @@ public enum ServerRelease {
     return true
   }
 
-  /// Command for a server of unknown version: the full chain of the app's channel.
+  /// Command for a server of unknown version without `rarog update`: the full chain of the app's channel.
   public static func unknownServerCommand(release: String = version) -> String {
     isBeta(release) ? betaInstallAndUpdateCommand : installAndUpdateCommand
+  }
+
+  /// First command for a server of unknown version: the update of the app's channel, which checks the package's
+  /// provenance before it installs. ``unknownServerCommand(release:)`` stays the fallback for a server without it.
+  public static func unknownServerUpdateCommand(release: String = version) -> String {
+    isBeta(release) ? betaUpdateOnlyCommand : updateOnlyCommand
   }
 
   /// Update command for the server version from the probe (`docs/distribution.md`, "Server update indicator").

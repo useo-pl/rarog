@@ -7,7 +7,7 @@
  */
 import { Readable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { voiceTokenSchema } from '@rarog/shared';
 import { REDACTED, SENSITIVE_KEY_PARTS, redact } from '../src/auth/index.ts';
 import {
@@ -522,6 +522,40 @@ describe('POST /api/voice/token', () => {
     expect(captured.raw).toContain(TYMCZASOWY);
     // Twarda asercja: klucz STAŁY nie ma prawa pojawić się w odpowiedzi HTTP.
     expect(captured.raw).not.toContain(STALY_KLUCZ);
+  });
+
+  it('a device revoked while Soniox answers → 401 `device-revoked`, the temporary key does not leave', async () => {
+    const config = loadConfig({ RAROG_DEMO: '1', ...withKey });
+    const device = createTestDevice(config.dataDir, { epoch: config.epoch });
+    let asked = false;
+    let release = (): void => {};
+    const handler = createRouter({
+      config,
+      manager: new FakeManager([makeSummary({ id: 's1' })]),
+      hub: new SseHub({ manager: new FakeManager([]), serverStartId: 's', protocolVersion: 1, heartbeatMs: 0 }),
+      serverStartId: 's', startedAtMs: Date.now(), logger: silentLogger, devices: device.identity,
+      voice: createVoiceMinter({
+        apiKey: config.sonioxApiKey, apiHost: config.sonioxApiHost, enabled: config.voiceEnabled,
+        fetchImpl: () => {
+          asked = true;
+          return new Promise((resolve) => {
+            release = () => { resolve({ status: OK_REPLY.status, json: () => Promise.resolve(OK_REPLY.payload) }); };
+          });
+        },
+        minIntervalMs: VOICE_TOKEN_MIN_INTERVAL_MS, hourlyCap: VOICE_TOKEN_HOURLY_CAP,
+      }),
+    });
+    const { res, done } = fakeRes();
+    handler(fakeReq({ body: '{}', authorization: device.authorization }), res);
+    // Revoked only once the body has passed its own check and the request to Soniox is out.
+    await vi.waitFor(() => { expect(asked).toBe(true); });
+    device.store.revoke(device.id, 'admin');
+    release();
+    const captured = await done;
+
+    expect(captured.status).toBe(401);
+    expect(captured.body).toMatchObject({ error: 'device-revoked' });
+    expect(captured.raw).not.toContain(TYMCZASOWY);
   });
 
   it('żadna odpowiedź endpointu nie niesie klucza stałego — także błędy', async () => {

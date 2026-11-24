@@ -51,14 +51,18 @@ ios_scripts_clean() {
   git -C "$IOS_ROOT" diff --quiet HEAD -- "${IOS_KEY_SCRIPTS[@]}"
 }
 
+# A directory without git (an unpacked archive) cannot run the cleanliness guard: there it runs only with the full
+# key trio (and refuses), so a build without the key still goes on.
 ios_asc_auth() {
   local key_id issuer path
   IOS_ASC_ARGS=()
-  ios_scripts_clean \
-    || ios_die "uncommitted changes in ${IOS_KEY_SCRIPTS[*]} — review the diff and commit before using the API key"
   key_id="${RAROG_ASC_KEY_ID:-}"
   issuer="${RAROG_ASC_ISSUER_ID:-}"
   path="${RAROG_ASC_KEY_PATH:-}"
+  if [[ -e "$IOS_ROOT/.git" || (-n "$key_id" && -n "$issuer" && -n "$path") ]]; then
+    ios_scripts_clean \
+      || ios_die "uncommitted changes in ${IOS_KEY_SCRIPTS[*]} — review the diff and commit before using the API key"
+  fi
   [[ -n "$key_id" && -n "$issuer" && -n "$path" ]] || return 1
   ios_asc_key_args "$key_id" "$issuer" "$path" RAROG_ASC_KEY_PATH
 }
@@ -80,12 +84,17 @@ ios_asc_key_args() {
 # (`git -C "$IOS_ROOT" rev-list --count HEAD`): jedna reguła dla każdego skryptu, który buduje apkę. Liczba
 # rośnie z każdym commitem, więc nowszy build ma wyższy numer i próg serwera (`RAROG_MIN_CLIENT_BUILD`) da się
 # ustawić na „starsze niż ten build”. Płytki klon (`git clone --depth`) zna tylko część historii i zaniża
-# liczbę: odmowa, także z nadpisaniem, bo nadpisanie porównuje się z tą samą liczbą. Katalog bez gita też jest
-# odmową.
+# liczbę: odmowa, także z nadpisaniem, bo nadpisanie porównuje się z tą samą liczbą.
 # `RAROG_BUILD_NUMBER` nadpisuje numer W GÓRĘ: build ze starszego commita (np. znacznika) z numerem WYŻSZYM niż
 # zainstalowany. Nadpisanie musi być liczbą większą od liczby commitów, inaczej skrypt kończy się błędem.
+# A directory without git (an unpacked archive of the public repository) has no commit count to compare with, so
+# there `RAROG_BUILD_NUMBER` is the number as given; without it such a directory is a refusal too.
 ios_build_number() {
   local count="$1" override="${RAROG_BUILD_NUMBER:-}" shallow
+  if [[ -n "$override" && ! -e "$IOS_ROOT/.git" ]]; then
+    ios_build_number_without_git "$override"
+    return 0
+  fi
   [[ "$count" =~ ^[0-9]+$ ]] || ios_die "HEAD commit count unknown (${count:-empty})"
   shallow="$(git -C "$IOS_ROOT" rev-parse --is-shallow-repository 2>/dev/null)" || shallow=""
   [[ "$shallow" != true ]] \
@@ -100,6 +109,26 @@ ios_build_number() {
   fi
   [[ "$override" =~ ^(0|[1-9][0-9]*)$ ]] || ios_die "RAROG_BUILD_NUMBER=$override is not a number"
   ((override > count)) || ios_die "RAROG_BUILD_NUMBER=$override must be greater than the HEAD commit count ($count)"
+  echo "$override"
+}
+
+# The number without git. A server installed from npm announces its minimum app build in `hello`
+# (`DEFAULT_MIN_CLIENT_BUILD`, read from the server source next to this script, its only definition) and treats a
+# lower build as too old, so a lower number builds with a warning on stderr: such an app suits only a server whose
+# `RAROG_MIN_CLIENT_BUILD` is at most this number.
+ios_build_number_without_git() {
+  local override="$1" clients="server/src/config/clients.ts" minimum
+  [[ "$override" =~ ^(0|[1-9][0-9]*)$ ]] || ios_die "RAROG_BUILD_NUMBER=$override is not a number"
+  minimum="$(sed -n 's/^export const DEFAULT_MIN_CLIENT_BUILD = \([0-9][0-9]*\);$/\1/p' \
+    "$IOS_ROOT/$clients" 2>/dev/null)" || minimum=""
+  if [[ ! "$minimum" =~ ^[0-9]+$ ]]; then
+    echo "ios: warning: cannot read DEFAULT_MIN_CLIENT_BUILD from $clients; build $override is not checked" \
+      "against the minimum app build of a package install" >&2
+  elif ((override < minimum)); then
+    echo "ios: warning: build $override is below the minimum app build of a package install ($minimum):" \
+      "a server installed from npm treats this app as too old" \
+      "unless its RAROG_MIN_CLIENT_BUILD is at most $override" >&2
+  fi
   echo "$override"
 }
 

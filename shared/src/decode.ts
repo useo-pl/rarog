@@ -29,6 +29,7 @@ import {
   blockSchema,
   contextLimitStateSchema,
   deltaEventSchema,
+  folderAccessEventSchema,
   gitFileDetailSchema,
   gitStatusEventSchema,
   helloEventSchema,
@@ -37,6 +38,8 @@ import {
   inboxDialogKindSchema,
   inboxEventSchemas,
   inboxHeadSchemaOf,
+  macFolderBlockSchema,
+  macFolderStateSchema,
   messageAttachmentSchema,
   messageEventSchema,
   notesEventSchema,
@@ -178,6 +181,11 @@ export const DEGRADATIONS = {
    * value is one item with nothing left to show and is ignored whole.
    */
   'inbox.head': undefined,
+  /**
+   * A `folder-access` block with an unknown `state`: that folder drops out of the list and the other blocks stay, so a
+   * state added later does not hide the folders an older app can name.
+   */
+  'folder-access.block': undefined,
 } as const;
 
 /** Wartość zapasowa pola `K` — wyłącznie do `satisfies` w schematach (zero kodu w runtime). */
@@ -363,6 +371,17 @@ function buildSchemas(raw: boolean) {
   const inboxHeads = z.array(z.union([inboxHead, unreadableHead]))
     .transform((heads) => (raw ? heads : heads.filter((head) => !(head instanceof Dropped))) as InboxHead[]);
 
+  /*
+   * `folder-access`: a block with an unknown string in `state` drops out and the rest of the list stays. Any other
+   * broken block (`null`, a missing field, an empty `path`) still rejects the frame, also next to an unknown state.
+   */
+  const unreadableBlock = macFolderBlockSchema.extend({
+    state: lenient(macFolderStateSchema, undefined satisfies Fallback<'folder-access.block'>),
+  }).transform((block) => new Dropped(block));
+  type MacFolderBlock = z.output<typeof macFolderBlockSchema>;
+  const folderBlocks = z.array(z.union([macFolderBlockSchema, unreadableBlock]))
+    .transform((blocks) => (raw ? blocks : blocks.filter((block) => !(block instanceof Dropped))) as MacFolderBlock[]);
+
   return z.discriminatedUnion('type', [
     helloEventSchema,
     sessionsSnapshotEventSchema.extend({ sessions: z.array(summary) }),
@@ -404,6 +423,7 @@ function buildSchemas(raw: boolean) {
     usageEventSchema,
     herdrStatusEventSchema,
     notesEventSchema,
+    folderAccessEventSchema.extend({ blocked: folderBlocks }),
     inboxHeadsEvent.extend({ heads: inboxHeads }),
     // One head is one item: an unknown value ignores the frame, and the next head or `GET /api/inbox` mends it.
     inboxHeadEvent,

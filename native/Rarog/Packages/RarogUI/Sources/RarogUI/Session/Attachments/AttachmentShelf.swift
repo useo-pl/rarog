@@ -22,18 +22,19 @@ public final class AttachmentShelf {
   private var listeners: [String: @MainActor (AttachmentIntake.Result) -> Void] = [:]
   /// Pasek sesji, który rysuje półkę; ostatni zarejestrowany wygrywa.
   private var watchers: [String: @MainActor () -> Void] = [:]
-  /// Rośnie przy ``removeAll()``: wynik wczytywania sprzed niego nie ląduje na półce.
+  /// Grows on ``removeAll()``: a load result from before it does not land on the shelf and its staged files go.
   private var generation = 0
 
   public init() {}
 
-  /// Wszystko z półki znika, także wczytywane paczki („Zapomnij serwer”, inny serwer): otwarte paski
-  /// dostają zmianę, spóźniony wynik wczytania przepada.
+  /// Everything leaves the shelf, loads in progress too ("Forget Server", another server): open strips get the
+  /// change, and the staged files of the shelf and of a late load result leave the disk.
   public func removeAll() {
     generation += 1
     for task in loads.values { task.cancel() }
     loads = [:]
     let sessions = Array(items.keys)
+    AttachmentStaging.discard(items.values.flatMap { $0 })
     items = [:]
     for sessionId in sessions { watchers[sessionId]?() }
   }
@@ -82,7 +83,11 @@ public final class AttachmentShelf {
     let started = generation
     loads[sessionId] = Task { [self] in
       let result = await AttachmentIntake.process(candidates, existing: existing)
-      guard started == generation else { return }
+      guard started == generation else {
+        // The shelf was emptied during the load: nobody holds these staged files.
+        AttachmentStaging.discard(result.added)
+        return
+      }
       loads[sessionId] = nil
       if !result.added.isEmpty {
         store(AttachmentCounts.ordered(attachments(for: sessionId) + result.added), for: sessionId)

@@ -5,7 +5,8 @@ import RarogCore
 // The session switcher window: which tabs are in the window, in which order, and what a row shows. The rows are the
 // tabs of the current project in the order of the tab bar (sessions, then terminals), read live from the same list
 // the bar draws (`RarogNavigation.stripTabs`); a tab without a target (the terminal invite, a terminal being opened)
-// is no row. A session row is `SessionRowModel`, a terminal row its tab label and a quiet line. Owner: shortcuts.
+// is no row. A session row is `SessionRowModel` without the project (the heading names it once), a terminal row its
+// tab label and a quiet line. Owner: shortcuts.
 
 /// A row of the switcher window.
 public struct SwitcherRow: Sendable, Equatable, Identifiable {
@@ -32,40 +33,44 @@ public struct SwitcherRow: Sendable, Equatable, Identifiable {
     return nil
   }
 
-  /// The row in one sentence for VoiceOver, with "you're here" on the current tab.
+  /// The title the row shows: a session's name with `#n` (`SessionRowModel.treeTitle`), a terminal's tab label.
+  public var title: String {
+    switch content {
+    case let .session(row): row.treeTitle
+    case let .terminal(label, _, _): label
+    }
+  }
+
+  /// The row in one sentence for VoiceOver, without the project like the row itself, with "you're here" on the
+  /// current tab.
   public func spoken(now: Date) -> String {
     let base: String =
       switch content {
-      case let .session(row): row.spoken(now: now)
+      case let .session(row): row.spoken(now: now, withProject: false)
       case let .terminal(_, _, spoken): spoken
       }
     return isCurrent ? "\(base), \(UICopy.switcherHere)" : base
   }
 }
 
-/// What stands at the start of a row before the dot (`SwitcherRows.digitKey(for:digits:keyboard:)`).
-public enum SwitcherDigitKey: Sendable, Equatable {
-  case none
-  case blank
-  case digit(Int)
+/// The heading of the window: the project once, then "Zakładki projektu · N" (small caps come from the `Eyebrow`
+/// style). The view draws the parts apart, so a long project name truncates and the count stays.
+public struct SwitcherHeading: Sendable, Equatable {
+  /// The project's name; `nil` without a current project.
+  public let project: String?
+  /// "Zakładki projektu · N".
+  public let tabs: String
+
+  /// The whole heading in one line.
+  public var text: String { UICopy.list([project, tabs].compactMap(\.self), .dot) }
+  /// The window's name for VoiceOver: the project (the rows no longer say it), then "Zakładki projektu".
+  public var label: String { UICopy.list([project, UICopy.switcherLabel].compactMap(\.self), .comma) }
 }
 
 public enum SwitcherRows {
-  /// The tab a digit key picks among `order` (the tabs of the bar): the digit the bar draws on it
-  /// (`ShortcutMenu.tabDigits`: 1–8 by position, 9 on the last tab past the eighth), and 9 also picks the last tab
-  /// when no tab carries 9, like Cmd+9 on the bar. `nil`: no tab has that digit.
-  public static func tab(forDigit digit: Int, in order: [ProjectTabRef]) -> ProjectTabRef? {
-    if digit == 9 { return order.last }
-    guard (1...8).contains(digit), digit <= order.count else { return nil }
-    return order[digit - 1]
-  }
-
-  /// The digit key at the start of a row: the digit of its tab on the bar. A row without a digit (the middle tabs
-  /// past the eighth) keeps an empty room of the same width, so the dots stay in a column. Only in a window that holds
-  /// the hardware keyboard; without it the row has no key.
-  public static func digitKey(for tab: ProjectTabRef, digits: [ProjectTabRef: Int], keyboard: Bool) -> SwitcherDigitKey {
-    guard keyboard else { return .none }
-    return digits[tab].map(SwitcherDigitKey.digit) ?? .blank
+  /// The heading for the current project's directory (`RarogNavigation.currentProjectCwd`) and the number of rows.
+  public static func heading(cwd: String?, count: Int) -> SwitcherHeading {
+    SwitcherHeading(project: cwd.map(ProjectPath.name), tabs: UICopy.switcherHeading(count))
   }
 
   /// Rows of the window from the tabs of the bar (`RarogNavigation.stripTabs`), live: the order of the bar, the words
@@ -78,7 +83,8 @@ public enum SwitcherRows {
       case let .session(id):
         guard let session = state.sessions[id] else { return nil }
         let row = SessionRowModel(
-          session, ordinal: ordinals[id], listStale: state.listStale, turnStage: state.turnStage[id])
+          session, ordinal: ordinals[id], listStale: state.listStale, turnStage: state.turnStage[id],
+          showsProject: false)
         return SwitcherRow(tab: target, key: tab.id, content: .session(row), isCurrent: tab.current)
       case let .terminal(id):
         let entry = state.terminals.entries.first { $0.id == id }

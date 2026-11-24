@@ -151,8 +151,9 @@ Tests: `server/test/scripts-check.test.ts` and `relay-vps/test/bramka.test.ts`.
 ## `.gitignore`
 
 Besides build output, the repository ignores local files that must not reach the public repository: photos from the
-app (`.rarog-uploads/`), agent worktrees (`**/.claude/worktrees/`), local Claude Code settings and notes
-(`.claude/settings.local.json`, `CLAUDE.local.md`), `.env` files, PEM keys and the App Store Connect API key.
+app (`.rarog-uploads/`), agent worktrees (`**/.claude/worktrees/`), local Claude Code settings, working files
+and notes (`.claude/settings.local.json`, `.claude/.cc-writes/`, `.claude/scheduled_tasks.lock`, `CLAUDE.local.md`),
+`.env` files, PEM keys and the App Store Connect API key.
 `relay/.gitignore` and `relay-auth/.gitignore` add the `wrangler dev` secrets (`.dev.vars`, `.dev.vars.*`).
 `*.example` templates stay. `server/test/repo-files.test.ts` checks the patterns on synthetic paths and that no
 tracked file matches them.
@@ -184,7 +185,9 @@ manager cache is off.
    store a CycloneDX SBOM per platform (artifacts `sbom-ubuntu-latest` and `sbom-macos-latest`), because the
    package of iroh (the QUIC library behind the server's iroh listener) ships its native module as one package per
    platform. Each fails when the SBOM lacks the package or lists the Claude SDK. They need npm 11: npm 10 installs
-   the iroh packages of every OS.
+   the iroh packages of every OS. Each also runs every command from the `bin` field of the installed package with
+   `--help`; a failing command fails the job, so publish, which waits for sbom-ubuntu, never stages a tarball whose
+   `rarog` does not start.
 3. **publish** (outside a dry run; environment `npm`, which admits only `v*` tags and has no required reviewer;
    only `id-token: write`) starts after `build` and `sbom-ubuntu`. It does not wait for `sbom-macos`: a red macOS
    SBOM marks the run red but does not stop the publication. It checks the tarball's sha256 and sends it with

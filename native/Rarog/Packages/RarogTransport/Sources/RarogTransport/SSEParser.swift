@@ -33,7 +33,9 @@ public struct SSEEvent: Sendable, Equatable {
 ///   bajt spacji po `:` jest zdejmowany;
 /// - `retry:` tylko z cyframi ASCII; `id:` ze znakiem NUL jest ignorowane;
 /// - pusta linia wysyła zdarzenie, jeśli bufor `data` nie jest pusty; niedokończone zdarzenie
-///   na końcu strumienia przepada.
+///   na końcu strumienia przepada;
+/// - a line or the `data` of one event over ``maxEventBytes`` cuts the stream (``Output/oversized(_:)``), and the
+///   buffers keep at most ``retainedCapacity`` each between lines, reusing their storage below it.
 public struct SSEParser: Sendable {
   /// Wynik jednej linii.
   public enum Output: Sendable, Equatable {
@@ -42,7 +44,31 @@ public struct SSEParser: Sendable {
     case retry(Int)
     /// Komentarz (heartbeat `: ping`) — dowód życia strumienia, bez treści protokołu.
     case comment(String)
+    /// A line or the `data` of one event passed the ceiling (``maxEventBytes``): the stream is broken and is cut
+    /// here. Nothing follows it: the parser drops its buffers and ignores every later byte.
+    case oversized(Oversized)
   }
+
+  /// What passed the ceiling.
+  public enum Oversized: Sendable, Equatable {
+    /// One line, before its end came.
+    case line
+    /// The `data` of one event, from any number of lines.
+    case event
+  }
+
+  /// Ceiling of one line and of the `data` of one event, in bytes. The largest frame the server builds is a transcript
+  /// snapshot: a full ring and the image budget, plus every pending consent card of the session (the server's
+  /// `CONSENT_REGISTRATIONS_PER_SESSION_MAX` cards of up to `CONSENT_DISPLAY_MAX` each), which JSON escaping can
+  /// double. A snapshot carries no `id:`, so a ceiling below it would cut the same snapshot on every reconnect; above
+  /// it only a broken stream gets here, and buffering it further would only grow memory. `SSEParserTests` ties the
+  /// ceiling to those server constants.
+  public static let maxEventBytes = 256 * 1024 * 1024
+  /// Capacity each of the two buffers keeps between lines, so both together hold at most 256 KiB; a larger one, left
+  /// by a big event, is released.
+  static let retainedCapacity = 128 * 1024
+
+  private let ceiling: Int
 
   private var line: [UInt8] = []
   private var afterCR = false
@@ -52,12 +78,28 @@ public struct SSEParser: Sendable {
   private var hasData = false
   private var eventType = ""
   private var blockID: String?
+  /// The stream passed the ceiling: every later byte is ignored.
+  private var cut = false
   public private(set) var lastEventId = ""
 
-  public init() {}
+  public init() {
+    self.init(maxEventBytes: Self.maxEventBytes)
+  }
+
+  /// Parser with another ceiling (tests of the boundary).
+  init(maxEventBytes: Int) {
+    ceiling = maxEventBytes
+  }
+
+  /// Capacity of both buffers together, in bytes.
+  var bufferCapacity: Int { line.capacity + data.capacity }
+
+  /// Address of the line buffer's storage: the same one line after line means the buffer is reused, not reallocated.
+  var lineStorage: UnsafeRawPointer? { line.withUnsafeBytes { $0.baseAddress } }
 
   /// Przyjmuje jeden bajt; zwraca wynik, gdy bajt zamknął linię, która coś niesie.
   public mutating func push(_ byte: UInt8) -> Output? {
+    if cut { return nil }
     if afterCR {
       afterCR = false
       // LF zaraz po CR to ten sam koniec linii (CRLF), także na granicy kawałków.
@@ -70,6 +112,7 @@ public struct SSEParser: Sendable {
     case 0x0A:
       return endOfLine()
     default:
+      guard line.count < ceiling else { return cutStream(.line) }
       line.append(byte)
       return nil
     }
@@ -85,8 +128,15 @@ public struct SSEParser: Sendable {
   }
 
   private mutating func endOfLine() -> Output? {
+    let output = interpretLine()
+    // Cleared once no slice of the line is left, so the storage is reused instead of copied.
+    line.removeAll(keepingCapacity: line.capacity <= Self.retainedCapacity)
+    return output
+  }
+
+  /// The finished line in `line`; every slice of it ends with this call.
+  private mutating func interpretLine() -> Output? {
     var bytes = line[...]
-    line.removeAll(keepingCapacity: true)
     if atStreamStart {
       atStreamStart = false
       if bytes.starts(with: [0xEF, 0xBB, 0xBF]) { bytes = bytes.dropFirst(3) }
@@ -110,6 +160,7 @@ public struct SSEParser: Sendable {
     if field.elementsEqual("event".utf8) {
       eventType = Self.text(value)
     } else if field.elementsEqual("data".utf8) {
+      guard data.count + (hasData ? 1 : 0) + value.count <= ceiling else { return cutStream(.event) }
       if hasData { data.append(0x0A) }
       data.append(contentsOf: value)
       hasData = true
@@ -145,9 +196,18 @@ public struct SSEParser: Sendable {
   private static let colon = UInt8(ascii: ":")
   private static let space = UInt8(ascii: " ")
 
+  /// Cuts the stream: the buffers go, and every later byte is ignored.
+  private mutating func cutStream(_ part: Oversized) -> Output {
+    cut = true
+    line = []
+    data = []
+    hasData = false
+    return .oversized(part)
+  }
+
   private mutating func dispatch() -> Output? {
     defer {
-      data.removeAll(keepingCapacity: true)
+      data.removeAll(keepingCapacity: data.capacity <= Self.retainedCapacity)
       hasData = false
       eventType = ""
       blockID = nil

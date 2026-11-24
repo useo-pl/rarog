@@ -99,6 +99,8 @@ public struct RarogClient: Sendable {
   let session: ClientURLSession
   /// Tłumacz zdań serwera dla odpowiedzi REST i ciał błędów.
   public let renderer: SentenceRenderer
+  /// Ceiling of one line or event of an SSE stream (``SSEParser/maxEventBytes``); tests of the cut set a lower one.
+  var streamEventCeiling = SSEParser.maxEventBytes
 
   /// - Parameters:
   ///   - policy: bramki z `RarogCore` (zgodność, sesja `unsupported`).
@@ -241,17 +243,24 @@ public struct RarogClient: Sendable {
 
     let (stream, continuation) = AsyncThrowingStream<SSEParser.Output, any Error>.makeStream()
     streaming = true
+    let ceiling = streamEventCeiling
     let task = Task {
       defer {
         watch.ended()
         pass.finish()
       }
-      var parser = SSEParser()
+      var parser = SSEParser(maxEventBytes: ceiling)
       do {
         for try await byte in bytes {
           // Every body byte, not every frame: a long `data:` line flowing slowly is not silence.
           watch.received()
-          if let output = parser.push(byte) { continuation.yield(output) }
+          guard let output = parser.push(byte) else { continue }
+          continuation.yield(output)
+          if case .oversized = output {
+            // A cut stream ends here and lets its request go; the stream loop connects again.
+            bytes.task.cancel()
+            break
+          }
         }
         continuation.finish()
       } catch {

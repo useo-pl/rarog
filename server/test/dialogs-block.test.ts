@@ -351,6 +351,7 @@ describe('strażnik tabelaryczny bloku dialogu (test 8)', () => {
     'dialog-bash-subagent-uciety-62x29-2.1.309.txt': ['tool', 'Bash', askRule('Bash')],
     'dialog-bash-uciety-naglowek-2.1.294.txt': ['tool', null, form],
     'dialog-effort-change.txt': ['confirm', null, form],
+    'dialog-exitplanmode-50kol-2.1.331.txt': ['tool', 'ExitPlanMode', title('ExitPlanMode')],
     'dialog-exitplanmode.txt': ['tool', 'ExitPlanMode', title('ExitPlanMode')],
     'dialog-model-switch.txt': ['confirm', null, known('model')],
     'dialog-permission-ask-rule-auto.txt': ['tool', 'Bash', title('Bash')],

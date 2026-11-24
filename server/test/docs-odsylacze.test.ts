@@ -24,6 +24,8 @@ const WYJATKI: ReadonlyMap<string, string> = new Map([
     'dane demo: udawany wynik `git status` z usuniętym plikiem (`D`), którego celowo nie ma'],
   ['server/src/demo/files.ts docs/guide.md',
     'demo data: a file of the demo project tree, held in memory, not in the repository'],
+  ['native/Rarog/RarogUIKitTests/TranscriptFileOpenTests.swift docs/guide.md',
+    'test data: a path in an agent reply and in the session file index of the test, not a reference'],
   ['native/Rarog/RarogUITests/InspectorUITests+Files.swift inspector.git.file.README.md',
     'the accessibility identifier of a demo project file row, not a reference'],
 ]);

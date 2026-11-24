@@ -828,9 +828,8 @@ extension StorePairingTests {
         #expect(try Data(contentsOf: server.spaces.pointerFile) == before, "wskaźnik bez zmian")
         expectSameSpace(store, server, space, drafts)
         #expect(server.released.isEmpty && server.wipes == 0)
-        await until("linia o odmowie parowania") {
-          self.allLogs(server).contains { $0.contains("pairing without proof") }
-        }
+        // A refused pairing's line waits under its offer: it is about the link's server, not the logged-in one.
+        #expect(logged(store, server).contains { $0.contains("pairing without proof") })
       } else {
         #expect(outcome == .paired)
         let pointer = try #require(server.pointer)
@@ -920,9 +919,8 @@ extension StorePairingTests {
       #expect(try Data(contentsOf: file) == before, "wskaźnik bez zmian")
       expectSameSpace(store, server, space, drafts)
       #expect(server.released.count == released && server.wipes == 0)
-      await until("linia o odmowie parowania") {
-        self.allLogs(server).contains { $0.contains("pairing under another server identity") }
-      }
+      // A refused pairing's line waits under its offer: it is about the link's server, not the logged-in one.
+      #expect(logged(store, server).contains { $0.contains("pairing under another server identity") })
 
       // Proces zabity tuż przed zapisem klucza (gdyby parowanie doszło do Keychaina): na dysku wskaźnik z tej chwili,
       // w Keychainie poprzedni klucz. Nowy magazyn na tym samym katalogu, dysk znowu przyjmuje zapisy.

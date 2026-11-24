@@ -4,8 +4,8 @@
  * Reszta integracji rozmawia z `HerdrClient` (typowana fasada) albo z `HerdrSupervisor` —
  * żaden inny moduł nie ma prawa wiedzieć, że po drugiej stronie jest gniazdo. Dzięki temu
  * cały ruch do herdr przechodzi przez DWIE bramki, które da się sprawdzić w jednym pliku:
- * allow-listę metod i bramkę protokołu (ZBIÓR przetestowanych numerów — {@link KNOWN_PROTOCOLS},
- * dziś `{22}`). Dotyczy to OBU ścieżek piszących do gniazda:
+ * allow-listę metod i bramkę protokołu (the minimum of the tested set {@link KNOWN_PROTOCOLS},
+ * today `{22}`). Dotyczy to OBU ścieżek piszących do gniazda:
  * `request()` i `subscribe()` — ta druga wysyła nazwę metody literałem, więc przepuszcza go
  * przez `assertMethodAllowed`, żeby gwarancja była sprawdzalna testem, a nie opisowa.
  *
@@ -103,8 +103,8 @@ export const READ_METHODS: ReadonlySet<string> = new Set([
 /**
  * Metody MUTUJĄCE stan po stronie herdr. Tylko one podlegają bramce trybu tylko-do-odczytu.
  *
- * Każdy zapis MUSI być tutaj, a nie w {@link READ_METHODS}: `readOnly` (czyli
- * `RAROG_HERDR_SEND=0` ORAZ nieznany protokół) jest sprawdzany WYŁĄCZNIE po tej liście.
+ * Każdy zapis MUSI być tutaj, a nie w {@link READ_METHODS}: `readOnly` (that is,
+ * `RAROG_HERDR_SEND=0`) is checked ONLY against this list.
  * Bez tych linii runbook „kradzież telefonu" byłby fikcją — `agent.start` i `tab.close`
  * przechodziłyby przy wyłączonym kanale zapisu.
  */
@@ -138,7 +138,7 @@ export const MUTATING_METHODS: ReadonlySet<string> = new Set([
    * taba z Claude równą etykiecie karty (`syncTabLabel`) i migruje stare etykiety tabów terminala
    * — zawsze tylko w tabie jednopanelowym z panelem oznaczonym przez Raroga. Obie są
    * ZAPISAMI: zmieniają to, co człowiek widzi w herdr, i to, co Rarog uzna za swoje, więc
-   * `RAROG_HERDR_SEND=0` i nieznany protokół gaszą je razem z resztą mutacji.
+   * `RAROG_HERDR_SEND=0` turns them off together with the other mutations.
    */
   'pane.rename', 'tab.rename',
   /*
@@ -148,7 +148,7 @@ export const MUTATING_METHODS: ReadonlySet<string> = new Set([
    * wtedy wysyła osobny Enter (`agent.send_keys`). Jedyny wołający to `HerdrClient.pasteText`: ciało ma wyłącznie
    * `pane_id` i `text`, nigdy `keys`. Adres panelu jest pozycyjny i metoda pisze też do panelu bez agenta, dlatego
    * driver woła ją tylko po świeżym `agent.get`, że pod tym adresem stoi agent tej samej sesji. ZAPIS: gaśnie razem
-   * z resztą przy `RAROG_HERDR_SEND=0` i nieznanym protokole.
+   * z resztą przy `RAROG_HERDR_SEND=0`.
    */
   'pane.send_input',
 ]);
@@ -203,21 +203,22 @@ export function assertMethodAllowed(method: string): void {
  * first `agent.list`, so it loses nothing. 20 and 21 are NOT in the set: on 20 `agent.prompt` has
  * different semantics (#3506), no herdr release carries 21, and the dialog parser is measured on 22.
  *
- * NIEZMIENNIK, o który łatwo się potknąć przy sprzątaniu: klasyfikacja „nieznany numer" liczy się
- * od MINIMUM tego zbioru. Numer PONIŻEJ minimum wyłącza integrację (nie znamy kształtów, na
- * których stoi cały parser), każdy inny nieznany numer daje tryb tylko do odczytu. Usunięcie
- * najstarszego numeru ze zbioru (np. przy dokładaniu 23) PRZESTAWIA więc wszystko pod nim
- * z „tylko odczyt" na „wyłączona" — to jest zmiana zachowania, nie porządki.
+ * INVARIANT that is easy to trip over when tidying up: at runtime only the MINIMUM of this set gates.
+ * A number below it turns integration off (the shapes the whole parser stands on are unknown); every
+ * number at or above it, also one above the tested maximum, gets full integration. Adding a number
+ * changes nothing at runtime, it records a measurement (the after-update measurement scripts read the
+ * set). Dropping or replacing the oldest number turns that protocol off: a change of behaviour, not
+ * tidying.
  */
 export const KNOWN_PROTOCOLS: ReadonlySet<number> = new Set([22]);
 
 /**
- * Najwyższy przetestowany numer — do komunikatów i do testów. Eksport zostaje, bo bramka jest
- * jedna, a nie każda linia, która o niej mówi, potrzebuje całego zbioru.
+ * The highest tested number, for messages and tests. The export stays because the gate is one, and
+ * not every line that talks about it needs the whole set.
  */
 export const TESTED_PROTOCOL = Math.max(...KNOWN_PROTOCOLS);
 
-/** Najstarszy przetestowany numer: pod nim integracja jest WYŁĄCZONA, nie „tylko do odczytu". */
+/** The oldest tested number and the only runtime gate: below it integration is OFF. */
 const OLDEST_KNOWN_PROTOCOL = Math.min(...KNOWN_PROTOCOLS);
 
 export const CONNECT_TIMEOUT_MS = 2_000;
@@ -787,8 +788,8 @@ export function createHerdrSocket(opts: HerdrSocketOptions): HerdrSocket {
     try {
       const result = await roundtrip(method, params, timeoutMs);
       if (!available) {
-        // Udane żądanie kasuje POWÓD niedostępności, ale nie powód trybu tylko-do-odczytu:
-        // ten drugi (nowszy protokół, `RAROG_HERDR_SEND=0`) nadal obowiązuje i ma być widoczny.
+        // A successful request clears the REASON for unavailability, not the reason for read-only
+        // mode: that one (`RAROG_HERDR_SEND=0`) still holds and has to stay visible.
         setStatus(readOnly && detail !== undefined
           ? { available: true, readOnly, detail }
           : { available: true, readOnly });
@@ -807,11 +808,14 @@ export function createHerdrSocket(opts: HerdrSocketOptions): HerdrSocket {
   /**
    * Bramka protokołu wykonywana przy starcie i przy KAŻDYM (re)connectcie subskrypcji.
    *
-   * Numer W {@link KNOWN_PROTOCOLS} → pełna integracja. Numer PONIŻEJ minimum zbioru →
-   * integracja nieaktywna (nie znamy kształtów, na których stoi cały parser). Każdy inny numer
-   * (nieznany, także nowszy) → tryb TYLKO ODCZYT: w 0.8.2 zmieniła się SEMANTYKA `agent prompt`
-   * bez zmiany numeru protokołu, więc fail-open na mutacjach jest zakładem o cudzy changelog.
-   * Fail-open na odczytach jest bezpieczny i utrzymuje wartość Raroga po każdej aktualizacji.
+   * The gate is a MINIMUM. No number in the pong, or a number below the minimum of
+   * {@link KNOWN_PROTOCOLS}, turns integration off (the shapes the whole parser stands on are
+   * unknown). Every number at or above the minimum, also one above the tested maximum, gets full
+   * integration, and `sendEnabled` decides about writes exactly as on a tested number: a newer herdr
+   * must not stop Rarog. The number never guarded the meaning of a method anyway: in herdr 0.8.2 the
+   * semantics of `agent prompt` changed without a new protocol number. On an untested number writes
+   * stay behind the method allow-list and the response checks; `RAROG_HERDR_SEND=0` is the manual way
+   * back to read-only.
    *
    * Z ponga czytamy przy okazji `capabilities.endpoint_protocol_generation` — do
    * {@link HerdrSocketStatus.generation}, czyli WYŁĄCZNIE do diagnostyki, NIGDY do `readOnly`
@@ -845,13 +849,6 @@ export function createHerdrSocket(opts: HerdrSocketOptions): HerdrSocket {
       const versions = { protocol: String(protocol), oldest: String(OLDEST_KNOWN_PROTOCOL) };
       setStatus({ available: false, readOnly: true, detail: say('herdr.protocol-too-old', versions) });
       throw new HerdrUnavailableError(say('herdr.protocol-too-old.disabled', versions));
-    }
-    if (!KNOWN_PROTOCOLS.has(protocol)) {
-      const tested = [...KNOWN_PROTOCOLS].join(', ');
-      setStatus({
-        available: true, readOnly: true, detail: say('herdr.protocol-unknown', { protocol: String(protocol), tested }),
-      });
-      return;
     }
     setStatus(sendEnabled
       ? { available: true, readOnly: false }

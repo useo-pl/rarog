@@ -90,6 +90,12 @@ Directories:
   in the session directory, the listing of one directory with git's `ignored` labels, the index of the session's
   files (a walk by that listing, narrowed by `git ls-files`), the download of one file (the limit, the sender, the
   downloads in flight by device) and the refusals of the routes.
+- `server/src/folder-gate/` — macOS-guarded home folders: the types of their states and refusal, the work-area disk
+  port (one disk operation, sync or async, as plain values), the line codec of those values, the helper process
+  that runs those operations for one folder (`helper.ts`), the relay thread and its client that start, call and
+  kill the helpers (`relay-worker.ts`, `client.ts`), which guarded folder a path lies in (`folders.ts`), the state
+  of each folder with its checks and rechecks (`gate.ts`) and the one gate of the process, disabled by default
+  (`install.ts`).
 - `server/src/inbox/` — Inbox cards: one card per session from its conversation file, and their removals.
 - `server/src/install/` — installation layout: install mode and root, data directory of the service, service
   target, repair commands, the pinned Claude SDK, package manager facts.
@@ -115,7 +121,8 @@ Directories:
 
 Files:
 
-- `server/src/herdr/index.ts` — public entry of the integration; the manager imports only this.
+- `server/src/herdr/index.ts` — public entry of the integration, which `server/src/index.ts` loads at start; the
+  manager imports the modules it uses directly (`uploads.ts`, `jsonl-follow.ts`, `types.ts`, `commands/`, …).
 - `server/src/herdr/types.ts` — shared types of the integration: supervisor, manager, driver and socket client.
 - `server/src/herdr/socket.ts` — the only code that knows the herdr unix socket and NDJSON; method allow-list.
 - `server/src/herdr/client.ts` — typed facade over the socket: response shapes and herdr error codes.

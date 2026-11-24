@@ -84,6 +84,7 @@ export type ServerEvent =
   | { type: 'herdr-status'; available: boolean; agentCount: number; readOnly: boolean;
       canLaunch?: boolean; detail?: string }
   | { type: 'notes'; cwd: string; empty: boolean }
+  | { type: 'folder-access'; blocked: MacFolderBlock[] }
   | { type: 'inbox-heads'; heads: InboxHead[] }
   | { type: 'inbox-head'; head: InboxHead }
   | { type: 'inbox-removed'; sessionId: string; turnId: string };
@@ -138,8 +139,13 @@ The message and card types (field comments in `protocol.ts`):
 Four frames are VOLATILE (`seq: null`, outside the ring buffer, no replay after a reconnect): `delta`, `activity`,
 `herdr-status` and `notes`. Their start state rides in the snapshots (`sessions-snapshot.herdrStatus`,
 `sessions-snapshot.notesCwds`, `transcript-snapshot.activity`), because iOS drops the SSE stream at every sleep. The
-three Inbox frames are volatile too and go only to a stream that asks for them ("Inbox"). The
-stream carries no push channel state: the app reads it per token from `POST /api/push/apns/status`.
+three Inbox frames are volatile too and go only to a stream that asks for them ("Inbox"). `folder-access` is volatile
+too and carries its own start state: with the folder gate on (`docs/macos-folders.md`), every global stream gets the
+full list of closed folders right after `sessions-snapshot` (before `inbox-heads`), also an empty one, and again on
+every change of the list; a server without the gate never sends it. A `MacFolderBlock` is `{name, path, state,
+since}`, `state` `waiting`, `denied` or `unchecked`, sorted by `name`; a block with an unknown `state` drops out of the
+list in the client (`folder-access.block` in `DEGRADATIONS`). The stream carries no push channel state: the app reads
+it per token from `POST /api/push/apns/status`.
 
 **Turn start and activity age** (`server/src/sessions/activity-clocks.ts`). `SessionSummary.turnSince` is the start
 of the current turn: set when the session enters a turn state (`starting`, `running`, `waiting-permission`,
@@ -354,7 +360,7 @@ maps each file to an expectation:
   whole rejection matrix of `shared/test/decode.test.ts`, so a client in another language does not guess the boundary.
 
 `shared/test/sse-fixtures.test.ts` imports nothing from `server/` and enforces: manifest and directory match; each of
-the 20 types has `<type>.max.json`; each `DEGRADATIONS` item has a `degraded` frame; and every schema path (from
+the 21 types has `<type>.max.json`; each `DEGRADATIONS` item has a `degraded` frame; and every schema path (from
 `z.toJSONSchema(serverEventSchema)`, with one path per discriminated variant) occurs in some `ok` frame, so a new field
 without golden frames fails `pnpm run check`. `message.unicode` carries Polish letters, emoji outside the BMP and an
 escaped U+2028. The app reads the same files in `GoldenFramesTests` (`RarogContract`, the `swift-contract` step): an
@@ -503,14 +509,16 @@ gates stand in "Gates on every route".
   from the ring buffer, or one `transcript-snapshot` when the tail holds at least 2 messages (log line `sse: replay <n>
   messages → snapshot <kB> kB (session <id>)`). A cursor outside the ring buffer, without a prefix or with another
   `serverStartId` gets `transcript-snapshot` plus live frames. A snapshot has no `id:`; the first live frame moves the
-  client's cursor. When a restart or "Resume" puts a new card under the id, every open stream of that id gets a
-  `transcript-snapshot` of the new card, and a cursor of the old card gets one too.
+  client's cursor.
 - Stream headers: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`,
   `Connection: keep-alive`, `X-Accel-Buffering: no`; the body opens with `retry: 3000`, and a `ping` event (with a
   `: ping` comment) comes every 10 s (`hello.heartbeatMs`). Unless `RAROG_SSE_GZIP=0` (`docs/server-config.md`), the response also has
   `Vary: Accept-Encoding`, and a client whose `Accept-Encoding` names `gzip` with a weight above zero gets
   `Content-Encoding: gzip`: the same frames, compressed and flushed after every frame and ping. The replay log line
   then reads `… → snapshot <kB> kB, gzip <kB> kB (session <id>)`.
+- A stream that holds more than `SSE_WRITE_BUFFER_MAX` unsent bytes (11 MiB: twice a full ring plus the snapshot
+  image budget) plus twice the largest frame it was sent is closed without a final frame; the client reconnects
+  with its cursor as after any break (`architecture.md`, "Two stream scopes (`SseHub`, `server/src/sse.ts`)").
 
 ### Sessions
 
@@ -977,10 +985,12 @@ contract has one TypeScript definition (a leaf module without `zod`) and a Swift
   `clock-skew`.
 - **Responses:** `register` `{v, endpointId, expiresAt}`; `renew` `{v, expiresAt, unsponsored}`; `sponsor` `{v,
   server, expiresAt}`; `forget` `{v, forgotten: true}`; `deny` and `allow` `{v, endpointId, denied}`; `health` `{v, ok,
-  version, gate, enforce}` (`gate` = the configured gate or `null`, `enforce: false` = shadow mode); `unsponsored` lists
-  the servers without a live sponsorship of this app, for which the app calls `sponsor`. Errors are `{v: 1, error}`
-  with the status from `RELAY_AUTH_ERROR_STATUS`; only `gate-mismatch` (400) also carries `gate`, and the Swift mirror
-  keeps an unknown code as text.
+  version, gate, enforce}` (`gate` = the configured gate or `null`, `enforce: false` = shadow mode); `unsponsored`
+  lists, in request order, the servers without a live sponsorship of this app and those whose entry refused the
+  extension (`kind-conflict`, the sponsorship cap), for which the app calls `sponsor`. `register` answers 429
+  `limited` also when the same client bucket (IPv4 address, IPv6 /48) already has a registration waiting or running
+  at the gate. Errors are `{v: 1, error}` with the status from `RELAY_AUTH_ERROR_STATUS`; only `gate-mismatch` (400)
+  also carries `gate`, and the Swift mirror keeps an unknown code as text.
 - **`POST /v1/access`:** `Authorization: Bearer <hook secret>` and `X-Iroh-Endpoint-Id`; 200 with body `true` lets the
   key in, 403 with `false` refuses, anything else is no decision. In shadow mode (`ENFORCE` other than `1`) the answer
   is `true` for everyone. Quotas, the Apple gate and deployment: `relay-auth/README.md`.
@@ -988,13 +998,16 @@ contract has one TypeScript definition (a leaf module without `zod`) and a Swift
   first asks the app's registry client to register the app and sponsor the link's server
   (`ServerConnector.relayPrepare`), then sends `POST /api/pair`; a link with `u` alone skips this. The client has an
   8 s budget, and the core waits for it at most 10 s and then pairs anyway, while the client goes on in the
-  background. The pairing card stays `pairing` meanwhile, without Cancel; after any preparation result other than
-  `fresh` it stays so during the pairing request too.
-- **Readiness window:** when that call registered the app or sponsored the server (`fresh`), the relay may not let
-  the server in yet, and the first pairing request often waits inside the transport until it does. The card turns
-  into `waitingForRelay`, with Cancel, before that first request goes out. A transport failure of the request (no
-  tunnel, offline, timeout; not an HTTP answer of the server) repeats it every 10 s with a new pairing transport, up
-  to 60 s after the preparation ended. An HTTP answer or the end of the window ends pairing as without a registry.
+  background. The pairing card stays `pairing` meanwhile, without Cancel; after `skipped`, and after `ready` without a
+  recent sponsorship, it stays so during the pairing request too.
+- **Readiness window:** the relay may not let the server in yet when that call registered the app or sponsored the
+  server (`fresh`), when the preparation did not finish within the budget or failed (`unavailable`), and when the
+  server was already sponsored, but less than 60 s before the preparation ended (`ready` carries when this app
+  process got the sponsorship, also from a background sync). The first pairing request then often waits inside the
+  transport until the relay lets the server in. The card turns into `waitingForRelay`, with Cancel, before that first
+  request goes out. A transport failure of the request (no tunnel, offline, timeout; not an HTTP answer of the
+  server) repeats it every 10 s with a new pairing transport, up to 60 s after the preparation ended.
+  An HTTP answer or the end of the window ends pairing as without a registry.
   Cancel in `waitingForRelay`, also during the first request, ends pairing at once: a late answer saves no key and
   switches nothing, and a request that still reaches the server leaves a device record there that is no longer
   active after 10 min without a request.
@@ -1290,9 +1303,6 @@ additive: absent means that no hand-back was proven. The golden files hold both 
 `RingBuffer<T>` (`server/src/sessions/ring-buffer.ts`): capacity `DEFAULT_RING_CAPACITY` = 500, `push(t)→seq`
 (monotonic from 1), `since(seq)`, `tooOld(seq)` and helpers. A session caps it at `RING_MAX_BYTES` (4 MB), and a
 message larger than `MAX_MESSAGE_BYTES` (256 kB) is clipped. A `seq` is valid only within one `serverStartId`.
-A new card under an existing id (restart, "Resume") numbers on after the old card (`startSeq`): a cursor at or below
-the old card's last `seq` is `tooOld`, and the open streams of that id get a `transcript-snapshot` of the new card
-before its first frame.
 
 There is no session registry on disk: a `<dataDir>/sessions.json` found at start is moved to `sessions.json.bak`.
 Sessions come back after a restart from herdr's `agent.list`, with ids from `sessionIdFor(key)` (UUIDv5,
@@ -1433,8 +1443,7 @@ Source of truth: `server/src/sessions/manager-api.ts` (signatures, refusals and 
 - `focus(id)` (moves someone else's terminal, so it obeys the send switch), `markSeen(id)`, `markUnseen(id)`.
 - `diff(id)`, `diffFiles(id)`, `diffFile(id, path)`.
 - `transcript(id)` (with `activity`, so a phone entering mid-turn does not see emptiness), `eventsSince(id, seq)`,
-  `onEvent(cb)` (one `(scope, seq, event)` subscription for SSE), `onTranscriptReset?(cb)` (a new card under an
-  existing id; the hub sends the open streams of that id a snapshot), `herdrStatus?()`.
+  `onEvent(cb)` (one `(scope, seq, event)` subscription for SSE), `herdrStatus?()`.
 
 Finished messages get a `seq` from the session's ring buffer; deltas get `seq: null`. `session-changed` and `state`
 go to the `'global'` scope and to the session scope.
@@ -1600,7 +1609,8 @@ model: `docs/security-model.md`, "Git reads".
 `git diff HEAD` with `--numstat`, the patch up to `MAX_DIFF_PATCH_BYTES` = 512 kB, only the session directory
 (`--relative`). An untracked regular file enters through `--no-index`; a symlink gets a block the server builds (mode
 `120000`); directories and special files are skipped. An out-of-scope session or a Codex entry gets 400. The app's
-diff window uses the per-file routes instead.
+diff window uses the per-file routes instead. On this route and both per-file routes the device is checked again
+after git answers, so a device unpaired meanwhile gets 401 and no diff.
 
 ### Per-file diff
 
@@ -1695,10 +1705,11 @@ the downloads in flight by device).
 
 - 200: `Content-Type: application/octet-stream`, `Content-Length` = the size from the `fstat` of the open descriptor,
   `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, then exactly `Content-Length` bytes from that one
-  descriptor, read in pieces of 64 KiB at their own offsets (`exactReader` in `server/src/safe-read.ts`). Bytes
-  appended while the file is sent are not sent. A file that ends before `Content-Length` bytes (cut while it is
-  sent) gets its response destroyed: the client sees a body shorter than `Content-Length` and drops it. There is no
-  `Range`: every download sends the whole file.
+  descriptor, read in pieces of 64 KiB at their own offsets (`exactReader` in `server/src/safe-read.ts`) through the
+  handle of the work-area port, so a file in a guarded folder of home is read in that folder's helper
+  (`docs/macos-folders.md`). Bytes appended while the file is sent are not sent. A file that ends before
+  `Content-Length` bytes (cut while it is sent) gets its response destroyed: the client sees a body shorter than
+  `Content-Length` and drops it. There is no `Range`: every download sends the whole file.
 - 413 `file-too-large` = `{error, message, size, maxBytes}` (`FileTooLargeBody`): `size` from the same `fstat` is over
   `maxBytes` (`RAROG_FILES_MAX_MB` in bytes, the value every listing announces); refused before the first byte, with
   the descriptor closed. The sentence gives both in whole megabytes, the size rounded up.
@@ -1721,7 +1732,9 @@ and `waiting-question`; the client builds the attention lane from these two stat
 `validateProjectCwd` in the manager: an absolute path, no hidden segments, in the work area of the roots
 (`docs/security-model.md`, "Work area: where Rarog starts, lists and reads"), an existing directory that stays in the
 work area also after resolving symlinks; a refusal is 400 `cwd-not-allowed`. A macOS-protected folder of home is
-refused before any disk access, with the sentence `rest.cwd-protected`.
+refused before any disk access, with the sentence `rest.cwd-protected`. A directory in such a folder that a root
+opens, while the folder gate holds the folder closed, is refused with the sentence of its state
+(`docs/macos-folders.md`); a directory from the configured project list is judged there by its text.
 
 **Directory browser** (`server/src/fs-browse.ts`): `GET /api/fs?path=…` → `DirListing`. Without `path`, the
 roots; with `path`, a path equal to or inside a root, in the work area as written and after resolving symlinks, with
@@ -1919,8 +1932,9 @@ and sends as `agent.prompt` to someone else's terminal. Detaching the driver doe
   characters; the card's `reqId` comes from the screen content (`screenFallbackReqId`).
 - `herdr-status` is volatile and global; `sessions-snapshot.herdrStatus` carries its start state. The manager
   broadcasts it after `appeared`, `gone` and `re-attached` only when (`canLaunch`, `detail`) changed. `canLaunch` is
-  `false` with `RAROG_HERDR_LAUNCH=0`, an unknown herdr protocol, or the pane cap (`RAROG_MAX_PANES`), and `detail`
-  gives the reason (`HERDR_PANE_CAP_MESSAGE` for the cap; empty for the killswitch). A missing `canLaunch` means
+  `false` with `RAROG_HERDR_LAUNCH=0`, `RAROG_HERDR_SEND=0`, a herdr protocol below the tested minimum, or the pane
+  cap (`RAROG_MAX_PANES`), and `detail` gives the reason (`HERDR_PANE_CAP_MESSAGE` for the cap; the socket's sentence
+  for `RAROG_HERDR_SEND=0` and the protocol; empty for `RAROG_HERDR_LAUNCH=0`). A missing `canLaunch` means
   "unknown", and the client keeps the last known value.
 - `sessions-snapshot.notesCwds?`: the directories with a non-empty note among the frame's sessions, without repeats; a
   missing field (`RAROG_NOTES=0`) clears all bits, an empty list means no project of the frame has a note.
@@ -1973,8 +1987,8 @@ and sends as `agent.prompt` to someone else's terminal. Detaching the driver doe
 - Resending a prompt a hook blocked: `SessionSummary.promptBlocked?: {seq, id}` names the notice and this block (`id`
   is a fresh `randomUUID()`), kept in RAM until the next send, a `user` entry, the restart's `/exit` or a detach. The
   body is `{resend: {seq: <integer>, id: <string>}}`, both fields required (no `id` → 400), carries no text, and the
-  client copies both fields unchanged; another `seq` or `id`, or a block that disappeared, gives 409, because a new
-  server process numbers from 1 again and `seq` alone is ambiguous. The driver clears the prompt field first
+  client copies both fields unchanged; another `seq` or `id`, or a block that disappeared, gives 409, because after a
+  restart the transcript numbers from zero and `seq` alone is ambiguous. The driver clears the prompt field first
   (`clearBlockedLeftover(engineSessionId)` → `empty`, `filled`, `unknown`, `busy`, `changed` or `stale`), and only
   `empty` lets the restart go on. Swift type: `SessionPromptBlocked`.
 
@@ -2114,8 +2128,14 @@ stays literal.
   survives; a task that never closes would block every following `done` push. `#usage` stays. The new content is not
   replayed (`TRUNCATED_MESSAGE`).
 - A read gap (growth over `FOLLOW_MAX_READ_BYTES`) resets the same plus the echo window (`#onGap`, `GAP_MESSAGE`).
+- A file not found yet is looked up again every `FOLLOW_MISSING_FAST_MS` (500 ms) for `FOLLOW_MISSING_WINDOW_MS`
+  (60 s) after the session opens or the follower first expects the file, then every `FOLLOW_MISSING_SLOW_MS` (5 s),
+  and at once when a turn starts (`expectTranscript()`) or the pane enters a block (`lookUpTranscript()`). A request
+  moves the one armed retry to now; a request during a lookup adds one lookup after it.
 - `hasTranscript()` answers `'yes' | 'no' | 'unknown'`; on `'unknown'` the driver waits the jsonl ↔ screen grace (2 ×
-  `HERDR_PENDING_DEBOUNCE_MS`) before judging a screen.
+  `HERDR_PENDING_DEBOUNCE_MS`) before judging a screen. After a request it answers `'unknown'` until a lookup that
+  began after the request ends, so a dialog over a file created since the last miss waits for its `tool_use` entry
+  instead of getting a card from the screen alone, and a dialog before the first prompt (no file) waits one lookup.
 - An exception in `#prime` or `#readMore` logs one line and retries at the next tick, because the server has no
   `unhandledRejection` handler.
 - When the file opens, background tasks get the whole file (`scanMainFileBefore` in `herdr/background/main-scan.ts`,
@@ -2157,7 +2177,9 @@ consent record of the same call and only picks the card's `unavailable` reason, 
   `keys` card carries one tab with digits from the screen; a `hook` card carries the full question set from the
   payload, and a `tool_use` entry in jsonl must agree with the dump (`hookMatchesPending`).
 - `ExitPlanMode` is settled by closed signatures (`PLAN_DIALOG_PATTERN`, `PLAN_EXIT_CONFIRM_PATTERN` in
-  `herdr/dialogs/screen/kinds.ts`); `displayText` is the plan itself, and "Yes, and use auto mode" escalates.
+  `herdr/dialogs/screen/kinds.ts`), matched on the dialog region with its lines joined by a space, so a sentence a
+  narrow pane wraps still matches (50 columns, CLI 2.1.331, `dialog-exitplanmode-50kol-2.1.331.txt`); `displayText`
+  is the plan itself, and "Yes, and use auto mode" escalates.
 - `OPTION_ESCALATION_PATTERN` (`herdr/dialogs/policy/escalation.ts`) is the only escalation list, with one closed
   exception in the content: the CLI warning about `cd` before git (`cdAdvisory`, CLI 2.1.265).
 - Every card without buttons logs a `method: "degrade"` entry in `herdr-audit.log`, and every refused digit a `method:
@@ -2224,7 +2246,9 @@ Rarog has no audio proxy. The system route never calls the server.
 (`z.strictObject({})`); 200 → `VoiceToken` with `Cache-Control: no-store`; 503 `voice_unconfigured` (no
 `SONIOX_API_KEY`, `RAROG_VOICE=0`, a host outside the EU, a rejected key); 502 `voice_upstream` (429/5xx, timeout, no
 network, no `api_key`); 429 `voice_throttled`. `GET /api/version` carries `voiceEnabled`: whether the server
-offers the Soniox route (a missing field reads as on). The microphone does not depend on it.
+offers the Soniox route (a missing field reads as on). The microphone does not depend on it. After the key arrives
+the device is checked again: a device revoked meanwhile gets 401 `device-revoked` and the key is dropped (it expires
+on its own).
 
 **Mint (`createVoiceMinter`).** `POST https://api.eu.soniox.com/v1/auth/temporary-api-key` with `{usage_type:
 'transcribe_websocket', expires_in_seconds: 60, single_use: true, max_session_duration_seconds: 900,

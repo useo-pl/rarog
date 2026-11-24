@@ -7,8 +7,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RELAY_AUTH_PATHS } from '../../shared/src/relay-auth.ts';
 import type { RelayAuthAppRoute, RelayAuthRoute } from '../../shared/src/relay-auth.ts';
-import { BODY_MAX_BYTES, CLIENT_HEADER_MAX_CHARS } from '../src/core.ts';
-import { ENTRY_TTL_SECONDS } from '../src/registry.ts';
+import { BODY_MAX_BYTES, CLIENT_HEADER_MAX_CHARS, gateBucket } from '../src/core.ts';
+import { ENTRY_TTL_SECONDS, SERVER_SPONSORS_MAX } from '../src/registry.ts';
+import { renewEntries } from '../../scripts/relay-canary.mjs';
 import { clientBucket } from '../src/wspolne.ts';
 import {
   ADMIN_BEARER, APP, DAY, HOOK_BEARER, ORIGIN, SERVER_A, SERVER_B, T0, appKey, deviceCheckProof, harness,
@@ -356,6 +357,43 @@ describe('kolejność kontroli i limity per adres', () => {
   });
 });
 
+describe('register: one request in flight per client bucket at the gate', () => {
+  const registerBody = async (seed: number, letter: string): Promise<Request> =>
+    request('register', await (await appKey(seed)).sign('register', { issuedAt: T0, proof: deviceCheckProof(letter) }));
+  /** The response, or `null` when it has not come shortly (the gate queue holds the request). */
+  const answeredSoon = (response: Promise<Response>): Promise<Response | null> =>
+    Promise.race([response, new Promise<null>((resolve) => { setTimeout(() => { resolve(null); }, 1000); })]);
+
+  it('two /64s of one /48 at once: the second gets 429 limited without Apple; another /48 goes through', async () => {
+    const h = await harness();
+    const first = await appKey(31);
+    const latch = h.registry.pause(first.endpointId, ['extendApp']);
+    const held = h.call(await registerBody(31, 'F'), '2001:db8:1:1::1');
+    await latch.reached;
+    const refused = await answeredSoon(h.call(await registerBody(32, 'G'), '2001:db8:1:2::1'));
+    expect(refused).not.toBeNull();
+    await expectFixture(refused as Response, 'register.limited');
+    expect(h.apple.calls).toEqual([]);
+    const other = h.call(await registerBody(33, 'H'), '2001:db8:2:1::1');
+    latch.release();
+    expect((await held).status).toBe(200);
+    expect((await other).status).toBe(200);
+    expect(h.apple.count('update')).toBe(2);
+  });
+
+  it.each([
+    ['198.51.100.7', '198.51.100.7'],
+    ['::ffff:198.51.100.7', '198.51.100.7'],
+    ['2001:db8:1:2::5', '2001:0db8:0001::/48'],
+    ['2001:db8:1:ffff:1::9', '2001:0db8:0001::/48'],
+    ['2001:db8:2::1', '2001:0db8:0002::/48'],
+    [null, 'unknown'],
+    ['not an address', 'unknown'],
+  ])('gate bucket of %j = %j', (address, bucket) => {
+    expect(gateBucket(address)).toBe(bucket);
+  });
+});
+
 describe('poręczenia: awaria między zapisami i równoległość', () => {
   it('zapis u serwera pada: 500, powtórka trafia w tę samą rezerwację (jedna jednostka kwoty)', async () => {
     const h = await harness();
@@ -423,6 +461,59 @@ describe('poręczenia: awaria między zapisami i równoległość', () => {
     await expectAccess(await h.call(hookRequest(SERVER_A)), 403, 'false');
     await expectFixture(await h.call(fromManifest('renew.servers')), 'renew.ok');
     await expectAccess(await h.call(hookRequest(SERVER_A)), 200, 'true');
+  });
+
+  it('renew lists in unsponsored a server that refused the sponsorship write', async () => {
+    const h = await harness();
+    await registeredWithSponsor(h);
+    // The server entry is gone and refilled by other apps up to its cap: the renewed sponsorship does not fit.
+    h.registry.storeOf(SERVER_A).data.clear();
+    const peer = h.registry.endpoint(SERVER_A);
+    for (let n = 0; n < SERVER_SPONSORS_MAX; n += 1) {
+      expect(await peer.addSponsor(server(0x40 + n), 'e1', 't1', T0 + DAY)).toEqual({ ok: true });
+    }
+    // The request lists A (sponsored, refused now) and B (never sponsored): both in request order.
+    const renewed = await h.call(fromManifest('renew.servers'));
+    expect(renewed.status).toBe(200);
+    expect(await json(renewed)).toEqual({ v: 1, expiresAt: T0 + ENTRY_TTL_SECONDS, unsponsored: [SERVER_A, SERVER_B] });
+  });
+});
+
+describe('relay canary (`scripts/relay-canary.mjs`) against the registry', () => {
+  it('near the end of 90 days the canary renews both entries; it reports unsponsored only when the sponsorship fell',
+    async () => {
+    const h = await harness();
+    // Key 0 is an app entry, key 1 a server entry that key 0 sponsors.
+    const secrets = [Array<number>(32).fill(0x51), Array<number>(32).fill(0x52)];
+    const app = await appKey(0x51);
+    const serverId = (await appKey(0x52)).endpointId;
+    expect((await h.call(request('register', await app.sign('register', { issuedAt: T0, proof: deviceCheckProof('K') }))))
+      .status).toBe(200);
+    expect((await h.call(request('sponsor', await app.sign('sponsor', { issuedAt: T0, server: serverId })))).status)
+      .toBe(200);
+    const canary = () => renewEntries(secrets, {
+      registry: `${ORIGIN}/`, nowSec: () => h.clock.sec,
+      fetch: (url: string | URL, init?: RequestInit) => h.call(new Request(url, init)),
+    });
+
+    h.clock.advance(ENTRY_TTL_SECONDS - DAY);
+    expect(await canary()).toMatchObject({ ok: true });
+    // Past the first 90 days both keys still get in: the canary's renewal reached both entries.
+    h.clock.advance(2 * DAY);
+    await h.registry.fireAlarms();
+    await expectAccess(await h.call(hookRequest(app.endpointId)), 200, 'true');
+    await expectAccess(await h.call(hookRequest(serverId)), 200, 'true');
+    expect(await canary()).toMatchObject({ ok: true });
+
+    // The server entry is gone and other apps fill it to its cap: the sponsorship by key 0 no longer fits.
+    h.registry.storeOf(serverId).data.clear();
+    const peer = h.registry.endpoint(serverId);
+    for (let n = 0; n < SERVER_SPONSORS_MAX; n += 1) {
+      await peer.addSponsor(server(0x60 + n), 'e1', 't1', h.clock.sec + DAY);
+    }
+    const fell = await canary();
+    expect(fell.ok).toBe(false);
+    expect(fell.text).toMatch(/key 1 is not sponsored by key 0/);
   });
 });
 

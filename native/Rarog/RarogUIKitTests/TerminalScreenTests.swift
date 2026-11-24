@@ -284,7 +284,7 @@ final class TerminalScreenTests: XCTestCase {
     let h = try harness(hardware: true)
     XCTAssertTrue(h.screen.keyBar.isHidden)
     let menu = h.screen.headerMenu()
-    XCTAssertEqual(menu.children.map(\.title), [UICopy.terminalCopy, UICopy.terminalPaste, UICopy.terminalHistory])
+    XCTAssertEqual(menu.children.map(\.title), [UICopy.terminalCopy, UICopy.terminalPaste, UICopy.terminalSelectOutput])
     XCTAssertEqual((menu.children[2] as? UIAction)?.attributes.contains(.disabled), true, "bez punktu wpięcia")
     let chrome = TerminalChrome()
     h.screen.chrome = chrome
@@ -408,7 +408,7 @@ final class TerminalScreenTests: XCTestCase {
     XCTAssertFalse(commands.contains { $0.input == "v" && $0.modifierFlags == .command })
     XCTAssertTrue(commands.allSatisfy(\.wantsPriorityOverSystemBehavior))
     XCTAssertEqual(
-      commands.compactMap(\.discoverabilityTitle).filter { !$0.isEmpty }, [UICopy.terminalHistory, UICopy.terminalClose])
+      commands.compactMap(\.discoverabilityTitle).filter { !$0.isEmpty }, [UICopy.terminalSelectOutput, UICopy.terminalClose])
     XCTAssertTrue(h.screen.container.canPerformAction(#selector(UIResponderStandardEditActions.paste(_:)), withSender: nil))
     XCTAssertEqual(UIKeyCommand.inputUpArrow, TerminalKeyMap.upArrow)
     XCTAssertEqual(UIKeyCommand.inputDownArrow, TerminalKeyMap.downArrow)

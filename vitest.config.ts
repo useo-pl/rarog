@@ -15,6 +15,10 @@ stripGitRepoEnv(process.env);
 startRunTmpdir(process.env);
 removeRunTmpdirAtExit(process.env);
 
+// A server a test starts runs without the macOS folder gate (no helper processes, no relay thread), unless the test
+// sets the variable itself; the gate's own tests install it in the test process.
+process.env.RAROG_FOLDER_GATE ??= '0';
+
 // One root config for the whole workspace: tests live next to the code, in <package>/test/.
 export default defineConfig({
   test: {

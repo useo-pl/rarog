@@ -145,14 +145,14 @@ interface FakeHerdrOptions {
 /**
  * Jak ma się zachować mutacja: `ok`; `error` — herdr odmówił (nic się nie stało);
  * `timeout` — transport padł PRZED skutkiem; `timeout-applied` — skutek JEST, zginęła odpowiedź
- * (ten przypadek, dla którego timeout znaczy „wynik nieznany"); `read-only` — bramka gniazda
- * (nieznany protokół) odbiła wywołanie, zanim cokolwiek poszło do herdr.
+ * (ten przypadek, dla którego timeout znaczy „wynik nieznany"); `read-only` — the socket's write gate
+ * (`RAROG_HERDR_SEND=0`) bounced the call before anything went to herdr.
  */
 type FakeOutcome = 'ok' | 'error' | 'timeout' | 'timeout-applied' | 'read-only';
 
 /** Błąd mutacji wg {@link FakeOutcome} — klasy te same, które rzuca prawdziwe gniazdo. */
 function outcomeError(outcome: Exclude<FakeOutcome, 'ok'>, method: string): Error {
-  if (outcome === 'read-only') return new HerdrReadOnlyError(foreign('protokół herdr nieznany — tylko odczyt'));
+  if (outcome === 'read-only') return new HerdrReadOnlyError(foreign('herdr write channel closed, read-only'));
   if (outcome === 'error') return new Error(`${method} odrzucone`);
   return new HerdrUnavailableError(foreign(`Przekroczony czas odpowiedzi herdr (${method}).`));
 }
@@ -2252,7 +2252,7 @@ describe('reconcile — etykiety tabów terminala w starym formacie dostają now
     expect(h.herdr.tabLabels.get('w1:p1t')).toBe('rarog 1 · rarog');
   });
 
-  it('bramka zapisu odbija `tab.rename` (nieznany protokół) — jedna linia, koniec migracji przebiegu', async () => {
+  it('the socket write gate bounces `tab.rename` — one line, end of the pass migration', async () => {
     const h = makeHarness({ panes: [marked('w1:p1', ID), marked('w1:p2', termIdFor(CWD, 2))] });
     h.herdr.tabLabels.set('w1:p1t', '1');
     h.herdr.tabLabels.set('w1:p2t', '1');
@@ -2402,11 +2402,11 @@ describe('odzyskiwanie pod killswitchami i po `dispose` — zero mutacji', () =>
   });
 
   /*
-   * Nieznany protokół herdr: gniazdo przełącza się w tryb tylko-do-odczytu bez zmiany configu
-   * i odbija KAŻDĄ mutację przed zapisem bajtów (`HerdrReadOnlyError`). Przebieg kończy
-   * mutacje po pierwszym odbiciu — jedna linia logu zamiast próby na każdym panelu.
+   * The socket in read-only mode bounces EVERY mutation before a byte is written
+   * (`HerdrReadOnlyError`), also when the backend's own check let the pass start. The pass ends
+   * its mutations after the first bounce: one log line instead of an attempt on every pane.
    */
-  it('nieznany protokół: jedna odbita próba, linia logu, zero skutków w herdr', async () => {
+  it('socket in read-only mode: one bounced attempt, a log line, zero effects in herdr', async () => {
     const h = makeHarness({
       panes: [orphan('w1:p1', ID), orphan('w1:p2', termIdFor(CWD, 2)), { ...OWN_PANE, paneId: 'w1:p3' }],
     });

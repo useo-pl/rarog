@@ -2574,7 +2574,7 @@ describe('etykieta taba w herdr idzie za etykietą karty', () => {
     expect(launchClient.listPanesCalls).toBe(0);
   });
 
-  it('kanał zapisu zamknięty (`RAROG_HERDR_SEND=0`, nieznany protokół) → zero wywołań, JEDNA linia logu', async () => {
+  it('write channel closed (`RAROG_HERDR_SEND=0` at the socket) → zero calls, ONE log line', async () => {
     const { s, launchClient, key } = await withTab();
     s.transport.statusValue = { ...s.transport.statusValue, readOnly: true };
 

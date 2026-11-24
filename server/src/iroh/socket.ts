@@ -8,7 +8,8 @@
  * authenticated (higher stream limit, no deadline, protection from eviction), and revoking a device
  * (`revokeDevice`) removes it from all connections at once. The listener gets the state change through `onAuthChange`.
  *
- * HTTP layer refusals on an iroh socket (bad `Origin`, upgrade refusal, `/api/login`) go through
+ * HTTP layer refusals on an iroh socket (bad `Origin`, upgrade refusal, `/api/login`, a request target `URL` cannot
+ * parse) go through
  * {@link noteIrohRefusal} to the listener's log budget instead of an ordinary line: before authentication anyone who
  * knows the server's EndpointId can trigger them as often as they like.
  *
@@ -19,7 +20,7 @@
 const LABEL_ID_LENGTH = 12;
 
 /** HTTP layer refusals on an iroh socket counted in the listener's log budget (a subset of `log-budget.ts` kinds). */
-export type IrohHttpRefusal = 'origin' | 'upgrade-refused' | 'login';
+export type IrohHttpRefusal = 'origin' | 'upgrade-refused' | 'login' | 'bad-url';
 
 /** Receiver of HTTP layer refusals: the listener adds the EndpointId prefix and hands them to the log budget. */
 export type IrohRefusalSink = (kind: IrohHttpRefusal, detail: string) => void;

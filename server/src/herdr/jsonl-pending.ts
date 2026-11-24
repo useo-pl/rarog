@@ -81,15 +81,16 @@ export interface PendingTool {
   at: string;
   /**
    * Katalog WYWOŁANIA (`cwd` z payloadu hooka), względem którego dialog `Edit` pokazuje ścieżkę pliku. Niesie go
-   * wyłącznie narzędzie ze zrzutu hooka (`hookPendingFrom`); wpis jsonl go nie ma, więc jego ścieżki względnej nie
-   * da się potwierdzić, a tylko wykluczyć (`editContradictsScreen` w `herdr/dialogs/cross-check.ts`).
+   * wyłącznie narzędzie ze zrzutu hooka (`hookPendingFrom`); a transcript entry carries its own call directory in
+   * {@link entryCwd}.
    */
   cwd?: string;
   /**
    * The `cwd` field of the transcript entry that carries this `tool_use`, absolute only: the directory the call runs
    * in, also after a Bash `cd`, when the CLI registry and the herdr agent stay on the session start directory
-   * (measured on CLI 2.1.330). Absent when the entry has no absolute `cwd`. The card decision does not read it;
-   * the session facts take it as the call `cwd` (`herdr/dialogs/layer1/hook-list/session-facts.ts`).
+   * (measured on CLI 2.1.330). Absent when the entry has no absolute `cwd`. The file proof of an `Edit` or `Write`
+   * card resolves a relative path against it (`expectedFor` in `herdr/dialogs/decide/sources.ts`), and the session
+   * facts take it as the call `cwd` (`herdr/dialogs/layer1/hook-list/session-facts.ts`).
    */
   entryCwd?: string;
 }

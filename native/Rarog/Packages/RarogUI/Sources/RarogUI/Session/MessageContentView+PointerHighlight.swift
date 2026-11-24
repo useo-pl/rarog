@@ -3,8 +3,9 @@ import UIKit
 
 // A message row's part in the transcript's pointer selection: the highlight under its text, drawn from the field's own
 // selection rects in the color of the system selection, and the geometry the session screen asks while the pointer
-// drags (the offset under the pointer, the word or paragraph around it, a link under a click). The selection itself
-// lives in the session screen, so a reused cell gets its highlight back from the configuration. Owner: transcript.
+// drags (the offset under the pointer, the character a press is on, the word or paragraph around it, a link or inline
+// code under a click or tap). The selection itself lives in the session screen, so a reused cell gets its highlight back from the
+// configuration. Owner: transcript.
 extension MessageContentView {
   /// The UTF-16 offset in the text closest to `point` (in `view`), when the point is level with the visible text:
   /// the field's height, cut by the window of a folded prompt; `nil` above or below it. A point left or right of the
@@ -35,16 +36,56 @@ extension MessageContentView {
   /// The link of the character right under `point` (in `view`), as a click on it opens it today.
   func pointerLink(at point: CGPoint, from view: UIView) -> URL? {
     let local = view.convert(point, to: textView)
+    guard let index = characterIndex(holding: local, slack: 1) else { return nil }
+    return textView.attributedText.attribute(.link, at: index, effectiveRange: nil) as? URL
+  }
+
+  /// The whole text of the inline code run whose character is right under `point` (in `view`), the same character
+  /// ``pointerLink(at:from:)`` reads; `nil` off inline code and on a link, which a tap or click opens instead.
+  func inlineCode(at point: CGPoint, from view: UIView) -> String? {
+    inlineCodeRun(at: point, from: view)?.text
+  }
+
+  /// ``inlineCode(at:from:)`` with the run's range in the text, which the hover underlines.
+  func inlineCodeRun(at point: CGPoint, from view: UIView) -> (text: String, range: NSRange)? {
+    let local = view.convert(point, to: textView)
+    guard let index = characterIndex(holding: local, slack: 1) else { return nil }
+    let text: NSAttributedString = textView.attributedText
+    guard text.attribute(.link, at: index, effectiveRange: nil) == nil else { return nil }
+    var run = NSRange()
+    // The longest run: a bold part inside the code splits the plain effective range.
+    guard text.attribute(.rarogInlineCode, at: index, longestEffectiveRange: &run, in: NSRange(location: 0, length: text.length))
+      as? Bool == true
+    else { return nil }
+    return ((text.string as NSString).substring(with: run), run)
+  }
+
+  /// The character a pointer press at `point` (in `view`) is on: the one whose glyph box holds the point, whole when
+  /// it spans several UTF-16 units. A drag from the press takes it in either direction, so a press on the right half
+  /// of a letter does not lose that letter. `nil` on white space, in a margin and past the end of a line, where the
+  /// press anchors at the closest caret.
+  func pointerPressedCharacter(at point: CGPoint, from view: UIView) -> NSRange? {
+    let local = view.convert(point, to: textView)
+    guard let index = characterIndex(holding: local, slack: 0) else { return nil }
+    let text = textView.attributedText.string as NSString
+    if let scalar = Unicode.Scalar(text.character(at: index)), CharacterSet.whitespacesAndNewlines.contains(scalar) {
+      return nil
+    }
+    return text.rangeOfComposedCharacterSequence(at: index)
+  }
+
+  /// The index of the character whose box, widened by `slack`, holds `local` (in the field). The closest caret stands
+  /// between two characters, so only those two are candidates.
+  private func characterIndex(holding local: CGPoint, slack: CGFloat) -> Int? {
     guard let position = textView.closestPosition(to: local) else { return nil }
     let offset = textView.offset(from: textView.beginningOfDocument, to: position)
     let length = textView.attributedText.length
-    // The closest caret stands between two characters: the one whose box holds the point is under the pointer.
     for index in [offset, offset - 1] where index >= 0 && index < length {
       guard let start = textView.position(from: textView.beginningOfDocument, offset: index),
         let end = textView.position(from: start, offset: 1), let range = textView.textRange(from: start, to: end),
-        textView.firstRect(for: range).insetBy(dx: -1, dy: -1).contains(local)
+        textView.firstRect(for: range).insetBy(dx: -slack, dy: -slack).contains(local)
       else { continue }
-      return textView.attributedText.attribute(.link, at: index, effectiveRange: nil) as? URL
+      return index
     }
     return nil
   }
@@ -92,12 +133,21 @@ extension MessageContentView {
     owner.systemSelectionAppeared(in: textView)
   }
 
+  /// Whether the system selection stands in this message's field or in a cell field of one of its tables.
+  var hasSystemSelection: Bool {
+    selectionFields.contains { $0.selectedRange.length > 0 }
+  }
+
   /// A new pointer selection clears the system selection of this message's field and of the cell fields of its tables.
   func clearSystemSelection() {
-    let fields = [textView] + Self.tables(in: textView).map(\.textView)
-    for field in fields where field.selectedRange.length > 0 {
+    for field in selectionFields where field.selectedRange.length > 0 {
       field.selectedRange = NSRange(location: 0, length: 0)
     }
+  }
+
+  /// The message's field and the cell fields of its tables: the fields a system selection can stand in.
+  private var selectionFields: [UITextView] {
+    [textView] + Self.tables(in: textView).map(\.textView)
   }
 
   /// The table views in the message text (the attachment views of its tables), at any depth.

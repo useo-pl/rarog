@@ -76,14 +76,14 @@ final class BannerStackTests: XCTestCase {
   }
 
   func testDueCardStands() {
-    let rig = rig(BannerStack(banners: [.connecting(visibleFrom: Date().addingTimeInterval(-1))]))
+    let rig = rig(BannerStack(slots: [.banner(.connecting(visibleFrom: Date().addingTimeInterval(-1)))]))
     defer { rig.window.isHidden = true }
     XCTAssertTrue(waitForCard(rig, until: Date().addingTimeInterval(1)), "a card past its moment stands at once")
   }
 
   func testConnectingCardEntersAtItsMomentWithoutStoreChanges() {
     let start = Date()
-    let rig = rig(BannerStack(banners: [.connecting(visibleFrom: start.addingTimeInterval(1))]))
+    let rig = rig(BannerStack(slots: [.banner(.connecting(visibleFrom: start.addingTimeInterval(1)))]))
     defer { rig.window.isHidden = true }
     spin(until: start.addingTimeInterval(0.6))
     XCTAssertEqual(rig.height, 0, accuracy: 0.5, "before its moment the card does not stand")
@@ -93,10 +93,10 @@ final class BannerStackTests: XCTestCase {
 
   func testConnectionBeforeTheMomentKeepsTheCardOut() {
     let start = Date()
-    let rig = rig(BannerStack(banners: [.connecting(visibleFrom: start.addingTimeInterval(1))]))
+    let rig = rig(BannerStack(slots: [.banner(.connecting(visibleFrom: start.addingTimeInterval(1)))]))
     defer { rig.window.isHidden = true }
     spin(until: start.addingTimeInterval(0.5))
-    rig.host.rootView = BannerStack(banners: [])
+    rig.host.rootView = BannerStack(slots: [])
     spin(until: start.addingTimeInterval(1.4))
     XCTAssertEqual(rig.height, 0, accuracy: 0.5, "connected before the moment: no card")
   }
@@ -105,10 +105,10 @@ final class BannerStackTests: XCTestCase {
   /// arms again for the new moment.
   func testLaterMomentRearmsTheClock() {
     let start = Date()
-    let rig = rig(BannerStack(banners: [.connecting(visibleFrom: start.addingTimeInterval(1))]))
+    let rig = rig(BannerStack(slots: [.banner(.connecting(visibleFrom: start.addingTimeInterval(1)))]))
     defer { rig.window.isHidden = true }
     spin(until: start.addingTimeInterval(0.5))
-    rig.host.rootView = BannerStack(banners: [.connecting(visibleFrom: start.addingTimeInterval(1.8))])
+    rig.host.rootView = BannerStack(slots: [.banner(.connecting(visibleFrom: start.addingTimeInterval(1.8)))])
     spin(until: start.addingTimeInterval(1.4))
     XCTAssertEqual(rig.height, 0, accuracy: 0.5, "the old moment no longer counts")
     spin(until: start.addingTimeInterval(2))

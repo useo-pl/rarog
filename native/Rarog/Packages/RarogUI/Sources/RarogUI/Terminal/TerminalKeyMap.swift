@@ -220,7 +220,7 @@ extension TerminalHardwareKey {
     // i nie sypie bajtami ESC do programu, który został pod spodem.
     if self == TerminalHardwareKey(TerminalKeyMap.escape) { keyCommand.repeatBehavior = .nonRepeatable }
     switch TerminalKeyMap.resolve(self) {
-    case .action(.history)?: keyCommand.discoverabilityTitle = UICopy.terminalHistory
+    case .action(.history)?: keyCommand.discoverabilityTitle = UICopy.terminalSelectOutput
     case .action(.close)?: keyCommand.discoverabilityTitle = UICopy.terminalClose
     default: break
     }

@@ -82,7 +82,7 @@ struct PathFieldTests {
   @Test("while the browser is open, the footer has the hint and Choose with the directory name instead of Launch")
   func launchWaitsForChoice() {
     #expect(UICopy.browseHint == "Stuknij katalog, żeby go otworzyć.")
-    #expect(UICopy.choose("rarog-site") == "Wybierz rarog-site")
+    #expect(UICopy.choose("atlas-docs") == "Wybierz atlas-docs")
   }
 }
 

@@ -169,6 +169,18 @@ function toResponse(reply: Reply): Response {
   });
 }
 
+/**
+ * Client bucket at the gate, where one registration per bucket may wait or run: IPv4 unchanged, IPv6 cut to /48
+ * (one network can hold a whole /48, so a /64 bucket would hand one client many places in the queue), the rest as
+ * {@link clientBucket} gives it (IPv4 written as IPv6 → IPv4, anything unparsable → one shared bucket). The
+ * rate-limit counters keep their /64 key.
+ */
+export function gateBucket(address: string | null): string {
+  const bucket = clientBucket(address);
+  if (!bucket.endsWith('::/64')) return bucket;
+  return `${bucket.split(':').slice(0, 3).join(':')}::/48`;
+}
+
 export function health(prepared: Prepared): RelayAuthHealthResponse {
   const { settings } = prepared;
   return {
@@ -195,11 +207,13 @@ export function createRelayAuth(prepared: Prepared, deps: AuthDeps): RelayAuth {
     }
   };
 
-  async function register(request: RelayAuthAppRequests['register'], log: LogBag): Promise<Reply> {
+  async function register(request: RelayAuthAppRequests['register'], context: RequestContext, log: LogBag):
+    Promise<Reply> {
     if (!prepared.registrations || settings.gate === null) return fail('unavailable');
     if (request.proof.kind !== settings.gate) return fail('gate-mismatch', { gate: settings.gate });
     log['gate'] = settings.gate;
-    const outcome = await registry.gate().register(request.endpointId, request.proof);
+    const outcome = await registry.gate().register(request.endpointId, request.proof,
+      gateBucket(context.clientAddress));
     if (outcome.ok) {
       log['fresh'] = outcome.fresh;
       return ok({ endpointId: request.endpointId, expiresAt: outcome.expiresAt });
@@ -215,7 +229,10 @@ export function createRelayAuth(prepared: Prepared, deps: AuthDeps): RelayAuth {
   /**
    * Renewal at the app, then at the servers (also repairs a server entry that disappeared). A server write that arrived
    * after `forget` or after a new registration of this app is undone at once: `orphans` says which sponsorships the
-   * incarnation no longer holds, and the drop applies only to the sponsorship with that identifier.
+   * incarnation no longer holds, and the drop applies only to the sponsorship with that identifier. `unsponsored`
+   * lists, in request order, the servers without a live sponsorship at the app and those that refused the write
+   * (`kind-conflict`, the sponsorship cap), so the app sponsors them again instead of trusting a renewal that did not
+   * reach the server.
    */
   async function renew(request: RelayAuthAppRequests['renew']): Promise<Reply> {
     const { endpointId: appId } = request;
@@ -223,13 +240,15 @@ export function createRelayAuth(prepared: Prepared, deps: AuthDeps): RelayAuth {
     const outcome = await app.renew(request.servers);
     if (!outcome.ok) return fail(outcome.error);
     const { epoch } = outcome;
-    await Promise.all(outcome.renewed.map((item) =>
+    const written = await Promise.all(outcome.renewed.map((item) =>
       registry.endpoint(item.server).addSponsor(appId, epoch, item.ticket, item.expiresAt)));
     if (outcome.renewed.length > 0) {
       const orphans = await app.orphans(epoch, outcome.renewed.map(({ server, ticket }) => ({ server, ticket })));
       await Promise.all(orphans.map((item) => registry.endpoint(item.server).dropSponsor(appId, epoch, item.ticket)));
     }
-    return ok({ expiresAt: outcome.expiresAt, unsponsored: outcome.unsponsored });
+    const refused = outcome.renewed.filter((_item, index) => written[index]?.ok !== true).map((item) => item.server);
+    const missing = new Set([...outcome.unsponsored, ...refused]);
+    return ok({ expiresAt: outcome.expiresAt, unsponsored: request.servers.filter((server) => missing.has(server)) });
   }
 
   /**
@@ -303,7 +322,7 @@ export function createRelayAuth(prepared: Prepared, deps: AuthDeps): RelayAuth {
     if (!(await verifyAppSignature(route, signed))) return fail('bad-signature');
     if (await deps.isDenied(signed.endpointId)) return fail('denied');
     switch (route) {
-      case 'register': return register(signed as RelayAuthAppRequests['register'], log);
+      case 'register': return register(signed as RelayAuthAppRequests['register'], context, log);
       case 'renew': return renew(signed as RelayAuthAppRequests['renew']);
       case 'sponsor': return sponsor(signed as RelayAuthAppRequests['sponsor'], log);
       case 'forget': return forget(signed as RelayAuthAppRequests['forget']);

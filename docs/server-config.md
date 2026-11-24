@@ -116,8 +116,9 @@ with no checks and no exits 2 and 3: confirm `herdr: true` and a fresh `uptime` 
 
 ### `rarog restart` on Linux
 
-The Linux paths of `rarog restart`, `rarog service` and `rarog doctor` are tested on fakes shaped like systemd 255
-from Ubuntu 24.04 and not checked on a live system. A platform other than macOS and Linux is a refusal.
+The Linux paths of `rarog restart`, `rarog service` and `rarog doctor` are checked on Ubuntu 26.04 with systemd 259,
+and the tests run them on fakes shaped like systemd 255 from Ubuntu 24.04. A platform other than macOS and Linux is
+a refusal.
 
 Only the unit `rarog.service` from `rarog service install` starts the server. There is no `nohup`: next to a unit
 with `Restart=always` it would start a second server, and without lingering logind kills it with the session. The
@@ -172,9 +173,11 @@ to the package, then asks `[y/N]`; no and EOF are a refusal. A plist whose targe
 way, with the line `target of the current service unreadable: <reason>` and no command back. A service on another
 clone, or on an installation that is gone from disk, switches without a question.
 
-Phase 1: `bootout` of `ai.rarog.server` when loaded; the data directory with mode 0700 when missing; the plist
-written through `rename`; `launchctl bootstrap`; `scripts/restart.sh` with the label, port and log, called directly
-because `install` holds the lock; in a repo clone the symlink `~/.local/bin/rarog` → `bin/rarog.mjs` (never over
+Phase 1: `bootout` of `ai.rarog.server` when loaded; the data directory with mode 0700 when missing; the server log
+`<dataDir>/server.log` with mode 0600, created when missing and set to 0600 when present (launchd appends to it and
+keeps the mode; a path that is not a regular file, such as a symlink, stays as it is, and an error is a line, not a
+failure); the plist written through `rename`; `launchctl bootstrap`; `scripts/restart.sh` with the label, port and
+log, called directly because `install` holds the lock; in a repo clone the symlink `~/.local/bin/rarog` → `bin/rarog.mjs` (never over
 someone else's file). After each `bootout` the command polls `loadState` every 0.5 s for up to 30 s, because launchd
 ends a `KeepAlive` service asynchronously and an early `bootstrap` fails with `Bootstrap failed: 5`; a timeout or
 an unknown state on the way is a failure (in `uninstall` a refusal, and the plist stays). A failure from
@@ -214,11 +217,11 @@ from the template passes `systemd-analyze verify` (no such tool = a `not checked
 goes into a temporary file, `~/.config/rarog/rarog-sprawdzany.service` (the name comes from the code), removed
 right after the check. The existing unit must be absent or our file (a hand edit is overwritten); masked,
 foreign, with a drop-in, failed or unknown is a refusal. Phase 1: atomic write, `systemctl --user daemon-reload`,
-`enable`, data directory 0700, `restart.sh` with `RAROG_RESTART_UNIT`, a lingering check (`loginctl show-user
-<user> -p Linger --value`; `no` = a warning with `sudo loginctl enable-linger <user>`, because without it the
-service lives only with the login session), and the symlink in a clone. The rollback without the CLI is
-`systemctl --user disable --now rarog.service`, `rm` of the unit file and `systemctl --user daemon-reload`. The
-clone-and-package question works as on macOS.
+`enable`, data directory 0700, the server log 0600 as on macOS, `restart.sh` with `RAROG_RESTART_UNIT`, a lingering
+check (`loginctl show-user <user> -p Linger --value`; `no` = a warning with `sudo loginctl enable-linger <user>`,
+because without it the service lives only with the login session), and the symlink in a clone. The rollback without
+the CLI is `systemctl --user disable --now rarog.service`, `rm` of the unit file and `systemctl --user daemon-reload`.
+The clone-and-package question works as on macOS.
 
 `uninstall` = `disable --now`, file removal and `daemon-reload` when the unit comes from our file; no unit = success
 with no change; foreign, masked, failed or unknown is a refusal. As on macOS it leaves the data directory and
@@ -453,7 +456,8 @@ The transport of a new `config.json` follows the machine:
   all addresses would lose its tailnet traffic. An address that accepts makes the port in use; no answer within 2 s
   (one deadline for the whole pool, probed at once), or no Tailscale IP, leaves it not checked; both are skipped, with
   no question. A Tailscale IP that answers no probe of the pool while another one answers drops out, also for the
-  check right before `tailscale serve`: macOS does not answer a connection to its own Tailscale IPv6 address. `lsof` only names the process in the run log line that lists the skipped ports. A `tailscale serve
+  check right before `tailscale serve`: macOS does not answer a connection to its own Tailscale IPv6 address.
+  `lsof` only names the process in the run log line that lists the skipped ports. A `tailscale serve
   status --json` that fails leaves the whole pool not checked.
 - Both when both are there and a pool port is available, unless the user chooses Tailscale only ("Tailscale only"
   below). With the iroh module, no port (`no free port in 8931–8960
@@ -794,8 +798,14 @@ first step, **Download** (`server/src/cli/update-registry.ts`), runs the `npm-cl
    signed statement must be a provenance that names this tarball's sha512 and the same repository, workflow and tag.
    For its check npm also reaches `tuf-repo-cdn.sigstore.dev` (npm 11.19 and 11.20). A tarball or provenance that does
    not match is `✗ Download` with what does not match (`@rarog/server 0.1.5 has no verified provenance`, `… was signed
-   by <name>, not by <name>`, `the provenance of … has a certificate Sigstore did not issue`) and `Fix: do not install
-   it by hand; report it at https://github.com/useo-pl/rarog/security`. An npm before 11.12 does not list
+   by <name>, not by <name>`) and `Fix: do not install it by hand; report it at
+   https://github.com/useo-pl/rarog/security`. A certificate that the pinned authority did not issue is either a new
+   Sigstore certificate or a forged attestation, and the update cannot tell which: `✗ Download the provenance of …
+   has a certificate from another authority than the pinned one: Sigstore changed its certificate, or the attestation
+   is forged` with `Fix: check https://github.com/useo-pl/rarog/releases for a release with Sigstore's new
+   certificate before you install a version by hand; if there is none, report it at
+   https://github.com/useo-pl/rarog/security`. The fix gives no install command, because a version installed by hand
+   skips this check. An npm before 11.12 does not list
    attestations: `✗ Download this npm does not list attestations (it needs npm 11.12 or newer)` with `Fix: npm i -g
    --prefix <the prefix of the npm next to this node> npm@latest, then rarog update`, or, for an npm outside an npm
    global layout, `Fix: update the npm next to <node> to 11.12 or newer, then rarog update`. npm's own finding of an
@@ -1306,6 +1316,14 @@ changes with an entry in `env` and a restart.
   and when its device is revoked. The log line of a replay sent as a snapshot also gives the compressed size
   (`…, gzip <kB> kB`). A client without `gzip` gets the stream uncompressed. `0` turns compression off for every
   client: no `Content-Encoding` and no `Vary`. The server reads it once, at start.
+- `RAROG_FOLDER_GATE` (default `1` on macOS, `0` elsewhere; the demo always runs without it) is the switch of the
+  folder gate (`docs/macos-folders.md`): `1` or `0`, empty means the platform default, surrounding whitespace is
+  ignored, anything else stops the start, also in the demo (`RAROG_FOLDER_GATE takes 1 or 0 (got: …)`). At `1` a disk
+  call of the work area in a guarded folder of home runs in a helper process of that folder, and a folder whose helper
+  does not answer within 1 s is refused until it answers. `0` = every such call runs in the server process: no
+  helper and no relay thread. The start log says `folder gate: on, …` or `folder gate: off, …`. The server reads it
+  once, at start. Rollback: `"env": {"RAROG_FOLDER_GATE": "0"}` in `~/.config/rarog/config.json`, then
+  `rarog restart`.
 - `RAROG_COMPANION=0` (default; the demo always runs without it) is the flag of the voice agent, and
   `RAROG_COMPANION_MODEL=gpt-realtime-2.1` (default) its OpenAI Realtime model. Values, what `1` turns on and what
   else the voice agent needs (`OPENAI_API_KEY` and the Soniox key): `docs/companion.md`, "Flags". The server reads

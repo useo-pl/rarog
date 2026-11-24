@@ -360,6 +360,9 @@ extension RarogStore {
     case .unauthorized:
       inboxRuntime.transcriptLoad = nil
       handleUnauthorized()
+    case let .oversized(part):
+      reporter.record([ContractReporter.line(for: part)])
+      flushReport()
     case .connecting, .opened, .dropped:
       break
     }

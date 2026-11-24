@@ -292,6 +292,53 @@ describe('grupy tras: bramka routera przed każdą grupą', () => {
   }
 });
 
+describe('a long step outlasts a revocation: the device is checked again before the answer', () => {
+  const PATCH = 'diff --git a/secret.ts b/secret.ts\n';
+  type Hold = (m: FakeManager, gate: Promise<void>) => void;
+  /** The three diff routes, each with its manager method held until the test releases it. */
+  const DIFF_ROUTES: readonly { readonly route: string; readonly hold: Hold }[] = [
+    {
+      route: '/api/sessions/s1/diff',
+      hold: (m, gate) => {
+        m.diff = async () => { await gate; return { files: [], patch: PATCH, truncated: false }; };
+      },
+    },
+    {
+      route: '/api/sessions/s1/diff/files',
+      hold: (m, gate) => {
+        m.diffFiles = async () => {
+          await gate;
+          return { files: [{ path: 'secret.ts', status: 'M', linesAdded: 1, linesDeleted: 0 }], truncated: false };
+        };
+      },
+    },
+    {
+      route: '/api/sessions/s1/diff/file',
+      hold: (m, gate) => {
+        m.diffFile = async (_id: string, filePath: string) => {
+          await gate;
+          return { path: filePath, patch: PATCH, truncated: false };
+        };
+      },
+    },
+  ];
+
+  for (const { route, hold } of DIFF_ROUTES) {
+    it(`GET ${route}: a device revoked while git answers → 401 \`device-revoked\`, no diff`, async () => {
+      const h = await start();
+      let release = (): void => {};
+      hold(h.manager, new Promise<void>((resolve) => { release = resolve; }));
+      const pending = request(h, 'GET', route, h.device.headers).reply;
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
+      h.device.store.revoke(h.device.id, 'admin');
+      release();
+      const reply = await pending;
+      expect([reply.status, errorOf(reply)]).toEqual([401, 'device-revoked']);
+      expect(JSON.stringify(reply.body)).not.toContain('secret.ts');
+    });
+  }
+});
+
 describe('grupy tras: tylko router je woła', () => {
   const tsFiles = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);

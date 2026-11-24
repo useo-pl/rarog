@@ -8,7 +8,7 @@ import {
   MAX_FILES_PER_MESSAGE, MAX_IMAGES_PER_MESSAGE, MAX_MESSAGE_BODY_BYTES, checkMessageImageLimits, closeBodySchema,
   createSessionBodySchema, permissionDecisionBodySchema, sessionModeBodySchema, sessionModelBodySchema,
 } from '@rarog/shared';
-import type { AttachmentLimitViolation, InterruptDelivery } from '@rarog/shared';
+import type { AttachmentLimitViolation, DiffFileList, DiffFilePatch, InterruptDelivery } from '@rarog/shared';
 import {
   COMPANION_BUSY_ERROR, COMPANION_CLI_ERROR, COMPANION_DISABLED_ERROR, COMPANION_LIMIT_ERROR,
   COMPANION_SESSIONS_DISABLED_ERROR, COMPANION_TIMEOUT_ERROR, companionTurnsCountSchema,
@@ -240,10 +240,12 @@ export async function routeSessions(
     }
 
     // Diff jest READ-ONLY, więc jest GET-em — i musi być obsłużony PRZED strażnikiem POST-a.
+    // Git may outlast a revocation, so the device is checked again before the answer, as on all three diff routes.
     if (action === 'diff' && segments.length === 4) {
       if (method !== 'GET') return methodNotAllowed(res, 'GET');
       return runManagerAction(res, log, secrets, async () => {
-        sendJson(res, 200, await manager.diff(sessionId));
+        const diff = await manager.diff(sessionId);
+        if (recheckDevice(req, res, 'while reading the diff of')) sendJson(res, 200, diff);
       });
     }
 
@@ -258,15 +260,17 @@ export async function routeSessions(
       if (method !== 'GET') return methodNotAllowed(res, 'GET');
       const list = segments[4] === 'files';
       const filePath = url.searchParams.get('path') ?? '';
+      let answer: DiffFileList | DiffFilePatch;
       try {
-        sendJson(res, 200, list
-          ? await manager.diffFiles(sessionId)
-          : await manager.diffFile(sessionId, filePath));
+        answer = list ? await manager.diffFiles(sessionId) : await manager.diffFile(sessionId, filePath);
       } catch (err) {
         const status = diffErrorStatus(err);
         if (status === 500) log.error(`manager action failed: ${redact(err, secrets)}`);
         if (!res.headersSent) sendFailure(res, status, err, 'diff');
+        return true;
       }
+      if (!recheckDevice(req, res, 'while reading the diff of')) return true;
+      sendJson(res, 200, answer);
       return true;
     }
 

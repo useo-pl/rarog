@@ -106,7 +106,7 @@ export const HOOK_PAYLOAD_FIELDS = {
  * `fail`, an `unmeasured` kind, no run) goes onto `excluded`, a closed list of exact releases (`docs/dialogs.md`,
  * "Proof rule").
  */
-export const CONSENT_CHANNEL_MEASURED_CLI = { cli: '2.1.330', excluded: ['2.1.327'] } as const;
+export const CONSENT_CHANNEL_MEASURED_CLI = { cli: '2.1.331', excluded: ['2.1.327'] } as const;
 
 /**
  * Programmatic Claude Code sessions: the environment variable the hook inherits from the CLI process, and the

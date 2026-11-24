@@ -11,6 +11,7 @@ import { MAX_FILE_ENTRIES } from '@rarog/shared';
 import type { GitArgsResult, GitArgsRunner, GitCommand } from '../git-status.ts';
 import { listSessionDir } from './listing.ts';
 import { FILES_DISK, type FilesArea, type FilesDisk, type Ruled } from './path-rule.ts';
+import { isClosedFolder } from './refusals.ts';
 import { filesSession } from './session-gate.ts';
 import type { SessionFilesPort } from './session-files.ts';
 
@@ -191,8 +192,9 @@ class IndexBody {
 
 /**
  * The walk of the session directory of `area`. A directory whose listing is refused (swapped, gone) is skipped; a
- * refused session directory is the answer. The budget runs from before the git read and is checked between two
- * directories, so the session directory is always listed.
+ * refused session directory is the answer, and so is a guarded folder that closes during the walk: an index cut
+ * there would read as complete. The budget runs from before the git read and is checked between two directories, so
+ * the session directory is always listed.
  */
 async function walk(
   area: FilesArea, maxBytes: number, run: GitArgsRunner, limits: FileIndexLimits, now: () => number, disk: FilesDisk,
@@ -214,7 +216,7 @@ async function walk(
     const dir = queue[next] as Pending;
     const listing = await listSessionDir(area, dir.rel, { maxBytes, maxEntries: limits.maxEntries }, disk);
     if (!listing.ok) {
-      if (dir.rel === '') return listing;
+      if (dir.rel === '' || isClosedFolder(listing.refusal)) return listing;
       continue;
     }
     if (listing.value.truncated) body.truncated = true;

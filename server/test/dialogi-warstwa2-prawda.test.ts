@@ -5,7 +5,7 @@
  * The first blocks check the manifest against the screens only, without the card decision or the layer 2 rule, so the
  * manifest stays independent of the code it judges. What they check:
  *
- * - every `.txt` screen of the corpus has exactly one entry, and the split is 55 layer 2, 249 consents, 57 forms
+ * - every `.txt` screen of the corpus has exactly one entry, and the split is 55 layer 2, 250 consents, 57 forms
  *   and 43 non-dialogs;
  * - the class agrees with the measured class where one exists (capture header `cliDialog`, control-set `waitingFor`);
  * - 74 digit pairs, each label standing verbatim on the screen line with that digit (wrapped labels line by line), and
@@ -15,7 +15,7 @@
  * - the coverage table of the layer 2 plan (today, with the card step, after the terminal dialogs) follows from the
  *   entries.
  *
- * The last block runs `layer2Verdict` on every screen and compares it with the manifest: 404 verdicts plus 4 with a
+ * The last block runs `layer2Verdict` on every screen and compares it with the manifest: 405 verdicts plus 4 with a
  * key confirmation, no digit button outside the pairs, no card on the 43 non-dialogs.
  */
 import { readFileSync, readdirSync } from 'node:fs';
@@ -121,17 +121,17 @@ function keyOfLabel(label: string): DialogKey | null {
 const verdictsOf = (entry: Entry): Verdict[] => [entry.v2, ...(entry.v2Confirmed ? [entry.v2Confirmed] : [])];
 
 describe('layer 2 truth manifest: corpus and split', () => {
-  it('one entry per corpus screen: 404 screens, no entry without a screen', () => {
+  it('one entry per corpus screen: 405 screens, no entry without a screen', () => {
     expect(manifest.version).toBe(1);
-    expect(CORPUS).toHaveLength(404);
+    expect(CORPUS).toHaveLength(405);
     expect(Object.keys(manifest.screens).sort()).toEqual(CORPUS);
   });
 
-  it('split: 55 layer 2, 249 consents, 57 forms, 43 non-dialogs', () => {
+  it('split: 55 layer 2, 250 consents, 57 forms, 43 non-dialogs', () => {
     const count = (category: Category): number => entries.filter(([, entry]) => entry.category === category).length;
     expect({
       layer2: count('layer2'), consent: count('consent'), form: count('form'), nonDialog: count('non-dialog'),
-    }).toEqual({ layer2: 55, consent: 249, form: 57, nonDialog: 43 });
+    }).toEqual({ layer2: 55, consent: 250, form: 57, nonDialog: 43 });
   });
 
   it('class per category: consents permission or sandbox, forms input, non-dialogs none', () => {
@@ -388,8 +388,8 @@ describe('layer 2 truth manifest: layer2Verdict agrees on every screen', () => {
     }
   });
 
-  it('408 comparisons: 404 screens and 4 with a key confirmation', () => {
-    expect(entries.length + entries.filter(([, entry]) => entry.v2Confirmed !== undefined).length).toBe(408);
+  it('409 comparisons: 405 screens and 4 with a key confirmation', () => {
+    expect(entries.length + entries.filter(([, entry]) => entry.v2Confirmed !== undefined).length).toBe(409);
   });
 
   it('no digit outside the truth: every digit button stands on its screen line with its whole label', () => {

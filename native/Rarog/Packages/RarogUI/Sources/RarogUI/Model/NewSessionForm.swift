@@ -29,7 +29,7 @@ public enum PathField {
     return text.count > 1 && text.hasSuffix("/") ? String(text.dropLast()) : text
   }
 
-  /// Filter by any part of the name, case-insensitive ("astro" matches "USEO-Astro").
+  /// Filter by any part of the name, case-insensitive ("atlas" matches "Demo-Atlas").
   public static func filter(_ entries: [DirEntry], _ filter: String) -> [DirEntry] {
     guard !filter.isEmpty else { return entries }
     let needle = filter.lowercased(with: CopyLocale.current)

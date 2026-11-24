@@ -10,9 +10,9 @@
     "input": "decideCard: blockedSeq 1, answeredSeq -1, active null, decided null, canRetry false, hookAnswersEnabled true, layer2 true; then judgeLayer2; occurrence id l2:000000000000"
   },
   "summary": {
-    "screens": 404,
-    "cards": 404,
-    "existing": 282,
+    "screens": 405,
+    "cards": 405,
+    "existing": 283,
     "choices": 26,
     "escOnly": 8,
     "none": 88
@@ -830,6 +830,33 @@
       "titleSha": null,
       "question": null,
       "card": "7a0adafc8ac06440dd7d49e1b7c3135745887936f154b4bd53014dee234e103a"
+    },
+    "dialog-exitplanmode-50kol-2.1.331.txt": {
+      "class": "permission",
+      "action": "card",
+      "layer2": "existing",
+      "why": null,
+      "event": "permission-request",
+      "reqId": "screen:p:83e44e42bb2c",
+      "toolName": "ExitPlanMode",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes, and use auto mode",
+          "terminalOnly": true
+        },
+        {
+          "digit": "2",
+          "label": "Yes, manually approve edits"
+        },
+        {
+          "digit": "3",
+          "label": "Tell Claude what to change"
+        }
+      ],
+      "titleSha": null,
+      "question": null,
+      "card": "49882673696074dd6b2aa78d6d98fbbfdc6386f9428bdd587ce4fea3e1e00e1f"
     },
     "dialog-exitplanmode.txt": {
       "class": "permission",

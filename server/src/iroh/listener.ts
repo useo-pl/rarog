@@ -327,6 +327,9 @@ export async function startIroh(
     const duplex = new IrohDuplex(stream, { slot, clock });
     entry.sockets.add(duplex);
     duplex.once('close', () => { entry.sockets.delete(duplex); });
+    // A throw in an `http.Server` listener comes back through the read loop as the socket's `'error'`. Node removes
+    // its own `'error'` listener before `'upgrade'`, and an unheard `'error'` would end the process.
+    duplex.on('error', ignore);
     entry.handle.attach(duplex);
     duplex.setTimeout(idleMs());
     try {

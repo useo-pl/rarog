@@ -490,7 +490,7 @@ export const HERDR_OUT_OF_SCOPE_MESSAGE = say('session.out-of-scope');
  */
 export const HERDR_OUT_OF_SCOPE_DIFF_MESSAGE = say('session.out-of-scope-diff');
 
-/** 400 na wysyłkę przy zamkniętym kanale zapisu (`RAROG_HERDR_SEND=0` albo nieznany protokół). */
+/** 400 for a send while the write channel is closed (`RAROG_HERDR_SEND=0`). */
 export const HERDR_READ_ONLY_MESSAGE = say('session.herdr-read-only');
 
 /** 429 na wysyłkę odrzuconą przez throttle. */

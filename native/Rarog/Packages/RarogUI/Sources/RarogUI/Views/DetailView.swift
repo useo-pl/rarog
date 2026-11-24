@@ -50,7 +50,7 @@ struct DetailView: View {
     .safeAreaInset(edge: .top, spacing: 0) {
       let column = BannerColumn.detail(sessionId: navigation.selectedSessionId, listVisible: listVisible)
       BannerStack(
-        banners: state.banners(in: column, global: memory, transcript: transcriptLink.connection(for: state.viewedSessionId)),
+        slots: state.bannerSlots(in: column, global: memory, transcript: transcriptLink.connection(for: state.viewedSessionId)),
         pushPrompt: state.pushPromptVisible(in: column, global: memory, now: Date()) ? store : nil)
     }
     // Tło we wszystkich regionach, także klawiatury: przy pigułce paska skrótów pod prawym panelem zostawał czarny

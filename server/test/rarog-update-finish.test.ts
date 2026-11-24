@@ -851,7 +851,7 @@ describe.skipIf(!IS_MAC)(macOnly('rarog update --finish on macOS', 'launchd and 
     expect(run.code).toBe(1);
     expect(oneSentence(run.stderr))
       .toMatch(/^rarog update --finish finishes an install of the npm package, and this is the repo/u);
-    expect(run.stderr).toContain('pnpm install');
+    expect(oneSentence(run.stderr)).toContain('pnpm install');
     expect(treeHash(home)).toEqual(before);
   });
 

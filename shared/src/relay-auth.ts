@@ -169,7 +169,10 @@ export interface RelayAuthRegisterResponse {
   readonly expiresAt: number;
 }
 
-/** 200 `renew`: nowy termin wpisu i serwery z listy bez żywego poręczenia tej apki (apka woła dla nich `sponsor`). */
+/**
+ * 200 `renew`: the entry's new term and, in request order, the listed servers without a live sponsorship of this app
+ * or whose entry refused the extension (`kind-conflict`, the sponsorship cap); the app calls `sponsor` for them.
+ */
 export interface RelayAuthRenewResponse {
   readonly v: 1;
   readonly expiresAt: number;

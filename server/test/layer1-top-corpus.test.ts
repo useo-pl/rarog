@@ -216,6 +216,7 @@ const FROZEN: Readonly<Record<string, string>> = {
   'dialog-bash-subagent-uciety-62x29-2.1.309.txt':
     'Bash · linie CLI (3) + pytanie · ramka ucięta · stopka z dopiskiem · unknown/unknown',
   'dialog-bash-uciety-naglowek-2.1.294.txt': 'Bash · linie CLI (3) + pytanie · ramka ucięta · stopka · unknown/unknown',
+  'dialog-exitplanmode-50kol-2.1.331.txt': 'ExitPlanMode · bez ramki · cały blok · stopka planu · match/no',
   'dialog-exitplanmode.txt': 'ExitPlanMode · bez ramki · cały blok · stopka planu · match/no',
   'dialog-permission-ask-rule-auto.txt': 'Bash · bez ramki · cały blok · stopka z dopiskiem · unknown/unknown',
   'dialog-permission-ask-rule-auto.txt [kolejka]':

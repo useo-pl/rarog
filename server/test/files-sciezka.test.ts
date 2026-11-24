@@ -125,7 +125,7 @@ const codeOf = <T>(result: Ruled<T>): string => (result.ok ? 'ok' : result.refus
 async function contentOf(result: Ruled<SessionFile>): Promise<string> {
   if (!result.ok) return `refused ${result.refusal.code}`;
   try {
-    return (await result.value.handle.readFile()).toString('utf8');
+    return (await result.value.handle.read(result.value.size, 0)).toString('utf8');
   } finally {
     await result.value.handle.close();
   }

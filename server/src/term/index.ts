@@ -11,7 +11,6 @@
  * WŁASNYM killswitchem terminala jest `RAROG_TERM` i tylko on gasi ficzer w całości.
  * Granice spisane w `docs/security-model.md` (sekcja terminala, punkty 1 i 10).
  */
-import { realpathSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import type { TermRole } from '@rarog/shared';
@@ -23,6 +22,7 @@ import type { RarogConfig } from '../config.ts';
 import type { HerdrLaunchClient } from '../herdr/types.ts';
 import type { Logger } from '../router.ts';
 import { DEMO_SERVER_SYSTEM } from '../demo/mac.ts';
+import { DIRECT_DISK } from '../folder-gate/disk.ts';
 import { serverSystem } from '../version.ts';
 import type { TermBackend, TermBackendSession, TermReconcileResult } from './backend.ts';
 import { createHerdrBackend } from './herdr-backend.ts';
@@ -207,7 +207,7 @@ async function adoptSurvivors(
     if (registry.has(session.id)) continue;
     let real: string;
     try {
-      real = realpathSync(session.cwd);
+      real = DIRECT_DISK.sync('realpath', { path: session.cwd });
     } catch {
       continue; // Katalog zniknął — sesja zostaje dla żniwiarza, nie dla rejestru.
     }

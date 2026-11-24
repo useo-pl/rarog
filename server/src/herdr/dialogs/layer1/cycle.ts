@@ -170,6 +170,8 @@ import type { ConsentCycleRecord, ConsentProofKind, ConsentRecord, ConsentRecord
 import type { ConsentEffectiveMode } from './mode.ts';
 import type { ConsentRegistry } from './registry.ts';
 import { consentClaimKept, createConsentResume } from './resume.ts';
+import { createConsentScreenKeys, lateHook, screenKeyCallOf } from './screen-key.ts';
+import type { ConsentScreenKey } from './screen-key.ts';
 import { signConsentFile } from './sign.ts';
 import { topFieldsOf } from './top.ts';
 import type { ConsentScreenRead, MatchTop, TopScreen } from './top.ts';
@@ -420,6 +422,8 @@ export interface ConsentCycle {
   decide(sessionId: string, key: string, decision: 'allow' | 'allow-always' | 'deny'): Promise<ConsentOutcome>;
   /** Zwolnienie do terminala (T-10), przejście sterujące według bieżącego stanu. */
   release(sessionId: string, key: string): Promise<ConsentOutcome>;
+  /** The emergency approve button sent its digit: a hook of that dialog that registers later goes back at once. */
+  screenKey(sessionId: string, key: ConsentScreenKey): void;
   /**
    * The hook's receipt of the record's `allow` (`POST /claim`, W-a): only the live `allow` with this `decisionAt`
    * (`consentReceiptConfirmable`) gets the `receipt` field, written with `fsync` before the answer; a `sent` record
@@ -528,6 +532,13 @@ export interface ConsentCycle {
    */
   endPool(sessionId: string): void;
   /**
+   * The manager forgot the last card of the session (`sessions/done-retention.ts`): its records, passed keys, reattach
+   * boundary and newest registry read without `waiting` leave memory, each record in its key's queue. A record whose
+   * turn the transcript review still reads ({@link evidenceTargets}) stays, with its passed key and its card; the
+   * cards of the dropped records leave the store. Records on disk stay.
+   */
+  forgetSession(sessionId: string): Promise<void>;
+  /**
    * Pula sesji (kopia): kandydaci ze zrzutem w kolejności pierwszego odczytu, kandydaci po wyjściu bez zrzutu, blokada
    * startu i sufit.
    */
@@ -572,6 +583,8 @@ export interface ConsentCycle {
    * kluczy kart końcowych po publikacji.
    */
   diagnosticMemory(sessionId: string): ConsentCycleMemory;
+  /** Diagnostics for tests, like {@link diagnosticMemory}: passed keys and whether the session clocks have an entry. */
+  diagnosticSession(sessionId: string): { passed: string[]; reattachAt: boolean; registryNotWaitingAt: boolean };
 }
 
 /** Klucze sesji z wpisem w mapach pamięci cyklu ({@link ConsentCycle.diagnosticMemory}). */
@@ -743,8 +756,8 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
   const channelProofs = new Map<string, ConsentChannelRead>();
   /**
    * Chwila odczytu najnowszego statusu rejestru CLI sesji bez `waiting: permission` przyjętego przez driver
-   * ({@link noteRegistryNotWaiting}); dowód z kanału z odczytu nie późniejszego nie obowiązuje. Wpis per sesja zostaje
-   * do końca procesu (liczba, nie treść).
+   * ({@link noteRegistryNotWaiting}); dowód z kanału z odczytu nie późniejszego nie obowiązuje. The per-session
+   * entry (a number, no content) stays until the process ends or the session is forgotten ({@link forgetSession}).
    */
   const registryNotWaitingAt = new Map<string, number>();
   /** Sprawdzenie wierzchu per odczyt ekranu obserwacji przy wersji puli sesji ({@link topWinner}). */
@@ -767,6 +780,7 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
     publish,
   });
   const { noteHeld, releasePending, deskFallback, mcpToDesk } = desk;
+  const screenKeys = createConsentScreenKeys(now);
   /**
    * Sloty, których zwolnienia hooka ({@link releaseHook}) nie dało się zapisać: następna obserwacja z żywym zrzutem
    * klucza próbuje jeszcze raz. W pamięci procesu: po restarcie hook starego procesu widzi nowy `bootId` i wychodzi sam.
@@ -1427,7 +1441,8 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
    * (`pending` → `settled-at-desk`) i zwolnienie z urządzenia, którego plik nie powstał (`revoked: write-failed`).
    * Rekord subagenta z żywą rejestracją przy `gone` i po końcu biegu bez wyniku zostaje w `pending`: jego
    * `release` pisze powrót do biurka (`deskFallback`, `desk.ts`), a jego porażka idzie do pola `releaseFailed`, nie do
-   * {@link releaseDue}.
+   * {@link releaseDue}. A hook tied to the emergency key (`lateHook`), a subagent's too, is settled and released here
+   * at its first observation, and a failed write of its release goes to {@link releaseDue}.
    * Hooka nie zwalniają: śmierć hooka, restart (stary hook widzi nowy `bootId` w `alive.json`), wyłącznik (`alive.json`
    * z trybem niższym niż `main`), koniec sesji silnika (`revokeSession`: CLI kończy swoje hooki, `hook-dead` zapomina
    * rejestrację), termin przejęcia (hook nie przejął podpisanego pliku przez 60 s) i plik odłożony jako nieważny
@@ -1596,16 +1611,21 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
       let record = records.get(slot);
       if (record === undefined) {
         if (signal === 'dead') forgetDead(sessionId, key, deadWhy, hookProc);
-        if (dump === undefined || signal === 'dead' || signal === 'gone') return null;
+        if (dump === undefined || signal === 'dead') return null;
+        // MCP with user interaction goes back at once: its pending card is written without publishing (`mcpToDesk`).
+        const mcp = dump.mcpEmptySuggestions === true;
+        const created = newRecord(dump);
+        // A hook the emergency key already answered is settled also when this observation sees its dialog gone.
+        const late = !mcp && screenKeys.answered(screenKeyCallOf(created, registry.entry(sessionId, key)));
+        if (signal === 'gone' && !late) return null;
         dumps.set(slot, dump);
         verdicts.set(slot, evaluate(dump, effective));
         misses.set(slot, missesOf(sessionId, key, effective, observed, finding));
         noteDesk();
         mark(true);
         createdAt.set(slot, now());
-        // MCP with user interaction goes back at once: its pending card is written without publishing (`mcpToDesk`).
-        const mcp = dump.mcpEmptySuggestions === true;
-        record = mcp ? mcpToDesk(commit(newRecord(dump), false, true)) : deskFallback(commit(newRecord(dump)));
+        record = mcp || late ? commit(created, false, true) : deskFallback(commit(created));
+        record = mcp ? mcpToDesk(record) : late ? lateHook(record, { log, revoke, releaseHook }) : record;
         return viewOf(record);
       }
       if (dump !== undefined) dumps.set(slot, dump);
@@ -2090,6 +2110,24 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
     return factLost(sessionId, dump.key, dump.startedAt);
   }
 
+  async function forgetSession(sessionId: string): Promise<void> {
+    const prefix = slotOf(sessionId, '');
+    const passed = [...passedSlots].filter((slot) => slot.startsWith(prefix));
+    await Promise.all([...new Set([...slotsOf(sessionId), ...passed])].map((slot) => enqueue(slot, () => {
+      const record = records.get(slot);
+      if (record !== undefined && turns.evidenceTargets()
+        .some((turn) => turn.sessionId === sessionId && turn.keys.includes(record.key))) return;
+      records.delete(slot);
+      passedSlots.delete(slot);
+      store.delete(sessionId, slot.slice(prefix.length));
+    })));
+    // A kept record still needs the session's proof-loss clocks, or it would allow again without a fresh observation.
+    if ([...records.keys()].some((slot) => slot.startsWith(prefix))) return;
+    reattachAt.delete(sessionId);
+    reattachOpen.delete(sessionId);
+    registryNotWaitingAt.delete(sessionId);
+  }
+
   const turns = createConsentTurns({
     records, bootId, registry, slotOf, enqueue, subagentsOpen, commit, moveTo, claimed, claimedMatches, releaseHook,
     revoke, afterRevokeFile,
@@ -2101,6 +2139,7 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
     revokeSession,
     decide,
     release,
+    screenKey: (sessionId, key) => { screenKeys.note(sessionId, key); },
     confirmReceipt,
     retire,
     off,
@@ -2118,6 +2157,7 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
     noteHookChecks,
     noteHookDead,
     endPool,
+    forgetSession,
     pool,
     topWinner,
     proofLost,
@@ -2156,6 +2196,12 @@ export function createConsentCycle(options: ConsentCycleOptions): ConsentCycle {
         proofMisses: keysOf(misses.keys()),
         proofNotes: keysOf(proofNotes.keys()),
       };
+    },
+    diagnosticSession: (sessionId) => {
+      const prefix = slotOf(sessionId, '');
+      const passed = [...passedSlots].filter((slot) => slot.startsWith(prefix)).map((s) => s.slice(prefix.length));
+      const clocks = { reattachAt: reattachAt.has(sessionId), registryNotWaitingAt: registryNotWaitingAt.has(sessionId) };
+      return { passed, ...clocks };
     },
   };
 }

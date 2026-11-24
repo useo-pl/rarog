@@ -236,8 +236,10 @@ public enum RelayAccessTrigger: Sendable, Equatable {
 public enum RelayPrepareResult: Sendable, Equatable {
   /// Relay spoza mapy, brak tożsamości albo bramki: parowanie jak bez rejestru.
   case skipped
-  /// Apka i serwer miały już żywy wpis i poręczenie.
-  case ready
+  /// The app and the server already had a live entry and sponsorship. `sponsoredAt` = when this process last got the
+  /// server's sponsorship from the registry, also in a background sync (`nil` = not in this process): the relay admits
+  /// a sponsorship from a moment ago only after a while.
+  case ready(sponsoredAt: Date?)
   /// W tym wywołaniu nowy `register` albo nowe poręczenie: relay wpuści z opóźnieniem.
   case fresh
   /// Budżet minął albo porażka: parowanie idzie dalej, synchronizacja w tle.

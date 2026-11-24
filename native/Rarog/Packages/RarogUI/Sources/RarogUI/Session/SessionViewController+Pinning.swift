@@ -18,6 +18,8 @@ extension SessionViewController {
     // przeciągnięcia i wytracania, nie samo `isTracking` — palec oparty bez ruchu niczego nie przewija.
     if readingChrome.gesture { readingChrome.movedByGesture = true }
     updateJumpBar()
+    // The text moved from under the pointer: the hover's underline goes until the pointer moves again (`+FileHover`).
+    if fileChrome.underlined != nil || fileChrome.hoverPoint != nil { clearFileHover() }
   }
 
   func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -29,6 +31,7 @@ extension SessionViewController {
   /// Gest przejmuje listę: animowany skok „na dół" albo do linii „NOWE" (jeśli trwał) już nie dojdzie sam.
   func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
     takeListForGesture()
+    cancelTranscriptFileOpen()
   }
 
   /// The start of a gesture on the list, a finger's drag or a pointer's selection press (`+PointerSelection`).

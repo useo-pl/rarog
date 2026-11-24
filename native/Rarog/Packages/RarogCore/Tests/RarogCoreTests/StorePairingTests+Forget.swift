@@ -67,6 +67,22 @@ extension StorePairingTests {
     #expect(store.state.auth == .loggedOut(.notLoggedIn) && !store.state.pairing.forgetting)
   }
 
+  @Test("Forget Server: the known devices and the new device notices of that server go, other servers keep theirs")
+  func forgetRemovesDeviceRecords() async throws {
+    let (store, server, _) = try await forgetStore(on: VirtualClock())
+    let serverId = PairingFixtures.credential().serverId
+    let otherId = "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"
+    for id in [serverId, otherId] {
+      server.preferences.set(Data("{}".utf8), forKey: RarogStore.knownDevicesKey(id))
+      server.preferences.set(Data("[]".utf8), forKey: RarogStore.deviceNoticesKey(id))
+    }
+    #expect(await store.forgetServer())
+    #expect(server.preferences.data(forKey: RarogStore.knownDevicesKey(serverId)) == nil)
+    #expect(server.preferences.data(forKey: RarogStore.deviceNoticesKey(serverId)) == nil)
+    #expect(server.preferences.data(forKey: RarogStore.knownDevicesKey(otherId)) != nil)
+    #expect(server.preferences.data(forKey: RarogStore.deviceNoticesKey(otherId)) != nil)
+  }
+
   @Test("Forget Server: the production limit is one tunnel attempt (TunnelMachine.attemptBudget, 15 s)")
   func forgetLimitIsAttemptBudget() {
     #expect(ServerRuntime().forgetLimit == TunnelMachine.attemptBudget)

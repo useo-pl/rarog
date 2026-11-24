@@ -4,10 +4,11 @@ import RarogCore
 import SwiftUI
 
 // The session switcher window, opened by a tap on the current tab: a vertical list of the tabs of the current project
-// in the order of the bar (sessions, then terminals), in the middle of the app window; with the keyboard each row
-// starts with the digit key of its tab. It appears and disappears at
-// once, without dimming underneath and without animation, and stays until a human picks a row or closes it. A SwiftUI overlay, not a sheet; with a hardware keyboard the window takes it through its UIKit key
-// receiver (`SwitcherKeyResponder`), and a close without a jump gives the caret back where it was.
+// in the order of the bar (sessions, then terminals), in the middle of the app window, under a heading that names the
+// project once. It appears and disappears at once, without dimming underneath and without animation, and stays until
+// a human picks a row or closes it. A SwiftUI overlay, not a sheet; with a hardware keyboard the window takes it
+// through its UIKit key receiver (`SwitcherKeyResponder`), and a close without a jump gives the caret back where it
+// was.
 // Looks like the app's popovers: full `surface`, radii from the scale, no glass. Owner: shortcuts.
 
 /// Wires the switcher to the root of the views: the window, the keys, the presentation gate and the jump.
@@ -90,7 +91,7 @@ struct SessionSwitcherOverlay: View {
             .onTapGesture { switcher.cancel(.outside) }
             .accessibilityHidden(true)
           SwitcherWindow(
-            rows: rows, selected: switcher.machine.selected, opening: switcher.machine.opening,
+            rows: rows, project: navigation.currentProjectCwd(store.state), selected: switcher.machine.selected, opening: switcher.machine.opening,
             serial: switcher.machine.selectionSerial, switcher: switcher
           )
           .frame(width: min(Self.maxWidth, proxy.size.width - 32))
@@ -116,6 +117,8 @@ struct SessionSwitcherOverlay: View {
 
 private struct SwitcherWindow: View {
   let rows: [SwitcherRow]
+  /// The current project's directory: the heading names it once, the rows do not.
+  let project: String?
   let selected: ProjectTabRef?
   let opening: Int
   let serial: Int
@@ -136,7 +139,7 @@ private struct SwitcherWindow: View {
     .overlay(RoundedRectangle.block.strokeBorder(Color(uiColor: Palette.border)))
     .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
     .accessibilityElement(children: .contain)
-    .accessibilityLabel(UICopy.switcherLabel)
+    .accessibilityLabel(SwitcherRows.heading(cwd: project, count: rows.count).label)
     .accessibilityAddTraits(.isModal)
     // The VoiceOver "back" gesture closes the window without a jump: the background under the window is hidden from
     // VoiceOver, and an empty window would have no other way out.
@@ -146,9 +149,19 @@ private struct SwitcherWindow: View {
     .onChange(of: serial) { speak() }
   }
 
+  /// "PROJECT · PROJECT TABS · N" in one line: a long project name truncates, the count stays.
   private var header: some View {
-    Text(UICopy.switcherHeading(rows.count)).eyebrow()
-      .accessibilityHidden(true)
+    let heading = SwitcherRows.heading(cwd: project, count: rows.count)
+    return HStack(spacing: 0) {
+      if let name = heading.project {
+        Text(name).truncationMode(.tail)
+        Text(UICopy.switcherHeadingDot).layoutPriority(1)
+      }
+      Text(heading.tabs).layoutPriority(1)
+    }
+    .lineLimit(1)
+    .eyebrow()
+    .accessibilityHidden(true)
   }
 
   @ViewBuilder private var content: some View {
@@ -181,19 +194,14 @@ private struct SwitcherWindow: View {
   }
 
   private var list: some View {
-    // The digits the bar draws on the same tabs.
-    let digits = ShortcutMenu.tabDigits(rows.map(\.tab), hardwareKeyboard: true)
-    return VStack(spacing: 2) {
+    VStack(spacing: 2) {
       ForEach(rows) { item in
         Button {
           switcher.tapRow(item.id)
         } label: {
           // Wskaźnik (gładzik, mysz) zapala wiersz jak zakładkę i agenta na liście; palec nie.
           RarogHoverReader { hovered in
-            SwitcherRowView(
-              item: item, selected: item.id == selected,
-              digitKey: SwitcherRows.digitKey(for: item.tab, digits: digits, keyboard: switcher.holdsKeyboard),
-              hovered: hovered)
+            SwitcherRowView(item: item, selected: item.id == selected, hovered: hovered)
           }
         }
         .buttonStyle(.plain)
@@ -246,9 +254,6 @@ private struct SwitcherWindow: View {
 private struct SwitcherRowView: View {
   let item: SwitcherRow
   let selected: Bool
-  /// The digit key before the dot: only in a window that holds the
-  /// keyboard.
-  let digitKey: SwitcherDigitKey
   /// Wskaźnik nad wierszem: płytka zaznaczenia w połowie krycia (`HoverTokens.agentRowAlpha`), jak zakładka i wiersz
   /// agenta pod kursorem. Zaznaczenie wygrywa. `muted2` trzyma na tej płytce 4,5:1, więc tekst się nie zmienia.
   var hovered = false
@@ -261,7 +266,6 @@ private struct SwitcherRowView: View {
   var body: some View {
     TimelineView(.periodic(from: .now, by: 1)) { timeline in
       HStack(alignment: .firstTextBaseline, spacing: 10) {
-        digitKeyView
         switch item.content {
         case let .session(row):
           sessionContent(row)
@@ -299,15 +303,16 @@ private struct SwitcherRowView: View {
     }
   }
 
-  /// A session: the state dot, "project · name #n", under it the state word in its colour and the "waiting for"
-  /// line or the stage line.
+  /// A session: the state dot, "name #n" without the project (the heading names it), under it the state word in its
+  /// colour and the "waiting for" line or the stage line.
   @ViewBuilder private func sessionContent(_ row: SessionRowModel) -> some View {
     Circle()
       .fill(Color(uiColor: Palette.tone(row.status.tone)))
       .frame(width: 9, height: 9)
       .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + dotLift }
     VStack(alignment: .leading, spacing: 2) {
-      Text("\(Text(row.project).fontWeight(.semibold))\(Text(row.titleTail).foregroundStyle(secondary))")
+      Text(item.title)
+        .fontWeight(.semibold)
         .appFont(.subheadline)
         .foregroundStyle(Color(uiColor: Palette.text))
         .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
@@ -346,31 +351,6 @@ private struct SwitcherRowView: View {
           .lineLimit(1)
       }
     }
-  }
-
-  /// An outlined key with the row's digit, like the footer keys: `caption` mono in `muted` (4.5:1 on the selection
-  /// and on `surface`, `PaletteContrastTests`), a 1 pt `border` outline with the `ghost` corner, one width for every
-  /// digit. A row without a digit keeps the same room empty, so the dots stay in a column. Decoration: the row's
-  /// sentence for VoiceOver ignores its children.
-  @ViewBuilder private var digitKeyView: some View {
-    switch digitKey {
-    case .none:
-      EmptyView()
-    case .blank:
-      keyCap("0").hidden()
-    case let .digit(number):
-      keyCap(String(number))
-    }
-  }
-
-  private func keyCap(_ digit: String) -> some View {
-    Text(verbatim: digit)
-      .appFont(.caption.monospaced())
-      .foregroundStyle(Color(uiColor: Palette.muted))
-      .padding(.horizontal, 5)
-      .padding(.vertical, 1)
-      .overlay(RoundedRectangle.ghost.strokeBorder(Color(uiColor: Palette.border), lineWidth: 1))
-      .accessibilityHidden(true)
   }
 
   private var plate: Color {

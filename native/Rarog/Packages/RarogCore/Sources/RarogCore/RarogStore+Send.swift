@@ -180,8 +180,8 @@ extension RarogStore {
       }
     } else {
       dispatch(.outboxProgress(entry.id, .encoding))
-      let target = FileManager.default.temporaryDirectory
-        .appending(path: "rarog-send-\(entry.id.uuidString)-\(UUID().uuidString.prefix(8)).json")
+      let target = sendBodyDirectory
+        .appending(path: "\(Self.sendBodyPrefix)\(entry.id.uuidString)-\(UUID().uuidString.prefix(8)).json")
       let message = message(for: entry)
       // Set before composing: `defer` also removes a body cut off halfway (a missing content file, the disk, a stop).
       bodyFile = target
@@ -265,6 +265,18 @@ extension RarogStore {
         }
       }
       self?.dispatch(.outboxUnconfirmedIfQueued(id))
+    }
+  }
+
+  /// Name prefix of a composed body file in ``sendBodyDirectory``; the file ends in `.json`.
+  nonisolated static let sendBodyPrefix = "rarog-send-"
+
+  /// Removes the body files a process killed during a send left in `directory`, and nothing else. Only the app's store
+  /// factory calls it, before any send of this process: a body being sent is never in the directory at that moment.
+  nonisolated static func removeOrphanSendBodies(in directory: URL) {
+    let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+    for name in names where name.hasPrefix(sendBodyPrefix) && name.hasSuffix(".json") {
+      try? FileManager.default.removeItem(at: directory.appending(path: name))
     }
   }
 

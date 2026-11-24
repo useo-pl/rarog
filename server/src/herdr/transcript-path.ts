@@ -15,6 +15,9 @@
  * Granica bezpieczeństwa: `uuid` przechodzi `ENGINE_SESSION_ID_PATTERN` PRZED jakimkolwiek
  * `join`. Identyfikator bywa wejściem z requestu (`resumeFrom`), a `../../…` czytałoby dowolny
  * plik konta użytkownika.
+ *
+ * The module also keeps the requests to look a file not found yet up now (`LookupRequests`); the follower's retry
+ * chain runs the lookups.
  */
 import { open, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -68,6 +71,45 @@ export async function locateTranscript(
     await isFile(path) ? path : null
   )));
   return hits.find((path): path is string => path !== null) ?? null;
+}
+
+/**
+ * Requests to look a transcript file up now, and which lookup answers them. A lookup answers only the requests made
+ * before it began: one that began earlier may have read the store before the file was created, so after its miss
+ * a request stays open and the follower looks again at once.
+ */
+export class LookupRequests {
+  #asked = 0;
+  #answered = 0;
+  #running = 0;
+
+  /** A request; `true` when no lookup is running, so the caller starts one now. */
+  ask(): boolean {
+    this.#asked += 1;
+    return this.#running === 0;
+  }
+
+  /** A lookup begins; the mark goes to {@link LookupRequests.ended}. */
+  began(): number {
+    this.#running += 1;
+    return this.#asked;
+  }
+
+  /** The lookup that began at `mark` ended, with a file or without one. */
+  ended(mark: number): void {
+    this.#running -= 1;
+    this.#answered = Math.max(this.#answered, mark);
+  }
+
+  /** The file is found: that answers every request, also one made while the lookup ran. */
+  found(): void {
+    this.#answered = this.#asked;
+  }
+
+  /** A request that no ended lookup answers yet. */
+  get unanswered(): boolean {
+    return this.#answered < this.#asked;
+  }
 }
 
 /**

@@ -237,6 +237,11 @@
       "pairs": [{"line":11,"digit":1,"label":"Yes, switch to high"},{"line":12,"digit":2,"label":"No, go back"}],
       "note": "no footer and no registry shape. class not in a capture header or the control-set manifest; dialog of a REPL command"
     },
+    "dialog-exitplanmode-50kol-2.1.331.txt": {
+      "category": "consent",
+      "class": "permission",
+      "v2": {"kind":"none","why":"class-not-dialog"}
+    },
     "dialog-exitplanmode.txt": {
       "category": "consent",
       "class": "permission",

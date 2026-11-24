@@ -276,6 +276,7 @@ describe('package base: the measured release and its exclusions, per release', (
     '2.1.328': { main: 'pass', subagents: 'pass' },
     '2.1.329': { main: 'pass', subagents: 'pass' },
     '2.1.330': { main: 'pass', subagents: 'pass' },
+    '2.1.331': { main: 'pass', subagents: 'pass' },
   } as const;
 
   it.each([
@@ -285,7 +286,8 @@ describe('package base: the measured release and its exclusions, per release', (
     ['2.1.328', 'channel', 'channel'],
     ['2.1.329', 'channel', 'channel'],
     ['2.1.330', 'channel', 'channel'],
-    ['2.1.331', 'screen', 'screen'],
+    ['2.1.331', 'channel', 'channel'],
+    ['2.1.332', 'screen', 'screen'],
   ] as const)('%s → `%s` for both kinds without a canary file, `%s` with the measured results',
     (release, withoutFile, withResults) => {
       expect(consentProofRules('channel', release, CONSENT_CANARY_ABSENT)).toEqual(rules(withoutFile, withoutFile));

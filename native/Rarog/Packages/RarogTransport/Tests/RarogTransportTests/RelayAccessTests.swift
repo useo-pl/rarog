@@ -299,8 +299,20 @@ struct RelayAccessTests {
 
     let alive = AccessRig()
     alive.transport.enqueue(.renew, F.renewed(expiresAt: RX.expires, unsponsored: []))
-    #expect(await alive.access.prepareForPairing(RX.target(), budget: RX.budget) == .ready)
+    #expect(await alive.access.prepareForPairing(RX.target(), budget: RX.budget) == .ready(sponsoredAt: nil))
     #expect(alive.routes == [.renew])
+  }
+
+  @Test("prepareForPairing after a sponsorship in this process → .ready with the sponsorship's moment")
+  func pairingReadyAfterSponsorship() async {
+    let rig = AccessRig()
+    rig.transport.enqueue(.renew, F.renewed(expiresAt: RX.expires, unsponsored: [RX.k]))
+    rig.transport.enqueue(.sponsor, F.sponsored(server: RX.k, expiresAt: RX.expires))
+    #expect(await rig.access.prepareForPairing(RX.target(), budget: RX.budget) == .fresh)
+    rig.transport.enqueue(.renew, F.renewed(expiresAt: RX.expires, unsponsored: []))
+    let second = await rig.access.prepareForPairing(RX.target(), budget: RX.budget)
+    #expect(second == .ready(sponsoredAt: RX.date(RX.t0)))
+    #expect(rig.routes == [.renew, .sponsor, .renew])
   }
 
   @Test("prepareForPairing bez tożsamości albo z relayem spoza mapy → .skipped bez żądań; forget() bez tożsamości → .inactive")
@@ -538,7 +550,7 @@ struct RelayAccessTests {
       try await eventually("budżet i odpowiedź rejestru na zegarze") { clock.sleeperCount == 2 }
       clock.advance(by: RX.budget)
       let result = await pairing.value
-      #expect(result == .ready || result == .unavailable)
+      #expect(result == .ready(sponsoredAt: nil) || result == .unavailable)
 
       try await eventually("synchronizacja skończona") { log.last == RX.registered }
       try await quiet()

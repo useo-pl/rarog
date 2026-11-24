@@ -35,22 +35,22 @@ struct DirectoryBrowserTests {
 
   static let home = "/Users/d"
   static let projects = "/Users/d/Projects"
-  static let useo = "/Users/d/Projects/USEO"
-  static let app = "/Users/d/Projects/USEO/app"
+  static let group = "/Users/d/Projects/demo"
+  static let app = "/Users/d/Projects/demo/app"
 
   func settle(_ condition: () -> Bool) async {
     for _ in 0..<300 where !condition() { try? await Task.sleep(for: .milliseconds(2)) }
   }
 
-  /// `~/Projects` as the only root, the project `~/Projects/USEO/app`.
-  private func useoLoader() -> Loader {
+  /// `~/Projects` as the only root, the project `~/Projects/demo/app`.
+  private func groupLoader() -> Loader {
     let loader = Loader()
     loader.listing(nil, parent: nil, [DirEntry(name: "Projects", path: Self.projects, git: false, history: false)])
-    loader.listing(Self.app, parent: Self.useo, [])
-    loader.listing(Self.useo, parent: Self.projects, [
+    loader.listing(Self.app, parent: Self.group, [])
+    loader.listing(Self.group, parent: Self.projects, [
       DirEntry(name: "app", path: Self.app, git: true, history: true),
-      DirEntry(name: "notatki", path: "\(Self.useo)/notatki"),
-      DirEntry(name: "rarog-site", path: "\(Self.useo)/rarog-site", git: true),
+      DirEntry(name: "notatki", path: "\(Self.group)/notatki"),
+      DirEntry(name: "atlas-docs", path: "\(Self.group)/atlas-docs", git: true),
     ])
     return loader
   }
@@ -64,24 +64,24 @@ struct DirectoryBrowserTests {
     return browser
   }
 
-  @Test("form in ~/Projects/USEO/app: Change opens ~/Projects/USEO, Choose names it; segments above the root are text")
+  @Test("form in ~/Projects/demo/app: Change opens ~/Projects/demo, Choose names it; segments above the root are text")
   func opensOnParent() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: Self.app)
     #expect(browser.chosen == Self.app && !browser.browsing && browser.canLaunch)
     browser.change()
     await settle { browser.view.status == .ready && browser.roots != nil }
     #expect(browser.browsing && !browser.canLaunch, "launch waits for a choice")
-    #expect(browser.view.dir == Self.useo && browser.target?.path == Self.useo, "Choose takes the directory on screen")
+    #expect(browser.view.dir == Self.group && browser.target?.path == Self.group, "Choose takes the directory on screen")
     #expect(browser.chosen == Self.app, "browsing does not change the chosen directory")
-    #expect(browser.crumbs.map(\.label) == ["~", "Projects", "USEO"])
-    #expect(browser.crumbs.map(\.leads) == [false, true, false], "~ is above the root, USEO is where we are")
+    #expect(browser.crumbs.map(\.label) == ["~", "Projects", "demo"])
+    #expect(browser.crumbs.map(\.leads) == [false, true, false], "~ is above the root, demo is where we are")
     #expect(browser.up == .directory(Self.projects), "Up goes to the parent the listing names")
   }
 
   @Test("a project that is a root opens the roots level: nothing to choose there, no Up")
   func rootProject() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     loader.listing(Self.projects, parent: nil, [])
     let browser = await opened(loader, in: Self.projects)
     browser.change()
@@ -136,47 +136,47 @@ struct DirectoryBrowserTests {
 
   @Test("a tap opens the folder (chosen directory unchanged), Up goes back; Choose takes the folder on screen")
   func tapOpensUpChoose() async {
-    let loader = useoLoader()
-    loader.listing(Self.projects, parent: nil, [DirEntry(name: "USEO", path: Self.useo)])
-    let site = "\(Self.useo)/rarog-site"
-    loader.listing(site, parent: Self.useo, [])
+    let loader = groupLoader()
+    loader.listing(Self.projects, parent: nil, [DirEntry(name: "demo", path: Self.group)])
+    let docs = "\(Self.group)/atlas-docs"
+    loader.listing(docs, parent: Self.group, [])
     let browser = await opened(loader, in: Self.app)
     browser.change()
     await settle { browser.view.status == .ready && browser.roots != nil }
-    browser.enter(site)
+    browser.enter(docs)
     #expect(browser.up == nil && browser.target == nil, "no Up and nothing to choose while the listing loads")
-    await settle { browser.view.dir == site && browser.view.status == .ready }
+    await settle { browser.view.dir == docs && browser.view.status == .ready }
     #expect(browser.chosen == Self.app, "opening a folder does not choose it")
-    #expect(browser.target?.path == site && browser.target?.name == "rarog-site")
+    #expect(browser.target?.path == docs && browser.target?.name == "atlas-docs")
     #expect(browser.target?.facts == DirFacts(git: true, history: false), "facts from the row it was opened from")
-    #expect(browser.up == .directory(Self.useo))
+    #expect(browser.up == .directory(Self.group))
     browser.goUp()
-    await settle { browser.view.dir == Self.useo && browser.view.status == .ready }
-    #expect(browser.target?.path == Self.useo && browser.up == .directory(Self.projects))
+    await settle { browser.view.dir == Self.group && browser.view.status == .ready }
+    #expect(browser.target?.path == Self.group && browser.up == .directory(Self.projects))
     browser.goUp()
     await settle { browser.view.dir == Self.projects && browser.view.status == .ready }
     #expect(browser.up == nil, "one root: Up stops at the root, never past it")
     browser.goUp()
     #expect(browser.view.dir == Self.projects && browser.view.status == .ready, "a disabled Up does nothing")
-    browser.enter(Self.useo)
-    await settle { browser.view.dir == Self.useo && browser.view.status == .ready }
-    browser.enter(site)
-    await settle { browser.view.dir == site && browser.view.status == .ready }
+    browser.enter(Self.group)
+    await settle { browser.view.dir == Self.group && browser.view.status == .ready }
+    browser.enter(docs)
+    await settle { browser.view.dir == docs && browser.view.status == .ready }
     browser.choose()
     #expect(browser.warning == nil, "a repository: no warning")
-    #expect(browser.chosen == site && !browser.browsing && browser.canLaunch)
+    #expect(browser.chosen == docs && !browser.browsing && browser.canLaunch)
     browser.change()
     await settle { browser.view.status == .ready }
-    #expect(browser.view.dir == Self.useo, "parent from the listing")
+    #expect(browser.view.dir == Self.group, "parent from the listing")
   }
 
   @Test("Cancel goes back to the state before: chosen directory, no selection, browser closed")
   func cancelRestores() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: Self.app)
     browser.change()
     await settle { browser.view.status == .ready }
-    browser.enter("\(Self.useo)/notatki")
+    browser.enter("\(Self.group)/notatki")
     browser.type("rar")
     browser.cancel()
     #expect(browser.chosen == Self.app && !browser.browsing && browser.input.isEmpty)
@@ -185,7 +185,7 @@ struct DirectoryBrowserTests {
 
   @Test("without a chosen directory the form opens on the roots level and Cancel keeps the browser")
   func noChosenDirectory() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: nil)
     await settle { browser.view.status == .ready }
     #expect(browser.browsing && browser.view.dir == nil && !browser.canLaunch)
@@ -195,12 +195,12 @@ struct DirectoryBrowserTests {
 
   @Test("a late listing after Cancel or after opening another folder commits nothing")
   func lateReplies() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: Self.app)
     let (slow, release) = AsyncStream<Void>.makeStream()
-    loader.gates[Self.useo] = slow
+    loader.gates[Self.group] = slow
     browser.change()
-    await settle { loader.calls.filter { $0 == Self.useo }.count == 1 }
+    await settle { loader.calls.filter { $0 == Self.group }.count == 1 }
     browser.cancel()
     release.yield()
     try? await Task.sleep(for: .milliseconds(30))
@@ -208,14 +208,14 @@ struct DirectoryBrowserTests {
     #expect(browser.view.listing == nil, "and does not reach the screen")
 
     let (slow2, release2) = AsyncStream<Void>.makeStream()
-    loader.gates[Self.useo] = slow2
+    loader.gates[Self.group] = slow2
     browser.change()
-    await settle { loader.calls.filter { $0 == Self.useo }.count == 2 }
-    browser.enter("\(Self.useo)/notatki")
+    await settle { loader.calls.filter { $0 == Self.group }.count == 2 }
+    browser.enter("\(Self.group)/notatki")
     release2.yield()
     await settle { browser.view.status == .ready }
     try? await Task.sleep(for: .milliseconds(20))
-    #expect(browser.view.dir == "\(Self.useo)/notatki" && browser.chosen == Self.app,
+    #expect(browser.view.dir == "\(Self.group)/notatki" && browser.chosen == Self.app,
             "the opened folder stays, nothing chosen")
   }
 
@@ -259,13 +259,13 @@ struct DirectoryBrowserTests {
 
   @Test("a plain value filters without a request; a path lists after the pause, Enter at once")
   func typing() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: Self.app)
     browser.change()
     await settle { browser.view.status == .ready }
     let before = loader.calls.count
-    browser.type("site")
-    #expect(browser.view.entries.map(\.name) == ["rarog-site"], "any part of a name")
+    browser.type("docs")
+    #expect(browser.view.entries.map(\.name) == ["atlas-docs"], "any part of a name")
     #expect(loader.calls.count == before, "a filter sends nothing")
     browser.type("\(Self.app)/")
     browser.flush()
@@ -275,41 +275,41 @@ struct DirectoryBrowserTests {
 
   @Test("a directory without git and history warns before the choice; Choose Anyway commits, Cancel only closes it")
   func warning() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: Self.app)
     browser.change()
     await settle { browser.view.status == .ready }
-    browser.enter("\(Self.useo)/notatki")
-    await settle { browser.view.dir == "\(Self.useo)/notatki" && browser.view.status == .ready }
+    browser.enter("\(Self.group)/notatki")
+    await settle { browser.view.dir == "\(Self.group)/notatki" && browser.view.status == .ready }
     browser.choose()
     let warning = try? #require(browser.warning)
     #expect(warning?.target.facts.known == true && browser.chosen == Self.app && browser.browsing)
-    #expect(warning?.sentence == "~/Projects/USEO/notatki nie jest repozytorium i nie było tu sesji. Agent dostanie dostęp do całego katalogu.")
+    #expect(warning?.sentence == "~/Projects/demo/notatki nie jest repozytorium i nie było tu sesji. Agent dostanie dostęp do całego katalogu.")
     browser.dismissWarning()
     #expect(browser.warning == nil && browser.browsing && browser.chosen == Self.app)
     browser.choose()
     browser.chooseAnyway()
-    #expect(browser.chosen == "\(Self.useo)/notatki" && !browser.browsing && browser.warning == nil)
+    #expect(browser.chosen == "\(Self.group)/notatki" && !browser.browsing && browser.warning == nil)
   }
 
   @Test("unknown facts (no listing showed the directory as a row) warn too; opening a folder drops the warning")
   func unknownWarns() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: Self.app)
     browser.change()
     await settle { browser.view.status == .ready }
     browser.choose()
     #expect(browser.warning?.target.facts == .unknown)
-    #expect(browser.warning?.sentence.hasPrefix("Rarog nie wie, czy ~/Projects/USEO ") == true)
-    browser.enter("\(Self.useo)/rarog-site")
+    #expect(browser.warning?.sentence.hasPrefix("Rarog nie wie, czy ~/Projects/demo ") == true)
+    browser.enter("\(Self.group)/atlas-docs")
     #expect(browser.warning == nil, "opening a folder drops the warning")
   }
 
   @Test("the listing's own facts win over those remembered from its row; a typed path needs no row")
   func listingFacts() async {
-    let loader = useoLoader()
-    let notatki = "\(Self.useo)/notatki"
-    loader.replies[notatki] = .loaded(DirListing(path: notatki, parent: Self.useo, entries: [], git: true, history: false))
+    let loader = groupLoader()
+    let notatki = "\(Self.group)/notatki"
+    loader.replies[notatki] = .loaded(DirListing(path: notatki, parent: Self.group, entries: [], git: true, history: false))
     let browser = await opened(loader, in: Self.app)
     browser.change()
     await settle { browser.view.status == .ready }
@@ -322,17 +322,17 @@ struct DirectoryBrowserTests {
 
   @Test("the warning concerns the choice in the window: opening in a directory and a pill never warn")
   func openingNeverWarns() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     loader.listing("/Users/d/Projects/plain", parent: Self.projects, [])
     let browser = await opened(loader, in: "/Users/d/Projects/plain")
     #expect(browser.warning == nil && browser.canLaunch)
-    browser.pick("\(Self.useo)/notatki/")
-    #expect(browser.warning == nil && browser.chosen == "\(Self.useo)/notatki" && browser.canLaunch)
+    browser.pick("\(Self.group)/notatki/")
+    #expect(browser.warning == nil && browser.chosen == "\(Self.group)/notatki" && browser.canLaunch)
   }
 
   @Test("a remembered directory that is gone falls back silently to the roots; Change with an unknown parent too")
   func fallback() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     loader.replies["/Users/d/Projects/zniknal"] = .refused("Ten katalog nie jest na liście projektów.")
     let browser = await opened(loader, in: "/Users/d/Projects/zniknal")
     await settle { browser.view.status == .ready }
@@ -350,7 +350,7 @@ struct DirectoryBrowserTests {
 
   @Test("an ordinary listing error stands at the field and is retried")
   func errorRetry() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     loader.replies["/bad"] = .refused("Ten katalog nie jest na liście projektów.")
     let browser = await opened(loader, in: Self.app)
     browser.change()
@@ -365,19 +365,19 @@ struct DirectoryBrowserTests {
 
   @Test("a retry keeps the filter in the field: the list after it matches the typed text")
   func retryKeepsFilter() async {
-    let loader = useoLoader()
+    let loader = groupLoader()
     let browser = await opened(loader, in: Self.app)
-    let listing = loader.replies[Self.useo]
-    loader.replies[Self.useo] = .offline
+    let listing = loader.replies[Self.group]
+    loader.replies[Self.group] = .offline
     browser.change()
     await settle { browser.failed }
-    browser.type("site")
-    #expect(browser.failed && browser.view.filter == "site")
-    loader.replies[Self.useo] = listing
+    browser.type("docs")
+    #expect(browser.failed && browser.view.filter == "docs")
+    loader.replies[Self.group] = listing
     browser.retry()
     await settle { browser.view.status == .ready }
-    #expect(browser.input == "site" && browser.view.filter == "site")
-    #expect(browser.view.entries.map(\.name) == ["rarog-site"], "the rows match the field")
+    #expect(browser.input == "docs" && browser.view.filter == "docs")
+    #expect(browser.view.entries.map(\.name) == ["atlas-docs"], "the rows match the field")
   }
 }
 
@@ -385,9 +385,9 @@ struct DirectoryBrowserTests {
 struct BreadcrumbsTests {
   @Test("home as ~, every directory a segment; segments at or below a root lead there, the last one does not")
   func segments() {
-    let crumbs = Breadcrumbs.make("/Users/d/Projects/USEO/", roots: ["/Users/d/Projects"])
-    #expect(crumbs.map(\.label) == ["~", "Projects", "USEO"])
-    #expect(crumbs.map(\.path) == ["/Users/d", "/Users/d/Projects", "/Users/d/Projects/USEO"])
+    let crumbs = Breadcrumbs.make("/Users/d/Projects/demo/", roots: ["/Users/d/Projects"])
+    #expect(crumbs.map(\.label) == ["~", "Projects", "demo"])
+    #expect(crumbs.map(\.path) == ["/Users/d", "/Users/d/Projects", "/Users/d/Projects/demo"])
     #expect(crumbs.map(\.leads) == [false, true, false])
     #expect(Breadcrumbs.make("/srv/code/a", roots: ["/srv"]).map(\.label) == ["/", "srv", "code", "a"])
     #expect(Breadcrumbs.make("/srv/code/a", roots: ["/srv"]).map(\.leads) == [false, true, true, false])

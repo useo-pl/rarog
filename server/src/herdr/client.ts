@@ -754,8 +754,8 @@ export function createHerdrClient(
  * (driver, supervisor w trybie odczytu), nie dostają nawet REFERENCJI do metod tworzących.
  * Bramką pozostaje `socket.ts` — każdy zapis tej fasady (`workspace.create`, `tab.create`,
  * `agent.start`, `pane.report_metadata`, `pane.rename`, `tab.rename`, `tab.close`,
- * `pane.close`) jest w `MUTATING_METHODS`, więc `RAROG_HERDR_SEND=0` i nieznany protokół
- * blokują je razem z `agent.prompt`.
+ * `pane.close`) jest w `MUTATING_METHODS`, so `RAROG_HERDR_SEND=0` blocks them together
+ * with `agent.prompt`.
  */
 export function createHerdrLaunchClient(requester: HerdrRequester): HerdrLaunchClient {
   const call = mappedCaller(requester);

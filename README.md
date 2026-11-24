@@ -40,8 +40,9 @@ Threat model, killswitches (flags that switch capabilities off) and how to repor
 - npm 11 or newer, or pnpm, for the npm package; pnpm 11.4.0 for a clone (`packageManager` in `package.json`).
 - Claude Code (`claude`), signed in with `/login`. Do not export `CLAUDE_CODE_OAUTH_TOKEN` or Anthropic API keys in
   interactive shells (for example in `~/.zshrc`): a session would use them instead of that login.
-- herdr (`herdr` in `PATH` or `~/.local/bin/herdr`) with API protocol 22 (herdr 0.9.0 to 0.9.5). With an older
-  protocol Rarog does not work, with a newer one it only reads.
+- herdr (`herdr` in `PATH` or `~/.local/bin/herdr`) with API protocol 22 or newer (tested on 22, herdr 0.9.0 to
+  0.9.5). With an older protocol Rarog does not work. A newer one is untested, and Rarog works on it fully;
+  `RAROG_HERDR_SEND=0` keeps Rarog read-only on such a herdr.
 - A way for the app to reach the server: the iroh listener, where the native iroh module installs (Apple silicon,
   Linux x64 and arm64), or an HTTPS address in a private network: Tailscale (`rarog setup` maps it with
   `tailscale serve`) or your own reverse proxy with TLS. An Intel Mac has no iroh module, so it needs the HTTPS
@@ -130,6 +131,17 @@ Settings live in the `env` map of `~/.config/rarog/config.json` and take effect 
 checks the installation, and `rarog help` lists every command. Dictation needs `SONIOX_API_KEY=…` in
 `~/.config/rarog/secret/private.env` (directory 0700, file 0600). By default the server keeps its state and its log
 `server.log` in `~/.local/share/rarog`.
+
+## Updating
+
+```bash
+rarog update            # the newest release; rarog update --beta also takes a newer beta
+```
+
+`rarog update` installs the newest release from the npm registry with npm, in a terminal, and finishes it: the
+Claude SDK, the service, the hook copy and a restart. A rollback is `npm i -g @rarog/server@<version>`, then
+`rarog update --finish`. An installation made with pnpm updates by other steps; they and the details are in
+[docs/distribution.md](docs/distribution.md), section "Install from the npm registry".
 
 ## Where next
 

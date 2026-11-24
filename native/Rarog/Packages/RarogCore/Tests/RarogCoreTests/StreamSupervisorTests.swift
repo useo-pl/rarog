@@ -29,6 +29,7 @@ private func name(_ signal: SupervisorSignal) -> String {
   case .connecting: "connecting"
   case .opened: "opened"
   case .frame: "frame"
+  case .oversized: "oversized"
   case .dropped: "dropped"
   case .unauthorized: "unauthorized"
   case .sessionGone: "sessionGone"
@@ -274,6 +275,23 @@ struct StreamSupervisorStoreTests {
     #expect(store.state.sessionStream == .online)
     clock.advance(by: .milliseconds(200))
     await until("session stream dropped at 15 s") {
+      if case .offline = store.state.sessionStream { return true }
+      return false
+    }
+  }
+
+  @Test("a stream cut at the parser's ceiling leaves a kontrakt line in client.log, not only a drop")
+  func oversizedReachesClientLog() async throws {
+    let (store, transport, _) = try await openStore()
+    let session = StreamScope.session(id: Self.viewed)
+    transport.emit(session, .oversized(.event))
+    transport.end(session)
+    let line = ContractReporter.line(for: .event)
+    #expect(line.hasPrefix("kontrakt: "))
+    await until("the line in client.log") {
+      transport.read { $0.clientLogs.flatMap(\.events).map(\.msg) }.contains(line)
+    }
+    await until("the session stream dropped") {
       if case .offline = store.state.sessionStream { return true }
       return false
     }

@@ -9,11 +9,14 @@ dist/
 # agents' working notes (plan, progress, summary): local, never in the repository
 .development/
 # Local files that must not reach the public repository (`docs/publishing.md`, ".gitignore"): photos uploaded
-# from the app in dev mode, agent session worktrees, local Claude Code settings and notes, environment variables,
-# private keys (PEM, the App Store Connect API key). `*.example` templates stay in the repository.
+# from the app in dev mode, agent session worktrees, local Claude Code settings, working files and notes,
+# environment variables, private keys (PEM, the App Store Connect API key). `*.example` templates stay in the
+# repository.
 .rarog-uploads/
 **/.claude/worktrees/
 .claude/settings.local.json
+.claude/.cc-writes/
+.claude/scheduled_tasks.lock
 CLAUDE.local.md
 .env
 .env.*

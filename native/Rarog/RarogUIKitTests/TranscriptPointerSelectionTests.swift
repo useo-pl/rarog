@@ -10,7 +10,8 @@ import XCTest
 /// to the bottom edge that scrolls with the pointer still, a drag up while an answer streams that keeps the list off
 /// the growing bottom and leaves it unpinned, the autoscroll clock that stops with the press, a press on the streaming
 /// answer that closes under it, the controls of a row that keep their clicks, Cmd+C with a selection in the message
-/// field, a word and a paragraph by double and triple click, a link click, the mutual clearing with the system
+/// field, a drag that takes the character under the press either way and a click on a letter that selects nothing,
+/// a word and a paragraph by double and triple click, a link click, the mutual clearing with the system
 /// selection (also in a table), and the right click below a folded prompt. That a real click and drag reaches the
 /// list's recognizer and Cmd+C copies: `TranscriptPointerSelectionUITests`. The selection model:
 /// `TranscriptPointerSelectionTests` (RarogUI). Owner: transcript.
@@ -94,6 +95,59 @@ final class TranscriptPointerSelectionTests: XCTestCase {
     XCTAssertTrue(opened.isEmpty, "the link waits for the double click window")
     SessionToastTests.until { !opened.isEmpty }
     XCTAssertEqual(opened.map(\.host), ["example.com"])
+  }
+
+  // MARK: - The character under the press
+
+  func testDragTakesTheCharacterUnderThePress() throws {
+    let store = try TranscriptSelectionSheetTests.store(messages: [
+      ("user", "Prompt one."), ("assistant", "Select every word here."),
+    ])
+    let (controller, window) = TranscriptSelectionSheetTests.host(store)
+    defer { window.isHidden = true }
+    let reply = try Self.content("m2.0", in: controller)
+    let list = try XCTUnwrap(controller.collectionView)
+    let word = (reply.textView.text as NSString).range(of: "every")
+    let wordStart = Self.point(reply, offset: word.location, in: controller.view)
+    let wordEnd = Self.point(reply, offset: NSMaxRange(word), in: controller.view)
+    let last = NSMaxRange(word) - 1
+    // The closest caret of each press (`caret`) shows which side of the glyph it is on.
+    let cases: [(name: String, glyph: Int, fraction: CGFloat, caret: Int, drag: CGPoint)] = [
+      ("the right part of the first letter, dragged forward", word.location, 0.75, word.location + 1, wordEnd),
+      ("the left part of the last letter, dragged backward", last, 0.25, last, wordStart),
+      ("the right part of the last letter, dragged backward", last, 0.75, last + 1, wordStart),
+      ("the right part of the space before the word, dragged forward", word.location - 1, 0.75, word.location, wordEnd),
+    ]
+    for item in cases {
+      let press = Self.point(reply, glyph: item.glyph, at: item.fraction, in: controller.view)
+      XCTAssertEqual(
+        reply.pointerOffset(at: controller.view.convert(press, to: list), from: list), item.caret,
+        "\(item.name): the closest caret of the press")
+      controller.pointerDown(at: press, count: 1)
+      controller.pointerDrag(to: item.drag)
+      controller.pointerUp(at: item.drag)
+      XCTAssertEqual(controller.pointerCopyText(), "every", item.name)
+      // A pause past the double click window, so the next press is a single click again.
+      SessionToastTests.spin(TerminalClickCounter.interval + 0.1)
+    }
+  }
+
+  func testClickOnALetterSelectsNothing() throws {
+    let store = try TranscriptSelectionSheetTests.store(messages: [
+      ("user", "Prompt one."), ("assistant", "Select every word here."),
+    ])
+    let (controller, window) = TranscriptSelectionSheetTests.host(store)
+    defer { window.isHidden = true }
+    let reply = try Self.content("m2.0", in: controller)
+    let word = (reply.textView.text as NSString).range(of: "every")
+    let press = Self.point(reply, glyph: word.location, at: 0.75, in: controller.view)
+    controller.pointerDown(at: press, count: 1)
+    controller.pointerDrag(to: CGPoint(x: press.x + SessionViewController.pointerDragSlop - 1, y: press.y))
+    XCTAssertNil(controller.pointerCopyText(), "a move within the slop selects nothing")
+    XCTAssertNil(reply.pointerRange, "and highlights nothing")
+    controller.pointerUp(at: press)
+    XCTAssertNil(controller.pointerCopyText(), "a click selects nothing")
+    XCTAssertNil(reply.pointerRange)
   }
 
   // MARK: - Autoscroll
@@ -493,7 +547,7 @@ final class TranscriptPointerSelectionTests: XCTestCase {
   }
 
   /// The row's content view once the list shows it.
-  private static func content(_ id: String, in controller: SessionViewController) throws -> MessageContentView {
+  static func content(_ id: String, in controller: SessionViewController) throws -> MessageContentView {
     var found: MessageContentView?
     SessionToastTests.until {
       controller.view.layoutIfNeeded()
@@ -506,11 +560,23 @@ final class TranscriptPointerSelectionTests: XCTestCase {
   }
 
   /// The middle of the caret at `offset` in the row's text, in `view`.
-  private static func point(_ content: MessageContentView, offset: Int, in view: UIView) -> CGPoint {
+  static func point(_ content: MessageContentView, offset: Int, in view: UIView) -> CGPoint {
     let field = content.textView
     guard let position = field.position(from: field.beginningOfDocument, offset: offset) else { return .zero }
     let caret = field.caretRect(for: position)
     return field.convert(CGPoint(x: caret.midX, y: caret.midY), to: view)
+  }
+
+  /// A point `fraction` of the way across the glyph of the character at `offset`, level with its middle, in `view`.
+  private static func point(_ content: MessageContentView, glyph offset: Int, at fraction: CGFloat, in view: UIView)
+    -> CGPoint
+  {
+    let field = content.textView
+    guard let start = field.position(from: field.beginningOfDocument, offset: offset),
+      let end = field.position(from: start, offset: 1), let range = field.textRange(from: start, to: end)
+    else { return .zero }
+    let box = field.firstRect(for: range)
+    return field.convert(CGPoint(x: box.minX + box.width * fraction, y: box.midY), to: view)
   }
 
   /// The position of the selection's focus row among the rows.

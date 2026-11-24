@@ -105,6 +105,12 @@ const inboxHeads = [
   { sessionId: 's3', turnId: 't3', version: 'v3', kind: 'failed', state: 'error', at: AT },
 ];
 
+const folderBlocks = [
+  { name: 'Desktop', path: '/Users/d/Desktop', state: 'waiting', since: AT },
+  { name: 'Documents', path: '/Users/d/Documents', state: 'denied', since: AT },
+  { name: 'Downloads', path: '/Users/d/Downloads', state: 'unchecked', since: AT },
+];
+
 const FRAMES = {
   snapshot: { type: 'sessions-snapshot', sessions: [summary, { ...summary, id: 's2' }] },
   changed: { type: 'session-changed', session: summary },
@@ -140,6 +146,7 @@ const FRAMES = {
   },
   inboxHeads: { type: 'inbox-heads', heads: inboxHeads },
   inboxHead: { type: 'inbox-head', head: inboxHeads[0] },
+  folderAccess: { type: 'folder-access', blocked: folderBlocks },
 } as const;
 
 /** The `inbox-heads` frame with only the heads at `keep` (indices of {@link inboxHeads}). */
@@ -491,6 +498,11 @@ const CASES: Record<keyof typeof DEGRADATIONS, DegradationCase[]> = {
     { frame: FRAMES.inboxHeads, path: '/heads/2/state', result: { path: '/heads', value: headsOnly(0, 1).heads } },
     { frame: FRAMES.inboxHeads, path: '/heads/0/dialog', result: { path: '/heads', value: headsOnly(1, 2).heads } },
   ],
+  // The block with an unknown state drops out of the list; the other blocks stay in order.
+  'folder-access.block': [
+    { frame: FRAMES.folderAccess, path: '/blocked/1/state',
+      result: { path: '/blocked', value: [folderBlocks[0], folderBlocks[2]] } },
+  ],
 };
 
 function applyResult(frame: unknown, result: DegradationCase['result']): Json {
@@ -734,6 +746,15 @@ describe('odrzucenia — uszkodzony kształt dalej daje null', () => {
     ['inbox-heads: unknown kind next to an empty version',
       setAt(setAt(FRAMES.inboxHeads, '/heads/1/kind', 'summary'), '/heads/1/version', '')],
     ['inbox-heads: heads null', setAt(FRAMES.inboxHeads, '/heads', null)],
+    // Blocked macOS folders: only an unknown state drops a block; a broken block still rejects the whole list.
+    ['folder-access: state null', setAt(FRAMES.folderAccess, '/blocked/1/state', null)],
+    ['folder-access: state a number', setAt(FRAMES.folderAccess, '/blocked/1/state', 2)],
+    ['folder-access: block without path', removeAt(FRAMES.folderAccess, '/blocked/1/path')],
+    ['folder-access: empty path', setAt(FRAMES.folderAccess, '/blocked/1/path', '')],
+    ['folder-access: block without since', removeAt(FRAMES.folderAccess, '/blocked/0/since')],
+    ['folder-access: unknown state next to a missing path',
+      removeAt(setAt(FRAMES.folderAccess, '/blocked/1/state', 'paused'), '/blocked/1/path')],
+    ['folder-access: blocked null', setAt(FRAMES.folderAccess, '/blocked', null)],
   ];
 
   for (const [name, frame] of rejected) {

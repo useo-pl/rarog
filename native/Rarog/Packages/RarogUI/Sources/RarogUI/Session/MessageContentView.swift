@@ -348,6 +348,8 @@ final class MessageContentView: UIView, UIContentView {
     if shownText !== config.text {
       shownText = config.text
       shownPlain = config.plainSyntax
+      // The hovered run belongs to the old text (a reused cell, a streaming row).
+      hideFileHover()
       // Nowy tekst = nowe fragmenty z kolorami delegata, czyli z bieżącego motywu i kontrastu.
       colorsLook = ColorsLook(traitCollection)
       textView.attributedText = config.plainSyntax ? MarkdownRenderer.withoutSyntax(config.text) : config.text

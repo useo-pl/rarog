@@ -65,10 +65,27 @@ private struct ResizePointerArea: UIViewRepresentable {
     private static let beamLength: CGFloat = 22
 
     func pointerInteraction(_ interaction: UIPointerInteraction, styleFor region: UIPointerRegion) -> UIPointerStyle? {
+      // On a Mac the beam draws as the text cursor and the accessories are dropped, so there the pointer takes the
+      // shape of a double arrow instead.
+      if ProcessInfo.processInfo.isiOSAppOnMac { return UIPointerStyle(shape: .path(Self.doubleArrow)) }
       let style = UIPointerStyle(shape: .verticalBeam(length: Self.beamLength))
       style.accessories = [.arrow(.left), .arrow(.right)]
       return style
     }
+
+    /// A horizontal double arrow centred on the pointer, 18 × 10 pt.
+    private static let doubleArrow: UIBezierPath = {
+      let points: [CGPoint] = [
+        CGPoint(x: -9, y: 0), CGPoint(x: -4, y: -5), CGPoint(x: -4, y: -1.5), CGPoint(x: 4, y: -1.5),
+        CGPoint(x: 4, y: -5), CGPoint(x: 9, y: 0), CGPoint(x: 4, y: 5), CGPoint(x: 4, y: 1.5),
+        CGPoint(x: -4, y: 1.5), CGPoint(x: -4, y: 5),
+      ]
+      let path = UIBezierPath()
+      path.move(to: points[0])
+      for point in points.dropFirst() { path.addLine(to: point) }
+      path.close()
+      return path
+    }()
   }
 }
 #endif

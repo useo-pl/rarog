@@ -180,6 +180,9 @@ export interface ConsentNoHookOptions {
   /** The session process lookup of the session hook list ({@link consentSessionEntry}). */
   readonly entry: (engineSessionId: string) => Promise<HookListSessionEntry | null>;
   readonly proofGate: Pick<ConsentProofGate, 'current'>;
+  /** The restart grace G (`config.consentRestartGraceMs`) and the process start it counts from, epoch ms. */
+  readonly restartGraceMs: number;
+  readonly startedAt: number;
 }
 
 /** The sources of the consent-without-hook detector, shared by every driver of the process. */
@@ -202,6 +205,8 @@ export function consentNoHookSources(options: ConsentNoHookOptions): ConsentNoHo
     outsideWorkArea: (cwd) => !inWorkAreaOnDisk(cwd, options.roots, options.home),
     statusline: (sessionId) => statuslineFreshness(statuslineRoot, sessionId, Date.now()),
     proofRules: (sessionId) => options.proofGate.current(sessionId),
+    restarting: () => Date.now() < options.startedAt + options.restartGraceMs,
+    screenKey: (sessionId, key) => { options.link.cycle?.screenKey(sessionId, key); },
   };
 }
 
@@ -521,6 +526,16 @@ export function consentManagerCards(
     if (record === null) return card;
     return { ...card, decision: record.decision, ...(record.retired === undefined ? {} : { retired: true as const }) };
   });
+}
+
+/**
+ * Receiver of a forgotten conversation for the manager: the cycle drops the session's entries
+ * (`ConsentCycle.forgetSession`). A failure leaves one log line instead of an unhandled rejection.
+ */
+export function consentForgottenPort(consentCycle: ConsentCycle, log: Logger): (engineSessionId: string) => void {
+  return (engineSessionId: string) => {
+    void consentStep('forget session', (line) => { log.error(line); }, () => consentCycle.forgetSession(engineSessionId));
+  };
 }
 
 /** The consent port of the manager over the channel cycle. */

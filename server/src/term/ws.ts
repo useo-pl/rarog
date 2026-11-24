@@ -99,7 +99,14 @@ export function termAttachFromUrl(
 ): {
   id: string; fresh: boolean; direct: boolean; size: { cols: number; rows: number } | null;
 } | null {
-  const url = new URL(rawUrl ?? '/', 'http://127.0.0.1');
+  // The HTTP parser lets through targets `URL` rejects (`//:/`); this runs before any credential, and a throw here
+  // would end the process, so an unparsable target is a path outside `/api/term/:id`.
+  let url: URL;
+  try {
+    url = new URL(rawUrl ?? '/', 'http://127.0.0.1');
+  } catch {
+    return null;
+  }
   const match = /^\/api\/term\/([^/]+)$/.exec(url.pathname.replace(/\/+$/, ''));
   const id = match?.[1];
   if (id === undefined || !TERM_ID_RE.test(id)) return null;

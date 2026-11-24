@@ -16,7 +16,7 @@ export interface FileDownload {
   readonly size: number;
   /** The next piece of those bytes (`exactReader` of `safe-read.ts`); `short` = the file got shorter meanwhile. */
   readonly read: () => Promise<ExactPiece>;
-  /** Closes the descriptor. The sender calls it once, on every path. */
+  /** Closes the file. The sender calls it once, on every path. */
   readonly close: () => Promise<void>;
 }
 

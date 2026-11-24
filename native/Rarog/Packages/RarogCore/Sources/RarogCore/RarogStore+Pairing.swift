@@ -76,9 +76,12 @@ extension RarogStore {
 
   /// Magazyn z prawdziwym Keychainem i fabrykami transportu: punkt końcowy z Keychaina (klucz → jego serwer),
   /// inaczej brak serwera; dane w przestrzeni serwera (`spaces`). Bramka (`MutationRules`) jedna na całe życie magazynu.
+  /// Send bodies left in `temporaryDirectory` by a process killed during a send go first (`RarogStore+Send`).
   public static func live(
-    connector: ServerConnector, preferences: any PreferenceStore, spaces: ServerSpaces
+    connector: ServerConnector, preferences: any PreferenceStore, spaces: ServerSpaces,
+    temporaryDirectory: URL = FileManager.default.temporaryDirectory
   ) -> RarogStore {
+    removeOrphanSendBodies(in: temporaryDirectory)
     let rules = MutationRules()
     let read = connector.keychain.load()
     let endpoint: ServerEndpoint
@@ -89,7 +92,7 @@ extension RarogStore {
     // Kolejka i pamięć podręczna dostają katalogi przestrzeni w `attachServer`; do tej chwili nic nie czyta dysku.
     let store = RarogStore(
       transport: connector.transport(endpoint, rules), rules: rules, outboxDirectory: spaces.scratch(),
-      clientBuild: connector.build)
+      clientBuild: connector.build, sendBodyDirectory: temporaryDirectory)
     store.attachServer(
       connector, endpoint: endpoint, preferences: preferences, spaces: spaces, keychainLocked: read == .locked)
     if case let .failed(status) = read {
@@ -113,7 +116,7 @@ extension RarogStore {
     serverPreferences = preferences
     // Telefon przed pierwszym odblokowaniem nie oddaje plików ani preferencji: przestrzenie po odblokowaniu
     // (`retryKeychainIfAwaiting`).
-    if !keychainLocked { selectSpace(for: endpoint) }
+    if !keychainLocked { _ = reporter.within(.server(ServerKey(endpoint.credential))) { selectSpace(for: endpoint) } }
     dispatch(.pairing(.bound(Self.binding(endpoint))))
     if endpoint.credential == nil, let revoked = readRevocation() { dispatch(.pairing(.revoked(revoked))) }
     if let serverId = endpoint.credential?.serverId { dispatch(.pairing(.newDevices(readNotices(serverId)))) }
@@ -134,7 +137,12 @@ extension RarogStore {
   public func offerPairing(_ link: PairingLink) {
     // W trakcie „Zapomnij serwer” nowe parowanie nie zaczyna się: kasowanie po odpowiedzi skasowałoby jego klucz.
     guard serverRuntime.connector != nil, !state.pairing.forgetting else { return }
+    let shown = state.pairing.flow.link
     dispatch(.pairing(.offered(link)))
+    // `client.log` lines of this pairing wait under the offer until its key is known. A sheet with a request in flight
+    // keeps its link, and the same link offered again keeps its offer.
+    guard case .confirming(link) = state.pairing.flow, shown != link || reporter.offer == nil else { return }
+    _ = reporter.openOffer()
   }
 
   /// Wklejony albo zeskanowany tekst. Zły tekst = odmowa od razu (zdanie składa RarogUI), arkusz się nie zmienia.
@@ -153,6 +161,7 @@ extension RarogStore {
   public func rejectPairingLink(_ error: PairingLinkError) {
     guard serverRuntime.connector != nil else { return }
     dispatch(.pairing(.linkRejected(error)))
+    if case .rejected = state.pairing.flow { reporter.closeOffer() }
   }
 
   /// "Cancel" in the sheet (also after a refusal). A request in flight is not cancelled — its result comes anyway;
@@ -161,6 +170,7 @@ extension RarogStore {
   public func cancelPairing() {
     stopWaitingForRelay()
     dispatch(.pairing(.cancelled))
+    if case .idle = state.pairing.flow { reporter.closeOffer() }
   }
 
   /// "Pair" in the sheet, or "Replace" (`replacing: true`) for a link to another server than the paired one
@@ -180,22 +190,26 @@ extension RarogStore {
     guard replacing || !replaces else { return .ignored }
     serverRuntime.pairingAttempt += 1
     let attempt = serverRuntime.pairingAttempt
+    // The pairing's `client.log` lines wait under this attempt's offer until the key names their server: a Replace runs
+    // while the replaced server is still logged in, and its lines are not about that server.
+    let offer = reporter.attemptOffer()
+    let mine = ContractReporter.Owner.offer(offer)
     dispatch(.pairing(.started(link)))
     // Wskaźnik nieczytelny (dysk nie oddaje pliku): nie wiadomo, czyją przestrzeń dostałby nowy klucz, więc parowanie
     // nie wysyła żądania. Stan przejściowy: ponowne „Sparuj” czyta wskaźnik znowu.
-    guard readPointerBeforePairing() else {
+    guard reporter.within(mine, { readPointerBeforePairing() }) else {
       let failure = PairingFailure.failed(nil)
-      reportUnhandled("pairing: refused before the pairing request — the space pointer is unreadable")
+      reportUnhandled("pairing: refused before the pairing request — the space pointer is unreadable", owner: mine)
       dispatch(.pairing(.failed(link, failure)))
       return .failed(failure)
     }
     // Pairing over iroh: the relay registry first (ceiling and readiness window: `RarogStore+RelayAccess`).
-    let relay = await prepareRelay(for: link.target, connector: connector)
+    let relay = await prepareRelay(for: link.target, connector: connector, owner: mine)
     let preparedAt = areaNow
     let body = PairBody(code: link.code, label: connector.label, build: connector.build)
     let response: PairResponse
     switch await pairAdmittedByRelay(
-      body, link: link, relay: relay, preparedAt: preparedAt, attempt: attempt, connector: connector)
+      body, link: link, relay: relay, preparedAt: preparedAt, attempt: attempt, connector: connector, owner: mine)
     {
     case let .success(reply):
       response = reply
@@ -206,19 +220,19 @@ extension RarogStore {
       return .failed(failure)
     }
     guard attempt == serverRuntime.pairingAttempt else { return .ignored }
+    let iroh = reporter.within(mine) { pairedIroh(response, target: link.target) }
     let credential = DeviceCredential(
-      pair: response, serverURL: link.serverURL, iroh: pairedIroh(response, target: link.target), label: connector.label,
-      pairedAt: areaNow)
+      pair: response, serverURL: link.serverURL, iroh: iroh, label: connector.label, pairedAt: areaNow)
     let previous = serverRuntime.endpoint
     // Wskaźnik uzgodniony z bieżącym kluczem jak przy wyborze przestrzeni, a bez klucza w sesji z Keychainem (pusty
     // skreśla następcę). Następca, którego dysk nie dał skreślić ani zamienić, zostaje we wskaźniku, dopóki Keychain
     // może trzymać jego klucz, więc parowanie, które by go zastąpiło, kończy się odmową, zanim cokolwiek trafi na dysk
     // i do Keychaina (rekord na serwerze wygaśnie sam, jak przy odmowie Keychaina).
-    if let successor = settlePointer(for: previous),
+    if let successor = reporter.within(mine, { settlePointer(for: previous) }),
       let refusal = refusalWhileSuccessorStays(successor, previous: previous, credential, target: link.target)
     {
       let failure = PairingFailure.failed(nil)
-      reportUnhandled("pairing: \(refusal) refused — the space pointer still names a successor")
+      reportUnhandled("pairing: \(refusal) refused — the space pointer still names a successor", owner: mine)
       dispatch(.pairing(.failed(link, failure)))
       return .failed(failure)
     }
@@ -227,12 +241,12 @@ extension RarogStore {
     let pointerBefore = serverRuntime.pointer
     var pointerMoved = false
     if let successor = provenSuccessor(previous: previous, credential, target: link.target) {
-      pointerMoved = announceSuccessor(successor)
+      pointerMoved = reporter.within(mine) { announceSuccessor(successor) }
     }
     // One server per app: after "Replace" the new key never opens the replaced pairing's space, so a fresh space goes
     // on disk before the key, as the successor above does. A server key proven by the pointer keeps its space.
     if replaces, !provesPointerKey(previous: previous, credential, target: link.target) {
-      switch emptySpaceForReplacement(credential) {
+      switch reporter.within(mine, { emptySpaceForReplacement(credential) }) {
       case .untouched:
         break
       case .emptied:
@@ -243,27 +257,34 @@ extension RarogStore {
         return .failed(failure)
       }
     }
+    let shared: Bool
     do {
-      let shared = try connector.keychain.save(credential, pushKey: response.pushKey)
-      if !shared { reportUnhandled("keychain: klucz push bez grupy współdzielonej (kopia we wpisie apki)") }
+      shared = try connector.keychain.save(credential, pushKey: response.pushKey)
     } catch {
       // The key did not go through: the pointer returns to its state from before this pairing (successor announced,
       // or the fresh space of a replacement), so the paired key keeps its space and data.
-      if pointerMoved, let pointerBefore { restorePointer(pointerBefore) }
+      if pointerMoved, let pointerBefore { reporter.within(mine) { restorePointer(pointerBefore) } }
       // Serwer zapisał już rekord: bez żadnego żądania wygaśnie sam po 10 min (sierota).
       let failure = PairingFailure.keychain(error.status)
-      reportUnhandled("keychain: zapis klucza urządzenia nieudany (OSStatus \(error.status))")
+      reportUnhandled("keychain: zapis klucza urządzenia nieudany (OSStatus \(error.status))", owner: mine)
       dispatch(.pairing(.failed(link, failure)))
       return .failed(failure)
     }
     clearRevocation()
     dispatch(.pairing(.paired))
+    // The offer's lines belong to the server of the new key: they reach it after its login, never the replaced one.
+    let paired = ServerKey(credential)
+    reporter.resolveOffer(offer, as: paired)
     await switchEndpoint(to: .device(credential))
+    // After the switch: the lines are about the new key, and a switch superseded meanwhile does not change that.
+    if !shared {
+      reportUnhandled("keychain: klucz push bez grupy współdzielonej (kopia we wpisie apki)", owner: .server(paired))
+    }
     // Poprzedni klucz (ponowne parowanie, inny serwer) odpina się sam — best-effort, w tle.
     if let old = previous.credential, old.deviceId != credential.deviceId {
       forgetOnServer(connector.forgetTransport(previous, rules))
     }
-    trace("parowanie: sparowano z \(link.host) jako \(credential.deviceId)")
+    trace("parowanie: sparowano z \(link.host) jako \(credential.deviceId)", owner: .server(paired))
     return .paired
   }
 
@@ -300,8 +321,10 @@ extension RarogStore {
       deviceId: deviceId, server: server, revokedAt: revokedAt, revokedBy: revokedBy, serverSystem: state.serverSystem)
     saveRevocation(revocation)
     dispatch(.pairing(.revoked(revocation)))
+    // The rejected key's server, named here: the login already ended, and a pairing sheet for another server may be
+    // open, so the line never goes to the next server paired.
+    trace("parowanie: urządzenie \(deviceId) odpięte (\(revokedBy))", owner: .server(ServerKey(credential)))
     install(.none)
-    trace("parowanie: urządzenie \(deviceId) odpięte (\(revokedBy))")
   }
 
   /// „Spróbuj ponownie” na ekranie „Serwer nie rozpoznał tego urządzenia”: ten sam klucz, świeży transport. Nie
@@ -478,7 +501,8 @@ extension RarogStore {
   func restoreSharedPushKey(after read: KeychainRead) {
     guard let connector = serverRuntime.connector, case let .found(credential, pushKey) = read else { return }
     if !connector.keychain.restoreSharedPushKey(kid: credential.kid, pushKey: pushKey) {
-      reportUnhandled("keychain: klucz push bez grupy współdzielonej (kopia we wpisie apki)")
+      reportUnhandled(
+        "keychain: klucz push bez grupy współdzielonej (kopia we wpisie apki)", owner: .server(ServerKey(credential)))
     }
   }
 
@@ -486,7 +510,8 @@ extension RarogStore {
   /// przez adres HTTPS, a `client.log` dostaje jedną linię z powodem, bez wartości pola.
   func reportIgnoredIroh(after read: KeychainRead) {
     guard case let .found(credential, _) = read, let reason = credential.ignoredIroh else { return }
-    reportUnhandled("keychain: pole iroh pominięte w poświadczeniu (\(reason))")
+    reportUnhandled(
+      "keychain: pole iroh pominięte w poświadczeniu (\(reason))", owner: .server(ServerKey(credential)))
   }
 
   /// Nowy punkt końcowy bez logowania (start, odpięcie, „Zapomnij serwer”): transport, przestrzeń danych i stan
@@ -496,7 +521,8 @@ extension RarogStore {
     guard let connector = serverRuntime.connector else { return false }
     serverRuntime.endpoint = endpoint
     transport = connector.transport(endpoint, rules)
-    let changed = selectSpace(for: endpoint)
+    // Lines about the space belong to this endpoint's key (no key: no single server), not to a login.
+    let changed = reporter.within(.server(ServerKey(endpoint.credential))) { selectSpace(for: endpoint) }
     dispatch(.pairing(.bound(Self.binding(endpoint))))
     if let serverId = endpoint.credential?.serverId { dispatch(.pairing(.newDevices(readNotices(serverId)))) }
     return changed
@@ -765,16 +791,22 @@ extension RarogStore {
     guard updated.account == credential.account, case let .found(stored, pushKey) = connector.keychain.load(),
       stored.deviceId == credential.deviceId
     else { return }
+    let shared: Bool
     do {
-      if try !connector.keychain.save(updated, pushKey: pushKey) {
-        reportUnhandled("keychain: push key without the shared group when saving the iroh pair (copy in the app entry)")
-      }
+      shared = try connector.keychain.save(updated, pushKey: pushKey)
     } catch {
       reportUnhandled("keychain: saving the server iroh pair failed (OSStatus \(error.status))")
       return
     }
     serverRuntime.endpoint = .device(updated)
+    // Another iroh key is another server for `client.log`: the old key's unsent lines never go out on this transport.
+    if let key = ServerKey(updated) { reporter.rekey(key) }
     dispatch(.pairing(.routesUpdated(PairedServer(updated))))
     connector.credentialChanged(.device(updated))
+    if !shared {
+      reportUnhandled(
+        "keychain: push key without the shared group when saving the iroh pair (copy in the app entry)",
+        owner: .server(ServerKey(updated)))
+    }
   }
 }

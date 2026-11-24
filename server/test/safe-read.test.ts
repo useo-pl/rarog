@@ -26,7 +26,7 @@ import {
   readRegularFileSync,
 } from '../src/safe-read.ts';
 import type {
-  DirectoryIdentity, DirectoryReadIo, ExactPiece, ReadRegularOptions, RegularFileRead,
+  DirectoryIdentity, DirectoryReadIo, ExactPiece, PositionalReader, ReadRegularOptions, RegularFileRead,
 } from '../src/safe-read.ts';
 
 let dir = '';
@@ -138,20 +138,31 @@ describe('exactReader', () => {
     }
   }
 
-  async function opened(bytes: Buffer): Promise<{ file: string; handle: FileHandle; size: number }> {
+  /** The file open on a descriptor, and a positional reader over that descriptor, as the port's handle reads. */
+  async function opened(
+    bytes: Buffer,
+  ): Promise<{ file: string; handle: FileHandle; reader: PositionalReader; size: number }> {
     const file = join(dir, 'f.bin');
     await writeFile(file, bytes);
     const result = await openRegularFile(file, { followSymlink: false });
     if (result === null) throw new Error('not a regular file');
-    return { file, handle: result.handle, size: Number(result.stats.size) };
+    const { handle } = result;
+    const reader: PositionalReader = {
+      read: async (length, position) => {
+        const buffer = Buffer.alloc(length);
+        const { bytesRead } = await handle.read(buffer, 0, length, position);
+        return buffer.subarray(0, bytesRead);
+      },
+    };
+    return { file, handle, reader, size: Number(result.stats.size) };
   }
 
   it('the first `size` bytes in pieces of at most `pieceBytes`, then `done`; empty is `done` at once', async () => {
     const bytes = Buffer.from(Array.from({ length: 10 }, (_, i) => i));
-    const { handle, size } = await opened(bytes);
+    const { handle, reader, size } = await opened(bytes);
     try {
-      expect(await drain(exactReader(handle, size, 4))).toEqual({ bytes, pieces: [4, 4, 2], end: 'done' });
-      expect(await drain(exactReader(handle, 0, 4))).toEqual({ bytes: Buffer.alloc(0), pieces: [], end: 'done' });
+      expect(await drain(exactReader(reader, size, 4))).toEqual({ bytes, pieces: [4, 4, 2], end: 'done' });
+      expect(await drain(exactReader(reader, 0, 4))).toEqual({ bytes: Buffer.alloc(0), pieces: [], end: 'done' });
     } finally {
       await handle.close();
     }
@@ -159,10 +170,10 @@ describe('exactReader', () => {
 
   it('bytes appended while it reads are not read: exactly `size` bytes', async () => {
     const bytes = Buffer.alloc(9, 1);
-    const { file, handle, size } = await opened(bytes);
+    const { file, handle, reader, size } = await opened(bytes);
     try {
       const append = async (): Promise<void> => { await appendRegularFile(file, 'more'); };
-      const read = await drain(exactReader(handle, size, 4), append);
+      const read = await drain(exactReader(reader, size, 4), append);
       expect(read).toEqual({ bytes, pieces: [4, 4, 1], end: 'done' });
     } finally {
       await handle.close();
@@ -170,9 +181,9 @@ describe('exactReader', () => {
   });
 
   it('a file cut while it reads ends `short`, with the bytes read so far', async () => {
-    const { file, handle, size } = await opened(Buffer.alloc(12, 2));
+    const { file, handle, reader, size } = await opened(Buffer.alloc(12, 2));
     try {
-      const read = await drain(exactReader(handle, size, 4), async () => { await writeFile(file, 'ab'); });
+      const read = await drain(exactReader(reader, size, 4), async () => { await writeFile(file, 'ab'); });
       expect(read).toEqual({ bytes: Buffer.alloc(4, 2), pieces: [4], end: 'short' });
     } finally {
       await handle.close();
@@ -181,10 +192,10 @@ describe('exactReader', () => {
 
   it('reads at its own offset: the position of the descriptor does not move what it sends', async () => {
     const bytes = Buffer.from('0123456789');
-    const { handle, size } = await opened(bytes);
+    const { handle, reader, size } = await opened(bytes);
     try {
       await handle.read(Buffer.alloc(5), 0, 5, null);
-      const read = await drain(exactReader(handle, size, 3));
+      const read = await drain(exactReader(reader, size, 3));
       expect(read.bytes.toString('utf8')).toBe('0123456789');
     } finally {
       await handle.close();

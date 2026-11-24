@@ -31,6 +31,8 @@ public final class RarogStore {
   @ObservationIgnored let timing: CoreTiming
   @ObservationIgnored let clock: @Sendable () -> Date
   @ObservationIgnored let reporter = ContractReporter()
+  /// Directory of the body files of sends with attachments. Owner: `+Send`.
+  @ObservationIgnored let sendBodyDirectory: URL
   /// Tłumacz zdań serwera: ramki SSE na wejściu reduktora i lista modeli (`RarogStore+Session`).
   @ObservationIgnored let renderer: SentenceRenderer
   /// Identyfikator obecności tej instancji apki (apka nie obsługuje wielu okien).
@@ -116,6 +118,7 @@ public final class RarogStore {
   ///   - outboxDirectory: katalog kolejki (w apce `Application Support/outbox/`).
   ///   - listCacheDirectory: katalog pamięci podręcznej listy; `nil` = bez pamięci.
   ///   - renderer: tłumacz zdań serwera; domyślnie język apki, testy podają własny.
+  ///   - sendBodyDirectory: where a send with attachments composes its body file (`RarogStore+Send`).
   public init(
     transport: any RarogTransporting,
     rules: MutationRules,
@@ -124,8 +127,10 @@ public final class RarogStore {
     timing: CoreTiming = .production,
     clock: @escaping @Sendable () -> Date = { Date() },
     listCacheDirectory: URL? = nil,
-    renderer: @escaping SentenceRenderer = ServerText.renderer(language: .current)
+    renderer: @escaping SentenceRenderer = ServerText.renderer(language: .current),
+    sendBodyDirectory: URL = FileManager.default.temporaryDirectory
   ) {
+    self.sendBodyDirectory = sendBodyDirectory
     self.transport = transport
     self.rules = rules
     self.timing = timing
@@ -171,6 +176,7 @@ public final class RarogStore {
     await serverRuntime.spaceRestore?.value
     if transport.hasCredential {
       let cached = await readListCache()
+      reporter.bind(loginReportKey)
       dispatch(.loggedIn)
       applyRestoredList(cached)
       resume()
@@ -423,6 +429,9 @@ public final class RarogStore {
       }
       // Rejestracja APNs czeka na żywy strumień i świeżą listę (`RarogStore+Push`).
       if scope == .global { attemptPushRegistration() }
+    case let .oversized(part):
+      reporter.record([ContractReporter.line(for: part)])
+      flushReport()
     case .dropped:
       dispatch(.streamDropped(scope))
     case .unauthorized:
@@ -456,7 +465,6 @@ public final class RarogStore {
     stallThreshold.reset()
     presenceTask?.cancel()
     presenceTask = nil
-    reporter.armed = false
     cancelTurnRequests()
     dispatch(event)
     syncUsagePolling()
@@ -469,11 +477,14 @@ public final class RarogStore {
     forgetPush(unregister: unregisterPush)
     forgetLiveActivity()
     forgetPairingRequests()
+    // Last: the teardown lines above (the Live Activity's end) take this login's key, so they never reach the next.
+    reporter.retire()
   }
 
   /// Zalogowanie nowym transportem (parowanie, ponowienie klucza): nowy numer zalogowania, strumienie, push.
   func enterLoggedIn() {
     loginGeneration += 1
+    reporter.bind(loginReportKey)
     dispatch(.loggedIn)
     resume()
     pushLoggedIn()
@@ -527,18 +538,27 @@ public final class RarogStore {
   /// `error`. Opis składa wołający i nie wolno w nim treści rozmowy, terminala ani notatek
   /// Ten sam bufor co raport `kontrakt:` — przed zalogowaniem linia czeka i wychodzi
   /// po zalogowaniu; dedup po treści i wspólny sufit 50 linii na życie procesu.
+  /// The line belongs to the running login.
   public func reportUnhandled(_ summary: String) {
+    reportUnhandled(summary, owner: .current)
+  }
+
+  /// A `błąd:` line of `owner`: a line about a server named by its producer (a key known outside a login, a pairing
+  /// offer) never takes the running login's key.
+  func reportUnhandled(_ summary: String, owner: ContractReporter.Owner) {
     let line = summary.split(whereSeparator: \.isNewline).joined(separator: " ")
     guard !line.isEmpty else { return }
-    reporter.record([ContractReporter.problemPrefix + String(line.prefix(200))])
+    reporter.record([ContractReporter.problemPrefix + String(line.prefix(200))], owner: owner)
     flushReport()
   }
 
   /// `internal`: ślady diagnostyczne (`RarogStore+Diagnostics`) wychodzą tym samym buforem.
   func flushReport() {
-    let transport = transport
     let now = clock()
     Task {
+      // The transport is read when the flush starts, in the same step as the reporter's recipient: a flush scheduled
+      // before a server switch and started after it sends to the new server, never the new lines to the old one.
+      let transport = transport
       await reporter.flush({ body in
         (try? await transport.clientLog(body)) != nil
       }, now: now)

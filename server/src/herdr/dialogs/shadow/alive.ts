@@ -17,9 +17,10 @@
  * (`HookMarkerFile`). Przy `shadow` i `off` pola nie ma, więc plik
  * trybu cienia jest bit w bit ten sam co bez opcji. Dziennik przejść pola nie niesie.
  *
- * The first sessions after the start do not wait for the tick: {@link AliveWriter.sessionsChanged} writes at once when
- * the published list is empty and the current one is not. A hook started during a server restart waits for its
- * session on the list, so the tick would add up to 10 s to the restart window.
+ * A new session does not wait for the tick: {@link AliveWriter.sessionsChanged} writes at once when the current list
+ * has a session the last successful write did not carry. A hook whose session is not on the list leaves without the
+ * consent channel, so the tick would send the first request of a new session (or of the first sessions after a
+ * restart) to the terminal. A session that only left waits for the tick.
  *
  * Restart break: with a restart grace G above 0 ({@link AliveWriterOptions.graceMs}) every write carries
  * `phase: "starting"` from the first one until the first one with a session after the channel mode is resolved
@@ -117,8 +118,9 @@ export interface AliveWriter {
   /** Zapis teraz, poza rytmem (np. po zmianie trybu efektywnego albo listy sesji). */
   writeNow(): boolean;
   /**
-   * The set of observed sessions may have changed. Writes now only when the published list is empty and the current
-   * one is not; any other change waits for the tick. `true` = written. Before `start` and after `stop`: nothing.
+   * The set of observed sessions may have changed. Writes the current list now when it has a session the last
+   * successful write did not carry; a session that only left waits for the tick. `true` = written. Before `start` and
+   * after `stop`: nothing.
    */
   sessionsChanged(): boolean;
   /**
@@ -141,8 +143,8 @@ export function createAliveWriter(options: AliveWriterOptions): AliveWriter {
   /** Kolejka wyrzuciła linię: następna udana niesie `luka: true`. */
   let gap = false;
   let logFailing = false;
-  /** The last successful write carried at least one session. */
-  let publishedSessions = false;
+  /** The session list of the last successful write. */
+  let published: ReadonlySet<string> = new Set();
   const graceMs = options.graceMs ?? 0;
   /** `phase: "starting"` until the first write with a session after the mode is resolved (only with a grace). */
   let starting = graceMs > 0;
@@ -206,7 +208,7 @@ export function createAliveWriter(options: AliveWriterOptions): AliveWriter {
     if (!ok && !failing) options.log?.('shadow: failed to write alive.json — the hook will not wait');
     if (ok && failing) options.log?.('shadow: alive.json written again');
     failing = !ok;
-    if (ok) publishedSessions = sessions.length > 0;
+    if (ok) published = new Set(sessions);
     if (ok) history(ts, { mode, send, sessions }, stop);
     return ok;
   };
@@ -244,8 +246,8 @@ export function createAliveWriter(options: AliveWriterOptions): AliveWriter {
       return tick();
     },
     sessionsChanged(): boolean {
-      if (timer === null || stopped || publishedSessions) return false;
-      if (currentSessions().length === 0) return false;
+      if (timer === null || stopped) return false;
+      if (currentSessions().every((id) => published.has(id))) return false;
       return tick();
     },
     stop(): void {

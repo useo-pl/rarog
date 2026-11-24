@@ -178,9 +178,11 @@ function deviceRow(record: DeviceRecord): Record<string, unknown> {
   };
 }
 
+/** Tombstone on the list and in the revoke replies; the label goes through the pairing rules like {@link deviceRow}. */
 function tombRow(tomb: DeviceTombstone): Record<string, unknown> {
   return {
-    id: tomb.id, label: tomb.label, createdAt: tomb.createdAt, revokedAt: tomb.revokedAt, revokedBy: tomb.revokedBy,
+    id: tomb.id, label: sanitizeLabel(tomb.label), createdAt: tomb.createdAt, revokedAt: tomb.revokedAt,
+    revokedBy: tomb.revokedBy,
   };
 }
 

@@ -8,8 +8,10 @@
 # Przed krokami: zapora wpuszcza SSH tylko z tailscale0, więc bez działającego Tailscale skrypt kończy się kodem 2
 # i niczego nie zmienia.
 # Kroki:
-#   1. pakiety z repo dystrybucji: nodejs, nftables, iproute2, cron, unattended-upgrades, curl, openssl;
-#   2. iroh-relay 1.4.1 z wydania GitHub do /usr/local/bin, sumy sha256 archiwum i programu przypięte niżej;
+#   1. packages from the distribution: nodejs, nftables, iproute2, cron, unattended-upgrades, curl, openssl; then
+#      `nft -c` checks nftables.conf, and rules it rejects end the run with code 2 before any file is written;
+#   2. iroh-relay 1.4.1 from the GitHub release to /usr/local/bin, sha256 of the archive and the program pinned
+#      below; a replaced binary stays as /usr/local/bin/iroh-relay.prev;
 #   3. użytkownik systemowy iroh-relay, pliki z repo: /opt/relay-vps, /etc/iroh-relay, jednostki systemd, cron,
 #      unattended-upgrades (restart po aktualizacji o 04:00), retencja dziennika (journald 7 dni, relay poza
 #      /var/log/syslog), /etc/nftables.conf (oryginał raz do .orig); the /usr/local/bin/relay-stats link;
@@ -26,6 +28,8 @@ RELAY_VERSION=1.4.1
 RELAY_URL="https://github.com/n0-computer/iroh/releases/download/v${RELAY_VERSION}/iroh-relay-v${RELAY_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
 RELAY_TGZ_SHA256=eeceef0f06f04ad2644644cd80dd5733e64da46daf8a9f86d87a5ad5c13b06e4
 RELAY_BIN_SHA256=137b3057720a3e26cdc6704d1079594cdbcc34d04f4b5116fc2eb848dce6d027
+# iroh-relay.service starts this path; only the tests point RELAY_BIN into a temporary directory.
+RELAY_BIN="${RELAY_BIN:-/usr/local/bin/iroh-relay}"
 GUARD_UNIT=relay-install-cofnij
 
 SRC="$(cd "$(dirname "$0")" && pwd)"
@@ -98,20 +102,31 @@ if [[ ${#need[@]} -gt 0 ]]; then
 fi
 node_major="$(node -p 'process.versions.node.split(".")[0]')"
 if [[ "$node_major" -lt 18 ]]; then echo "install.sh: the adapter requires Node 18+ (found $node_major)" >&2; exit 2; fi
+# Rules that do not load would stop the run in step 6 under the dead man's switch, with /etc/nftables.conf already
+# replaced. They are checked here, once nft is installed and before any relay file or the timer.
+if ! nft -c -f "$SRC/nftables.conf"; then
+  echo "install.sh: $SRC/nftables.conf does not pass nft -c; no relay file was written" >&2
+  exit 2
+fi
 
 echo "== 2. iroh-relay $RELAY_VERSION"
-if [[ -x /usr/local/bin/iroh-relay ]] && sha256sum /usr/local/bin/iroh-relay | grep -q "^$RELAY_BIN_SHA256 "; then
-  echo "install.sh: /usr/local/bin/iroh-relay $RELAY_VERSION is already there"
+if [[ -x "$RELAY_BIN" ]] && sha256sum "$RELAY_BIN" | grep -q "^$RELAY_BIN_SHA256 "; then
+  echo "install.sh: $RELAY_BIN $RELAY_VERSION is already there"
 else
   tmp="$(mktemp -d)"
   curl -fsSL -o "$tmp/relay.tgz" "$RELAY_URL"
   echo "$RELAY_TGZ_SHA256  $tmp/relay.tgz" | sha256sum -c --quiet
   tar -C "$tmp" -xzf "$tmp/relay.tgz" ./iroh-relay
   echo "$RELAY_BIN_SHA256  $tmp/iroh-relay" | sha256sum -c --quiet
+  # The replaced binary stays as .prev: a rollback to it needs no download.
+  if [[ -e "$RELAY_BIN" ]]; then
+    cp -p "$RELAY_BIN" "$RELAY_BIN.prev"
+    echo "install.sh: previous binary kept as $RELAY_BIN.prev"
+  fi
   need_restart
-  install -m 0755 "$tmp/iroh-relay" /usr/local/bin/iroh-relay
+  install -m 0755 "$tmp/iroh-relay" "$RELAY_BIN"
   rm -r -- "$tmp"
-  echo "install.sh: wrote /usr/local/bin/iroh-relay"
+  echo "install.sh: wrote $RELAY_BIN"
 fi
 
 echo "== 3. user and files"
@@ -203,7 +218,6 @@ if [[ $nft_changed == 1 || $tc_ok == 0 ]]; then
   systemd-run --quiet --on-active=180 --unit="$GUARD_UNIT" --description="Roll back the relay firewall and tc" \
     /bin/sh -c "nft flush ruleset; tc qdisc del dev $iface root"
   guard=1
-  nft -c -f /etc/nftables.conf
   systemctl restart nftables.service
   systemctl restart relay-tc.service
   echo "install.sh: firewall and tc set up under the dead man's switch $GUARD_UNIT (180 s)"

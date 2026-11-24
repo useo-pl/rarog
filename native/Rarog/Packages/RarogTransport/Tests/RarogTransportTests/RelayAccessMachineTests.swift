@@ -896,7 +896,7 @@ struct RelayAccessMachineTests {
     ready.enqueue(.renew, F.renewed(expiresAt: RA.t0 + RA.term))
     ready.feed(.pair(RA.target(RA.k), ticket: 1, appId: RA.app))
     ready.settle()
-    #expect(ready.routes == [.renew] && ready.prepared == [1: [.ready]])
+    #expect(ready.routes == [.renew] && ready.prepared == [1: [.ready(sponsoredAt: nil)]])
 
     var fresh = Driver(.init(cache: cache))
     fresh.feed(.servers(list, appId: RA.app))
@@ -914,6 +914,46 @@ struct RelayAccessMachineTests {
     failed.settle()
     #expect(failed.prepared == [3: [.unavailable]] && failed.status == failed.problem(.serverQuota, after: RA.day))
     #expect(ready.violations.isEmpty && fresh.violations.isEmpty && failed.violations.isEmpty)
+  }
+
+  @Test("a sponsorship in a background sync, then pairing 20 s later → .ready with that moment; after a restart nil")
+  func pairReadyCarriesSponsorship() {
+    var d = Driver(.init(cache: RA.stale()))
+    d.enqueue(.renew, F.renewed(expiresAt: RA.t0 + RA.term, unsponsored: [RA.k]))
+    d.enqueue(.sponsor, F.sponsored(server: RA.k, expiresAt: RA.t0 + RA.term))
+    d.feed(.servers(list, appId: RA.app))
+    d.feed(.trigger(.foreground, appId: RA.app))
+    d.settle()
+    #expect(d.routes == [.renew, .sponsor])
+    d.now = RA.t0 + 20
+    d.enqueue(.renew, F.renewed(expiresAt: RA.t0 + 20 + RA.term))
+    d.feed(.pair(RA.target(RA.k), ticket: 1, appId: RA.app))
+    d.settle()
+    #expect(d.prepared == [1: [.ready(sponsoredAt: RA.date(RA.t0))]])
+    // The moment lives in the process only: after a restart the same live sponsorship answers without it.
+    d.restart()
+    d.enqueue(.renew, F.renewed(expiresAt: RA.t0 + 20 + RA.term))
+    d.feed(.pair(RA.target(RA.k), ticket: 2, appId: RA.app))
+    d.settle()
+    #expect(d.prepared[2] == [.ready(sponsoredAt: nil)])
+    #expect(d.violations.isEmpty)
+  }
+
+  @Test("pairing that preempts a sync during its `sponsor`: the sponsorship still counts → .ready with its moment")
+  func pairPreemptingSponsorKeepsMoment() {
+    var d = Driver(.init(cache: RA.stale()))
+    d.enqueue(.renew, F.renewed(expiresAt: RA.t0 + RA.term, unsponsored: [RA.k]))
+    d.enqueue(.sponsor, F.sponsored(server: RA.k, expiresAt: RA.t0 + RA.term))
+    d.feed(.servers(list, appId: RA.app))
+    d.feed(.trigger(.foreground, appId: RA.app))
+    d.step()
+    #expect(d.routes == [.renew, .sponsor], "the sponsor request is in flight")
+    d.feed(.pair(RA.target(RA.k), ticket: 1, appId: RA.app))
+    d.enqueue(.renew, F.renewed(expiresAt: RA.t0 + RA.term))
+    d.settle()
+    #expect(d.routes == [.renew, .sponsor, .renew])
+    #expect(d.prepared == [1: [.ready(sponsoredAt: RA.date(RA.t0))]])
+    #expect(d.violations.isEmpty)
   }
 
   @Test("200 bez walidacji przychodzi jako failure(200): internal na 24 h; przy forget optedOut(pending)")

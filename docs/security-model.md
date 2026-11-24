@@ -90,6 +90,10 @@ Code: `server/src/iroh/` (listener) and `server/src/auth/` (rules of the iroh so
   gets `reset` and `stop`); unidirectional streams get `stop` at once and nobody reads datagrams. Closing a stream
   whose native operations do not finish within 2 s closes the whole connection. Refusals are logged through a
   budget (the first line of each kind in a 60 s window, then a summary).
+- **SSE write buffer** (`SSE_WRITE_BUFFER_MAX` in `server/src/sse.ts`, 11 MiB, twice a full ring plus the snapshot
+  image budget): an authenticated stream, over TCP or iroh, whose unsent bytes (socket buffer plus compressor input)
+  pass the ceiling plus twice the largest frame it was sent is destroyed with one log line that carries the stream
+  scope and device id only, so a device that stops reading holds at most that much server memory per stream.
 - **Server key `RAROG_IROH_KEY`** (64 hex characters, `openssl rand -hex 32`) is the server's identity: the
   EndpointId derives from it. It is a secret (through `service.wrapper` or the secrets file `private.env`, never
   `config.json`); `redact()` removes it from logs and `GET /api/admin/iroh` does not return it. **Theft:** whoever has
@@ -121,17 +125,28 @@ Code: `server/src/iroh/` (listener) and `server/src/auth/` (rules of the iroh so
   not one connection: the next connections to the same host in the same session go through without a dialog (Claude
   Code 2.1.322, 2 of 2). "Yes, and don't ask again for <host>", which writes a rule to the project settings, stays at
   the desk: the card carries no `alwaysLabel`, and `allow-always` from an outdated or foreign client is refused in
-  the driver (`terminal-only`). With the consent channel on, the digit goes only under invariant N4 (next point).
-- **With the consent channel on, a consent dialog gets a digit only under invariant N4.** The classes `permission`
-  and `sandbox` get no digit at `main` and `all`, except the "Yes" digit of a measured consent dialog: the sandbox
+  the driver (`terminal-only`). With the consent channel on, this dialog gets its digit only as a measured consent
+  dialog under invariant N4 (next point).
+- **With the consent channel on, a consent dialog gets a digit only under invariant N4 or with the emergency Allow
+  button.** The classes `permission` and `sandbox` get no digit at `main` and `all`, except two "Yes" digits. The
+  first is the one of a measured consent dialog (invariant N4): the sandbox
   network dialog and the dialog of an MCP tool with `requiresUserInteraction`, whose dialog a plain hook `allow` does
   not close (Claude Code 2.1.322). The digit goes out only when the dialog is the only one on top without a queue
   counter, has the measured shape line by line, has the identity of the card (the host; for MCP the header and an
   argument frame equal to the call input of the transcript entry the card was built from), no hook consent request
   of the session waits (a channel card holding the dialog, or a live registration of the session without a card,
   a subagent's too, however old), a fresh registry read gives the class of the shape, and a fresh screen read right
-  before the key gives the same shape and identity, with the hook check repeated after it. Anything else means no
-  digit (`docs/dialogs.md`, "Rules: what must not be relaxed").
+  before the key gives the same shape and identity, with the hook check repeated after it. The second is the
+  emergency Allow button of a tool permission dialog to which Rarog's hook left no trace for 3 s: the card is the
+  one the `off` path would show, proven by the screen against its transcript entry, and it carries the button only
+  when no hook trace, hook request or hook process of the session is seen, no foreign `PermissionRequest` hook stands
+  in the current settings, the server is past its restart grace, and a subagent's dialog (title suffix) is in `all`.
+  Its residual risk: in `all` its digit can land in the dialog of an identical subagent call whose hook does not run
+  (not reached on Claude Code 2.1.331, where the card of a foreground subagent's dialog without a hook has no approve
+  button), and a foreign hook removed from a settings file after the session start, but still loaded, is not seen. It
+  approves the one call: no always option, and right before the key the same shields, a fresh screen read, the rule
+  once more and the pending call of the card. A hook that registers after the key is released and its request
+  settled without a button. Anything else means no digit (`docs/dialogs.md`, "Rules: what must not be relaxed").
 - **No Allow action in a notification.** A push only informs and opens the app.
 - **A session this app version cannot read: the app sends nothing.** An unknown state or engine turns the frame
   decoder's value into the `unsupported` sentinel. The gate stands in ONE place: `MutationGate` in the native app's
@@ -334,7 +349,9 @@ administrator's refusal. Routes, quotas, storage consistency, configuration and 
   list; a full EndpointId appears only in shadow mode or during the `DIAG_UNTIL` window.
 - **Cost of a flood:** headers, a 16 KiB body cap and per-address limits come before signature checks and Durable
   Objects; the hook routes are outside the zone Rate Limiting rule, because the adapter would turn a 429 into an
-  admission.
+  admission. At the gate one client bucket (an IPv4 address, an IPv6 /48) holds at most one of the 32 queue places,
+  so signed registrations from one client cannot block the others'; clients behind one NAT address register one
+  after another.
 
 ## Resource caps and supply chain
 
@@ -418,6 +435,15 @@ text check, so a root that is a symlink into a protected folder opens the path a
 any depth below the root. Pane scope and the hooks allow a hidden folder deeper down, so agent worktrees under
 `<project>/.claude/worktrees/` stay in scope.
 
+The folder gate (`RAROG_FOLDER_GATE`, on by default on macOS; `docs/macos-folders.md`) changes no verdict above. With
+it, a disk call of the work area whose target lies in a protected folder of home (a root there, or a symlink that
+leads there) runs in a helper process of that folder, and a folder whose helper does not answer within 1 s is closed
+until it answers: calls in it are refused with the sentence of its state, without the disk. Metadata, and so the
+symlink walk, stays in the server process, because macOS answers it without a window. A walk that meets a closed
+folder counts it as excluded, never as a segment it cannot resolve, so the directory is outside the work area, git
+does not run there, and the browser answers 404 with the sentence of the folder's state. Pane scope alone ignores the
+folder's state (item 6 of "herdr sessions").
+
 The real boundary stays Rarog's credential: an agent in Auto mode reads the disk with the user's rights anyway. A
 wide work area adds visible folder names of home and the risk of a start in the wrong place; the Claude Code trust
 dialog still stands (item 8 of "Starting sessions from the phone", home is never trusted). A narrower area is a
@@ -499,8 +525,7 @@ send a digit: "Starting sessions from the phone" below.
      `pane_id` and `text` and never `keys`, so herdr pastes the text (bracketed paste) and presses nothing. The
      driver calls it only for a message to a Claude pane during a turn, after a fresh `agent.get` shows the same
      Claude session at that pane address (the method also writes to a pane without an agent) and after the checks
-     in `docs/dialogs.md`, "Sending while a turn runs". It is a WRITE: `RAROG_HERDR_SEND=0` and an unknown protocol
-     switch it off.
+     in `docs/dialogs.md`, "Sending while a turn runs". It is a WRITE: `RAROG_HERDR_SEND=0` switches it off.
    - **Console pane ownership.** `pane.close` is the only method that closes something addressed by PANE, and herdr
      pane ids are positional, so its ONLY caller (`term/herdr-backend.ts`) closes only a pane that carries the
      `rarog-term` token in a FRESH `pane.list`. Three READS of a console pane share that gate: `pane.read`,
@@ -511,7 +536,7 @@ send a digit: "Starting sessions from the phone" below.
      only the id, the label and the two paths. It adds no power: a wrong choice puts a Rarog tab into another
      workspace (cosmetic), and ownership gates look at the pane token, not the workspace.
    - **Labels are WRITES.** `pane.rename` and `tab.rename` change what the Mac shows (the pane label is proof of
-     origin and survives a herdr restart). `RAROG_HERDR_SEND=0` and an unknown protocol both switch them off. The
+     origin and survives a herdr restart). `RAROG_HERDR_SEND=0` switches them off. The
      callers are the launcher (its fresh pane and tab), the console backend (fresh console panes and tabs, label
      migration onto a pane that already carries the token) and the supervisor (the Claude tab label follows the card
      label, migration of Claude panes without an origin label). The facade rejects an empty string and control
@@ -612,10 +637,13 @@ send a digit: "Starting sessions from the phone" below.
    `auto` (`POST /api/sessions/:id/mode`) with the `/model` gates plus a known starting mode (400) that is not
    `bypass` (409). Rarog never targets `bypass` and never moves out of it; every press is audited.
 6. **Pane scope is the work area of `RAROG_HERDR_ROOTS`** (default: `RAROG_PROJECT_ROOTS`; "Work area" above). With
-   the root `~` that is every Claude pane in home outside its hidden entries and the protected folders. A pane
-   outside the work area shows as an out-of-scope card (state and project) without a transcript, sends, `ctrl+c`,
-   dialog denial or SCREEN EXCERPT. Scope is LIVE: a `cd` out of the work area forces a reattach of the driver
-   (Rarog's per-pane reader and writer), so the pane loses transcript and send together with the directory change.
+   the root `~` that is every Claude pane in home outside its hidden entries and the protected folders. Scope ignores
+   the folder gate: a pane in a protected folder that a root opens stays in scope while macOS keeps that folder closed,
+   also after a `cd` into it, and the features in `docs/macos-folders.md`, "What a closed folder refuses", refuse
+   instead. A pane outside the work area shows as an out-of-scope card (state and project) without a transcript,
+   sends, `ctrl+c`, dialog denial or SCREEN EXCERPT. Scope is LIVE: a `cd` out of the work area forces a reattach of
+   the driver (Rarog's per-pane reader and writer), so the pane loses transcript and send together with the directory
+   change.
    A consent channel card of such a pane gets no approval: `allow` is 400 before the server writes an answer file,
    the same refusal as with `RAROG_HERDR_SEND=0` or a read-only supervisor. The gate is computed on the session card
    that handles the conversation, and a live card of the same conversation outside the roots refuses too (the hook
@@ -678,14 +706,25 @@ send a digit: "Starting sessions from the phone" below.
    and `no-jsonl` count separately), and the full context of a refusal lies in `refusals/` (rule 9 of "Starting
    sessions from the phone"). A dialog reported by the CLI session registry (`status: waiting`) gets the ordinary
    judgment; its class (`cliDialog`, a closed list) goes on the card and into the `degrade` entry, adding no buttons.
-9. **Unknown protocol → read only.** The gate stands on a SET of tested numbers (`KNOWN_PROTOCOLS` in
-   `server/src/herdr/socket.ts`, `{22}`, measured on herdr 0.9.0–0.9.5). A number in the set gives full
-   integration, a number below its minimum turns integration off, any other number blocks mutations and shows the
-   read-only herdr banner. Invariant: classification counts from the set's MINIMUM, so dropping its oldest number
-   moves everything below it from read-only to off. Failing open on mutations would be a bet on someone else's
-   changelog. Numbers 20 and 21 are not in the set: on 20 `agent.prompt` has other semantics, and the dialog parser
-   is measured on 22. Adding a number after `herdr update` is DELIBERATE: read the changelog and
-   `herdr api schema --json` for the allow-listed methods, then run
+9. **The protocol gate is a minimum.** The gate reads the `protocol` number of herdr's `ping`. No number, or a
+   number below the minimum of the tested set (`KNOWN_PROTOCOLS` in `server/src/herdr/socket.ts`, `{22}`, measured
+   on herdr 0.9.0–0.9.5), turns integration off. Every number at or above the minimum gets full integration, also
+   one above the tested maximum, and writes follow `RAROG_HERDR_SEND` exactly as on a tested number, so a newer
+   herdr does not stop Rarog. Numbers 20 and 21 are below the minimum: on 20 `agent.prompt` has other semantics, and
+   the dialog parser is measured on 22. Invariant: only the set's MINIMUM gates, so dropping or replacing its oldest
+   number turns that protocol off. On an untested number these checks still hold. The method allow-list
+   (`ALLOWED_METHODS`, writes only from `MUTATING_METHODS`) is checked before any byte reaches the socket. A response
+   that is not JSON, not an object or carries another request's id fails as unavailable. The client parses read
+   results with schemas that ignore new fields: a missing required field or a field of another type makes the result
+   an error or drops its entry (an `agent.list` entry), and a missing optional field is read as absent. Write results
+   get less: `agent.prompt` and `agent.start` check only the response envelope, and `agent.start` reads an `argv` it
+   cannot parse as empty (the field is for audit only). A screen Rarog cannot match to its dialog gives a card
+   without approve buttons, only deny (`degradedCard` in `server/src/herdr/dialogs/cards/build.ts`).
+   None of them notices a write method that keeps its shape and changes its meaning, and the protocol number does
+   not either (herdr 0.8.2 changed `agent prompt` without a new number).
+   `RAROG_HERDR_SEND=0` turns writes off on such a herdr. Adding a number after `herdr update` records a measurement
+   and changes nothing at runtime: read the changelog and `herdr api schema --json` for the allow-listed methods,
+   then run
    `RAROG_TEST_HERDR=1 pnpm test server/test/term-integration.test.ts` outside the sandbox (the block creates its
    OWN workspace and closes it, also after a failure; a red console paste test means a paste would go out as a
    series of Enters). This does NOT catch changes in herdr's state detection rules, which herdr fetches from the
@@ -711,9 +750,12 @@ send a digit: "Starting sessions from the phone" below.
     thumbnail reads, the sweep and the `exclude` entry touch only this directory (`UPLOAD_DIR_NAME`).
     - **The start sweep runs in the background:** the server listens without waiting for it.
     - **The start sweep cleans only directories the server wrote to.** Every successful attachment write records
-      the real path (`realpath`) of its `<cwd>` in `<dataDir>/uploads-dirs.json`
+      the real path (`realpath`) of its `<cwd>` in `<dataDir>/uploads-dirs.json`, and so does a write the folder
+      gate refused (`docs/macos-folders.md`), because a write its helper did not answer in time may still land
       (`server/src/herdr/uploads-registry.ts`; `0600`, atomic write, writes queued in one chain); a `<cwd>` whose
-      real path cannot be read is not recorded. The start sweep reads that list and lists no root. An entry is the
+      real path cannot be read is not recorded. The start sweep reads that list and lists no root. With the folder
+      gate on, it enters no protected folder of home before the gate holds that folder `open`; that part of the sweep
+      waits and runs when the folder opens. An entry is the
       `<cwd>`, and the sweep appends `.rarog-uploads` itself, so the registry reaches no other directory and grants
       no new power; an entry outside the current roots is swept too, because the server wrote there. Before the
       sweep, `realpath` of the entry must give the entry itself. When the project directory or a parent has since
@@ -727,12 +769,16 @@ send a digit: "Starting sessions from the phone" below.
       `Library`, `Movies`, `Music`, `Pictures`; `server/src/config/protected-dirs.ts`): reading one makes macOS ask
       for access, and nobody answers that prompt on a Mac used remotely. A root that lies in such a folder
       (`~/Documents/Projects`) is swept as usual. Home and roots are compared in their real on-disk form, so a root
-      that names home in another case or through a symlink does not open those folders. The walk then writes the
+      that names home in another case or through a symlink does not open those folders. With the folder gate on, a
+      root in a protected folder that the gate does not hold `open` yet is swept when the folder opens, and only
+      while its path still resolves to itself: a directory that has since become a symlink is skipped with one log
+      line, and no file under it is touched. The walk then writes the
       registry with the directories where files remain or whose `.rarog-uploads` could not be read, so the next
-      start reads the registry, walks nothing, and tries the unread ones again. The walk enters no symlinked
+      start reads the registry, walks nothing, and tries the unread ones again. It writes the registry only after
+      every part of the walk ran, a root that waited for its folder included. The walk enters no symlinked
       directory, so its entries are real paths. An
       attachment write that finds no registry file keeps its directory in memory until the walk writes the file, so
-      a server stopped during the walk walks again at the next start.
+      a server stopped during the walk, or before a waiting folder opened, walks again at the next start.
     - **Rarog does not follow symlinks.** `.rarog-uploads` and `.git` as symlinks (git materializes them on an
       ordinary `clone`) get an `lstat` BEFORE `mkdir`/`chmod`/`readdir`/`unlink`: a symlink is an `UploadError`, and
       the sweep skips it. Otherwise the startup sweep would delete files older than 48 h in the symlink's TARGET.
@@ -1215,13 +1261,11 @@ describe where this power ends.
       `foreground: unknown`.
     - **`pane.layout` reads the tab GEOMETRY and nothing else:** pane ids and rectangle sizes, one read per controller
       release after the grace period, capped at 1 s, to size OUR pane through our controller (`terminal.resize`).
-    - **Socket read-only mode has TWO sources, and the 409 knows only one.** Besides `RAROG_HERDR_SEND=0`, a herdr
-      protocol outside the tested set turns writes off without a config change: `POST` passes, the write bounces at
-      the pane stamp, and the person sees a console that does not start. The killswitch HOLDS; the reason is in
-      `server.log`.
+    - **Socket read-only mode has one source, and the 409 knows it.** The source is `RAROG_HERDR_SEND=0`: `refusal()`
+      turns it into the 409 before a console starts, and the socket's write gate bounces the same writes again.
     - **Recovering panes after a herdr restart closes and creates nothing:** `reconcile` restores a token from a
       label ending in `rarog-term <id>` and labels a pane that carries the token, behind `refusal()`, `dispose()`
-      and the unknown protocol gate. The only close outside an explicit close and the reaper is an EXPLICIT open of the
+      and the socket's write gate. The only close outside an explicit close and the reaper is an EXPLICIT open of the
       `lazygit` role (`POST`, never adoption) on a pane of this console whose foreground holds exactly one process, a
       shell, after a SECOND read right before `pane.close`; anything else in the foreground keeps the pane.
     - **A paste executes nothing from the clipboard.** The server wraps the paste in `ESC[200~…ESC[201~` itself, so
@@ -1702,15 +1746,18 @@ directory, for the app's search. `RAROG_FILES` is on by default; `0` takes the t
   found (`dev` and `ino`), else 404. Each entry gets its own `lstat` and must still be of the kind the read gave, so
   an entry swapped for a symlink since the read is left out. A mount point under the session directory is a directory
   like any other and stays on the listing.
-- **The open of a file** walks the same way, the last segment a regular file, and then opens through
-  `openRegularFile` of `server/src/safe-read.ts` (`O_NOFOLLOW`, `O_NONBLOCK`, so a FIFO answers at once). The
+- **The open of a file** walks the same way, the last segment a regular file, and then opens through `openRead` of
+  the work-area port (`server/src/folder-gate/disk.ts`), which calls `openRegularFile` of `server/src/safe-read.ts`
+  in the server process, or in the folder's helper process for a file in a protected folder of home (`O_NOFOLLOW`,
+  `O_NONBLOCK`, so a FIFO answers at once). The
   `fstat` of that descriptor must show a regular file with one hard link (a second link may name a file outside the
   session directory). After the open, `realpath` of the path must again be the walked place, and its `stat` must carry
   the descriptor's `dev` and `ino`; else 404 with the descriptor closed.
 - **The download** (`server/src/files/session-download.ts`, `server/src/files/send-file.ts`). The limit,
   `RAROG_FILES_MAX_MB` (1 to 1024 MB), is checked on the `fstat` of the open descriptor before the first byte: 413
-  with the size and the limit. The bytes come from that one descriptor, exactly the `fstat` size in pieces of 64 KiB
-  at their own offsets, so a file swapped or appended after the open does not change what goes out, and a file cut
+  with the size and the limit. The bytes come from that one descriptor through the port's handle, exactly the
+  `fstat` size in pieces of 64 KiB at their own offsets, so a file swapped or appended after the open does not change
+  what goes out, and a file cut
   while it is sent destroys the response. One piece per download is held in memory, never the file. The response
   carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. The device is checked again after the open,
   before the headers, and the download is registered under it with no wait in between: revoking the device destroys
@@ -1831,10 +1878,10 @@ character hidden on the consent card (`CARD_HIDDEN_RANGES` in `server/src/hidden
 zero-width characters other than the emoji joiner U+200D, tag characters U+E0000–U+E007F, the variation selectors
 U+E0100–U+E01EF, the Hangul fillers, the soft hyphen), then whitespace folds to one space and the label is cut to
 64 code points; an empty result is `device`. Tag characters go whole, so a regional flag such as Scotland's shows
-as a black flag. The build is at most 10 ASCII digits after
-trimming, anything else is `null`. The device list (`GET /api/devices`), the admin list and `rarog devices` apply
-the same rules again on the way out, so no stored record bypasses them (`sanitizeLabel` and `sanitizeBuild` in
-`server/src/text.ts`).
+as a black flag. The build is at most 10 ASCII digits after trimming, anything else is `null`. The device list
+(`GET /api/devices`), the admin list (active devices and tombstones, also in the revoke replies) and `rarog devices`
+apply the same rules again on the way out, so no stored record bypasses them (`sanitizeLabel` and `sanitizeBuild`
+in `server/src/text.ts`).
 
 **Who issues a code.** Consent to a new device is a code issued on an already paired phone:
 
@@ -2040,7 +2087,10 @@ synchronously (an `err` frame and code 1008; frames after the cut go to the bin;
 `TERM_REVOKE_TERMINATE_MS`, drops the socket). It also kills the `claude -p` process of every voice agent question
 the device has in flight and closes those responses without a body, and it destroys the responses of the device's
 session file downloads in flight and closes their files ("Session files: listing and download" above). Finally it ends
-the device's Live Activity and deletes the APNs tokens registered with its key.
+the device's Live Activity and deletes the APNs tokens registered with its key. A route whose long step can outlast
+a revocation checks the device again before it answers: the temporary Soniox dictation key (`POST /api/voice/token`),
+the voice agent's keys, the three diff routes and the session file routes, so a device revoked meanwhile gets 401
+`device-revoked` and nothing the step produced.
 
 **Logs and `redact()`.** Device lines carry the id, creator and counts, never the secret, hash, push key, code or
 label. `redact()` masks `authorization`, `secret*`, `pushKey` and the value `Rarog-Device <…>` anywhere in text
@@ -2258,14 +2308,15 @@ Directory layout of the per-server spaces: `native/Rarog/docs/app-target.md`, "D
   with class `completeUntilFirstUserAuthentication` and `isExcludedFromBackup` on `servers/`. Working files in the
   app's temporary directory: `rarog-attachments/` (copies of attachments from the bar above the field, cleared on
   first use in a process) and `rarog-send-*.json` (a request body for one send, deleted after it, also after an
-  error). An image preview writes a file to `tmp/rarog-preview/` with class `complete` and deletes it on close, and
-  thumbnails live only in process memory (`NSCache`, up to 120 items).
+  error; at start the app removes any such file a killed process left). An image preview writes a file to
+  `tmp/rarog-preview/` with class `complete` and deletes it on close, and thumbnails live only in process memory
+  (`NSCache`, up to 120 items).
 - **Preferences** in `UserDefaults` hold paths, session ids, flags and dates, zero conversation content:
   `rarog.projectTabs`, `rarog.projectHistory`, `rarog.listCollapsed`, `rarog.newSession`,
   `rarog.transcript.lastSeen`, `rarog.collapsedProjects`, `rarog.pinnedProjects`, `rarog.sessionHistory`,
   `rarog.inspectorOpen`, `rarog.inspectorChangesCollapsed`, `rarog.push.snoozedUntil`, the pairing state
-  `rarog.server.revoked`, `rarog.devices.known.<serverId>` and `rarog.devices.notices.<serverId>`, and the dictation
-  choice `rarog.dictation.choice`.
+  `rarog.server.revoked`, `rarog.devices.known.<serverId>` and `rarog.devices.notices.<serverId>` (Forget Server
+  removes both for the forgotten server), and the dictation choice `rarog.dictation.choice`.
 - **Dictation:** no Soniox secret on the device: the app gets only a TEMPORARY Soniox key per connection attempt.
   The dictation choice (`system` or `soniox`) belongs to the device, so another server, logout and Forget Server
   leave it. The microphone works only between two taps (or ⌥⌘M) and stops on going to the background and on a
@@ -2340,11 +2391,13 @@ existing installation: the update stops before any install and names what does n
 newer and npm's sigstore host (`tuf-repo-cdn.sigstore.dev`); without them the update stops without installing. The
 update does not read the transparency log or compare the certificate's validity with a clock (npm does), and it does
 not read the certificate's OIDC issuer. A new Sigstore certificate authority stops every update until a version that
-pins it is installed by hand. The first install (`npm i -g @rarog/server`) and the command the app shows (`npm i -g
-@rarog/server@latest && rarog update`) trust the registry, because their `npm i -g` installs before any check; such a
-version is checked by hand (`SECURITY.md`, "Releases"). Outside the tarball the package depends only on
-`@number0/iroh` and its platform packages, at exact versions; it carries no `npm-shrinkwrap.json`, because npm 11.19
-does not read one from a tarball installed as a file.
+pins it is installed by hand; that refusal says the certificate can be a new Sigstore certificate or a forged
+attestation and points to the releases page of the repository, with no install command. The first install
+(`npm i -g @rarog/server`) and the command the app shows (`npm i -g @rarog/server@latest && rarog update`) trust
+the registry, because their `npm i -g` installs before any check; such a version is checked by hand
+(`SECURITY.md`, "Releases"). Outside the tarball the package depends only on `@number0/iroh` and its platform
+packages, at exact versions; it carries no `npm-shrinkwrap.json`, because npm 11.19 does not read one from a tarball
+installed as a file.
 
 **Not blocked:** malicious code in the sources themselves (the comparison catches only content different from the
 sources; source code goes through review); a malicious dependency version that got into the lockfile (the tarball's
@@ -2510,9 +2563,11 @@ point about the server key.
 
 **Mac reboot:** with FileVault and no auto-login, the Mac is unreachable after a reboot until someone logs in, the
 deliberate price of an encrypted disk. After login the launchd service `ai.rarog.server` (`RunAtLoad` + `KeepAlive`,
-domain `gui/$UID`) starts Rarog, and a fallen process returns within 10 s. "Silence = ok" stays open on purpose:
-there is no watchdog outside the Mac, and an alarm would not shorten the outage. The app shows the outage as a
-server-not-responding banner.
+domain `gui/$UID`) starts Rarog, and a fallen process returns within 10 s. `rarog service install` creates the server
+log `<dataDir>/server.log` with mode 0600 before launchd or systemd opens it and sets an existing log to 0600; the
+supervisor appends to it and keeps the mode, and the server process umask stays as it is. "Silence = ok" stays
+open on purpose: there is no watchdog outside the Mac, and an alarm would not shorten the outage. The app shows the
+outage as a server-not-responding banner.
 
 **Lost Mac** (theft, fire, dead disk): the Mac is the ONLY server machine, so everything `git clone` cannot recreate
 must exist elsewhere. Restore order:

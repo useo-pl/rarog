@@ -192,6 +192,7 @@ describe.skipIf(!hasGit)('`.gitignore` tego repo: pliki lokalne i sekrety poza r
     '.rarog-uploads/zdjecie.jpg', 'projekt/.rarog-uploads/zdjecie.png', '.claude/worktrees/sesja/plik.ts',
     'inny/.claude/worktrees/sesja/plik.ts', '.claude/settings.local.json', 'CLAUDE.local.md', '.env', '.env.local',
     'server/.env.production', 'klucz.pem', 'native/AuthKey_ATRAPA.p8', 'relay/.dev.vars', 'relay/.dev.vars.production',
+    '.claude/.cc-writes/x', '.claude/scheduled_tasks.lock',
   ];
   const KEPT = [
     '.env.example', 'relay/.dev.vars.example', '.claude/settings.json', 'CLAUDE.md', 'docs/env.md', 'server/src/a.ts',

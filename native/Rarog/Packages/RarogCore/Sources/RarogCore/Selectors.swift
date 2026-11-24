@@ -310,6 +310,27 @@ extension AppState {
     return out
   }
 
+  /// The closed macOS folder that holds `cwd`: the folder itself or a directory under it. A name that only starts the
+  /// same (`~/Desktop2` beside `~/Desktop`) is another folder.
+  public func macFolder(holding cwd: String) -> MacFolderBlock? {
+    let path = ProjectPath.normalized(cwd)
+    return macFolders.first { block in
+      let folder = ProjectPath.normalized(block.path)
+      return path == folder || path.hasPrefix(folder == "/" ? folder : folder + "/")
+    }
+  }
+
+  /// The closed macOS folder that holds the directory of session `sessionId`; `nil` for an unknown session.
+  public func macFolder(forSession sessionId: String) -> MacFolderBlock? {
+    sessions[sessionId].flatMap { macFolder(holding: $0.cwd) }
+  }
+
+  /// The sessions whose directory lies in a closed macOS folder, by id: the reach of the list banner.
+  public var macFolderSessions: [SessionSummary] {
+    guard !macFolders.isEmpty else { return [] }
+    return sessions.values.filter { macFolder(holding: $0.cwd) != nil }.sorted { $0.id < $1.id }
+  }
+
   /// Faza ekranu sesji. „Nie znam" nie w trakcie łączenia.
   public func transcriptPhase(for sessionId: String) -> TranscriptPhase {
     guard let session = sessions[sessionId] else {

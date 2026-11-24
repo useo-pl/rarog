@@ -12,6 +12,9 @@ export const PROTECTED_HOME_DIRS: readonly string[] = [
   'Desktop', 'Documents', 'Downloads', 'Library', 'Movies', 'Music', 'Pictures',
 ];
 
+/** The protected folders where projects usually live: the part of {@link PROTECTED_HOME_DIRS} a folder gate opens. */
+export const OPEN_HOME_DIRS: readonly string[] = ['Desktop', 'Documents', 'Downloads'];
+
 /**
  * A name or path folded the way the default macOS disk (APFS, case-insensitive) compares names, so spellings that disk
  * reads as one name fold alike: decomposed form (NFD), then lower, upper and lower case, then composed form (NFC).

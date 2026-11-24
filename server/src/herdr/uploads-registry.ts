@@ -5,8 +5,9 @@
  * roots. The module only keeps the list: it neither reads nor deletes attachments. An entry is the real path of the
  * `<cwd>` of a write (the caller resolves it), and the sweep appends `.rarog-uploads` itself and skips an entry that
  * no longer resolves to itself, so an entry cannot point the sweep at another directory.
- * The file exists only after one complete walk of the roots: a write that finds no file waits in memory until the
- * first-start walk writes it, so a server stopped in the middle of that walk walks again at the next start.
+ * The file exists only after one complete walk of the roots, a part deferred until a guarded folder opens included: a
+ * write that finds no file waits in memory until that walk writes it, so a server stopped before the walk ended walks
+ * again at the next start.
  */
 import { randomBytes } from 'node:crypto';
 import { mkdir, rename, unlink, writeFile } from 'node:fs/promises';
@@ -43,7 +44,7 @@ export interface UploadsRegistry {
   mark(): number;
   /** Removes `dirs` from the file, except those added after `since`. Never throws. */
   drop(dirs: readonly string[], since: number): Promise<void>;
-  /** Writes the file after the walk of the roots: `found`, plus every directory added meanwhile. Never throws. */
+  /** Writes the file once the walk of the roots ended: `found`, plus every directory added meanwhile. Never throws. */
   rebuild(found: readonly string[]): Promise<void>;
 }
 

@@ -38,6 +38,7 @@ import {
   DEMO_LANG_ENV,
   DEMO_REVIEW_CODE_ENV,
   DIALOG_LAYER2_ENV,
+  FOLDER_GATE_ENV,
   GIT_ENV_PASSTHROUGH,
   GIT_ENV_PREFIX,
   GIT_FILE_DETAILS_ENV,
@@ -421,6 +422,11 @@ export interface RarogConfig {
    * warstwy 2, także w dzienniku. W demo bez skutku: mock nie ma drivera herdr.
    */
   readonly dialogLayer2: boolean;
+  /**
+   * The folder gate (`RAROG_FOLDER_GATE`, on by default on macOS; `docs/macos-folders.md`): disk calls of the work
+   * area in a guarded folder of home run in a helper process (`bootstrap/folder-gate.ts`). Always `false` in demo.
+   */
+  readonly folderGate: boolean;
   /**
    * SSE stream compression with gzip (`RAROG_SSE_GZIP`, on by default, `0` turns it off). The server compresses
    * only when the client sent `Accept-Encoding` naming `gzip` with a weight above zero (`sse.ts`, `acceptsGzip`).
@@ -1069,6 +1075,18 @@ export function parseDialogLayer2(raw: string | undefined): boolean {
   throw new ConfigError(`${DIALOG_LAYER2_ENV} takes 1 or 0 (got: ${value}).`);
 }
 
+/**
+ * The folder gate flag: missing or empty = the platform decides (on on macOS, where the consent windows are), `1` = on,
+ * `0` = off; any other value stops the start, so a typo never leaves the server in another mode than the owner meant.
+ */
+export function parseFolderGate(raw: string | undefined, platform: NodeJS.Platform): boolean {
+  const value = raw?.trim() ?? '';
+  if (value === '') return platform === 'darwin';
+  if (value === '1') return true;
+  if (value === '0') return false;
+  throw new ConfigError(`${FOLDER_GATE_ENV} takes 1 or 0 (got: ${value}).`);
+}
+
 /** Strażnik wysokości dialogu; brak wartości = WŁĄCZONY, `0`/`false` wyłącza. */
 export function parseTallDialogGuard(raw: string | undefined): boolean {
   if (raw === undefined || raw.trim() === '') return true;
@@ -1257,6 +1275,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, mode: InstallMo
     consentRestartGraceMs: parseConsentRestartGrace(readEnv(env, CONSENT_RESTART_GRACE_ENV)),
     // W demo bez skutku (mock nie ma drivera herdr), ale zła wartość zatrzymuje start tak samo.
     dialogLayer2: parseDialogLayer2(readEnv(env, DIALOG_LAYER2_ENV)),
+    // Off in demo unconditionally: the demo reads nothing of the host's folders; a wrong value stops the start there.
+    folderGate: parseFolderGate(readEnv(env, FOLDER_GATE_ENV), process.platform) && !demo,
     sseGzip: parseSseGzip(readEnv(env, SSE_GZIP_ENV)),
     // Off in demo unconditionally; a wrong value still stops the start there.
     companionEnabled: parseCompanionEnabled(readEnv(env, COMPANION_ENV)) && !demo,

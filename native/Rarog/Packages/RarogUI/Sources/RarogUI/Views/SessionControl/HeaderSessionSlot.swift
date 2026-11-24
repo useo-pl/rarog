@@ -83,7 +83,7 @@ struct TerminalHeaderButtons: View {
     Menu {
       Button(UICopy.terminalCopy, systemImage: TerminalBarKey.copy.symbol) { chrome.copy() }
       Button(UICopy.terminalPaste, systemImage: TerminalBarKey.paste.symbol) { chrome.paste() }
-      Button(UICopy.terminalHistory, systemImage: TerminalBarKey.history.symbol) { chrome.history() }
+      Button(UICopy.terminalSelectOutput, systemImage: TerminalBarKey.history.symbol) { chrome.history() }
         .disabled(!chrome.historyAvailable)
     } label: {
       Label(UICopy.terminalMoreSpoken, systemImage: "ellipsis.circle")

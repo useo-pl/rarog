@@ -442,7 +442,7 @@ private final class PreviewRecorder {
 }
 
 /// Fetched copies of one test in their own directory.
-private struct PreviewCopies: Sendable {
+struct PreviewCopies: Sendable {
   let url = FileManager.default.temporaryDirectory.appending(path: "rarog-uikit-preview-\(UUID().uuidString)")
 
   init() throws {

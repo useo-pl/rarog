@@ -23,6 +23,7 @@ import type { ScreenReviewPair } from '../screen/review.ts';
 import type { TrustArrowDialog } from '../screen/trust-arrow.ts';
 import type { TerminalDialogId } from '../policy/terminal.ts';
 import type { MeasuredConsentMark } from '../policy/measured-consent.ts';
+import type { ScreenFallbackMark } from '../screen-fallback.ts';
 import { canonicalLabel } from '../screen/options.ts';
 import type { ScreenFormOption, ScreenOption } from '../screen/options.ts';
 import type { PendingTool } from '../../jsonl-pending.ts';
@@ -158,6 +159,12 @@ export interface ActiveReq {
    * dialog is not one of the measured shapes.
    */
   measuredConsent?: MeasuredConsentMark;
+  /**
+   * Emergency approve button of a consent dialog without a hook in channel mode: the facts the card was marked on
+   * (`screen-fallback.ts`). Its "Yes" digit passes the gate under the live mode and class, and right before the key
+   * the driver checks the rule again on fresh facts. Absent = the card is not that path.
+   */
+  screenFallback?: ScreenFallbackMark;
   /**
    * Ślad warstwy 2 (`RAROG_DIALOG_LAYER2=1`): karta bez przycisków z wycinkiem bloku warstwy 2 (`layer2/card.ts`).
    * Powód idzie do wpisu `block-card`, a odcisk bloku mówi decyzji, czy ten sam widok stoi dalej, czy wycinek trzeba

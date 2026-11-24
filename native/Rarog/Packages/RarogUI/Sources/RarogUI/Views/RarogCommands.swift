@@ -11,8 +11,9 @@ import SwiftUI
 /// z Cmd niczego nie wpisują do pola. Stan menu (numery zakładek, cel Cmd+L) przychodzi
 /// z korzenia widoków jako wartość sceny — numer wskazuje to, co widać na pasku w chwili rysowania.
 ///
-/// The session switcher has no command here: only a tap on the current tab opens it. While it stands, Cmd+1–9 ask it
-/// first (`switcherDigit`); Cmd+0 does not.
+/// The session switcher has no command here: only a tap on the current tab opens it. While it stands, Cmd+1–9 stay
+/// tab shortcuts: like the other menu shortcuts that go through `perform` they close the window and do their own
+/// thing.
 ///
 /// Kombinacje (poza cyframi zakładek) przychodzą z `AppShortcut` — z tej samej definicji podpowiedź przycisku „Nazwa
 /// (⌘B)”, więc podpowiedź i skrót nie rozjadą się.
@@ -57,19 +58,12 @@ public struct RarogCommands: Commands {
       textSizeCommands
     }
     CommandMenu(UICopy.shortcutsMenu) {
-      // With the session switcher window open, Cmd+digit picks its row instead of the tab.
       ForEach(menu.tabs, id: \.number) { tab in
-        Button(UICopy.shortcutTab(tab.number, label: tab.label)) {
-          guard shortcuts?.switcherDigit(tab.number) != true else { return }
-          shortcuts?.perform(.tab(tab.target))
-        }
+        Button(UICopy.shortcutTab(tab.number, label: tab.label)) { shortcuts?.perform(.tab(tab.target)) }
         .keyboardShortcut(KeyEquivalent(Character(String(tab.number))), modifiers: .command)
       }
       if let last = menu.lastTab {
-        Button(UICopy.shortcutLastTab) {
-          guard shortcuts?.switcherDigit(9) != true else { return }
-          shortcuts?.perform(.tab(last))
-        }
+        Button(UICopy.shortcutLastTab) { shortcuts?.perform(.tab(last)) }
         .keyboardShortcut("9", modifiers: .command)
       }
       Divider()

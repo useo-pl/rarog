@@ -50,6 +50,7 @@ struct ContractReporterTests {
     reporter.record(["kontrakt: a"])
     await reporter.flush({ body in await sent.add(body) }, now: Date())
     #expect(await sent.count == 0, "nieuzbrojony nie wysyła")
+    reporter.bind(Self.serverA)
     reporter.armed = true
     await reporter.flush({ _ in false }, now: Date())
     #expect(reporter.pending == ["kontrakt: a"], "porażka zostawia linię w buforze")
@@ -64,6 +65,7 @@ struct ContractReporterTests {
   @Test("linia dopisana w trakcie wysyłki jedzie następną partią, bez kolejnej ramki")
   func lineRecordedDuringFlush() async {
     let reporter = ContractReporter()
+    reporter.bind(Self.serverA)
     reporter.armed = true
     reporter.record(["kontrakt: a"])
     let sent = SentLog()
@@ -74,6 +76,77 @@ struct ContractReporterTests {
     let batches = await sent.bodies.map { $0.events.map(\.msg) }
     #expect(batches == [["kontrakt: a"], ["kontrakt: b"]])
     #expect(reporter.pending.isEmpty)
+  }
+
+  static let serverA = ServerKey(serverURL: URL(string: "https://a.example"), iroh: nil)!
+  static let serverB = ServerKey(serverURL: URL(string: "https://b.example"), iroh: nil)!
+
+  @Test("a flush sends only its recipient's lines: the same text of A and B both queue, a late A line waits")
+  func flushSendsOnlyTheRecipientsLines() async {
+    let reporter = ContractReporter()
+    let now = Date()
+    reporter.bind(Self.serverA)
+    reporter.record(["kontrakt: x"])
+    reporter.retire()
+    reporter.record(["kontrakt: x"], owner: .server(Self.serverB))
+    reporter.recordTrace("trace", now: now, owner: .server(Self.serverB))
+    reporter.recordTrace("trace", now: now, owner: .server(Self.serverB))
+    reporter.bind(Self.serverB)
+    reporter.armed = true
+    reporter.recordTrace("late line of A", now: now, owner: .server(Self.serverA))
+    let sent = SentLog()
+    await reporter.flush({ body in await sent.add(body) }, now: now)
+    #expect(await sent.bodies.map { $0.events.map(\.msg) } == [["kontrakt: x", "trace", "trace"]])
+    #expect(reporter.pending == ["late line of A"], "A's line waits and no empty batch goes out")
+  }
+
+  @Test("a line with no server goes to the first login of the process; after it, such a line is dropped")
+  func lineWithoutServerOnlyBeforeFirstLogin() async {
+    let reporter = ContractReporter()
+    reporter.record(["kontrakt: before any login"])
+    reporter.bind(Self.serverA)
+    reporter.armed = true
+    let sent = SentLog()
+    await reporter.flush({ body in await sent.add(body) }, now: Date())
+    #expect(await sent.bodies.map { $0.events.map(\.msg) } == [["kontrakt: before any login"]])
+    reporter.retire()
+    reporter.record(["kontrakt: after a login"])
+    reporter.recordTrace("tunnel: shared lease", now: Date(), owner: .server(nil))
+    #expect(reporter.pending.isEmpty)
+  }
+
+  @Test("a pairing offer's lines wait under the offer, go to the paired server, and go with a closed offer")
+  func offerLines() {
+    let reporter = ContractReporter()
+    reporter.bind(Self.serverA)
+    reporter.retire()
+    let first = reporter.openOffer()
+    reporter.record(["kontrakt: while offered"])
+    reporter.bind(Self.serverA)
+    #expect(reporter.entries.map(\.stamp) == [.offer(first)], "a login keeps the open offer's lines")
+    reporter.retire()
+    reporter.resolveOffer(first, as: Self.serverB)
+    #expect(reporter.entries.map(\.stamp) == [.server(Self.serverB)])
+    let second = reporter.openOffer()
+    reporter.record(["kontrakt: cancelled"], owner: .offer(second))
+    reporter.closeOffer()
+    reporter.record(["kontrakt: closed offer"], owner: .offer(second))
+    #expect(reporter.pending == ["kontrakt: while offered"])
+  }
+
+  @Test("a retried pairing attempt drops the lines of the failed one; the sheet's lines go with the first attempt")
+  func retriedAttemptDropsFailedLines() {
+    let reporter = ContractReporter()
+    let sheet = reporter.openOffer()
+    reporter.record(["kontrakt: sheet"], owner: .offer(sheet))
+    let first = reporter.attemptOffer()
+    #expect(first == sheet)
+    reporter.record(["kontrakt: failed attempt"], owner: .offer(first))
+    let second = reporter.attemptOffer()
+    #expect(second != first)
+    reporter.record(["kontrakt: second attempt"], owner: .offer(second))
+    reporter.resolveOffer(second, as: Self.serverB)
+    #expect(reporter.pending == ["kontrakt: second attempt"])
   }
 
   actor SentLog {
@@ -102,21 +175,23 @@ struct CompatibilityTests {
   }
 
   /// With the app newer than the server `rarog restart` does not help, a server update does. The protocol comparison
-  /// stays strict. The refusal does not know the server version, so the sentence carries the full chain with the
-  /// install.
-  @Test("serwer z niższym protokołem: zdanie podaje komendę aktualizacji serwera, nie samo rarog restart")
+  /// stays strict. The refusal does not know the server version, so the sentence names `rarog update` first (the
+  /// update that checks the package's provenance) and the full chain with the install only for a server without it.
+  @Test("older server protocol: the refusal names rarog update first, the install chain after it, never rarog restart")
   func olderServerProtocolNamesUpdateCommand() throws {
     let compat = Compatibility.protocolMismatch(server: CoreLimits.protocolVersion - 1)
     #expect(compat.serverIsNewer == false)
     let refusal = try #require(compat.permanentRefusal(release: "1.0.1"))
     #expect(
-      refusal == "Apka jest nowsza niż serwer — zaktualizuj serwer: npm i -g @rarog/server@latest && rarog update")
-    #expect(refusal.hasSuffix(ServerRelease.installAndUpdateCommand))
+      refusal == "Apka jest nowsza niż serwer — zaktualizuj serwer: rarog update "
+        + "(serwer bez tej komendy: npm i -g @rarog/server@latest && rarog update)")
+    #expect(refusal.hasSuffix(ServerRelease.installAndUpdateCommand + ")"))
     #expect(!refusal.contains("rarog restart"))
     #expect(CoreCopy.updateServer(release: "1.0.1") == refusal)
-    let english = L("core.updateServer", language: .en, ServerRelease.installAndUpdateCommand)
+    let english = L("core.updateServer", language: .en, "rarog update", ServerRelease.installAndUpdateCommand)
     #expect(
-      english == "The app is newer than the server. Update the server: npm i -g @rarog/server@latest && rarog update")
+      english == "The app is newer than the server. Update the server: rarog update "
+        + "(a server without this command: npm i -g @rarog/server@latest && rarog update)")
   }
 
   /// The release scripts rewrite ``ServerRelease/version`` to a beta or a stable version, so the default refusal is
@@ -127,7 +202,9 @@ struct CompatibilityTests {
     let refusal = try #require(compat.permanentRefusal)
     #expect(refusal == compat.permanentRefusal(release: ServerRelease.version))
     #expect(CoreCopy.updateServer == CoreCopy.updateServer(release: ServerRelease.version))
-    #expect(refusal.hasSuffix(ServerRelease.unknownServerCommand(release: ServerRelease.version)))
+    #expect(refusal.hasSuffix(ServerRelease.unknownServerCommand(release: ServerRelease.version) + ")"))
+    let commands = try #require(refusal.split(separator: ":", maxSplits: 1).last)
+    #expect(commands.hasPrefix(" rarog update"), "the first command is rarog update in both channels")
   }
 
   /// A beta app ships with a beta server, which `@latest` does not install, so the refusal names the beta channel.
@@ -139,14 +216,18 @@ struct CompatibilityTests {
     #expect(!releases.isEmpty)
     for release in releases {
       let refusal = try #require(compat.permanentRefusal(release: release))
-      #expect(refusal == "Apka jest nowsza niż serwer — zaktualizuj serwer: \(betaChain)", "\(release)")
+      #expect(
+        refusal == "Apka jest nowsza niż serwer — zaktualizuj serwer: rarog update --beta "
+          + "(serwer bez tej komendy: \(betaChain))", "\(release)")
       #expect(CoreCopy.updateServer(release: release) == refusal)
     }
     #expect(
-      L("core.updateServer", language: .en, betaChain)
-        == "The app is newer than the server. Update the server: \(betaChain)")
+      L("core.updateServer", language: .en, "rarog update --beta", betaChain)
+        == "The app is newer than the server. Update the server: rarog update --beta "
+        + "(a server without this command: \(betaChain))")
     let stableRefusal =
-      "Apka jest nowsza niż serwer — zaktualizuj serwer: npm i -g @rarog/server@latest && rarog update"
+      "Apka jest nowsza niż serwer — zaktualizuj serwer: rarog update "
+      + "(serwer bez tej komendy: npm i -g @rarog/server@latest && rarog update)"
     for release in ReleaseVersionCases.shared.stable {
       #expect(compat.permanentRefusal(release: release) == stableRefusal, "\(release)")
     }

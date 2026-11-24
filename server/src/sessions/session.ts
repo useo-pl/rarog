@@ -227,8 +227,6 @@ export interface SessionInit {
   /** Wersja CLI zainstalowana w chwili, gdy panel uruchomił Rarog; tylko w pamięci procesu serwera. */
   cliVersionAtLaunch?: string;
   ringCapacity?: number;
-  /** The last seq of the card this one replaces under the same id; the ring numbers on from it. */
-  ringStartSeq?: number;
   herdrMode?: HerdrMode;
   outOfScope?: boolean;
   /** Adres panelu w herdr (`w9:p72`) — do deep-linku „Pokaż w herdr" i diagnostyki. */
@@ -711,7 +709,7 @@ export class Session {
     this.lastGitSignature = undefined;
     this.lastGitEvent = undefined;
     // Ring ma sufit BAJTÓW obok sufitu sztuk — patrz `ring-buffer.ts`.
-    this.ring = new RingBuffer<ServerEvent>(init.ringCapacity, { maxBytes: RING_MAX_BYTES, startSeq: init.ringStartSeq });
+    this.ring = new RingBuffer<ServerEvent>(init.ringCapacity, { maxBytes: RING_MAX_BYTES });
   }
 
   /** Kształt wysyłany do klienta (pola serwerowe zostają na serwerze). */

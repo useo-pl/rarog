@@ -116,6 +116,7 @@ import type { CliVersionReader } from '../cli-version.ts';
 import { CliRegistryState } from './cli-registry.ts';
 import { InterruptWindows } from './interrupt-windows.ts';
 import { AttachSlots } from './attach-slots.ts';
+import { doneCardsOver, forgetConversation, ownsPaneKey, snapshotIndexes } from './done-retention.ts';
 import { scanProjectRoots } from './project-scan.ts';
 import { recentProjects } from './recent-projects.ts';
 import * as companionScope from './companion-scope.ts';
@@ -476,6 +477,8 @@ export interface ManagerConfig {
   readonly herdrSend?: boolean;
   /** Karty kanału zgód (warstwa 1): decyzje, zwolnienie i migawka; brak = bez kanału. */
   readonly consent?: ConsentManagerChannel;
+  /** A forgotten card ended its conversation (`done-retention.ts`): the consent cycle drops its entries. */
+  readonly consentForgotten?: (engineSessionId: string) => void;
   /**
    * Czy `markSeen()` gasi też `done` PO STRONIE HERDR (`RAROG_HERDR_SEEN_FOCUS`).
    *
@@ -509,7 +512,6 @@ export interface Manager extends ManagerApi {
   flush(): Promise<void>;
   /** Zamyka drivery i zapisuje rejestr (SIGTERM / koniec testu). */
   dispose(): Promise<void>;
-  onTranscriptReset(cb: (sessionId: string) => void): void;
 }
 
 type EventListener = (scope: 'global' | string, seq: number | null, ev: ServerEvent) => void;
@@ -537,7 +539,6 @@ class RarogManager implements Manager {
   readonly #pending = new PendingInteractions();
   readonly #sessions = new Map<string, Session>();
   readonly #listeners: EventListener[] = [];
-  readonly #transcriptResets: ((sessionId: string) => void)[] = [];
   readonly #conversations = new companionScope.ConversationListeners((line) => { this.#config.logger?.(line); });
   /** Git row of cards: reader, `.git` watcher, `git-status` frames and the cost window in the log. */
   readonly #git: SessionGit;
@@ -1035,10 +1036,6 @@ class RarogManager implements Manager {
     this.#listeners.push(cb);
   }
 
-  onTranscriptReset(cb: (sessionId: string) => void): void {
-    this.#transcriptResets.push(cb);
-  }
-
   projects(): { path: string; name: string }[] {
     const configured = this.#config.projects;
     if (configured !== undefined) {
@@ -1297,16 +1294,11 @@ class RarogManager implements Manager {
       paneId: handle.paneId,
       herdrKey: handle.key,
       launchedByRarog: true,
-      ringStartSeq: opts.continuesRing?.lastSeq,
     });
     // Etykieta karty → etykieta taba w herdr. Launcher założył tab z nazwą katalogu;
     // nadzorca przemianuje go, gdy panel dostanie etykietę pochodzenia.
     this.#setLabel(session, label);
     this.#sessions.set(session.id, session);
-    // A card under an existing id: the open transcript streams get a snapshot before the first frame of the new card.
-    for (const listener of opts.continuesRing === undefined ? [] : this.#transcriptResets) {
-      try { listener(session.id); } catch { /* A broken listener must not fail the launch. */ }
-    }
     this.#herdrByKey.set(handle.key, session.id);
     this.#indexEngineSession(session);
     this.#git.watch(session);
@@ -1845,9 +1837,9 @@ class RarogManager implements Manager {
   /**
    * Czy kanał ZAPISU do paneli jest otwarty?
    *
-   * Dwa niezależne wyłączniki: `RAROG_HERDR_SEND=0` (decyzja człowieka) i `readOnly`
-   * z nadzorcy (nieznany protokół herdr). Oba znaczą to samo dla użytkownika: „widzę,
-   * nie ruszam" — i oba mają odmówić TUTAJ, a nie dopiero na gnieździe.
+   * Two checks: `RAROG_HERDR_SEND=0` in the config and `readOnly` from the supervisor (the same flag at
+   * the socket, also true while a missing or too old herdr protocol keeps integration off). Both mean
+   * "I see, I do not touch" for the user, and both refuse HERE, not only at the socket.
    */
   #assertHerdrWritable(): void {
     if (this.#config.herdrSend === false) throw new BadRequestError(HERDR_READ_ONLY_MESSAGE);
@@ -2319,62 +2311,36 @@ class RarogManager implements Manager {
    * (bez żywego panelu), gdzie nie ma czemu wracać.
    */
   #hideHerdrSession(session: Session): void {
-    const key = session.herdrKey;
     // Tylko WŁASNY wpis indeksu: po zmianie silnika w panelu klucz
     // trzyma już karta następcy, a ślepe `delete` zdejmowałoby ją z indeksu — z nadzorcy
     // przyszedłby wtedy drugi `appeared` na ten sam panel i lista miałaby dwie karty.
-    if (key !== undefined && this.#herdrByKey.get(key) === session.id) {
-      this.#herdrByKey.delete(key);
-    }
+    const live = ownsPaneKey(this.#herdrByKey, session);
+    if (live) this.#herdrByKey.delete(session.herdrKey);
     // `closed` → `done` jest tu jedynym sposobem powiedzenia klientowi „tej karty już nie ma":
     // protokół nie zna zdarzenia „sesja usunięta", a milczenie zostawiłoby kartę do restartu.
     this.#applyTransition(session, { type: 'closed' }, HERDR_HIDDEN_DETAIL);
-    this.#forgetHerdrSession(session);
+    this.#forgetHerdrSession(session, !live); // A hidden live pane keeps its conversation in the consent cycle.
   }
 
   /**
-   * Zapamiętuje, w których indeksach stoi ta karta, i oddaje funkcję COFAJĄCĄ `#forget…`.
-   *
-   * Odtwarzamy dokładnie to, co było — a nie „co powinno być": `#indexEngineSession` pomija
-   * sesje `done`, więc bezwarunkowe wołanie go po rollbacku dokładałoby wpis, którego przed
-   * kasowaniem nie było. Jedyne, czego nie wskrzeszamy, to czekający z `AttachSlots`: to obietnice
-   * czekających na podpięcie drivera, a po nieudanym wznowieniu nie ma do czego ich podpiąć.
-   * Nowa karta pod tym samym id (gdyby `create()` zdążył ją wstawić) ma pierwszeństwo.
+   * Usuwa sesję herdr z RAM i ze wszystkich indeksów (ukrycie albo zniknięcie panelu).
+   * `ends`: the conversation is over and the consent cycle may forget it (`done-retention.ts`).
    */
-  #snapshotIndexes(session: Session): () => void {
-    const key = session.herdrKey;
-    const engineSessionId = session.engineSessionId;
-    const hadKey = key !== undefined && this.#herdrByKey.get(key) === session.id;
-    const hadEngine = engineSessionId !== undefined
-      && this.#byEngineSession.get(engineSessionId) === session.id;
-    return () => {
-      if (this.#sessions.has(session.id)) return;
-      this.#sessions.set(session.id, session);
-      this.#prStatus.sync(session);
-      this.#git.watch(session);
-      if (hadKey && key !== undefined) this.#herdrByKey.set(key, session.id);
-      if (hadEngine && engineSessionId !== undefined) this.#byEngineSession.set(engineSessionId, session.id);
-    };
-  }
-
-  /** Usuwa sesję herdr z RAM i ze wszystkich indeksów (ukrycie albo zniknięcie panelu). */
-  #forgetHerdrSession(session: Session): void {
+  #forgetHerdrSession(session: Session, ends = true): void {
     // Karta zamknięta albo ukryta w czasie dialogu startowego: zdanie do transkryptu, zanim karta zniknie z RAM.
     this.#dropStartWait(session);
     this.#unindexEngineSession(session);
-    const key = session.herdrKey;
-    if (key !== undefined && this.#herdrByKey.get(key) === session.id) {
-      this.#herdrByKey.delete(key);
-    }
+    if (ownsPaneKey(this.#herdrByKey, session)) this.#herdrByKey.delete(session.herdrKey);
     this.#attach.dropAttachWaiter(session.id);
     // Okna przerwania są RAM-owe i per karta — karta znika, więc znikają razem z nią.
-    // Bez tego rollback `#snapshotIndexes` wskrzeszałby sesję ze stęchłym oknem debounce'u.
+    // Bez tego rollback `snapshotIndexes` wskrzeszałby sesję ze stęchłym oknem debounce'u.
     this.#interrupts.resetInterruptWindows(session.id);
     this.#herdrLifecycle.herdrRestoreQuiet.delete(session.id);
     this.#herdrBlocked.delete(session.id);
     this.#timing.forget(session.id);
     this.#claimWindows.forget(session.id);
     this.#sessions.delete(session.id);
+    if (ends) forgetConversation(session, this.#sessions, this.#config.consentForgotten);
     this.#prStatus.forget(session.id);
     this.#git.unwatch(session);
     /*
@@ -2432,11 +2398,13 @@ class RarogManager implements Manager {
    * zostawiłby w indeksach wpisy wskazujące na obiekt, którego nikt już nie czyta.
    */
   async #recreate(session: Session, opts: LaunchOptions, slotTaken: boolean): Promise<void> {
-    const restore = this.#snapshotIndexes(session);
-    this.#forgetHerdrSession(session);
+    const restore = snapshotIndexes({
+      sessions: this.#sessions, herdrByKey: this.#herdrByKey, byEngineSession: this.#byEngineSession,
+      watch: (s) => { this.#prStatus.sync(s); this.#git.watch(s); },
+    }, session);
+    this.#forgetHerdrSession(session, false);
     try {
-      // The new card numbers on after the old one; `#launch` sends the open streams of this id a snapshot.
-      await this.#launch({ ...opts, continuesRing: session.ring }, slotTaken);
+      await this.#launch(opts, slotTaken);
     } catch (error: unknown) {
       /*
        * Wznowienie odbite (400 z `#assertResumable` w `launch-gate.ts`, 429 z throttle'a, padnięty `launch`) —
@@ -2461,9 +2429,9 @@ class RarogManager implements Manager {
     this.#sessionRestart.assertNotRestarting(id);
     /*
      * „Uruchom ponownie i wyślij”: `seq` i `id` z ciała mają wskazywać blokadę, której przycisk
-     * działa — inaczej 409 PRZED rezerwacją i slotem. The `seq` alone is not enough: numbering starts from 1 again
-     * in a new server process, so a late tap from before a server restart could name a new notice under the same
-     * number. The block `id` decides.
+     * działa — inaczej 409 PRZED rezerwacją i slotem. Sam `seq` nie wystarcza: karta po restarcie numeruje
+     * transkrypt od zera, więc spóźnione tapnięcie spod notki sprzed restartu trafiłoby w nową notkę o tym samym
+     * numerze.
      * Ładunek (tekst dla CLI, dymek, wizytówki) bierzemy z serwera, nigdy z ciała: klient podaje wyłącznie,
      * KTÓRĄ blokadę tapnięto.
      */
@@ -3412,6 +3380,7 @@ class RarogManager implements Manager {
         this.#detachDriver(session);
         if (session.launchPending && !this.#startWaits.has(session)) this.#startExits.add(session);
         this.#dropStartWait(session);
+        this.#trimDoneCards();
         return;
       }
 
@@ -3591,6 +3560,14 @@ class RarogManager implements Manager {
     }
     this.#herdrLifecycle.rememberGoneIdle(session);
     this.#applyTransition(session, { type: 'closed' }, HERDR_GONE_DETAIL);
+    this.#trimDoneCards();
+  }
+
+  /** Closed cards over the cap leave by the Hide path, with one fresh list to all phones. */
+  #trimDoneCards(): void {
+    const over = doneCardsOver(this.#sessions, this.#herdrByKey, this.#sessionRestart.restarts);
+    for (const session of over) this.#forgetHerdrSession(session);
+    if (over.length > 0) this.#emitSessionsSnapshot();
   }
 
   // --- Kolejka podpięć (5.10: 17 równoległych odczytów historii to skok latencji) ---

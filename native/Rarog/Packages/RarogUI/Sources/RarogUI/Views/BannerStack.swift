@@ -4,12 +4,13 @@ import RarogCore
 import SwiftUI
 
 // Banery listy i transkryptu. Właściciel: łączność. Co stoi w której
-// kolumnie i w jakiej kolejności: `Model/BannerSlots`.
+// kolumnie i w jakiej kolejności: `Model/BannerSlots`. The macOS folder card is drawn by `Banners/MacFolderBanner`.
 
 /// Banery jako karty, nigdy modal ani blokada ekranu; jedna awaria = jeden baner.
 /// Pusty pas nie zajmuje miejsca.
 struct BannerStack: View {
-  let banners: [Banner]
+  /// The cards in their order: app banners and macOS folder cards (`bannerSlots(in:)`).
+  let slots: [BannerSlot]
   /// Zaproszenie „Włącz powiadomienia" na końcu pasa (`Banners/PushBanner`); `nil` = nie stoi.
   var pushPrompt: RarogStore?
   /// Notki „Nowe urządzenie: …” (trwały ślad parowania) — tylko w kolumnie listy; `nil` = nie stoją.
@@ -24,7 +25,7 @@ struct BannerStack: View {
     // with an explicit schedule never advanced to the card's entry on the iOS 27 simulator (the card came in only
     // with another change of the input), and a running ticker would keep repainting while the card stands.
     // The task lives on a zero-size view that always stands: while the card waits, the strip itself may be empty.
-    let due = banners.pendingUntil(Date())
+    let due = slots.pendingUntil(Date())
     VStack(spacing: 0) {
       Color.clear.frame(width: 0, height: 0)
         .accessibilityHidden(true)
@@ -34,19 +35,22 @@ struct BannerStack: View {
           guard !Task.isCancelled else { return }
           clock = max(Date(), due)
         }
-      strip(banners.visible(at: max(clock, Date())))
+      strip(slots.visible(at: max(clock, Date())))
     }
   }
 
   @ViewBuilder
-  private func strip(_ banners: [Banner]) -> some View {
+  private func strip(_ slots: [BannerSlot]) -> some View {
     let notices = deviceNotices?.state.pairing.newDevices ?? []
-    if !banners.isEmpty || pushPrompt != nil || !notices.isEmpty {
+    if !slots.isEmpty || pushPrompt != nil || !notices.isEmpty {
       VStack(spacing: 8) {
         // Tożsamość po miejscu: szara karta łączenia i czerwona „Serwer nie odpowiada” stoją w tym samym miejscu,
         // więc po nieudanej próbie zmienia się kolor i zdanie tej samej karty, a nie wchodzi druga.
-        ForEach(Array(banners.enumerated()), id: \.offset) { _, banner in
-          BannerCard(banner: banner)
+        ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
+          switch slot {
+          case let .banner(banner): BannerCard(banner: banner)
+          case let .macFolders(card): MacFolderBanner(card: card)
+          }
         }
         if let deviceNotices {
           ForEach(notices) { notice in NewDeviceBanner(store: deviceNotices, notice: notice) }
@@ -66,7 +70,7 @@ struct BannerCard: View {
     // Zdanie z wiekiem („stany sprzed 4 min") odświeża się samo; reszta banerów stoi.
     TimelineView(.periodic(from: .now, by: 15)) { timeline in
       HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Circle().fill(Color(uiColor: tone)).frame(width: 8, height: 8).accessibilityHidden(true)
+        Circle().fill(Color(uiColor: banner.tone.color)).frame(width: 8, height: 8).accessibilityHidden(true)
         Text(UICopy.banner(banner, now: timeline.date))
           .appFont(.callout)
           .foregroundStyle(Color(uiColor: Palette.text))
@@ -81,13 +85,17 @@ struct BannerCard: View {
     .accessibilityAddTraits(.isStaticText)
     .accessibilityIdentifier("banner")
   }
+}
 
-  /// Ton z modelu (`Banner.tone`, `Model/BannerSlots`): czerwień = coś nie dochodzi albo wersja blokuje zmiany;
-  /// bursztyn ZAWSZE znaczy „ktoś czeka na Ciebie” — baner informacyjny i karta łączenia są szare.
-  private var tone: UIColor {
-    switch banner.tone {
+extension BannerTone {
+  /// The dot's colour (`Banner.tone`, `MacFolderCard.tone`, `Model/BannerSlots`): red = something does not arrive or
+  /// the version blocks changes; gray = information, the connecting card too; amber = something waits for the human,
+  /// as the Mac waits for a click in the macOS folder card.
+  var color: UIColor {
+    switch self {
     case .failure: Palette.err
     case .info: Palette.done
+    case .wait: Palette.wait
     }
   }
 }

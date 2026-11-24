@@ -136,6 +136,7 @@ extension UICopy {
   public static var terminalPaste: String { L("terminal.paste") }
   public static var terminalPasteHint: String { L("terminal.pasteHint") }
   public static var terminalHistory: String { L("terminal.history") }
+  public static var terminalSelectOutput: String { L("terminal.selectOutput") }
   public static var terminalHistoryHint: String { L("terminal.historyHint") }
   public static var terminalCtrlOn: String { L("terminal.ctrlOn") }
   public static var terminalCmdOn: String { L("terminal.cmdOn") }

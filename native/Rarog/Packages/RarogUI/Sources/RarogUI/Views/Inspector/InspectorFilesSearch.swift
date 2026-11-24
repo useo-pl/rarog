@@ -32,7 +32,8 @@ struct InspectorFilesControls {
 }
 
 /// Files / Changed Only in the look of the filter over the session list (`ListFilterBar`): one glass capsule, equal
-/// segments, the active one on a capsule plate, a segment under the pointer on the plate at half opacity.
+/// segments, the active one on a capsule plate, a segment under the pointer on the plate at half opacity. No shadow: it
+/// sits in the panel, not over a scrolling list.
 struct InspectorFilesModePicker: View {
   let mode: FileTreeMode
   let setMode: (FileTreeMode) -> Void
@@ -43,7 +44,7 @@ struct InspectorFilesModePicker: View {
         RarogHoverReader { hovered in segment(option, hovered: hovered) }
       }
     }
-    .background { FilterGlass(shape: Capsule()) }
+    .background { FilterGlass(shape: Capsule(), floating: false) }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(UICopy.inspectorFilesModeLabel)
     .accessibilityIdentifier("inspector.files.mode")

@@ -2,9 +2,8 @@ import Foundation
 @testable import RarogUI
 import Testing
 
-// Source guard of the session switcher: the hardware key state has ONE place in the code, the menu's Cmd+digits ask
-// the window first, and the tests do not fake a held Cmd. Which tap opens the window is `ProjectTabModel.tap`
-// (`SessionSwitcherRowsTests`). Owner: shortcuts.
+// Source guard of the session switcher: the hardware key state has ONE place in the code and the tests do not fake
+// a held Cmd. Which tap opens the window is `ProjectTabModel.tap` (`SessionSwitcherRowsTests`). Owner: shortcuts.
 
 @Suite("przełącznik sesji: strażnik źródeł")
 struct SessionSwitcherSourceTests {
@@ -46,18 +45,6 @@ struct SessionSwitcherSourceTests {
     #expect(overlay.contains("SwitcherKeyAnchor(switcher: switcher)"), "the key receiver of the window in the overlay")
     #expect(overlay.contains(".accessibilityAction(.escape) { switcher.cancel(.outside) }"),
             "gest „wstecz” czytnika zamyka okno — puste okno nie ma innego wyjścia dla czytnika")
-  }
-
-  /// The SwiftUI menu commands have no seam a test can press: a Cmd+digit that does not ask the open window first
-  /// would switch the tab under the window instead of picking its row.
-  @Test("digits: Cmd+1–9 of the menu ask the window first")
-  func digitRoutes() throws {
-    let files = try Self.code(package: "RarogUI")
-    let commands = try #require(files.first { $0.path == "RarogUI/Views/RarogCommands.swift" }).code
-    #expect(commands.contains("guard shortcuts?.switcherDigit(tab.number) != true else { return }"),
-            "Cmd+1–8: the open window wins over the tab")
-    #expect(commands.contains("guard shortcuts?.switcherDigit(9) != true else { return }"),
-            "Cmd+9: the open window wins over the last tab")
   }
 
   @Test("no faked held Cmd: the UI test flag and the Cmd release button are gone from the app and test sources")

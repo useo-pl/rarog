@@ -19,8 +19,8 @@
  * od pliku, którego nie wolno ruszyć. Pilnuje tego strażnik `server/test/pliki-zwykle-guard.test.ts`: odczyt
  * z `node:fs` poza tym modułem stoi na jego liście wyjątków z powodem.
  *
- * A file sent on in pieces opens with {@link openRegularFile} and is read with {@link exactReader}: exactly the bytes
- * of its `fstat`, from that one descriptor.
+ * A file sent on in pieces opens with {@link openRegularFile} (the `openRead` of the work-area port) and is read with
+ * {@link exactReader} through the port's handle: exactly the bytes of its `fstat`, from that one descriptor.
  *
  * Besides regular files, one directory read lives here, because on Linux it opens the directory:
  * {@link readDirectoryByIdentity} lists a directory through its `dev` and `ino` rather than its path. On Linux that
@@ -153,24 +153,29 @@ export type ExactPiece =
 /** Bytes per piece of {@link exactReader} by default. */
 export const EXACT_PIECE_BYTES = 64 * 1024;
 
+/** What {@link exactReader} reads through: `length` bytes from `position`, fewer at the end of the file. */
+export interface PositionalReader {
+  read(length: number, position: number): Promise<Buffer>;
+}
+
 /**
- * Reads the first `size` bytes of a file open on `handle` (the `fstat` size of {@link openRegularFile}), one piece
- * of at most `pieceBytes` per call, each at its own offset: the position of the descriptor does not matter, and bytes
- * appended past `size` are never read. `short`: the file ended before `size` bytes, so it was cut since its `fstat`
- * and what was read is not the file. The caller calls it one step at a time, owns the handle and closes it; an error
- * of the read rejects.
+ * Reads the first `size` bytes of an open file (the `fstat` size taken at its open), one piece of at most
+ * `pieceBytes` per call, each at its own offset: the position of the descriptor does not matter, and bytes appended
+ * past `size` are never read. `short`: the file ended before `size` bytes, so it was cut since its `fstat` and what
+ * was read is not the file. The reader is the handle of the work-area port, so a file in a guarded folder is read in
+ * that folder's helper; this function touches no disk itself. The caller calls it one step at a time, owns the handle
+ * and closes it; an error of the read rejects.
  */
 export function exactReader(
-  handle: Pick<FileHandle, 'read'>, size: number, pieceBytes: number = EXACT_PIECE_BYTES,
+  handle: PositionalReader, size: number, pieceBytes: number = EXACT_PIECE_BYTES,
 ): () => Promise<ExactPiece> {
   let position = 0;
   return async () => {
     if (position >= size) return { kind: 'done' };
-    const buffer = Buffer.allocUnsafe(Math.min(pieceBytes, size - position));
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
-    if (bytesRead === 0) return { kind: 'short', read: position };
-    position += bytesRead;
-    return { kind: 'piece', bytes: bytesRead === buffer.length ? buffer : buffer.subarray(0, bytesRead) };
+    const bytes = await handle.read(Math.min(pieceBytes, size - position), position);
+    if (bytes.length === 0) return { kind: 'short', read: position };
+    position += bytes.length;
+    return { kind: 'piece', bytes };
   };
 }
 

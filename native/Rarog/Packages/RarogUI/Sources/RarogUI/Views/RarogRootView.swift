@@ -235,11 +235,10 @@ public struct RarogRootView: View {
     RarogShortcutContext(
       menu: navigation.shortcutMenu(store.state),
       perform: { [store, navigation, switcher] shortcut in
-        // Any other menu shortcut closes the switcher window without a jump and does its own thing.
+        // A menu shortcut, the tab shortcuts Cmd+1–9 included, closes the switcher window and does its own thing.
         switcher.cancel(.otherCommand)
         navigation.perform(shortcut, store: store)
       },
-      switcherDigit: { [switcher] number in switcher.menuDigit(number) },
       textScale: TextScale.shared,
       textSize: TextSizeMenu(TextScale.shared))
   }
@@ -270,9 +269,6 @@ extension RarogCore.ScenePhase {
 public struct RarogShortcutContext {
   public let menu: ShortcutMenu
   public let perform: @MainActor (RarogShortcut) -> Void
-  /// Cmd+1 to Cmd+9 asks the switcher first; `true`: the open window took the digit (or a digit has just closed it)
-  /// and the tab shortcut stays silent.
-  public let switcherDigit: @MainActor (Int) -> Bool
   /// ⌘+, ⌘- and ⌘0: the app's text size.
   public let textScale: TextScale
   /// Which text size commands are enabled, read while the root view draws.

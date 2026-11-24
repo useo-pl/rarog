@@ -4,7 +4,8 @@
  * The manager owns one {@link SessionGit}, gives it a narrow {@link SessionGitPort} (sessions, clock, the environment
  * of git processes, emission) and calls it after a tool call, at the end of a turn, on opening a transcript and on
  * a `git-status` event of a driver. Git runs only through the runners of `git-status.ts`, and never in a protected
- * folder of home that no root opens: neither `git status` nor the `.git` watcher. This module does not
+ * folder of home that no root opens, nor in a guarded folder the folder gate holds closed: neither `git status` nor
+ * the `.git` watcher. A session refused only for a closed folder gets both when the folder opens. This module does not
  * import `manager.ts`.
  */
 import { homedir } from 'node:os';
@@ -12,6 +13,7 @@ import type { ServerEvent } from '@rarog/shared';
 import { HERDR_GIT_MIN_INTERVAL_MS } from '../config.ts';
 import { inExcludedOnDisk } from '../config/work-area.ts';
 import type { InternalBlock } from '../drivers/types.ts';
+import { folderGate } from '../folder-gate/install.ts';
 import {
   GIT_NUMSTAT_BUDGET_MS, GIT_NUMSTAT_READ_CAP_BYTES, GitStatusWatcher, spawnGitArgs, spawnGitLog, spawnGitStatus,
 } from '../git-status.ts';
@@ -54,6 +56,9 @@ export class SessionGit {
   readonly #gitStats: GitReadStats;
   /** Sessions whose directory {@link watch} registered: {@link unwatch} releases exactly these. */
   readonly #watched = new WeakSet<Session>();
+  /** Sessions {@link watch} refused; a guarded folder that opens may admit them, so `open` asks again. */
+  readonly #refused = new Set<Session>();
+  readonly #offGate: () => void;
 
   constructor(config: SessionGitConfig, port: SessionGitPort) {
     this.#config = config;
@@ -86,6 +91,9 @@ export class SessionGit {
             console.warn(`rarog: git-watch without a watcher for ${gitDir}: ${describeError(error)}`);
           },
         }));
+    this.#offGate = folderGate().onChange((_folder, state) => {
+      if (state === 'open') this.#admitRefused();
+    });
   }
 
   /**
@@ -94,19 +102,39 @@ export class SessionGit {
    */
   watch(session: Session): void {
     const watcher = this.#gitWatch;
-    if (watcher === null || this.#watched.has(session) || !this.#gitAllowed(session.cwd)) return;
+    if (watcher === null || this.#watched.has(session)) return;
+    if (!this.#gitAllowed(session.cwd)) {
+      this.#refused.add(session);
+      return;
+    }
+    this.#refused.delete(session);
     this.#watched.add(session);
     watcher.watch(session.cwd);
   }
 
   /** Releases the session's directory in the `.git` watcher, when {@link watch} registered it. */
   unwatch(session: Session): void {
+    this.#refused.delete(session);
     if (this.#watched.delete(session)) this.#gitWatch?.unwatch(session.cwd);
   }
 
   /** Stops the `.git` watcher (manager `dispose`). */
   close(): void {
+    this.#offGate();
+    this.#refused.clear();
     this.#gitWatch?.close();
+  }
+
+  /** A guarded folder opened: each refused session that git may now run for gets its watcher and one fresh read. */
+  #admitRefused(): void {
+    for (const session of [...this.#refused]) {
+      if (this.#port.sessions.get(session.id) !== session) {
+        this.#refused.delete(session);
+        continue;
+      }
+      this.watch(session);
+      if (this.#watched.has(session)) this.requestGitStatus(session, true);
+    }
   }
 
   /**

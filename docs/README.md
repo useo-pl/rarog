@@ -21,6 +21,7 @@ In `docs/`:
 | [code-map.md](code-map.md) | one line per source directory: where a change goes |
 | [security-model.md](security-model.md) | threat model, what each layer protects against, emergency runbook |
 | [server-config.md](server-config.md) | server start (launchd, `systemd --user`), `config.json`, flags |
+| [macos-folders.md](macos-folders.md) | the folder gate: disk calls in guarded folders of home run in a helper process |
 | [distribution.md](distribution.md) | pairing devices, the `rarog` command, installation with `rarog setup` |
 | [dialogs.md](dialogs.md) | how Claude Code dialogs in herdr panes are recognized and answered |
 | [dialog-card.md](dialog-card.md) | card with the literal choices of a CLI dialog (layer 2 flag) |

@@ -34,8 +34,8 @@ final class TranscriptPointerChrome {
     /// The press point in the text as an empty selection. It goes through ``TranscriptPointerSelection/validated(in:)``
     /// on every render like the selection, so a press on the streaming answer follows the answer into its message.
     var anchor: TranscriptPointerSelection
-    /// The word or paragraph of a double or triple click, from its start to its end: the drag extends from it. It
-    /// follows the rows like ``anchor``.
+    /// The word or paragraph of a double or triple click, or the character a single click is on (none on white space
+    /// and off the glyphs), from its start to its end: the drag extends from it. It follows the rows like ``anchor``.
     var unit: TranscriptPointerSelection?
     /// The last pointer location, in the screen's view; autoscroll resolves it again every frame.
     var pointer: CGPoint
@@ -43,6 +43,9 @@ final class TranscriptPointerChrome {
     var selecting = false
     /// The link under a click without movement, opened on release.
     var link: URL?
+    /// The session file the inline code under a click without movement names, when no link is there
+    /// (`+FileOpen`).
+    var file: String?
     /// Autoscroll frames that moved the list.
     var frames = 0
     /// A system selection appeared in a message field during the press.
@@ -143,12 +146,14 @@ extension SessionViewController: TranscriptPointerSelecting {
     }
   }
 
-  /// The pointer pressed at `point` (in the screen's view): ×1 clears the selection and anchors there, ×2 selects the
-  /// word, ×3 the paragraph. A press outside the text of a message row does nothing.
+  /// The pointer pressed at `point` (in the screen's view): ×1 clears the selection and anchors there (a drag takes the
+  /// character under the press), ×2 selects the word, ×3 the paragraph. A press outside the text of a message row
+  /// does nothing.
   func pointerDown(at point: CGPoint, count: Int) {
     let chrome = pointerChrome
     chrome.pendingLink?.cancel()
     chrome.pendingLink = nil
+    cancelTranscriptFileOpen()
     let listPoint = view.convert(point, to: collectionView)
     let rows = pointerRows()
     guard pointerPressStarts(at: listPoint), let (id, content, offset) = pressedText(at: listPoint),
@@ -164,14 +169,18 @@ extension SessionViewController: TranscriptPointerSelecting {
     var gesture = TranscriptPointerChrome.Gesture(start: point, clicks: count, anchor: anchor, pointer: point)
     var selection: TranscriptPointerSelection?
     if count > 1, let range = content.pointerUnit(at: offset, granularity: count == 2 ? .word : .paragraph),
-      var unit = TranscriptPointerSelection(at: TranscriptTextPoint(row: id, offset: range.location), in: rows)
+      let unit = Self.pointerRange(range, row: id, in: rows)
     {
-      unit.extend(to: .text(TranscriptTextPoint(row: id, offset: NSMaxRange(range))), in: rows)
       gesture.unit = unit
       gesture.selecting = true
       selection = unitSelection(unit, toward: .text(anchor.anchor), in: rows)
     } else if count == 1 {
       gesture.link = content.pointerLink(at: listPoint, from: collectionView)
+      if gesture.link == nil { gesture.file = transcriptFileCandidate(in: content, at: listPoint) }
+      // The character under the press is the unit of a single click; nothing is selected before the drag.
+      if let range = content.pointerPressedCharacter(at: listPoint, from: collectionView) {
+        gesture.unit = Self.pointerRange(range, row: id, in: rows)
+      }
     }
     chrome.gesture = gesture
     applyPointerSelection(selection)
@@ -188,6 +197,7 @@ extension SessionViewController: TranscriptPointerSelecting {
       }
       gesture.selecting = true
       gesture.link = nil
+      gesture.file = nil
     }
     pointerChrome.gesture = gesture
     extendPointerSelection()
@@ -195,7 +205,8 @@ extension SessionViewController: TranscriptPointerSelecting {
   }
 
   /// The button came up: autoscroll stops, the list's pin follows where it ended, and a click without movement on a
-  /// link opens it once the double click window passed (a second click selects a word instead).
+  /// link, or on inline code that names a session file, opens it once the double click window passed (a second click
+  /// selects a word instead).
   func pointerUp(at point: CGPoint) {
     guard let gesture = pointerChrome.gesture else { return }
     finishPointerGesture(gesture)
@@ -207,6 +218,8 @@ extension SessionViewController: TranscriptPointerSelecting {
         self.pointerChrome.pendingLink = nil
         open(url)
       }
+    } else if gesture.clicks == 1, !gesture.selecting, let file = gesture.file {
+      openTranscriptFile(file)
     }
     if gesture.selecting {
       let trace = TranscriptPointerGestureTrace(
@@ -248,6 +261,7 @@ extension SessionViewController: TranscriptPointerSelecting {
   func leavePointerSelection() {
     pointerChrome.pendingLink?.cancel()
     pointerChrome.pendingLink = nil
+    cancelTranscriptFileOpen()
     pointerCancelled()
   }
 
@@ -330,7 +344,7 @@ extension SessionViewController: TranscriptPointerSelecting {
     return .gap(after: above.id)
   }
 
-  private func visibleMessageContents() -> [(id: String, content: MessageContentView)] {
+  func visibleMessageContents() -> [(id: String, content: MessageContentView)] {
     collectionView.indexPathsForVisibleItems.compactMap { index in
       guard let id = dataSource.itemIdentifier(for: index), let cell = collectionView.cellForItem(at: index),
         let content = Self.messageContent(in: cell)
@@ -396,8 +410,18 @@ extension SessionViewController: TranscriptPointerSelecting {
     applyPointerSelection(selection)
   }
 
-  /// A drag after a double or triple click keeps the whole word or paragraph (`unit`, from its start to its end):
-  /// forward from its start, backward from its end, and inside it the unit itself.
+  /// The selection of `range` in the row `row`, from its start to its end.
+  private static func pointerRange(
+    _ range: NSRange, row: String, in rows: [TranscriptSelectionRow]
+  ) -> TranscriptPointerSelection? {
+    guard var selection = TranscriptPointerSelection(at: TranscriptTextPoint(row: row, offset: range.location), in: rows)
+    else { return nil }
+    selection.extend(to: .text(TranscriptTextPoint(row: row, offset: NSMaxRange(range))), in: rows)
+    return selection
+  }
+
+  /// A drag from a unit (the pressed character, or a double or triple clicked word or paragraph, from its start to its
+  /// end) keeps the whole unit: forward from its start, backward from its end, and inside it the unit itself.
   private func unitSelection(
     _ unit: TranscriptPointerSelection, toward target: TranscriptPointerTarget, in rows: [TranscriptSelectionRow]
   ) -> TranscriptPointerSelection? {
@@ -467,6 +491,7 @@ extension SessionViewController: TranscriptPointerSelecting {
   }
 
   func systemSelectionAppeared(in field: UITextView) {
+    cancelTranscriptFileOpen()
     if pointerChrome.gesture != nil {
       pointerChrome.gesture?.sawSystemSelection = true
       return
@@ -532,6 +557,8 @@ extension SessionViewController: TranscriptPointerSelecting {
   static var pointerTraceBudget = TranscriptPointerTraceBudget()
 
   func transcriptTouchBegan(_ type: UITouch.TouchType, in field: MessageTextView) {
+    // A new touch ends a tap's waiting open: the second tap of a double tap selects a word instead.
+    cancelTranscriptFileOpen()
     let kind: TranscriptTouchKind =
       switch type {
       case .direct: .direct

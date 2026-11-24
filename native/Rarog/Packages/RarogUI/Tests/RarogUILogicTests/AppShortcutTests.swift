@@ -124,7 +124,7 @@ struct AppShortcutTests {
     ("Session/Voice/VoiceViews.swift", "ShortcutTipLine(UICopy.voiceMic, .dictation)"),
     ("Session/ComposerActionBar.swift", "ShortcutTipLine(UICopy.send, .send)"),
     ("Session/ComposerActionBar.swift", "ShortcutTipLine(UICopy.stop, .stop)"),
-    ("Terminal/TerminalKeyBar.swift", "ShortcutTipLine(UICopy.terminalHistory, .terminalHistory)"),
+    ("Terminal/TerminalKeyBar.swift", "ShortcutTipLine(UICopy.terminalSelectOutput, .terminalHistory)"),
   ]
 
   @Test("strażnik: każdy przycisk z listy ma podpowiedź ze skrótem z `AppShortcut`, bez drugiego dymka systemowego")

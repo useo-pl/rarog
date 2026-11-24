@@ -11145,24 +11145,6 @@
         }
       }
     },
-    "inbox.showLess" : {
-      "comment" : "Inbox card: the row under an expanded long message; a tap folds it again. Short.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Show less"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwiń"
-          }
-        }
-      }
-    },
     "inbox.swipeRemove" : {
       "comment" : "Inbox card on the iPhone: the red action revealed by a swipe to the left. One word.",
       "extractionState" : "manual",
@@ -15807,6 +15789,384 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "macFolders.action.allow" : {
+      "comment" : "Last sentence of the folder banners: the button of the macOS permission window, by its title in the Mac's language.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click “Allow” on the Mac."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kliknij „Pozwól” przy Macu."
+          }
+        }
+      }
+    },
+    "macFolders.action.log" : {
+      "comment" : "Last sentence of the session list banner when the server cannot check a folder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server log has the details."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szczegóły w logu serwera."
+          }
+        }
+      }
+    },
+    "macFolders.action.settings" : {
+      "comment" : "Last sentence of the session list banner when macOS refused a folder: where to allow it, as macOS names the panes.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change it in System Settings on the Mac (Privacy & Security → Files & Folders)."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zmień w Ustawieniach Maca (Prywatność i ochrona → Pliki i foldery)."
+          }
+        }
+      }
+    },
+    "macFolders.folder.desktop.genitive" : {
+      "comment" : "The macOS Desktop folder by its Finder name, in the form after 'for', 'to' and 'into' (Polish genitive); fills the folder banner sentences.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desktop"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biurka"
+          }
+        }
+      }
+    },
+    "macFolders.folder.desktop.locative" : {
+      "comment" : "The macOS Desktop folder by its Finder name, in the form after 'in' (Polish locative); fills the folder banner sentences.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desktop"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biurku"
+          }
+        }
+      }
+    },
+    "macFolders.folder.documents.genitive" : {
+      "comment" : "The macOS Documents folder by its Finder name, in the form after 'for', 'to' and 'into' (Polish genitive); fills the folder banner sentences.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Documents"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dokumentów"
+          }
+        }
+      }
+    },
+    "macFolders.folder.documents.locative" : {
+      "comment" : "The macOS Documents folder by its Finder name, in the form after 'in' (Polish locative); fills the folder banner sentences.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Documents"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dokumentach"
+          }
+        }
+      }
+    },
+    "macFolders.folder.downloads.genitive" : {
+      "comment" : "The macOS Downloads folder by its Finder name, in the form after 'for', 'to' and 'into' (Polish genitive); fills the folder banner sentences.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloads"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pobranych rzeczy"
+          }
+        }
+      }
+    },
+    "macFolders.folder.downloads.locative" : {
+      "comment" : "The macOS Downloads folder by its Finder name, in the form after 'in' (Polish locative); fills the folder banner sentences.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloads"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pobranych rzeczach"
+          }
+        }
+      }
+    },
+    "macFolders.list.deniedTitle" : {
+      "comment" : "Bold title of the session list banner when macOS refused the folders; also a whole sentence after other folders in the same banner. %@ = folder names (genitive form keys).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS doesn't let Rarog into %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS nie wpuszcza Raroga do %@"
+          }
+        }
+      }
+    },
+    "macFolders.list.uncheckedTitle" : {
+      "comment" : "Bold title of the session list banner when the server cannot tell whether it may read the folders; also a whole sentence after other folders. %@ = folder names (genitive form keys).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog can't check access to %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog nie umie sprawdzić dostępu do %@"
+          }
+        }
+      }
+    },
+    "macFolders.list.waiting" : {
+      "comment" : "Second line of the session list banner, first sentence when the time is unknown: %@ = folder names (genitive form keys).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS asks for access to %@."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zgoda macOS dla %@."
+          }
+        }
+      }
+    },
+    "macFolders.list.waitingAt" : {
+      "comment" : "Second line of the session list banner, first sentence: %1$@ = folder names (genitive form keys), %2$@ = clock time the folder stopped answering.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS asks for access to %1$@ since %2$@."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zgoda macOS dla %1$@, od %2$@."
+          }
+        }
+      }
+    },
+    "macFolders.list.waitingTitle" : {
+      "comment" : "Bold title of the banner over the session list while macOS gives no answer for a folder: the server cannot see the window itself, so 'probably'. One line on a phone.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A macOS window is probably waiting on the Mac"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prawdopodobnie na Macu czeka okno"
+          }
+        }
+      }
+    },
+    "macFolders.scope.many" : {
+      "comment" : "Session list banner: several sessions (2 or more) lie in closed folders. %1$lld = how many, %2$@ = folder names (locative form keys).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affects %1$lld sessions in %2$@; the others work normally."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dotyczy %1$lld sesji w %2$@; pozostałe działają normalnie."
+          }
+        }
+      }
+    },
+    "macFolders.scope.none" : {
+      "comment" : "Session list banner when no session lies in a closed folder. %@ = folder names (genitive form keys).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessions work normally; %@ can't be opened in a new session now."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesje działają normalnie; %@ nie da się teraz otworzyć w nowej sesji."
+          }
+        }
+      }
+    },
+    "macFolders.scope.one" : {
+      "comment" : "Session list banner: the one session whose directory lies in a closed folder. %@ = the session name as the list shows it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affects the session %@; the others work normally."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dotyczy sesji %@; pozostałe działają normalnie."
+          }
+        }
+      }
+    },
+    "macFolders.session.denied" : {
+      "comment" : "Second line of the session banner when macOS refused the folder. %@ = folder name (genitive form key).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages and permissions work; git, files and attachments don't, because macOS doesn't let Rarog into %@. Change it in System Settings on the Mac (Privacy & Security → Files & Folders)."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiadomości i zgody działają; git, pliki i załączniki nie, bo macOS nie wpuszcza Raroga do %@ — zmień w Ustawieniach Maca (Prywatność i ochrona → Pliki i foldery)."
+          }
+        }
+      }
+    },
+    "macFolders.session.title" : {
+      "comment" : "Bold title of the banner over the transcript of a session whose directory lies in a closed macOS folder. One line on a phone.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog can't see this session's files"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog nie widzi plików tej sesji"
+          }
+        }
+      }
+    },
+    "macFolders.session.unchecked" : {
+      "comment" : "Second line of the session banner when the server cannot check the folder. %@ = folder name (genitive form key).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages and permissions work; git, files and attachments don't, because Rarog can't check access to %@. The server log has the details."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiadomości i zgody działają; git, pliki i załączniki nie, bo Rarog nie umie sprawdzić dostępu do %@ — szczegóły w logu serwera."
+          }
+        }
+      }
+    },
+    "macFolders.session.waiting" : {
+      "comment" : "Second line of the session banner while macOS gives no answer for the folder. %@ = folder name (genitive form key).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages and permissions work; git, files and attachments don't, because a macOS permission window for %@ is probably waiting on the Mac. Click “Allow” on the Mac."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiadomości i zgody działają; git, pliki i załączniki nie, bo prawdopodobnie na Macu czeka okno zgody macOS dla %@. Kliknij „Pozwól” przy Macu."
           }
         }
       }
@@ -22964,7 +23324,7 @@
       }
     },
     "switcher.heading" : {
-      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Nagłówek okna: „Zakładki projektu · 6” (kapitaliki robi styl `Eyebrow`). Parametry: 1. count (liczba).",
+      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Nagłówek okna po nazwie projektu: „willow · Zakładki projektu · 6”, ten klucz to część od „Zakładki” (kapitaliki robi styl `Eyebrow`). Parametry: 1. count (liczba).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -23031,24 +23391,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "przejdź"
-          }
-        }
-      }
-    },
-    "switcher.hints.jump" : {
-      "comment" : "Przełącznik sesji (okno pod stuknięciem w bieżącą zakładkę): zakładki bieżącego projektu w kolejności paska. Podpowiedzi stopki: klawisz i to, co robi. Miejsce: stopka okna przełącznika, jedno krótkie słowo obok klawiszy 1–9 (cyfra zakładki przenosi od razu do niej).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "jump"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "skocz"
           }
         }
       }
@@ -24329,6 +24671,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ekran terminala"
+          }
+        }
+      }
+    },
+    "terminal.selectOutput" : {
+      "comment" : "Terminal › key bar, “…” menu and keyboard shortcut list: opens the terminal output as text for selecting and copying. One short line.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select Output"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaznacz output"
           }
         }
       }

@@ -106,8 +106,8 @@ export class LaunchGate {
     /*
      * Sufit paneli sprawdzamy PRZED `canLaunch`, choć logicznie jest węższy.
      *
-     * Powód jest czysto ludzki: nadzorca gasi `canLaunch` z TRZECH różnych powodów (killswitch,
-     * nieznany protokół, osiągnięty sufit), a komunikat może być tylko jeden. Przy odwrotnej
+     * Powód jest czysto ludzki: the supervisor turns `canLaunch` off for several reasons (killswitches,
+     * unavailable herdr, reached cap), a komunikat może być tylko jeden. Przy odwrotnej
      * kolejności siódmy panel dostawał odpowiedź „zakładanie wyłączone” z nazwą killswitcha zakładania
      * — zdanie nieprawdziwe i prowadzące donikąd, zamiast „zamknij któryś panel".
      */
@@ -329,11 +329,6 @@ export type LaunchOptions = CreateSessionOptions & {
    * go zdejmuje ze zdaniem {@link RESUME_WITHOUT_ULTRACODE_MESSAGE}, zamiast odbić start 400.
    */
   ultracodeInherited?: boolean;
-  /**
-   * The ring of the card a new panel replaces under the same id (restart, "Resume"). The new card numbers on from its
-   * last seq, read when the card is built, so a cursor of the old card gets a snapshot and not a replay.
-   */
-  continuesRing?: { readonly lastSeq: number };
 };
 
 /** Dymek promptu startowego — bloki i wizytówki jak w echu wysyłki z Raroga. */

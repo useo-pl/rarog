@@ -145,6 +145,8 @@ extension AppState {
     }
     switch frame {
     case let .hello(hello):
+      // A new connection of the list: the server sends the closed folders again right after the full state.
+      if case .global = source { clearMacFolders() }
       compat = Compatibility.evaluate(hello, build: clientBuild)
       serverStartId = hello.serverStartId
 
@@ -315,6 +317,9 @@ extension AppState {
 
     case .inboxHeads, .inboxHead, .inboxRemoved:
       applyInboxFrame(frame, source: source)
+
+    case let .folderAccess(event):
+      applyFolderAccess(event)
     }
     return []
   }
@@ -617,6 +622,7 @@ extension AppState {
     heldOpen = [:]
     queuedIdleSince = [:]
     commands = CommandListState()
+    clearMacFolders()
     resetPushView()
   }
 }

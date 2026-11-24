@@ -3,11 +3,11 @@
  * that every caller uses before Rarog runs anything in a directory. `loadConfig` (`server/src/config.ts`) passes in
  * the values it read through `readEnv`.
  */
-import { realpathSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { type ServerSentence, say } from '@rarog/shared/sentences';
 import { ConfigError, HERDR_ROOTS_ENV, PROJECT_ROOTS_ENV } from '../config-env.ts';
+import { DIRECT_DISK } from '../folder-gate/disk.ts';
 import { type WalkDisk, insideWorkArea, isExcludedPath, resolveInWorkArea } from './work-area.ts';
 
 // ---------------------------------------------------------------------------
@@ -110,9 +110,12 @@ export function isInsideAnyRoot(candidate: string, roots: readonly string[]): bo
   return roots.some((root) => isInside(candidate, root));
 }
 
+/** `realpathSync` of the work-area disk port: the JavaScript walk, letter case as written. */
+const realpathOnDisk = (candidate: string): string => DIRECT_DISK.sync('realpath', { path: candidate });
+
 function realIsDirectory(candidate: string): boolean {
   try {
-    return statSync(candidate).isDirectory();
+    return DIRECT_DISK.sync('stat', { path: candidate }).isDirectory();
   } catch {
     return false;
   }
@@ -138,7 +141,7 @@ function realIsDirectory(candidate: string): boolean {
 export function isInsideAnyRootReal(
   candidate: string,
   roots: readonly string[],
-  realPath: (path: string) => string = realpathSync,
+  realPath: (path: string) => string = realpathOnDisk,
 ): boolean {
   if (!isInsideAnyRoot(candidate, roots)) return false;
   let resolved: string;
@@ -199,7 +202,8 @@ function realPathEntersHidden(resolved: string, realRoots: readonly string[]): b
  * 5. the work area, still text only: a macOS-protected folder of home is refused unless a root lies in it
  *    (`config/work-area.ts`); a read there makes macOS ask for access, and this check is synchronous,
  * 6. the symlink walk (`resolveInWorkArea`) as the first disk access: it stops before an excluded folder, so
- *    `<root>/link -> ~/Desktop/x` is refused without a read in `Desktop`; a missing segment is "not found",
+ *    `<root>/link -> ~/Desktop/x` is refused without a read in `Desktop`; a missing segment is "not found", and a
+ *    guarded folder the folder gate holds closed gives the sentence of its state (metadata only, no helper call),
  * 7. musi istnieć i być katalogiem,
  * 8. i dopiero teraz to samo pytanie po ROZWIĄZANIU dowiązań — kroki 4 i 7 same
  *    przepuszczały `<korzeń>/skrót -> /gdziekolwiek`; the resolved path must also lie outside the excluded folders,
@@ -248,7 +252,7 @@ export function validateProjectCwd(
   if (!insideWorkArea(cwd, roots, home)) {
     return { ok: false, sentence: say('rest.cwd-protected') };
   }
-  const resolveOne = opts.realPath ?? realpathSync;
+  const resolveOne = opts.realPath ?? realpathOnDisk;
   const onDisk = (entry: string): string => {
     try {
       return resolveOne(entry);
@@ -263,7 +267,10 @@ export function validateProjectCwd(
   if (opts.realPath === undefined) {
     const walked = resolveInWorkArea(cwd, realRoots, realHome, opts.walk);
     if (walked.kind === 'missing') return { ok: false, sentence: say('rest.cwd-not-found') };
-    if (walked.kind === 'excluded') return { ok: false, sentence: say('rest.cwd-symlink-escape') };
+    if (walked.kind === 'excluded') {
+      // A guarded folder the folder gate holds closed: the sentence of its state, not a link that leads out.
+      return { ok: false, sentence: walked.closed?.sentence ?? say('rest.cwd-symlink-escape') };
+    }
     resolved = walked.path;
   }
   if (!isDirectory(cwd)) {
@@ -271,7 +278,7 @@ export function validateProjectCwd(
   }
   if (resolved === null) {
     try {
-      resolved = opts.realPath === undefined ? realpathSync(cwd) : opts.realPath(cwd);
+      resolved = opts.realPath === undefined ? realpathOnDisk(cwd) : opts.realPath(cwd);
     } catch {
       return { ok: false, sentence: say('rest.cwd-symlink-escape') };
     }

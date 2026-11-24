@@ -40,8 +40,8 @@ struct InboxCardView: View {
       if card.removable {
         Button(UICopy.inboxRemove) { actions.remove(card) }
       }
-      if let text = card.text, MarkdownFold.fold(text).isFolded {
-        Button(expanded ? UICopy.inboxShowLess : UICopy.inboxShowAll(MarkdownFold.fold(text).hiddenLineCount)) {
+      if !expanded, let text = card.text, MarkdownFold.fold(text).isFolded {
+        Button(UICopy.inboxShowAll(MarkdownFold.fold(text).hiddenLineCount)) {
           actions.toggleFold(card.id)
         }
       }
@@ -91,7 +91,7 @@ struct InboxCardView: View {
         .accessibilityIdentifier("inbox.open.\(card.id)")
         if card.removable {
           Button { actions.remove(card) } label: {
-            Image(systemName: "xmark").frame(width: 44, height: 44).contentShape(Rectangle())
+            Image(systemName: "checkmark").frame(width: 44, height: 44).contentShape(Rectangle())
           }
           .buttonStyle(InboxIconButtonStyle())
           .pointerTip(UICopy.inboxRemove)
@@ -129,8 +129,9 @@ struct InboxCardView: View {
             InboxMessageText(source: question, identifier: "inbox.question.\(card.id)")
           }
         } else {
+          // An expanded card stays expanded: a fold row under the long message would stand far from the row the
+          // reader tapped. The card folds again when the Inbox screen is built anew.
           InboxMessageText(source: text, identifier: "inbox.text.\(card.id)")
-          if fold.isFolded { foldRow(UICopy.inboxShowLess) }
         }
       }
       .padding(.trailing, 10)
@@ -218,12 +219,15 @@ struct InboxCardActions {
   let toggleFold: @MainActor (String) -> Void
 }
 
-/// A quiet icon with a 44 pt target, like the session header's icons, on the card's surface.
+/// A quiet icon with a 44 pt target, like the session header's icons, on the card's surface: the glyph goes to full
+/// text under the finger and under the pointer.
 private struct InboxIconButtonStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var enabled
+
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .appFont(.body)
-      .foregroundStyle(Color(uiColor: configuration.isPressed ? Palette.text : Palette.muted2))
+      .rarogHover(.ink(rest: configuration.isPressed ? Palette.text : Palette.muted2), enabled: enabled)
   }
 }
 

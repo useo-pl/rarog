@@ -248,14 +248,25 @@ final class TranscriptSelectionSheetTests: XCTestCase {
     })
   }
 
-  /// Session `s1` after a full state from the server with `messages` (role, Markdown text) as seq 1, 2, …
-  static func store(messages: [(role: String, text: String)]) throws -> RarogStore {
-    let store = RarogStore.live(
-      config: RarogConfig(baseURL: URL(string: "http://127.0.0.1:9")!, clientLabel: "test·Rarog", build: 1),
-      outboxDirectory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
+  /// Session `s1` after a full state from the server with `messages` (role, Markdown text) as seq 1, 2, …; with
+  /// `transport` the store asks it instead of the network, and the version probe lists `capabilities`.
+  static func store(
+    messages: [(role: String, text: String)], transport: UIKitTransport? = nil, capabilities: [String] = []
+  ) throws -> RarogStore {
+    let outbox = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    let store =
+      transport.map { RarogStore(transport: $0, rules: MutationRules(), outboxDirectory: outbox, clientBuild: 1) }
+      ?? RarogStore.live(
+        config: RarogConfig(baseURL: URL(string: "http://127.0.0.1:9")!, clientLabel: "test·Rarog", build: 1),
+        outboxDirectory: outbox)
     store.dispatch(.loggedIn)
     store.dispatch(.streamOpened(.global, resumedWithCursor: false))
     try SessionToastTests.frame(store, #"{"type":"hello","protocolVersion":3,"serverStartId":"test"}"#, source: .global)
+    if !capabilities.isEmpty {
+      let list = capabilities.map { #""\#($0)""# }.joined(separator: ",")
+      let version = #"{"version":"1.0.0","protocolVersion":3,"serverStartId":"s","capabilities":[\#(list)]}"#
+      store.dispatch(.versionProbed(try JSONDecoder().decode(VersionInfo.self, from: Data(version.utf8))))
+    }
     try SessionToastTests.frame(store, #"""
       {"type":"sessions-snapshot","sessions":[{"id":"s1","cwd":"/Users/demo/project","title":"project",
         "state":"waiting-input","stateSince":"2026-10-06T10:00:00.000Z","createdAt":"2026-10-06T09:00:00.000Z",

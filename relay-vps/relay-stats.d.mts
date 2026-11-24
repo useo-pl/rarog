@@ -28,7 +28,7 @@ export interface RelayCounters {
 }
 
 export interface Reads {
-  /** `ss -Htn state established '( sport = :443 )'`. */
+  /** `ss -Htn state established '( sport = :80 or sport = :443 )'`. */
   ss: Read<string>;
   limits: Limits;
   /** relay-watch state file, parsed. */

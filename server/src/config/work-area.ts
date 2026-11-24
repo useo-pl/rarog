@@ -5,10 +5,13 @@
  * unless a root lies in that folder (`protected-dirs.ts`). `insideWorkArea` judges text only; `resolveInWorkArea`
  * resolves symlinks one segment at a time and stops before it would touch an excluded folder; `inWorkAreaOnDisk`
  * puts the two together for a directory that already exists, and `inExcludedOnDisk` asks only about the excluded
- * folders, for a directory that may lie outside the roots. The module never lists a directory and never reads a file.
+ * folders, for a directory that may lie outside the roots. A guarded folder the folder gate holds closed is out of the
+ * work area too, unless the caller asks to ignore the gate (`WalkOptions`). The module never lists a directory and
+ * never reads a file.
  */
-import { lstatSync, readlinkSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { DIRECT_DISK, type WorkAreaDisk, closedFolderOf } from '../folder-gate/disk.ts';
+import { FolderGateError } from '../folder-gate/types.ts';
 import { PROTECTED_HOME_DIRS, foldCase, inProtectedFolder, openedByRoot } from './protected-dirs.ts';
 
 const lower = (value: string): string => value.toLowerCase();
@@ -69,14 +72,31 @@ export interface WalkDisk {
   readonly readlink: (file: string) => string;
 }
 
-const DISK: WalkDisk = { lstat: (file) => lstatSync(file), readlink: (file) => readlinkSync(file) };
+/** The walk's view of the work-area disk port. */
+export function walkDiskOf(disk: WorkAreaDisk): WalkDisk {
+  return {
+    lstat: (file) => disk.sync('lstat', { path: file }),
+    readlink: (file) => disk.sync('readlink', { path: file }),
+  };
+}
+
+const DISK: WalkDisk = walkDiskOf(DIRECT_DISK);
 
 /** Symlinks followed in one walk before it gives up, as `ELOOP` of the system. */
 const MAX_LINKS = 40;
 
+/**
+ * `gate: 'ignore'`: the walk does not ask the folder gate, so a closed guarded folder counts like an open one. Only for
+ * a verdict that must not change with the folder's state (the scope of a pane); the walk still reads metadata only.
+ */
+export interface WalkOptions {
+  readonly gate?: 'ignore';
+}
+
 export type WalkResult =
   | { readonly kind: 'resolved'; readonly path: string }
-  | { readonly kind: 'excluded' }
+  /** `closed`: the walk met a guarded folder the folder gate holds closed; it is never `missing`. */
+  | { readonly kind: 'excluded'; readonly closed?: FolderGateError }
   | { readonly kind: 'missing' };
 
 /**
@@ -84,10 +104,14 @@ export type WalkResult =
  * built so far is checked, and one in an excluded folder ends the walk (`excluded`) without a read there. A
  * symlink's target is walked the same way, so `<root>/link -> ~/Desktop/x` never reaches `Desktop`. An excluded
  * folder that holds a root (`~/Documents` on the way to the root `~/Documents/Projects`) may be passed.
- * `missing`: a segment does not exist, cannot be checked, or the links loop. `roots` and `home` in on-disk form.
+ * `missing`: a segment does not exist, cannot be checked, or the links loop. A segment in a guarded folder the folder
+ * gate holds closed ends the walk as `excluded` with the refusal in `closed`, before its `lstat`: the folder cannot be
+ * entered now, and a missing segment would keep the verdict of the text. The walk asks the port for it
+ * (`closedFolderOf`), because metadata passes a closed folder; a disk that refuses a segment with `FolderGateError`
+ * ends the walk the same way. With `gate: 'ignore'` the walk does not ask the gate. `roots` and `home` in on-disk form.
  */
 export function resolveInWorkArea(
-  candidate: string, roots: readonly string[], home: string, disk: WalkDisk = DISK,
+  candidate: string, roots: readonly string[], home: string, disk: WalkDisk = DISK, options: WalkOptions = {},
 ): WalkResult {
   if (!path.isAbsolute(candidate)) return { kind: 'missing' };
   // The way to a root compares in lower case, like a root opening a path (`isExcludedPath`).
@@ -107,11 +131,13 @@ export function resolveInWorkArea(
     }
     const next = path.join(current, part);
     if (blocked(next)) return { kind: 'excluded' };
+    const closed = options.gate === 'ignore' ? null : closedFolderOf(next);
+    if (closed !== null) return { kind: 'excluded', closed };
     let link: string | null = null;
     try {
       if (disk.lstat(next).isSymbolicLink()) link = disk.readlink(next);
-    } catch {
-      return { kind: 'missing' };
+    } catch (error) {
+      return error instanceof FolderGateError ? { kind: 'excluded', closed: error } : { kind: 'missing' };
     }
     if (link === null) {
       current = next;
@@ -130,7 +156,12 @@ export interface AreaDisk extends WalkDisk {
   readonly realpath: (file: string) => string;
 }
 
-const AREA_DISK: AreaDisk = { ...DISK, realpath: (file) => realpathSync(file) };
+/** The area's view of the work-area disk port: `realpath` is the JavaScript walk of `realpathSync`. */
+export function areaDiskOf(disk: WorkAreaDisk): AreaDisk {
+  return { ...walkDiskOf(disk), realpath: (file) => disk.sync('realpath', { path: file }) };
+}
+
+const AREA_DISK: AreaDisk = areaDiskOf(DIRECT_DISK);
 
 /**
  * Roots and home in on-disk form, the reference points of a walk: a root that is a symlink (`/srv/home -> ~`) counts
@@ -158,14 +189,16 @@ export function onDiskForms(
  * meets the whole rule once more there, so `<root>/link -> ~/Desktop/x`, `<root ~>/visible -> ~/.cache/x` and a root
  * that is a symlink to home (`/srv/home/Desktop`) stay out without a read in the excluded folder. A path the walk
  * cannot resolve (deleted, unreadable, a loop of links) keeps the verdict of its text, because nothing can be read
- * through it; a link that leads out of every root keeps it too, unless it ends in an excluded folder.
+ * through it; a link that leads out of every root keeps it too, unless it ends in an excluded folder. A guarded folder
+ * the folder gate holds closed on the way puts the path out of the work area until the folder opens, unless `options`
+ * ignore the gate ({@link WalkOptions}).
  */
 export function inWorkAreaOnDisk(
-  cwd: string, roots: readonly string[], home: string, disk: AreaDisk = AREA_DISK,
+  cwd: string, roots: readonly string[], home: string, disk: AreaDisk = AREA_DISK, options: WalkOptions = {},
 ): boolean {
   const real = onDiskForms(roots, home, disk.realpath);
   if (!insideWorkArea(cwd, [...roots, ...real.roots], home)) return false;
-  const walked = resolveInWorkArea(cwd, real.roots, real.home, disk);
+  const walked = resolveInWorkArea(cwd, real.roots, real.home, disk, options);
   if (walked.kind !== 'resolved') return walked.kind === 'missing';
   const inRoots = real.roots.some((root) => path.isAbsolute(root) && isWithin(walked.path, path.resolve(root)));
   return inRoots
@@ -179,7 +212,8 @@ export function inWorkAreaOnDisk(
  * resolve before the text check, never `cwd`, and a root counts in both forms: one that is a symlink into a protected
  * folder (`/srv/code -> ~/Desktop/project`) opens the physical path a pane reports. Then the walk
  * ({@link resolveInWorkArea}), which stops before an excluded folder, and the excluded folders once more on the path
- * it resolves to. A path the walk cannot resolve is not excluded: nothing can be read through it.
+ * it resolves to. A path the walk cannot resolve is not excluded: nothing can be read through it. A guarded folder
+ * the folder gate holds closed on the way counts as excluded, so git does not run there.
  */
 export function inExcludedOnDisk(
   cwd: string, roots: readonly string[], home: string, disk: AreaDisk = AREA_DISK,

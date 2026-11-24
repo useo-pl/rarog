@@ -9,7 +9,8 @@ import type { CliDialogClass } from '@rarog/shared';
 import type { ActiveReq, DecisionCard } from './cards/build.ts';
 import type { ConsentDeskRelease } from './layer1/desk-reason.ts';
 import type { ConsentEffectiveMode } from './layer1/mode.ts';
-import { consentDigitBlocked } from './router.ts';
+import { consentDigitBlocked, consentDigitException } from './router.ts';
+import type { ConsentDigitException, ConsentDigitInput } from './router.ts';
 import { screenCardUnavailable } from './screen-unavailable.ts';
 
 /**
@@ -43,22 +44,46 @@ export function consentModeNow(deps: ConsentGateSource): ConsentEffectiveMode | 
  * `cliDialog` is the registry class of the standing dialog (`CliReserve.cliWaiting`).
  */
 export function consentDigitRefused(
-  deps: ConsentGateSource, cliDialog: CliDialogClass | null, card: Pick<ActiveReq, 'toolName' | 'measuredConsent'>,
-  consent: boolean,
+  deps: ConsentGateSource, cliDialog: CliDialogClass | null, card: ConsentGateCard, consent: boolean,
 ): boolean {
   try {
-    return consentDigitBlocked({
-      mode: consentModeNow(deps), cliDialog, toolName: card.toolName, consent,
-      measured: card.measuredConsent,
-    });
+    return consentDigitBlocked(gateInput(deps, cliDialog, card, consent));
   } catch {
     return true;
   }
 }
 
+/** The card fields the gate reads. */
+export type ConsentGateCard = Pick<ActiveReq, 'toolName' | 'measuredConsent' | 'screenFallback'>;
+
+/**
+ * The exception that opens the "Yes" digit of the card in channel mode (`consentDigitException`), `null` without one,
+ * in `off` and `shadow` (no gate there) and on an exception.
+ */
+export function consentDigitOpenedBy(
+  deps: ConsentGateSource, cliDialog: CliDialogClass | null, card: ConsentGateCard,
+): ConsentDigitException | null {
+  try {
+    return consentDigitException(gateInput(deps, cliDialog, card, true));
+  } catch {
+    return null;
+  }
+}
+
+function gateInput(
+  deps: ConsentGateSource, cliDialog: CliDialogClass | null, card: ConsentGateCard, consent: boolean,
+): ConsentDigitInput {
+  return {
+    mode: consentModeNow(deps), cliDialog, toolName: card.toolName, consent,
+    ...(card.measuredConsent === undefined ? {} : { measured: card.measuredConsent }),
+    ...(card.screenFallback === undefined ? {} : { fallback: card.screenFallback }),
+  };
+}
+
 /**
  * Karta zgody w trybie kanału (`main`): bez przycisku zgody i bez „nie pytaj więcej”, bo cyfra i tak by nie wyszła
- * ({@link consentDigitRefused}). Każda inna karta i każdy inny tryb bez zmian. A consent card that has no approve
+ * ({@link consentDigitRefused}); a card the emergency mark opens keeps the approve button without "always". Każda
+ * inna karta i każdy inny tryb bez zmian. A consent card that has no approve
  * button for that or for its text also carries the reason (`unavailable`, `screen-unavailable.ts`).
  */
 export function consentOnlyEvent(
@@ -73,9 +98,13 @@ export function consentOnlyEvent(
     sessionCwd: session.cwd,
   });
   const reason = unavailable === undefined ? {} : { unavailable };
-  if (!blocked) return { ...event, ...reason };
   const { alwaysLabel: _always, ...rest } = event;
   void _always;
+  // The emergency button approves this call once: the "always" option stays at the desk.
+  if (!blocked) {
+    const emergency = consentDigitOpenedBy(deps, cliDialog, active) === 'screen-fallback';
+    return emergency ? { ...rest, ...reason } : { ...event, ...reason };
+  }
   return { ...rest, canAllow: false, ...reason };
 }
 

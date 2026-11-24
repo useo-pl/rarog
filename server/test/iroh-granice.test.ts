@@ -67,6 +67,8 @@ const DYNAMIC_IMPORTS: Readonly<Record<string, number>> = {
   'server/src/install/sdk.ts': 1, // SDK Claude po jawnej ścieżce w katalogu danych (`importSdkFrom`), sdk-boundary
   // A named demo content set from the set directory of the install (`loadDemoSet`); the name has `DEMO_SET_NAME` shape.
   'server/src/demo/content/named-set.ts': 1,
+  // The folder helper loads its own module from the path the start command passes (`process.argv[1]`).
+  'server/src/folder-gate/helper.ts': 1,
 };
 
 describe('granice iroh: biblioteka natywna', () => {

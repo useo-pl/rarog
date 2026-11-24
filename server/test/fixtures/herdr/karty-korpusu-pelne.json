@@ -9,9 +9,9 @@
     "input": "decideCard: blockedSeq 1, answeredSeq -1, active null, decided null, canRetry false, hookAnswersEnabled true; karta bez przycisków przez screenDialogCard bez klasy CLI"
   },
   "summary": {
-    "screens": 398,
-    "cards": 398,
-    "buttons": 275,
+    "screens": 399,
+    "cards": 399,
+    "buttons": 276,
     "noButtons": 123
   },
   "screens": {
@@ -1108,6 +1108,37 @@
       "screenPrint": "4fb94e3c28e1ae33",
       "blockVisible": false,
       "card": "7a0adafc8ac06440dd7d49e1b7c3135745887936f154b4bd53014dee234e103a"
+    },
+    "dialog-exitplanmode-50kol-2.1.331.txt": {
+      "action": "card",
+      "event": "permission-request",
+      "reqId": "screen:p:83e44e42bb2c",
+      "toolName": "ExitPlanMode",
+      "knownDialog": null,
+      "dialogKind": "tool",
+      "options": [
+        {
+          "digit": "1",
+          "label": "Yes, and use auto mode",
+          "terminalOnly": true
+        },
+        {
+          "digit": "2",
+          "label": "Yes, manually approve edits"
+        },
+        {
+          "digit": "3",
+          "label": "Tell Claude what to change"
+        }
+      ],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "b35e560d74548be0",
+      "screenPrint": "b35e560d74548be0",
+      "blockVisible": true,
+      "card": "49882673696074dd6b2aa78d6d98fbbfdc6386f9428bdd587ce4fea3e1e00e1f"
     },
     "dialog-exitplanmode.txt": {
       "action": "card",

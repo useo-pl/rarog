@@ -30,12 +30,19 @@
  * Awaria watchera (EMFILE w piaskownicy, katalog zniknął) jest CICHA: schodzimy do
  * dotychczasowych wyzwalaczy, bez logu przy każdym zdarzeniu. Ponowna próba dopiero wtedy,
  * gdy repo zostanie zwolnione (ostatni `unwatch`) i ktoś je znów zarejestruje.
+ *
+ * `fs.watch` runs in the server process and, in a macOS-guarded folder of home, waits for the consent window. So a
+ * repo whose watched directories lie in such a folder, in any spelling of home or through a symlink, is watched only
+ * while the folder gate holds every one of those folders `open`: an unknown folder is checked first, a closed one
+ * pauses the repo (counts and directories stay), and `open` starts the watchers again with one read, because changes
+ * made meanwhile were not seen.
  */
 import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
-import { statSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import { readRegularFileSync } from './safe-read.ts';
+import { DIRECT_DISK, guardedFolderOf } from './folder-gate/disk.ts';
+import { folderGate } from './folder-gate/install.ts';
+import type { FolderGate } from './folder-gate/types.ts';
 
 /** Zwłoka między pierwszym zdarzeniem burzy a odczytem (ms) — patrz reguła 2 w nagłówku. */
 export const DEFAULT_GIT_WATCH_DEBOUNCE_MS = 750;
@@ -94,7 +101,7 @@ export function findGitDirs(cwd: string): GitDirs | null {
  */
 function readPointer(path: string): string | null {
   try {
-    const read = readRegularFileSync(path, { maxBytes: GIT_POINTER_MAX_BYTES, followSymlink: false });
+    const read = DIRECT_DISK.sync('readHead', { path, maxBytes: GIT_POINTER_MAX_BYTES, followSymlink: false });
     return read === null || read.truncated ? null : read.bytes.toString('utf8');
   } catch {
     return null;
@@ -108,7 +115,7 @@ function readPointer(path: string): string | null {
  */
 function isDirectory(path: string): boolean {
   try {
-    return statSync(path).isDirectory();
+    return DIRECT_DISK.sync('stat', { path }).isDirectory();
   } catch {
     return false;
   }
@@ -117,7 +124,7 @@ function isDirectory(path: string): boolean {
 function resolveGitDir(candidate: string, base: string): string | null {
   let stat;
   try {
-    stat = statSync(candidate);
+    stat = DIRECT_DISK.sync('stat', { path: candidate });
   } catch {
     return null;
   }
@@ -152,6 +159,8 @@ export interface GitRepoWatcherOptions {
   watchFn?: typeof watch;
   /** Wstrzykiwalny zegar (testy) — mierzy odstęp między odczytami. */
   now?: () => number;
+  /** The folder gate of the guarded folders; default the gate of the process when the watcher is made. */
+  gate?: FolderGate;
 }
 
 interface RepoWatch {
@@ -163,6 +172,12 @@ interface RepoWatch {
   lastFiredAt: number | null;
   /** Awaria watchera: repo zostaje na liście bez obserwacji do zwolnienia ostatniego cwd. */
   failed: boolean;
+  /** The directories `fs.watch` opens: `gitDir`, and `commonDir` of a linked worktree. */
+  targets: string[];
+  /** The guarded folders the targets lie in; empty outside them or with the gate off. */
+  folders: string[];
+  /** Not watched until every folder in `folders` is open. */
+  paused: boolean;
 }
 
 /**
@@ -179,6 +194,8 @@ export class GitRepoWatcher {
   readonly #repos = new Map<string, RepoWatch>();
   /** cwd → klucz repo (`gitDir`); `null` = katalog bez gita (też liczony, żeby `unwatch` był symetryczny). */
   readonly #byCwd = new Map<string, { gitDir: string | null; count: number }>();
+  readonly #gate: FolderGate;
+  readonly #offGate: () => void;
   #closed = false;
 
   constructor(opts: GitRepoWatcherOptions) {
@@ -188,6 +205,8 @@ export class GitRepoWatcher {
     this.#minIntervalMs = opts.minIntervalMs ?? DEFAULT_GIT_WATCH_MIN_INTERVAL_MS;
     this.#watchFn = opts.watchFn ?? watch;
     this.#now = opts.now ?? (() => Date.now());
+    this.#gate = opts.gate ?? folderGate();
+    this.#offGate = this.#gate.onChange((folder) => { this.#folderChanged(folder); });
   }
 
   /** Repozytoria pod obserwacją (diagnostyka i testy). */
@@ -200,7 +219,7 @@ export class GitRepoWatcher {
     const entry = this.#byCwd.get(cwd);
     if (entry === undefined || entry.gitDir === null) return false;
     const repo = this.#repos.get(entry.gitDir);
-    return repo !== undefined && !repo.failed;
+    return repo !== undefined && !repo.failed && !repo.paused;
   }
 
   watch(cwd: string): void {
@@ -215,23 +234,39 @@ export class GitRepoWatcher {
      * a `git init` przyszedł później z terminala. Każdy kolejny `watch` takiego cwd pyta
      * dysk od nowa (tani `stat`) i dopiero znalezione repo dostaje watcher.
      */
-    const dirs = findGitDirs(cwd);
-    const gitDir = dirs?.gitDir ?? null;
-    if (known !== undefined) {
-      known.count += 1;
-      known.gitDir = gitDir;
+    let entry = known;
+    if (entry !== undefined) {
+      entry.count += 1;
     } else {
-      this.#byCwd.set(cwd, { gitDir, count: 1 });
+      entry = { gitDir: null, count: 1 };
+      this.#byCwd.set(cwd, entry);
     }
-    if (dirs === null || gitDir === null) return;
+    this.#attach(cwd, entry);
+  }
 
+  /**
+   * Finds the repo of `cwd` and joins it, making and starting the repo when it is new; `null` without a repo. A pointer
+   * file (`.git` of a worktree, `commondir`) in a guarded folder that is not open cannot be read, so the folder's
+   * `open` asks again ({@link #folderChanged}).
+   */
+  #attach(cwd: string, entry: { gitDir: string | null }): RepoWatch | null {
+    const dirs = findGitDirs(cwd);
+    entry.gitDir = dirs?.gitDir ?? null;
+    if (dirs === null) return null;
+    const gitDir = dirs.gitDir;
     let repo = this.#repos.get(gitDir);
     if (repo === undefined) {
-      repo = { watchers: [], cwds: new Set(), timer: null, lastFiredAt: null, failed: false };
+      const targets = dirs.commonDir === null ? [gitDir] : [gitDir, dirs.commonDir];
+      repo = {
+        watchers: [], cwds: new Set(), timer: null, lastFiredAt: null, failed: false, targets,
+        folders: this.#foldersOf(targets), paused: false,
+      };
       this.#repos.set(gitDir, repo);
-      this.#start(gitDir, dirs, repo);
+      if (this.#allOpen(repo)) this.#start(gitDir, repo);
+      else repo.paused = true;
     }
     repo.cwds.add(cwd);
+    return repo;
   }
 
   unwatch(cwd: string): void {
@@ -252,14 +287,88 @@ export class GitRepoWatcher {
 
   close(): void {
     this.#closed = true;
+    this.#offGate();
     for (const repo of this.#repos.values()) this.#stop(repo);
     this.#repos.clear();
     this.#byCwd.clear();
   }
 
-  #start(gitDir: string, dirs: GitDirs, repo: RepoWatch): void {
-    const targets = dirs.commonDir === null ? [gitDir] : [gitDir, dirs.commonDir];
-    for (const dir of targets) {
+  /**
+   * The guarded folders `targets` lie in, as written or where they resolve (`realpath`, and `realpathNative` in the
+   * letter case of the disk): `fs.watch` follows a symlink, and the gate judges text only. Each form is judged by the
+   * port's rule, which knows every spelling of home (as written, on disk, another letter case), not only home as the
+   * gate was given it. Both are metadata, which never waits for a consent window; when neither resolves, the text
+   * alone decides.
+   */
+  #foldersOf(targets: readonly string[]): string[] {
+    if (!this.#gate.enabled) return [];
+    const folders = new Set<string>();
+    for (const target of targets) {
+      const forms = [target];
+      for (const op of ['realpath', 'realpathNative'] as const) {
+        try {
+          forms.push(DIRECT_DISK.sync(op, { path: target }));
+        } catch {
+          // The other forms decide.
+        }
+      }
+      for (const form of forms) {
+        const folder = this.#gate.stateOf(form)?.folder ?? guardedFolderOf(form)?.folder;
+        if (folder !== undefined) folders.add(folder);
+      }
+    }
+    return [...folders];
+  }
+
+  /** Whether every guarded folder of the repo is open; an unknown one gets a check, whose `open` starts the repo. */
+  #allOpen(repo: RepoWatch): boolean {
+    let ready = true;
+    for (const folder of repo.folders) {
+      const state = this.#gate.stateOf(folder)?.state;
+      if (state === 'open') continue;
+      ready = false;
+      if (state === 'unknown') void this.#gate.check(folder, 0);
+    }
+    return ready;
+  }
+
+  /**
+   * A folder changed state: repos in it pause when it closes and start again, with one read, when all their folders
+   * are open. On `open` the pointer files there can be read: a directory in the folder that found no repo looks again,
+   * and a paused repo reads its `commondir` again, so a worktree whose shared refs lie in the folder watches them too.
+   */
+  #folderChanged(folder: string): void {
+    if (this.#closed) return;
+    if (this.#gate.stateOf(folder)?.state === 'open') {
+      for (const [cwd, entry] of this.#byCwd) {
+        if (entry.gitDir !== null || !this.#foldersOf([cwd]).includes(folder)) continue;
+        const repo = this.#attach(cwd, entry);
+        if (repo !== null && entry.gitDir !== null && !repo.paused) this.#bump(entry.gitDir, repo);
+      }
+    }
+    for (const [gitDir, repo] of [...this.#repos]) {
+      if (repo.failed) continue;
+      // The `commondir` file lies in `gitDir`; read only while its folder is open, so no read waits here.
+      if (repo.paused && this.#foldersOf([gitDir]).every((one) => this.#gate.stateOf(one)?.state === 'open')) {
+        const commonDir = readCommonDir(gitDir);
+        repo.targets = commonDir === null ? [gitDir] : [gitDir, commonDir];
+        repo.folders = this.#foldersOf(repo.targets);
+      }
+      if (!repo.folders.includes(folder)) continue;
+      if (this.#allOpen(repo)) {
+        if (!repo.paused) continue;
+        repo.paused = false;
+        this.#start(gitDir, repo);
+        this.#bump(gitDir, repo);
+      } else if (!repo.paused) {
+        repo.paused = true;
+        this.#stop(repo);
+      }
+    }
+  }
+
+  #start(gitDir: string, repo: RepoWatch): void {
+    for (const dir of repo.targets) {
       try {
         // `persistent: false` — obserwator gita nie ma prawa trzymać procesu przy życiu.
         const watcher = this.#watchFn(dir, { recursive: true, persistent: false }, (_event, name) => {

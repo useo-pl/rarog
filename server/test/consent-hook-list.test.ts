@@ -1144,3 +1144,11 @@ describe('dowiązanie przełączone po starcie sesji (prawdziwy dysk)', () => {
     expect(await scene('stale', 'b')).toEqual({ ok: true });
   });
 });
+
+describe('nodeHookListIo.readdir: names only', () => {
+  // An entry whose type cannot be read (`/dev/fd` on macOS fails `withFileTypes` with EBADF) must not turn the
+  // whole directory into an error or into "absent", which would hide the other hook files.
+  it('lists a directory whose entries cannot be typed', async () => {
+    expect(await nodeHookListIo.readdir('/dev/fd')).toEqual(expect.arrayContaining(['0', '1', '2']));
+  });
+});

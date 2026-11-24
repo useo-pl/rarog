@@ -320,4 +320,22 @@ describe('check.yml: jobs per event', () => {
     expect(job, 'the summary names the part').toMatch(
       /^ +run: node scripts\/lib\/ci-summary\.mjs "\$RUNNER_TEMP\/vitest\.json" "[^"]*\$PART\/\$PARTS[^"]*"/mu);
   });
+
+  // Tests that need the push relay or the `relay-auth` Worker skip themselves without their install, so a job that
+  // lacks one reports green with fewer tests than the other jobs.
+  it('every job that runs the server tests installs the repository, relay and relay-auth before `pnpm test`', () => {
+    const installs = ['pnpm install --frozen-lockfile', 'pnpm -C relay install --frozen-lockfile',
+      'pnpm -C relay-auth install --frozen-lockfile'];
+    const testJobs = [...jobs(text)].filter(([, job]) => /\bpnpm test\b/u.test(code(job)));
+    expect(testJobs.map(([id]) => id).sort()).toEqual(['macos-tests', 'tests']);
+    for (const [id, job] of testJobs) {
+      const body = code(job);
+      const tests = body.search(/^ +run: pnpm test\b/mu);
+      for (const install of installs) {
+        const at = body.indexOf(`run: ${install}\n`);
+        expect(at, `${id}: ${install}`).toBeGreaterThan(-1);
+        expect(at, `${id}: ${install} before pnpm test`).toBeLessThan(tests);
+      }
+    }
+  });
 });

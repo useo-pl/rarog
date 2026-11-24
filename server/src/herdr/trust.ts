@@ -15,10 +15,10 @@
  *
  * Rarog tego pliku NIGDY nie zapisuje (`docs/security-model.md`, „Starting sessions from the phone: three powers”).
  */
-import { lstat as fsLstat, readFile as fsReadFile, stat as fsStat } from 'node:fs/promises';
+import { readFile as fsReadFile, stat as fsStat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { readRegularFile } from '../safe-read.ts';
+import { DIRECT_DISK, type WorkAreaDisk } from '../folder-gate/disk.ts';
 
 /**
  * Jak długo trzymamy wynik bez parsowania pliku od nowa: pełny odczyt i `JSON.parse` całego `~/.claude.json` przy
@@ -67,11 +67,13 @@ export interface TrustCheckOptions {
   statGit?: (gitPath: string) => Promise<GitEntryKind | null>;
   /** Treść pliku `.git` (worktree, submoduł); `null` = to nie jest plik zwykły. */
   readGitFile?: (gitPath: string) => Promise<string | null>;
+  /** The disk of the default `statGit` and `readGitFile`: the `.git` entries lie in the work area. */
+  disk?: WorkAreaDisk;
 }
 
-async function defaultStatGit(gitPath: string): Promise<GitEntryKind | null> {
+async function defaultStatGit(disk: WorkAreaDisk, gitPath: string): Promise<GitEntryKind | null> {
   try {
-    const st = await fsLstat(gitPath);
+    const st = await disk.call('lstat', { path: gitPath });
     if (st.isDirectory()) return 'directory';
     return st.isFile() ? 'file' : 'other';
   } catch (err) {
@@ -81,8 +83,8 @@ async function defaultStatGit(gitPath: string): Promise<GitEntryKind | null> {
   }
 }
 
-async function defaultReadGitFile(gitPath: string): Promise<string | null> {
-  const read = await readRegularFile(gitPath, { maxBytes: GIT_FILE_MAX_BYTES, followSymlink: false });
+async function defaultReadGitFile(disk: WorkAreaDisk, gitPath: string): Promise<string | null> {
+  const read = await disk.call('readHead', { path: gitPath, maxBytes: GIT_FILE_MAX_BYTES, followSymlink: false });
   return read === null ? null : read.bytes.toString('utf8');
 }
 
@@ -179,8 +181,11 @@ export function createTrustCheck(opts: TrustCheckOptions = {}): TrustCheck {
     return `${st.mtimeMs}:${st.size}`;
   });
   const home = path.resolve(opts.home ?? os.homedir());
-  const statGit = opts.statGit ?? defaultStatGit;
-  const readGitFile = opts.readGitFile ?? defaultReadGitFile;
+  const disk = opts.disk ?? DIRECT_DISK;
+  const statGit = opts.statGit
+    ?? (async (gitPath: string): Promise<GitEntryKind | null> => defaultStatGit(disk, gitPath));
+  const readGitFile = opts.readGitFile
+    ?? (async (gitPath: string): Promise<string | null> => defaultReadGitFile(disk, gitPath));
 
   let cache: CacheEntry | null = null;
   /** Dedup równoległych wywołań: dwie karty naraz nie mają czytać 210 kB dwa razy. */

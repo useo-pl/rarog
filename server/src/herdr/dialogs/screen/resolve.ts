@@ -52,12 +52,14 @@ function mcpWords(text: string): string {
 }
 
 /**
- * Czy tytuł narzędzia MCP z ekranu ({@link ScreenDialog.mcpTool}) jest TYM narzędziem z jsonl/hooka?
+ * Whether the MCP tool title on screen ({@link ScreenDialog.mcpTool}) is THIS tool from the jsonl entry or hook dump.
  *
- * Nazwa `mcp__<serwer>__<narzędzie>` traci przedrostek `<serwer>_` (serwer `catalog` nazywa narzędzia
- * `catalog_get_task`) i oba teksty idą do słów bez wielkości liter. Tytuł, który nie powtarza nazwy
- * (serwer nadał narzędziu inny tytuł), daje `false`: rozjazd, karta bez przycisków. Sam serwer
- * nie wystarcza: karta `delete_task` przeszłaby nad dialogiem `get_project_tree_layout`.
+ * Both texts become lower-case words. The title matches `<tool>` of `mcp__<server>__<tool>` without the `<server>_`
+ * prefix (server `catalog` names its tools `catalog_get_task`, title "Get Task") or the whole `<tool>`, when the
+ * title repeats the prefix ("Catalog get task"). A title that repeats neither (the server gave the tool another
+ * title) gives `false`: a mismatch, a card without buttons. The server alone is not enough: a `delete_task` card
+ * would pass over a `get_project_tree_layout` dialog. The two forms cannot tell `x_get` from `x_x_get` on one server
+ * (both read "X get"): the screen shows no raw tool name, so a server with a doubled prefix stays ambiguous.
  */
 export function mcpTitleMatches(toolName: string, screenTitle: string | null): boolean {
   const match = MCP_TOOL_NAME_PATTERN.exec(toolName);
@@ -65,8 +67,8 @@ export function mcpTitleMatches(toolName: string, screenTitle: string | null): b
   const tool = match?.[2];
   if (server === undefined || tool === undefined || screenTitle === null) return false;
   const bare = tool.startsWith(`${server}_`) ? tool.slice(server.length + 1) : tool;
-  const words = mcpWords(bare);
-  return words !== '' && words === mcpWords(screenTitle);
+  const title = mcpWords(screenTitle);
+  return title !== '' && (title === mcpWords(bare) || title === mcpWords(tool));
 }
 
 /** Nazwa narzędzia, którego dialog jest FORMULARZEM pytania, a nie zgodą na wykonanie. */

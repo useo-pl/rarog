@@ -9,9 +9,9 @@
  *   activity), sponsored servers, sponsorship reservations and markers of new sponsorships (quota in 30 days). Each
  *   sponsorship has its own identifier (`ticket`, assigned at reservation). A server entry has a list of
  *   sponsorships `(app, incarnation, ticket)` and lives while at least one sponsorship lives.
- * - {@link GateDesk}: one object (`Gate`) every new registration goes through: daily brake per gate, device
- *   quota (DeviceCheck bits or a counter per APNs token digest), the Apple call, a durable admission, and only then
- *   the entry write.
+ * - {@link GateDesk}: one object (`Gate`) every new registration goes through, one request per client bucket at a
+ *   time: daily brake per gate, device quota (DeviceCheck bits or a counter per APNs token digest), the Apple call,
+ *   a durable admission, and only then the entry write.
  * - {@link DenyBook}: one object (`Admin`), the denial list with one-year retention, independent of entry TTLs,
  *   mirrored in KV.
  *
@@ -67,7 +67,10 @@ export const QUOTA_WINDOW_SECONDS = 30 * 24 * 3600;
 export const DENY_TTL_SECONDS = 365 * 24 * 3600;
 /** Cap on one server's sponsorships at once (store protection; the app limit gives the traffic quota). */
 export const SERVER_SPONSORS_MAX = 32;
-/** Most registrations waiting in the gate queue; further ones get `unavailable`. */
+/**
+ * Most registrations waiting in the gate queue; further ones get `unavailable`. One client bucket holds at most one
+ * place ({@link GateDesk.register}).
+ */
 export const GATE_QUEUE_MAX = 32;
 /**
  * How long after `forget` the second drop of the forgotten incarnation's sponsorships waits (late in-flight write,
@@ -716,7 +719,8 @@ export type RegisterOutcome =
   | { readonly ok: false; readonly error: RegisterError; readonly apple?: AppleFailure };
 
 export interface GateApi {
-  register(endpointId: string, proof: GateProof): Promise<RegisterOutcome>;
+  /** `bucket`: the client's address bucket at the gate (`gateBucket` in `core.ts`). */
+  register(endpointId: string, proof: GateProof, bucket: string): Promise<RegisterOutcome>;
 }
 
 export interface GateDeps {
@@ -748,6 +752,8 @@ type Charged = { readonly ok: true; readonly admission: Admission } | Extract<Re
 export class GateDesk implements GateApi {
   readonly #deps: GateDeps;
   readonly #serial = new Serial();
+  /** Client buckets with a registration waiting in the queue or running. */
+  readonly #inFlight = new Set<string>();
 
   constructor(deps: GateDeps) {
     this.#deps = deps;
@@ -757,10 +763,17 @@ export class GateDesk implements GateApi {
    * Registration of an app EndpointId: one at a time. A live app entry = renewal without quota and without Apple; a
    * server entry = `kind-conflict`; no live entry = admission (the gate's daily brake, device quota, Apple) written
    * durably, and only then a new entry from that admission.
+   *
+   * One request per client bucket waits or runs at a time; another one from that bucket gets `limited` at once, so
+   * one client holds at most one place in the queue and cannot block the others' registrations. The Apple call stays
+   * inside the queue: the DeviceCheck bits are read and written in one step per registration.
    */
-  register(endpointId: string, proof: GateProof): Promise<RegisterOutcome> {
+  register(endpointId: string, proof: GateProof, bucket: string): Promise<RegisterOutcome> {
+    if (this.#inFlight.has(bucket)) return Promise.resolve({ ok: false, error: 'limited' });
     if (this.#serial.pending >= GATE_QUEUE_MAX) return Promise.resolve({ ok: false, error: 'unavailable' });
-    return this.#serial.run(() => this.#register(endpointId, proof));
+    this.#inFlight.add(bucket);
+    return this.#serial.run(() => this.#register(endpointId, proof))
+      .finally(() => { this.#inFlight.delete(bucket); });
   }
 
   async #register(endpointId: string, proof: GateProof): Promise<RegisterOutcome> {

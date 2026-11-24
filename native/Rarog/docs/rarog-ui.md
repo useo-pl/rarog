@@ -74,21 +74,57 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   system's private ones too, for a pointer press the screen claims (`MessageTextView.gestureRecognizerShouldBegin(_:)`,
   `yieldsPointerPress(at:)`): a press on a message's text, not on Show All, a code block's copy icon, a table, a queued
   bubble that takes the queue back or a card; a right click only on the visible highlight (not on the folded lines of a
-  prompt). Hover keeps the text cursor shape; a finger and the pencil keep the system selection above. A drag selects
-  from the press point; over a card or a gap the focus snaps to the nearest text row. The press point, the double or
-  triple clicked unit and the selection follow a streaming reply into its message when it closes; a press whose text
-  changed before its point ends there. Near or past the top or bottom edge of the list (a 44 pt band) the list scrolls
-  by itself, faster the farther the pointer, and the selection grows with it every frame, also with the pointer still
-  (`+PointerAutoscroll`). The press holds the list like a finger (`PinnedCollectionView.pointerScrolling`): while it
-  lasts the pin follows the distance from the bottom and the list does not follow a streaming reply; on release the pin
-  and the reading place follow where it stopped. A click without movement clears the selection, and on a link opens it
-  once the double click window passes; a double click selects a word, a triple click a paragraph. Cmd+C copies what is
-  highlighted (rows of one message joined by a line break, messages by a blank line, cards, tools and images left out),
-  unless the message field has a selection of its own, and gives the focus back to the field; the right click on the
-  highlight offers Copy and Select More…. A pointer selection clears the system selection in the cells and in their
-  tables, and the other way round. `client.log` gets the first press of each touch kind and the first three selection
-  gestures per process, without text (`TranscriptPointerTraceBudget`). Tests: `TranscriptPointerSelectionTests` (RarogUI
-  and `RarogUIKitTests`), `TranscriptPointerTraceBudgetTests`, `TranscriptPointerSelectionUITests`.
+  prompt). Hover keeps the text cursor shape (over inline code that opens a file the next item asks for another); a
+  finger and the pencil keep the system selection above. A drag selects from the press point and takes the character
+  whose glyph holds it: forward from its start, backward from its end (`pointerPressedCharacter(at:from:)`); on white
+  space, a margin or past a line's end it starts at the nearest caret. The focus follows the nearest caret; over a
+  card or a gap it snaps to the nearest text row. The press point, the double or triple clicked unit and the
+  selection follow a streaming reply into its message when it closes; a press whose text changed before its point
+  ends there. Near or past the top or bottom edge of the list (a 44 pt band) the list scrolls by itself, faster the
+  farther the pointer, and the selection grows with it every frame, also with the pointer still
+  (`+PointerAutoscroll`). The press holds the list like a finger
+  (`PinnedCollectionView.pointerScrolling`): while it lasts the pin follows the distance from the bottom and the list
+  does not follow a streaming reply; on release the pin and the reading place follow where it stopped. A click without
+  movement clears the selection, and on a link opens it once the double click window passes; a double click selects a
+  word, a triple click a paragraph. Cmd+C copies what is highlighted (rows of one message joined by a line break,
+  messages by a blank line, cards, tools and images left out), unless the message field has a selection of its own, and
+  gives the focus back to the field; the right click on the highlight offers Copy and Select More…. A pointer selection
+  clears the system selection in the cells and in their tables, and the other way round. `client.log` gets the first
+  press of each touch kind and the first three selection gestures per process, without text
+  (`TranscriptPointerTraceBudget`). Tests: `TranscriptPointerSelectionTests` (RarogUI and `RarogUIKitTests`),
+  `TranscriptPointerTraceBudgetTests`, `TranscriptPointerSelectionUITests`.
+- **File path in the transcript:** a pointer click without movement or a single finger or pencil tap on inline code
+  (`rarogInlineCode`) in a message of the session screen opens the session file it names in the Files tree's preview
+  (`SessionViewController+FileOpen`). The whole inline code run under the character is the candidate
+  (`MessageContentView.inlineCode(at:from:)`, `Model/TranscriptFilePath`): a trailing line reference and a leading
+  `./` go, an absolute path under the session directory becomes relative, anything else outside it, `~`, `..`, a URL
+  or white space is no candidate. It resolves against the session's file index as an exact path, else as the one index
+  path ending with it (a bare name only with an extension, and only in an index no ceiling cut). The screen's one
+  `Model/TranscriptFileOpener` asks for the index itself (`RarogStore.sessionFileIndex`, without the Files panel),
+  keeps it, asks again only on a miss once the index is older than the refresh gap, and hands the path to
+  `FilePreviewModel` with the index's limit, so the fetch, the bubbles and the copy are the tree's; the preview stands
+  from the session screen (`FilePreviewPresenter`). The open waits for the double click window like a link: a double
+  click or double tap selects a word instead, and a new touch in a message, a system selection, a scroll or leaving
+  the screen ends it; an open still pending 5 s after the tap ends silently. A finger touch held 0.5 s or longer is
+  a long press, not a tap; a tap that stops a moving list or comes while a system selection stands opens nothing.
+  A link on the character wins, a queued bubble keeps its take-back tap, and Show All, a code block's copy icon,
+  tables, cards, a paragraph with right-to-left script (its code has no `rarogInlineCode`) and Inbox cards open
+  nothing. A miss shows nothing and
+  `client.log` gets one line per reason per screen, without the path (`transcript file: not opened, <reason>`).
+  Inline code looks as before at rest. Under the pointer, a run that resolves to a session file gets a dotted underline
+  in the inline code ink, and a pointer interaction on that underline asks for a rounded rect around the run's line
+  (`SessionViewController+FileHover`, `MessageContentView+FileHover`); elsewhere nothing is added and the text beam
+  stays. The hover takes the click's decision (the same run,
+  the same rules for links, controls, tables, cards, queued bubbles and Inbox cards) and asks the same opener, which
+  answers from the index it keeps, never refreshes it on a miss and writes no trace. Without an index the hover starts
+  the one load (or joins a click's), and when it ends the decision runs again where the pointer is; after a failed
+  load the hover does not ask again within the refresh gap. The underline is a view inside the message field, above
+  its text (the inline code background would cover a view under it): the text and its layout do not change, and its
+  hit test answers only for the pointer, never for touches, so clicks, taps and presses reach the field and the list
+  as before. It goes when the pointer leaves the run or the list, the list scrolls, a press or a touch begins, the
+  screen leaves, or the row shows other text. On a Mac (Designed for iPad) the same shape is asked for. Git-ignored
+  files are not in the index and do not open. Tests: `TranscriptFilePathTests`, `TranscriptFileOpenerTests`
+  (RarogUI), `TranscriptFileOpenTests` (`RarogUIKitTests`).
 - **Tool card:** consecutive tool rows with nothing between them draw as ONE card: a `toolCard` fill, corners rounded
   only on the outside (`UnevenRoundedRectangle.block(top:bottom:)`), a one-pixel `border` line where rows meet. The
   chain is computed over ROWS, across message boundaries (live, each call can be a separate message):
@@ -122,11 +158,16 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   - **Question to the user:** a paragraph from a bold `MarkdownQuestion.markers` entry (`Do Ciebie:` or `To you:`)
     to the end of the text stands behind a 3 pt `wait` bar (`MarkdownLayoutFragment.questionBar`), only in an agent
     reply (`MarkdownRenderer.Style.questions`).
-  - **Fold:** `MarkdownFold.fold` decides what a collapsed message shows. Lines are source lines with a visible
-    character. Up to 12 lines the text stands whole; a longer one gives its first paragraph (the first 4 lines when
-    it does not start with a paragraph), the question block to the end, and the number of lines hidden between
+  - **Summary:** a top-level paragraph from a bold `MarkdownSummary.markers` entry (`TLDR:` or `TL;DR:`), or a
+    quote whose first block is one (`> **TLDR:** …`), is the agent's summary; the first one counts. A marker in a
+    list item, heading, code block or nested quote does not. Tests: `MarkdownSummaryTests`.
+  - **Fold:** `MarkdownFold.fold` decides what a collapsed message shows; the Inbox card calls it. Lines are source
+    lines with a visible character. Up to 12 lines the text stands whole. A longer one with a summary before the
+    question block gives the summary's lines, the question block to the end, and the number of the other lines
+    before the question, wherever they stand. Without such a summary it gives its first paragraph (the first 4
+    lines when it does not start with a paragraph), the question block and the number of lines hidden between
     them. A question in the first block, or a fold that would hide fewer than 2 lines, leaves the text whole.
-    No screen calls it. Tests: `MarkdownFoldTests`.
+    Tests: `MarkdownFoldTests`.
   - **Links:** a `https://claude.ai/…` address gets `#no_universal_links`, so the browser opens it, not the Claude app
     (`BrowserLinks`).
   - **Decorations:** `MarkdownLayoutFragment` draws the rule, quote bars and the inline code background (4 pt
@@ -289,16 +330,17 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     (`TerminalScreenViewController.takeEscape`), a sheet above the terminal goes first (`PresentedSheet.above`), and
     Esc commands do not repeat (`repeatBehavior`): a held key must not close the next layer, interrupt a turn or deny a
     card under a closed window.
-  - **History** (`Terminal/TerminalHistorySheet`, `TerminalHistoryModel`): a read-only `UITextView` scrolled to the
-    end, the row count, the 1000 line cut and a button to load up to 5000 lines. From a route it is an app sheet; from
-    the terminal window it is a PAGE of that window (`TerminalHistoryPage`): the terminal stays the root with the same
-    connection and sends nothing while the page is on top (`inputSuspended`). Both draw `TerminalHistoryBody`. After
-    loading, the text takes the keyboard (`SheetKeyboardAnchor.handKeyboard`), so Cmd+A and Cmd+C work at once.
+  - **History** (`Terminal/TerminalHistorySheet`; opened by Select Output with the text selection icon): a read-only
+    `UITextView` scrolled to the end, the row count, the 1000 line cut and a button to load up to 5000 lines. From a
+    route it is an app sheet; from the terminal window it is a PAGE of that window (`TerminalHistoryPage`): the terminal
+    stays the root with the same connection and sends nothing while the page is on top (`inputSuspended`). Both draw
+    `TerminalHistoryBody`. After loading, the text takes the keyboard (`SheetKeyboardAnchor.handKeyboard`), so Cmd+A and
+    Cmd+C work at once.
 - **Terminal screen** (navigation plugs in the route, tabs, history and windows; see "Terminal navigation"):
   `Terminal/TerminalScreenViewController` is the surface and the key bar in one stack pinned to `keyboardLayoutGuide`;
   while the on-screen keyboard slides, the surface moves with the key bar and its grid changes where it is out of
   sight (see "Size").
-  "⋯" (Copy, Paste, History) stands in the navigation bar's icon group and "×" in the current tab (`TerminalChrome`
+  "⋯" (Copy, Paste, Select Output) stands in the navigation bar's icon group and "×" in the current tab (`TerminalChrome`
   for `HeaderSessionSlot` and `HeaderTabsSlot`; in the icon group only without a tab bar). Keys draw at 36 pt in a
   44 pt target (Paste is a `UIPasteControl`, which takes touches only on itself). The status line overlaps the top of
   the surface, so connection messages do not change the grid; otherwise every connection and gesture would give two
@@ -397,7 +439,7 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   - **Hardware keys** (`TerminalSurfaceContainer`, map `TerminalKeyMap`): Cmd+. = Esc, Cmd+←/→ = Home/End in SS3,
     Cmd+↑/↓ = PageUp/PageDown, Cmd+K = Ctrl+L (the shell clears the screen like `clear` and keeps the typed line),
     Cmd+letter = Meta except the app's letters (`TerminalKeyMap.appLetters`), Cmd+Y =
-    History, Cmd+X = the terminal's "×" (the first press arms, the second within 5 s closes the shell; off in the
+    Select Output, Cmd+X = the terminal's "×" (the first press arms, the second within 5 s closes the shell; off in the
     Cmd+F/Cmd+G window through `closesByKey`).
   - **Arrow repeat** (`TerminalKeyRepeat`): the surface, not SwiftTerm, repeats hardware arrows: the first at once,
     then every 33 ms after 300 ms, bytes 1:1 with SwiftTerm's non-kitty path (`TerminalKeyMap.arrowBytes`). The series
@@ -599,10 +641,11 @@ Part of the app description: [native/Rarog/README.md](../README.md).
 - **Store observation:** `withObservationTracking` in `SessionViewController` (one state change = one ordered render);
   SwiftUI views read `store.state` directly.
 - **Color = state:** tokens from `docs/design.md` in `Theme/PaletteTokens.swift` (values, compile on macOS) and
-  `Theme/Palette.swift` (UIKit colors). Amber means only "someone is waiting" and Send; Allow is filled green, Deny a
-  red outline. The light `muted` is `#51515A`, because the dimmed transcript must stay above 7:1 and the neighboring
-  `#52525B` has 6.93:1. `PaletteContrastTests` checks the thresholds. The only color outside the state vocabulary is
-  syntax (`hl*`), only in code; every syntax color keeps at least 4.5:1 on its backgrounds. System buttons use an
+  `Theme/Palette.swift` (UIKit colors). Amber means only "someone is waiting" (an agent waiting for an answer, the
+  Mac waiting for a click in the macOS folder banner) and Send; Allow is filled green, Deny a red outline. The light
+  `muted` is `#51515A`, because the dimmed transcript must stay above 7:1 and the neighboring `#52525B` has 6.93:1.
+  `PaletteContrastTests` checks the thresholds. The only color outside the state vocabulary is syntax (`hl*`), only
+  in code; every syntax color keeps at least 4.5:1 on its backgrounds. System buttons use an
   achromatic tint (`.tint` = `text`). The list column stands on `background`, not the system `.sidebar` background,
   on which `muted2` would drop to 4.228:1.
 - **Corner radii = one scale** (`Theme/Radius.swift`): `block` 12 pt for every standalone block (bubble, tool row,
@@ -734,8 +777,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   unknown stored value means none. Nothing stored follows the system. While the system uses an accessibility size the
   app follows the system, ⌘+ and ⌘- are disabled, and the stored step comes back when the system leaves it; the
   system's size is read from the screen, because the scene carries the override, and followed through
-  `UIContentSizeCategory.didChangeNotification`. ⌘0 resets the size also with the session switcher open, which has
-  no row 0 and picks nothing.
+  `UIContentSizeCategory.didChangeNotification`. ⌘0 resets the size also with the session switcher open, which
+  stays open and picks nothing.
   The Text Size row of Settings shows the state (System Size or the step's name) and opens the Text Size page
   (`Views/TextScale/TextSizeSettingsPage`, rules in `TextScaleSettingsRow`): the seven steps, each name drawn in its
   own size, a check on the stored step, and Use System Size, shown only while a step is stored: the way back without
@@ -813,6 +856,23 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   by the end of the window, brings the old name back with `RarogNavigation.post`; a refusal after the window posts
   its sentence too. A paste over a selection moves the caret after the kept part even when the text stays the same,
   and a field that leaves the list without Return or Esc takes `TapBeside` off it (`didMoveToWindow`).
+- **Banner strip (`Views/BannerStack`, columns and order in `Model/BannerSlots`):** cards, never a modal; an empty
+  strip takes no height. An app banner is one line with a dot: red when something does not arrive or the version
+  blocks changes, gray for information and the connecting card. The macOS folder banner
+  (`Views/Banners/MacFolderBanner`) is the same card with an amber dot (`Palette.wait`: the Mac waits for the human),
+  a semibold title and a muted second line; all three folder states (waiting for a click, denied, unchecked) are
+  amber. The list banner stands among the global banners, after the version, connection and herdr banners and
+  before the push delivery banner, then come the new-device notices and the push invite; with the list hidden
+  (a session on the iPhone, Cmd+B) it stands in the right column, unless the session banner stands there. It names
+  the leading state (waiting, then denied, then unchecked) with its folders: Desktop, Documents and Downloads by
+  their Finder names in the app language, any other folder as the server names it; waiting says that a macOS window
+  probably waits on the Mac and since when. Its second line gives the reach (one session by its list name, several
+  by count with their folders, none: the folder cannot be opened in a new session now) and what to do; folders in
+  another state follow with one sentence each. The session banner stands in the session column, after the version,
+  connection and transcript banners, while the session's directory is a closed folder or lies under it
+  (`~/Desktop2` is not under `~/Desktop`): messages and permissions work, git, files and attachments do not, and
+  why. A column with the session banner shows no list banner. While the server does not answer there is no folder
+  banner.
 - **Filter segments over the list (`Views/List/ListFilterBar`, `Model/Navigation+ListFilter`):** one row under the
   navigation bar and the banners (a notice about the app comes first), in the list's top inset: All · Needs You ·
   Working · Unread, each a glyph with its count (`ListFilterBar.glyph`: a list, a question bubble, a bolt and a check
@@ -951,10 +1011,12 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     monospaced digits (`muted2`), none at zero; VoiceOver reads it as "7 cards".
   - **Cards** (`InboxViewController`): a UIKit list, one cell per session in the order of `inboxCardModels`, the card
     drawn by SwiftUI (`InboxCardView`) on the `surface` block. The header is the list row's model (dot, "project ·
-    session", state word and clock) with "Open session" (↗) and "Remove from Inbox" (×) on the right, 44 pt each. The
-    message is the transcript's markdown (`InboxMessageText`); a long one shows the fold of `MarkdownFold` (the first
-    paragraph, the row "N more lines · Show all" and the "To you:" block with the transcript's question stripe), "Show
-    less" folds it again; three skeleton bars while the text loads; a message the server cut says so above it. Under
+    session", state word and clock) with "Open session" (↗) and "Remove from Inbox" (✓) on the right, 44 pt each,
+    the glyph in full text under the pointer and the name in a pointer tip. The
+    message is the transcript's markdown (`InboxMessageText`); a long one shows the fold of `MarkdownFold` (the agent's
+    "TLDR:" summary, or the first paragraph without one, the row "N more lines · Show all" and the "To you:" block
+    with the transcript's question stripe); an expanded card stays expanded until the Inbox screen is built anew;
+    three skeleton bars while the text loads; a message the server cut says so above it. Under
     the message: a decision card with buttons takes the transcript's permission card (`PermissionCardView`,
     `InboxDecisionHost`); a dialog in the pane without a card takes "Open session", and above it the transcript's pane
     dialog card (dismiss with Esc) once the transcript read gave it, by the session screen's rule (`herdrDialogShown`,
@@ -1027,7 +1089,7 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     (`InboxCardModel.keyRemovalTarget`). A card takes the keyboard focus (Tab, arrows) and shows it with the decision
     cards' ring (`CardFocusRing`), because the cell's background is clear.
   - **VoiceOver:** each card is a container with the header as a heading and the actions "Remove from Inbox", "Show
-    all"/"Show less" and "Open session", so nothing needs a gesture.
+    all" (while folded) and "Open session", so nothing needs a gesture.
   - **Empty:** "Nothing new" and one sentence under it, from the left like the empty transcript.
   - **iPhone stack:** while the Inbox stands it is the root of the detail stack (`InboxStackRoot`, with its own
     header, toast and banners), and "Open session" pushes the session above it (`compactInboxPath`), so Back and the

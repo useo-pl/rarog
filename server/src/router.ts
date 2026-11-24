@@ -841,7 +841,18 @@ export function createRouter(deps: RouterDeps): RequestHandler {
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const method = req.method ?? 'GET';
     // `req.url` jest ścieżką względną; base jest sztuczny, bierzemy z niego tylko pathname.
-    const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    // The HTTP parser lets through targets `URL` rejects (`//:/`): a 400 before the Origin check, and on an iroh
+    // socket through the log budget, because anyone can send it before any credential.
+    let url: URL;
+    try {
+      url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    } catch {
+      if (!noteIrohRefusal(req.socket, 'bad-url', `${method} ${req.url ?? ''}`)) {
+        log.info(`refused ${method}: request target does not parse as a URL`);
+      }
+      sendError(res, 400, 'bad-request', say('rest.bad-request'));
+      return;
+    }
     const pathname = url.pathname.replace(/\/+$/, '') || '/';
     const segments = pathname.split('/').filter((s) => s !== '');
 

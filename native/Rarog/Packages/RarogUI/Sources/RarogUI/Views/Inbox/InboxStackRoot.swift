@@ -28,7 +28,7 @@ struct InboxStackRoot: View {
       .safeAreaInset(edge: .top, spacing: 0) {
         let column = BannerColumn.detail(sessionId: nil, listVisible: false)
         BannerStack(
-          banners: state.banners(in: column, global: memory, transcript: transcriptLink.connection(for: nil)),
+          slots: state.bannerSlots(in: column, global: memory, transcript: transcriptLink.connection(for: nil)),
           pushPrompt: state.pushPromptVisible(in: column, global: memory, now: Date()) ? store : nil)
       }
       // The notice under the bar (a refusal from a list menu, say), as the session header draws it on other screens.

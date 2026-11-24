@@ -217,6 +217,7 @@ describe('routeScreenOf: ekran jako wejście rozdzielacza', () => {
     'dialog-bash-subagent-uciety-62x29-2.1.309.txt': 'block',
     'dialog-bash-uciety-naglowek-2.1.294.txt': 'block',
     'dialog-effort-change.txt': 'block',
+    'dialog-exitplanmode-50kol-2.1.331.txt': 'block',
     'dialog-exitplanmode.txt': 'block',
     'dialog-model-switch.txt': 'block',
     'dialog-permission-ask-rule-auto.txt': 'block',

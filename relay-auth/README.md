@@ -34,7 +34,9 @@ and `cache-control: no-store`; the hook answers in plain text. Responses worth k
 
 - **`register`**: 400 `gate-mismatch` when the proof's kind differs from the gate (the body carries `gate`), 422
   `proof-rejected`, 429 `limited` or `quota-exceeded`, 502 `gate-unreachable`, 503 `unavailable`.
-- **`renew`** and **`sponsor`**: 404 `not-registered` means "register again". `sponsor` answers 403 `denied` also for
+- **`renew`** and **`sponsor`**: 404 `not-registered` means "register again". `renew` lists in `unsponsored` the
+  servers without a live sponsorship of the app and those whose entry refused the extension (an app entry, a server
+  at its cap of 32), so the app calls `sponsor` for them. `sponsor` answers 403 `denied` also for
   a denied server, 409 `kind-conflict` when the server is an app, and 429 `quota-exceeded`.
 - **`forget`**: 200 also without an entry; it drops the app's sponsorships.
 - **`/v1/admin/deny`** and **`allow`** (bearer `ADMIN_SECRET`): 401 `unauthorized` for a wrong bearer, 503 without
@@ -131,11 +133,13 @@ and the other routes let the request through.
 
 - **`Endpoint`** (`idFromName(endpointId)`): the entry of one EndpointId. **`Gate`** (one object): every new
   registration goes through it in order (entry extension, brake, quota, Apple, admission, entry), with a queue of at
-  most 32 requests; further ones get 503. **`Admin`** (one object): the denial list and its mirror in the KV
-  namespace `DENIED`. Each object runs its operations one at a time through a queue in code, because the Durable
-  Objects "input gate" (a platform mechanism, unrelated to the Apple gate) does not hold other requests while an
-  object waits on an outgoing `fetch` call such as the one to Apple. An entry's queue never waits on another entry:
-  other entries are called only from the alarm, outside the queue.
+  most 32 requests; further ones get 503. One client bucket (an IPv4 address, an IPv6 /48) holds at most one place:
+  its second request while the first waits or runs gets 429 `limited` at once, so one client cannot fill the queue.
+  **`Admin`** (one object): the denial list and its mirror in the KV namespace `DENIED`. Each object runs its
+  operations one at a time through a queue in code, because the Durable Objects "input gate" (a platform mechanism,
+  unrelated to the Apple gate) does not hold other requests while an object waits on an outgoing `fetch` call such as
+  the one to Apple. An entry's queue never waits on another entry: other entries are called only from the alarm,
+  outside the queue.
 - **Data location.** Every object lives in the EU jurisdiction (`JURISDICTION` in `src/config.ts`), so it runs and
   stores its data only in the EU. The KV mirror `DENIED` and Workers Logs are not bound to a region. An object's id
   depends on the jurisdiction, so changing it after deployment yields new, empty objects.
@@ -189,9 +193,11 @@ a problem code (the name, never the value) appears once per isolate when the con
   `RELAY_HOOK_SECRET` and `ADMIN_SECRET` need at least 32 characters (`openssl rand -hex 32` gives 64). A shorter
   one counts as missing: its routes answer 503 and the log gets a `config` line with the code
   `relay-hook-secret-short` or `admin-secret-short`. The app routes and `/v1/health` do not change.
-- **Configuration defect** (a bad quota, a bad Team ID or Key ID, a missing or bad key for the selected gate): the
-  app routes answer 503, `/v1/health` says `ok: false`, and the log has a `config` line. The hook and the admin
-  routes keep working, because they need only their own secret.
+- **Configuration defect.** A bad quota, `QUOTA_GRACE_UNTIL`, `DIAG_UNTIL` or `CLOCK_OFFSET` value: every app route
+  answers 503. A bad Team ID or Key ID, or a missing or bad key for the selected gate: only `register` answers 503,
+  and `renew`, `sponsor` and `forget` keep working. Either way `/v1/health` says `ok: false` and the log has a
+  `config` line. `/v1/health` keeps answering, and so do the hook and the admin routes, because they need only
+  their own secret.
 - **Durable Objects** with SQLite storage (migration `v1`): `ENDPOINT` → `Endpoint`, `GATE` → `Gate`,
   `ADMIN` → `Admin`. **KV** `DENIED`: the mirror of the denial list (key = EndpointId, expires with the denial).
 - **Counters**: Rate Limiting per client address (IPv4; IPv6 per /64). When Cloudflare's Pseudo IPv4 feature puts
@@ -250,10 +256,13 @@ wrangler command below that talks to Cloudflare needs `CLOUDFLARE_ACCOUNT_ID` in
    Expected: `{"v":1,"ok":true,"version":"0.1.0+<sha>","gate":"devicecheck","enforce":false}`. `ok: false` with
    `gate: null` means an empty or unknown `GATE_KIND`. `ok: false` with a gate means a configuration defect:
    `pnpm -C relay-auth exec wrangler tail` shows the `config` line with the problem code.
-6. Zone WAF rule (Cloudflare dashboard): add the paths `/v1/app/register`, `/v1/app/renew`, `/v1/app/sponsor`,
-   `/v1/app/forget`, `/v1/admin/deny` and `/v1/admin/allow` to the expression of the zone's existing Rate Limiting
-   rule, the push relay's rule from `relay/README.md`, "Account and domain". Leave out `/v1/access`: the adapter
-   calls it from the VPS's single address and would turn a 429 from the rule into `true`.
+6. Zone WAF rules (Cloudflare dashboard). Rate Limiting: add the paths `/v1/app/register`, `/v1/app/renew`,
+   `/v1/app/sponsor`, `/v1/app/forget`, `/v1/admin/deny` and `/v1/admin/allow` to the expression of the zone's
+   existing Rate Limiting rule, the push relay's rule from `relay/README.md`, "Operations". Leave out `/v1/access`:
+   the adapter calls it from the VPS's single address and would turn a 429 from the rule into `true`. Known routes
+   only: a custom rule (Block) on the host `relay-auth.rarog.ai` that lets through only `POST` on the four
+   `/v1/app/*` paths, `/v1/access`, `/v1/admin/deny` and `/v1/admin/allow` and `GET /v1/health`, so any other
+   request stops before the Worker and does not count toward the bill.
 7. Shadow mode: the adapter log on the VPS shows `src=worker` (the decision came from the Worker) instead of
    `src=failopen` (the adapter admitted the client without a Worker decision) and zero 401s, and the Worker's decision
    lines show `allow` for keys in the registry. Then set `ENFORCE = "1"`, deploy as in step 5

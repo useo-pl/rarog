@@ -95,7 +95,7 @@ struct SessionListView: View {
         // while it only runs, so the list does not move.
         VoiceAgentSessionsListStrip()
         BannerStack(
-          banners: state.banners(in: .list, global: memory, transcript: transcriptLink.connection(for: state.viewedSessionId)),
+          slots: state.bannerSlots(in: .list, global: memory, transcript: transcriptLink.connection(for: state.viewedSessionId)),
           pushPrompt: state.pushPromptVisible(in: .list, global: memory, now: Date()) ? store : nil,
           deviceNotices: state.pairing.newDevices.isEmpty ? nil : store)
         // The filter capsule and the Inbox circle float over the list: no background, so rows scroll beneath the

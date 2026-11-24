@@ -210,6 +210,10 @@ const events: ServerEvent[] = [
   },
   { type: 'notes', cwd: '/Users/d/Projects/rarog', empty: false },
   {
+    type: 'folder-access',
+    blocked: [{ name: 'Desktop', path: '/Users/d/Desktop', state: 'waiting', since: '2026-08-21T10:02:00.000Z' }],
+  },
+  {
     type: 'inbox-heads',
     heads: [{
       sessionId: 'a1b2', turnId: 't-1', version: 'v-1', kind: 'decision', state: 'waiting-permission',

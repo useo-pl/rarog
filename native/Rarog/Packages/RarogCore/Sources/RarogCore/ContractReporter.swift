@@ -1,5 +1,6 @@
 import Foundation
 import RarogContract
+import RarogTransport
 
 /// Raport `kontrakt:` do `client.log` — nigdy treść rozmowy.
 ///
@@ -7,7 +8,14 @@ import RarogContract
 ///   i `kontrakt: odrzucona <type>` (`?` bez czytelnego `type`).
 /// - Ten sam bufor niesie nieobsłużone błędy apki (`błąd: …`, ``RarogStore/reportUnhandled(_:)``):
 ///   poziom `error` zamiast `debug`, ta sama bramka zalogowania, dedup i sufit.
-/// - Dedup po treści linii i sufit 50 linii na życie procesu.
+/// - Sufit 50 linii na życie procesu.
+/// - A line about server A never reaches server B. Every queued line carries a stamp when it is recorded: the server
+///   it concerns (``ServerKey``) or the pairing offer it was recorded under. The producer names it (``Owner``); a line
+///   of the running login takes that login's key, never a server read from the store's state. A flush sends and
+///   removes only the lines stamped with its recipient's key; the others wait for a login to their server and go at a
+///   login to another one (``bind(_:)``). A line with no server is accepted only before the first login of the
+///   process, which it then goes to.
+/// - Dedup by stamp and line: a line of server A never blocks the same line of server B.
 /// - Linia trafia do zbioru „zgłoszone" dopiero, gdy WYSZŁA: linia sprzed
 ///   zalogowania czeka w buforze i wychodzi po zalogowaniu, zamiast przepaść jako „już zgłoszona".
 /// - Ślady diagnostyczne (powrót do apki, przerwanie z czasem) jadą tym samym buforem
@@ -30,28 +38,78 @@ final class ContractReporter {
   /// Prefiks linii nieobsłużonego błędu — jedzie z poziomem `error`.
   static let problemPrefix = "błąd: "
 
+  /// Whom a queued line belongs to: the server it concerns, or a pairing offer whose server is known only when its
+  /// pairing succeeds (``resolveOffer(_:as:)``). A line of an offer never goes out on its own.
+  enum Stamp: Hashable {
+    case server(ServerKey)
+    case offer(Int)
+  }
+
+  /// Whom a line belongs to, as its producer knows it.
+  enum Owner {
+    /// The login running now; without one, the pairing offer open now; without either, no server.
+    case current
+    /// The server the line concerns; `nil` = no single server.
+    case server(ServerKey?)
+    /// A pairing offer (``openOffer()``); a line of an offer closed meanwhile is dropped.
+    case offer(Int)
+  }
+
+  /// A queued line; `stamp == nil` only for a line recorded before the first login of the process.
+  struct Entry {
+    let id: Int
+    let line: String
+    var stamp: Stamp?
+    /// A `kontrakt:` or `błąd:` line (``record(_:owner:)``): one per stamp in the queue. Traces carry times, so they
+    /// are not deduplicated.
+    let deduplicated: Bool
+  }
+
+  /// Lines the current recipient got (dedup for its key); a new recipient starts empty.
   private(set) var reported: Set<String> = []
-  private(set) var pending: [String] = []
+  private(set) var entries: [Entry] = []
+  /// The queued lines, oldest first.
+  var pending: [String] { entries.map(\.line) }
   /// Uzbrojony po zalogowaniu i otwarciu strumienia globalnego (wcześniej POST to 401).
   var armed = false
-  private var flushing = false
+  /// Number of the queue's recipient: every login end (``retire()``) and every key change in place (``rekey(_:)``)
+  /// starts a new one. A send in flight belongs to the recipient of its start; its late answer does not touch the
+  /// queue of the next one.
+  private(set) var recipient = 0
+  /// The key of the running login (``bind(_:)`` to ``retire()``): the stamp of its lines and the key its flush sends.
+  private(set) var login: ServerKey?
+  /// The pairing offer open now (``openOffer()``).
+  private(set) var offer: Int?
+  /// A login happened in this process: a line with no server is dropped from then on.
+  private var bound = false
+  /// The owner of lines recorded with ``Owner/current`` inside ``within(_:_:)``.
+  private var scope: Owner?
+  private var offers = 0
+  /// A pairing attempt already used the open offer (``attemptOffer()``).
+  private var offerAttempted = false
+  private var nextId = 0
+  /// The recipient whose flush runs now; a flush of an older recipient does not hold the queue of the next.
+  private var flushing: Int?
   /// Linie `kontrakt:`/`błąd:` przyjęte do bufora (wysłane albo czekające) — liczy je ``cap``.
   private var accepted = 0
   private var appTraces = TraceWindow()
   private var voiceAgentTraces = TraceWindow()
   private var connectivityTraces = TraceWindow()
 
-  func record(_ lines: [String]) {
-    for line in lines where !reported.contains(line) && !pending.contains(line) {
+  func record(_ lines: [String], owner: Owner = .current) {
+    guard let stamp = stamp(owner) else { return }
+    for line in lines where !queued(line, stamp) {
       guard accepted < Self.cap else { return }
-      pending.append(line)
+      append(line, stamp, deduplicated: true)
       accepted += 1
     }
   }
 
   /// Diagnostic trace under the budget the caller names, per ``traceWindow``; a clock set back (time
-  /// change) opens a new window instead of closing traces until the process ends.
-  func recordTrace(_ line: String, budget: TraceBudget = .app, now: Date) {
+  /// change) opens a new window instead of closing traces until the process ends. A trace that would be dropped for
+  /// its owner spends no budget.
+  func recordTrace(_ line: String, budget: TraceBudget = .app, now: Date, owner: Owner = .current) {
+    guard let stamp = stamp(owner) else { return }
     let admitted =
       switch budget {
       case .app: appTraces.admit(cap: Self.traceCap, window: Self.traceWindow, now: now)
@@ -60,25 +118,158 @@ final class ContractReporter {
       case .connectivity: connectivityTraces.admit(cap: Self.connectivityTraceCap, window: Self.traceWindow, now: now)
       }
     guard admitted else { return }
-    pending.append(line)
+    append(line, stamp, deduplicated: false)
+  }
+
+  /// Lines recorded with ``Owner/current`` by `body` belong to `owner`. `body` is synchronous, so only the code it
+  /// runs records under it.
+  func within<T>(_ owner: Owner, _ body: () -> T) -> T {
+    let outer = scope
+    scope = owner
+    defer { scope = outer }
+    return body()
+  }
+
+  /// A login to `key` starts. Lines recorded before the first login of the process belong to it; lines of another
+  /// server go, so they never reach this one. Lines of an open pairing offer stay with the offer.
+  func bind(_ key: ServerKey) {
+    login = key
+    bound = true
+    for index in entries.indices where entries[index].stamp == nil { entries[index].stamp = .server(key) }
+    entries.removeAll { entry in
+      if case let .server(server) = entry.stamp { server != key } else { false }
+    }
+    collapse()
+  }
+
+  /// The login ends (logout, server switch): a new recipient with no key, so a send in flight to the old server
+  /// neither carries nor removes lines recorded later, and a new dedup. The cap of ``cap`` lines stays per process.
+  func retire() {
+    recipient += 1
+    armed = false
+    reported.removeAll()
+    login = nil
+  }
+
+  /// The running login's key changed in place (a version probe brought another iroh key, no new transport): a new
+  /// recipient with the new key, and the old key's lines go as at a login to another server. The stream stays open,
+  /// so the reporter stays armed.
+  func rekey(_ key: ServerKey) {
+    guard let login, login != key else { return }
+    recipient += 1
+    reported.removeAll()
+    bind(key)
+  }
+
+  /// A pairing link is offered: lines recorded for its pairing wait under a new offer. The previous offer closes.
+  func openOffer() -> Int {
+    closeOffer()
+    offerAttempted = false
+    offers += 1
+    offer = offers
+    return offers
+  }
+
+  /// The offer a pairing attempt records under. The first attempt of a sheet takes the sheet's offer with the lines
+  /// recorded before it; every later attempt opens a new offer, so a failed attempt's lines (possibly about another
+  /// server answering the same link) never go with a later success.
+  func attemptOffer() -> Int {
+    if let open = offer, !offerAttempted {
+      offerAttempted = true
+      return open
+    }
+    let fresh = openOffer()
+    offerAttempted = true
+    return fresh
+  }
+
+  /// The offer ends without a pairing (cancel, another link): its lines go.
+  func closeOffer() {
+    guard let open = offer else { return }
+    offer = nil
+    entries.removeAll { $0.stamp == .offer(open) }
+  }
+
+  /// The pairing of offer `number` produced the key of `key`: the offer's lines belong to that server.
+  func resolveOffer(_ number: Int, as key: ServerKey?) {
+    guard offer == number else { return }
+    guard let key else { return closeOffer() }
+    offer = nil
+    for index in entries.indices where entries[index].stamp == .offer(number) { entries[index].stamp = .server(key) }
+    collapse()
   }
 
   /// Wysyła bufor partiami, aż się opróżni: linia dopisana w trakcie wysyłki jedzie następną
   /// partią, nie czeka na kolejną ramkę. Porażka zostawia linie w buforze na następną próbę.
+  /// `send` goes to the server of the current ``recipient``: the caller reads its transport in the same step as this
+  /// call starts. A batch holds only lines stamped with the recipient's key. After a ``retire()`` or ``rekey(_:)``
+  /// during a send the loop ends and leaves the queue alone.
   func flush(_ send: @Sendable (ClientLogBody) async -> Bool, now: Date) async {
-    guard !flushing else { return }
-    flushing = true
-    defer { flushing = false }
+    guard let key = login else { return }
+    let recipient = recipient
+    guard flushing != recipient else { return }
+    flushing = recipient
+    defer { if flushing == recipient { flushing = nil } }
     let at = ISOTime.string(now)
-    while armed, !pending.isEmpty {
-      let batch = pending
-      let body = ClientLogBody(events: batch.map { line in
-        ClientLogBody.Event(at: at, level: line.hasPrefix(Self.problemPrefix) ? "error" : "debug", msg: line)
+    while armed, recipient == self.recipient {
+      let batch = entries.filter { $0.stamp == .server(key) }
+      guard !batch.isEmpty else { return }
+      let body = ClientLogBody(events: batch.map { entry in
+        ClientLogBody.Event(
+          at: at, level: entry.line.hasPrefix(Self.problemPrefix) ? "error" : "debug", msg: entry.line)
       })
-      guard await send(body) else { return }
-      pending.removeAll { batch.contains($0) }
-      reported.formUnion(batch)
+      guard await send(body), recipient == self.recipient else { return }
+      let sent = Set(batch.map(\.id))
+      entries.removeAll { sent.contains($0.id) }
+      reported.formUnion(batch.map(\.line))
     }
+  }
+
+  /// The stamp of a line recorded now for `owner`; `nil` = the line is dropped.
+  private func stamp(_ owner: Owner) -> Stamp?? {
+    switch owner {
+    case .current:
+      switch scope {
+      case let .server(key)?: return stamp(.server(key))
+      case let .offer(number)?: return stamp(.offer(number))
+      case .current?, nil: break
+      }
+      if let login { return .server(login) }
+      if let offer { return .offer(offer) }
+      return bound ? nil : .some(nil)
+    case let .server(key?):
+      return .server(key)
+    case .server(nil):
+      return bound ? nil : .some(nil)
+    case let .offer(number):
+      return offer == number ? .offer(number) : nil
+    }
+  }
+
+  /// The line is already queued for `stamp`, or the current recipient already got it.
+  private func queued(_ line: String, _ stamp: Stamp?) -> Bool {
+    if let login, stamp == .server(login), reported.contains(line) { return true }
+    return entries.contains { $0.deduplicated && $0.stamp == stamp && $0.line == line }
+  }
+
+  private func append(_ line: String, _ stamp: Stamp?, deduplicated: Bool) {
+    nextId += 1
+    entries.append(Entry(id: nextId, line: line, stamp: stamp, deduplicated: deduplicated))
+  }
+
+  /// After a restamp: a deduplicated line stays once per stamp, and a line the current recipient already got goes.
+  private func collapse() {
+    var seen: Set<Seen> = []
+    entries.removeAll { entry in
+      guard entry.deduplicated else { return false }
+      if let login, entry.stamp == .server(login), reported.contains(entry.line) { return true }
+      return !seen.insert(Seen(stamp: entry.stamp, line: entry.line)).inserted
+    }
+  }
+
+  private struct Seen: Hashable {
+    let stamp: Stamp?
+    let line: String
   }
 
   /// Linie raportu dla jednej ramki.
@@ -95,6 +286,16 @@ final class ContractReporter {
       }
       return ["kontrakt: odrzucona \(type)"]
     }
+  }
+
+  /// Line of a stream cut at the parser's ceiling (``SSEParser/maxEventBytes``): which part passed it, no content.
+  nonisolated static func line(for oversized: SSEParser.Oversized) -> String {
+    let part =
+      switch oversized {
+      case .line: "line"
+      case .event: "event"
+      }
+    return "kontrakt: sse \(part) over \(SSEParser.maxEventBytes / (1024 * 1024)) MiB"
   }
 
   /// `/sessions/3/state` → `/sessions/state`: indeksy tablic nie niosą informacji, a mnożyłyby linie.
@@ -137,4 +338,37 @@ private struct TraceWindow {
     count += 1
     return true
   }
+}
+
+/// The server a `client.log` line concerns, by the one rule of "another server" (`PairingLink.leadsToAnotherServer`):
+/// with an iroh key the full EndpointId, otherwise the origin of the address. The same origin with another iroh key is
+/// another server, and a relay change keeps the key.
+public struct ServerKey: Sendable, Hashable, CustomStringConvertible {
+  private let value: String
+
+  /// `nil` = neither an iroh key nor an address with a host.
+  public init?(serverURL: URL?, iroh: ServerIrohConfig?) {
+    if let iroh {
+      value = ServerIdentity.irohPrefix + iroh.endpointId
+    } else if let origin = serverURL.flatMap(ServerOrigin.init) {
+      value = origin.description
+    } else {
+      return nil
+    }
+  }
+
+  public init?(_ credential: DeviceCredential?) {
+    guard let credential else { return nil }
+    self.init(serverURL: credential.serverURL, iroh: credential.iroh)
+  }
+
+  private init(value: String) {
+    self.value = value
+  }
+
+  /// The one server of a store without a server connector (tests of areas, the demo integration): no pairing, switch
+  /// or unpairing exists there.
+  static let withoutConnector = ServerKey(value: "")
+
+  public var description: String { value }
 }

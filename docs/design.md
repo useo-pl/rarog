@@ -456,7 +456,7 @@ repeating it.
   and the tab bar "+", one line per menu item, with New Terminal ⇧⌘N), the list toggle (⌘B), the inspector (⌘I),
   Terminal in a Window (⌘F), the session and terminal "×" (⌘X), the note (⌘J), the microphone (⌥⌘M, or the
   shortcut chosen in Settings), Send and Stop (↩, Esc), the sheet close button (Esc, ⌘W), Launch in New Session (⌘↩)
-  and History on the terminal key bar (⌘Y). The sidebar's icon buttons without a shortcut show their name alone in
+  and Select Output on the terminal key bar (⌘Y). The sidebar's icon buttons without a shortcut show their name alone in
   the same tip (`pointerTip`): Settings at the top of the list, and Terminal in a Window, Recent Sessions and the note
   in a project header.
 
@@ -1261,21 +1261,20 @@ being opened has no id yet, so a tap on it opens nothing. It stays open until a 
 - **Window:** width min(560 pt, window − 32 pt), solid `--surface`, a hairline, the block radius, a shadow, no glass.
   At most 8 rows without scrolling, up to 70 % of the app window at the largest type. It appears and vanishes at
   once, without animation.
-- **Row**: a session row has a state dot, "project · name #n", under it in mono the state word in its color and the
-  "waiting for" line or the stage line; the time on the right. A terminal row has the terminal glyph in the place of
-  the dot, the tab label (the foreground process) and a quiet line (the slot, "running") in the secondary ink: a
-  terminal has no state color, like its tab. Rows are never faded. While the window holds the hardware keyboard each
-  row starts with its digit key before the dot: the digit its tab carries on the tab bar, in a key outlined like the
-  footer keys (1 pt `--border`, the ghost radius, `caption` mono in `--muted`, which holds 4.5:1 on the selection and
-  on `--surface`). A row without a digit keeps the same room empty, so the dots stay in a column. The key is
-  decoration: VoiceOver reads the row sentence without it.
+- **Row**: a session row has a state dot, "name #n" without the project (the heading names it once), under it in mono
+  the state word in its color and the "waiting for" line or the stage line; the time on the right. A session without
+  a name shows its tab's short id. A terminal row has the terminal glyph in the place of the dot, the tab label (the
+  foreground process) and a quiet line (the slot, "running") in the secondary ink: a terminal has no state color,
+  like its tab. Rows are never faded and carry no digits. VoiceOver reads the row sentence without the project, like
+  the row.
 - **Selection** uses the `switcherSelection` token, a light text-ink plate, never the accent: color stays for states.
   On it secondary text goes `--muted`, because `--muted-2` does not hold 4.5:1 there. Under the pointer a row gets the
   plate at half opacity (`HoverTokens.agentRowAlpha`); the selection wins, and a finger lights nothing.
 - **The current tab** has a you're here pill. Every opening puts the selection on it; a Rarog terminal with an agent
   inside is the terminal's tab. Return on the current tab closes the window and gives the focus back.
-- **Header and footer:** PROJECT TABS · N, without a state summary. The footer has the key hints (↑↓ select, ↩ go,
-  1–9 jump, esc close) only while the window holds the hardware keyboard; without it a row is picked by a tap.
+- **Header and footer:** PROJECT · PROJECT TABS · N (the project's name, then the count), without a state summary,
+  in one line: a long project name truncates and the count stays. The footer has the key hints (↑↓ select, ↩ go,
+  esc close) only while the window holds the hardware keyboard; without it a row is picked by a tap.
 - **Order:** the tabs of the current project in the order of the tab bar (sessions from the oldest, then terminals
   by slot), from the same list the bar draws, with no limit, flat, without group headers. The terminal invite, a
   terminal being opened, the note and "+" are no rows. The rows stay live while the window stands: a new tab comes
@@ -1283,13 +1282,10 @@ being opened has no id yet, so a tap on it opens nothing. It stays open until a 
   the next row, from the last row to the previous one). Picking a row does what a tap on its tab does.
 - **Keys:** with a hardware keyboard the window takes the keyboard focus, also when the keyboard connects while the
   window stands. ↑/↓, with or without Cmd, move the selection with wrap-around, Return goes to the selected tab,
-  Esc closes the window and gives the focus back to where it was, also with Cmd held. A digit 1–9, with or without
-  Cmd, from the top row or the keypad, picks the tab with that digit on the bar at once (1–8 by position, 9 the last
-  tab, also with eight tabs or fewer): another tab goes there, the current tab's digit closes like Return on it, and
-  a digit without a tab does nothing. 0 is no key of the window: Cmd+0 resets the text size and the window picks
-  nothing. With the window open, Cmd+1…9 belong to the window, not to the tabs; with the window closed they switch
-  tabs. None of these keys and no Tab reach the screen underneath; other keys without Cmd (S included) do nothing,
-  and any other Cmd shortcut from the menu closes the window and does its own thing.
+  Esc closes the window and gives the focus back to where it was, also with Cmd held. None of these keys and no Tab
+  reach the screen underneath; other keys without Cmd (digits and S included) do nothing. A Cmd shortcut from the
+  menu closes the window and does its own thing (Cmd+1…9 switch tabs as with the window closed); the text size
+  shortcuts (Cmd+0 included) leave the window open.
 
 ### Shortcut sheet (held Cmd)
 
@@ -1347,16 +1343,19 @@ notification: the agent's own words carry it.
 - **Card:** a `--surface` block with the block radius, 24 pt from the column sides (12 pt on the iPhone), 12 pt
   between cards. The header is the agent row: the state dot (pulsing like the list's on a fresh result), "project ·
   session" in semibold `subheadline`, under it the state word in its color and the clock in `--muted`. On the right
-  two quiet icons with 44 pt targets in `--muted-2`: ↗ Open session and × Remove. The message uses the transcript's
+  two quiet icons with 44 pt targets in `--muted-2`, `--text` under the pointer, each with its name in a pointer tip:
+  ↗ Open session and ✓ Remove. The message uses the transcript's
   text styles.
-- **Long message:** the first paragraph, then a fold row (a hairline on each side of "N more lines · Show all" in
+- **Long message:** the agent's summary (a paragraph or quote opened by a bold "TLDR:" before the question), or
+  the first paragraph when there is none, then a fold row (a hairline on each side of "N more lines · Show all" in
   medium `footnote`, `--text-2`), then the "To you:" block with the transcript's question stripe, so the question is
-  always visible. "Show less" folds it again. While the text loads, three `--surface-2` bars stand in its place.
+  always visible. An expanded card has no fold row and folds again when the Inbox opens anew. While the text loads,
+  three `--surface-2` bars stand in its place.
 - **Decision:** under the message the transcript's own decision card, unchanged; a stop and a result end with the
   message.
 - **New cards above** never move the screen under a finger: the pill "N new ↑ · 1 waiting" in the list pill's look
   stands over the cards, and a tap scrolls up.
-- **Removal** has no confirmation: ×, a swipe to the left on the iPhone (the red "Remove" action with a trash glyph)
+- **Removal** has no confirmation: ✓, a swipe to the left on the iPhone (the red "Remove" action with a trash glyph)
   or ⌫ on the card with the keyboard focus. The card goes, and the toast offers Undo for 5 s. The keyboard focus is
   the decision cards' 3 pt ring.
 - **Empty:** "Nothing new" in `headline` and one sentence in `--muted` `callout` under it, from the top left, at most

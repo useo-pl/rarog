@@ -21,6 +21,8 @@
  * - `screen-unavailable.ts` — the reason of a consent card without `channel` and without the approve button.
  * - `no-hook.ts`        — consent without a hook: its cause, the `no hook` and `no approve button` log lines, and
  *                        whether the card of the `off` path has the approve button.
+ * - `screen-fallback.ts` — the emergency approve button of a consent dialog without a hook: one rule over the facts,
+ *                        the card mark, the key and refused key log lines.
  * - `policy/options.ts` — wybór opcji po treści etykiety: „ten jeden raz" i „zawsze" (`docs/dialogs.md`, „Rules: what must not be relaxed”).
  * - `policy/escalation.ts` — słownik eskalacji (`docs/dialogs.md`, „Rules: what must not be relaxed”): treść, etykieta opcji, przełącznik trybu.
  * - `policy/terminal.ts`   — dialogi tylko z terminala: lista, dopasowanie, sufit treści.
@@ -90,6 +92,8 @@
  * - `layer1/resume.ts`  — resumption of the records a server restart interrupted (restart grace G): the wait for
  *                        the hook's second registration and the allow-button hold of a resumed `pending` record, in
  *                        memory only; the transitions and the writes stay in `cycle.ts`.
+ * - `layer1/screen-key.ts` — the digits of the emergency approve button the cycle remembers for a minute, the match
+ *                        of a hook that registers after the key, and its `screen fallback late hook` line.
  * - `layer1/turns.ts`   — settlement of consent turns: which turns the transcript review still reads and what one
  *                        turn's facts do to its records (record writes stay in `cycle.ts`).
  * - `layer1/observe.ts` — obserwacja jednej sesji (zrzuty, pula, `ps`, sygnały z wierzchem ekranu, karty bez
@@ -189,10 +193,16 @@ export { askFormOnScreen, cliDialogOnScreen } from './presence.ts';
 export {
   DIALOG_ROUTES, DIALOG_ROUTE_REASONS, routeAllowsDigit, routeDialog, routeHookOf, routeScreenOf,
 } from './router.ts';
-export { consentDigitRefused, consentModeNow, consentOnlyEvent } from './consent-gate.ts';
+export { consentDigitOpenedBy, consentDigitRefused, consentModeNow, consentOnlyEvent } from './consent-gate.ts';
 export type { ConsentGateSource } from './consent-gate.ts';
 export { noApproveButtonLine, noHookCause, noHookLine, offPathApprove } from './no-hook.ts';
-export type { NoHookFacts, NoHookThread, StatuslineFreshness } from './no-hook.ts';
+export type { NoHookCause, NoHookFacts, NoHookThread, StatuslineFreshness } from './no-hook.ts';
+export {
+  screenFallbackGuard, screenFallbackHolds, screenFallbackKeyLine, screenFallbackRefusedLine,
+} from './screen-fallback.ts';
+export type {
+  ScreenFallbackFacts, ScreenFallbackGuard, ScreenFallbackKeyLine, ScreenFallbackMark,
+} from './screen-fallback.ts';
 export type { ConsentDeskRelease } from './layer1/desk-reason.ts';
 export {
   applyMultiSelectOverride, competingHook, hookMatchesPending, hookPendingFrom, olderBashHook,
@@ -213,7 +223,7 @@ export {
 export { dialogShapeOf } from './decide/reasons.ts';
 export { FORM_SUBMIT_KEY, confirmFormSubmit } from './send/form-submit.ts';
 export { ASK_USER_QUESTION_TOOL, resolveOptions } from './screen/resolve.ts';
-export { parseOptions, subagentDialogOnScreen } from './screen/parse.ts';
+export { dialogThreadOnScreen, parseOptions, subagentDialogOnScreen } from './screen/parse.ts';
 export { blockVisible } from './screen/block-visible.ts';
 export { SANDBOX_NETWORK_TOOL } from './screen/kinds.ts';
 export { matchKnownDialog } from './screen/known.ts';

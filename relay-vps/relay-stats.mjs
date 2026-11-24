@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // relay-stats: one-screen summary of relay load for root over SSH (/usr/local/bin/relay-stats links here). Node
 // without dependencies. Sections:
-//   Now               established TCP connections on 443 (the same `ss` list as relay-watch), sources grouped like
-//                     the nftables budgets (IPv4 per address, IPv6 per /64), the top 5, the limits from
+//   Now               established TCP connections on 80 and 443 (the same `ss` list as relay-watch), sources
+//                     grouped like the nftables budgets (IPv4 per address, IPv6 per /64), the top 5, the limits from
 //                     /etc/nftables.conf;
 //   Peak              highest connection count of today and yesterday (UTC) from the relay-watch state;
 //   Firewall rejects  packet counters of the commented drop and reject rules in `table inet relay`, which reset on
@@ -176,8 +176,8 @@ function nowSection(reads) {
   if ('error' in reads.ss) return ['Now', `  ${unavailable(reads.ss)}`];
   const { total, bySource } = parseSs(reads.ss.value);
   const lines = ['Now',
-    `  established on :443: ${String(total)} (limit ${String(limits.global)} globally, relay-watch alert above `
-      + `${String(CONN_ALERT)})`,
+    `  established on :80 and :443: ${String(total)} (limit ${String(limits.global)} globally, `
+      + `relay-watch alert above ${String(CONN_ALERT)})`,
     `  sources: ${String(bySource.length)} (IPv4 per address, IPv6 per /64; limit ${String(limits.perSource)} each)`];
   for (const [source, count] of bySource.slice(0, TOP)) lines.push(`  ${String(count).padStart(5)}  ${source}`);
   return lines;

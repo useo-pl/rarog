@@ -2520,8 +2520,8 @@ describe('manager — sesje herdr', () => {
   it('przy suficie komunikat mówi o LIMICIE, nawet gdy nadzorca zgasił też `canLaunch`',
     async () => {
       /*
-       * Nadzorca gasi `canLaunch` z trzech powodów naraz (killswitch, nieznany protokół,
-       * sufit), a komunikat może być jeden. Przy odwrotnej kolejności sprawdzeń siódmy panel
+       * The supervisor turns `canLaunch` off for several reasons at once (killswitches,
+       * unavailable herdr, cap), a komunikat może być jeden. Przy odwrotnej kolejności sprawdzeń siódmy panel
        * dostawał „zakładanie wyłączone” z nazwą killswitcha zakładania — zdanie NIEPRAWDZIWE, które
        * kazałoby użytkownikowi szukać flagi w konfiguracji zamiast zamknąć jedną sesję.
        */

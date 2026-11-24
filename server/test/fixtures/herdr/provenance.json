@@ -74,6 +74,7 @@
     "dialog-bash-uciety-naglowek-2.1.294.command.json": {"source":"ręcznie:zrzut","date":"2026-10-09","cli":"2.1.294","anonymizer":null},
     "dialog-bash-uciety-naglowek-2.1.294.txt": {"source":"ręcznie:zrzut","date":"2026-10-09","cli":"2.1.294","anonymizer":null},
     "dialog-effort-change.txt": {"source":"ręcznie:rekonstrukcja","date":"2026-08-25","cli":null,"anonymizer":null},
+    "dialog-exitplanmode-50kol-2.1.331.txt": {"source":"ręcznie:rekonstrukcja","date":"2026-11-24","cli":"2.1.331","anonymizer":null},
     "dialog-exitplanmode.txt": {"source":"ręcznie:rekonstrukcja","date":"2026-08-29","cli":null,"anonymizer":null},
     "dialog-model-switch.txt": {"source":"ręcznie:zrzut","date":"2026-08-23","cli":null,"anonymizer":null},
     "dialog-permission-ask-rule-auto.txt": {"source":"ręcznie:rekonstrukcja","date":"2026-08-30","cli":null,"anonymizer":null},

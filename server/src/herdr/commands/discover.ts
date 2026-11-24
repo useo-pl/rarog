@@ -33,10 +33,10 @@
  * Odczyt jest synchroniczny, bo woła go bramka wysyłki (`assertSendable` w managerze), a koszt to kilkaset
  * `stat` na pełny skan (`catalog.ts` ogranicza go do jednego na minutę).
  */
-import { readdirSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { COMMAND_TEXT_MAX } from '@rarog/shared';
-import { readRegularFileSync } from '../../safe-read.ts';
+import { DIRECT_DISK } from '../../folder-gate/disk.ts';
+import type { DiskStats } from '../../folder-gate/types.ts';
 import { DISK_LAYOUT } from './registry.ts';
 import { isCommandSegment } from './shape.ts';
 
@@ -115,11 +115,23 @@ export interface DiscoverOptions {
 /** Stempel ścieżki: `mtime/rozmiar/inode` albo `missing`. Wspólny dla skanu i sprawdzenia sygnatury. */
 export function stampOf(path: string): string {
   try {
-    const info = statSync(path, { throwIfNoEntry: false });
+    const info = statOrMissing(path);
     if (info === undefined) return 'missing';
-    return `${String(info.mtimeMs)}/${String(info.size)}/${String(info.ino)}`;
+    // Nanoseconds: the port's stats are bigint, whose `mtimeMs` drops the fraction of a millisecond.
+    return `${String(info.mtimeNs)}/${String(info.size)}/${String(info.ino)}`;
   } catch {
     return 'unreadable';
+  }
+}
+
+/** `stat` through the port; `undefined` where `statSync` with `throwIfNoEntry: false` gives it (ENOENT, ENOTDIR). */
+function statOrMissing(path: string): DiskStats | undefined {
+  try {
+    return DIRECT_DISK.sync('stat', { path });
+  } catch (err) {
+    const code = (err as { code?: unknown } | null)?.code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return undefined;
+    throw err;
   }
 }
 
@@ -158,7 +170,7 @@ class Scan {
     if (this.stamp(dir) === 'missing') return [];
     let names: string[];
     try {
-      names = readdirSync(dir).sort();
+      names = [...DIRECT_DISK.sync('readdirNames', { path: dir })].sort();
     } catch (err) {
       this.note(`command catalog: not reading directory ${dir} (${codeOf(err)})`);
       return [];
@@ -166,7 +178,7 @@ class Scan {
     return names.filter((name) => {
       const path = join(dir, name);
       try {
-        const info = statSync(path, { throwIfNoEntry: false });
+        const info = statOrMissing(path);
         return info !== undefined && (kind === 'dir' ? info.isDirectory() : info.isFile());
       } catch {
         return false;
@@ -184,7 +196,7 @@ class Scan {
   head(path: string, max = HEAD_BYTES): string | null {
     if (this.stamp(path) === 'missing') return null;
     try {
-      const read = readRegularFileSync(path, { maxBytes: max, followSymlink: true });
+      const read = DIRECT_DISK.sync('readHead', { path, maxBytes: max, followSymlink: true });
       if (read === null) {
         this.note(`${COMMAND_CATALOG_SKIP_FILE_LOG} ${path} (not a regular file)`);
         return null;
@@ -482,8 +494,8 @@ function scanSynced(scan: Scan, home: string): void {
 /** Czy `child` leży w `parent` po rozwiązaniu dowiązań (ścieżka instalacji pluginu z pliku CLI). */
 function insideReal(child: string, parent: string): boolean {
   try {
-    const real = realpathSync(child);
-    const base = realpathSync(parent);
+    const real = DIRECT_DISK.sync('realpath', { path: child });
+    const base = DIRECT_DISK.sync('realpath', { path: parent });
     return real === base || real.startsWith(base.endsWith(sep) ? base : `${base}${sep}`);
   } catch {
     return false;

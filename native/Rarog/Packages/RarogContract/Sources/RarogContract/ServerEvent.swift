@@ -1,4 +1,4 @@
-// 20 typów ramek SSE — lustro `serverEventSchema` z `shared/src/protocol.ts`. Nieznany `type`
+// 21 typów ramek SSE — lustro `serverEventSchema` z `shared/src/protocol.ts`. Nieznany `type`
 // ramki to odrzucenie (reguła forward-compat: stary klient ignoruje ramkę, której nie zna).
 
 /// Ramka SSE po zdekodowaniu. Payload nie niesie pola `type` — wyznacza je przypadek.
@@ -23,6 +23,7 @@ public enum ServerEvent: Sendable, Equatable, Codable {
   case usage(UsageEvent)
   case herdrStatus(HerdrStatusEvent)
   case notes(NotesEvent)
+  case folderAccess(FolderAccessEvent)
   case inboxHeads(InboxHeadsEvent)
   case inboxHead(InboxHeadEvent)
   case inboxRemoved(InboxRemovedEvent)
@@ -46,6 +47,7 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case usage
     case herdrStatus = "herdr-status"
     case notes
+    case folderAccess = "folder-access"
     case inboxHeads = "inbox-heads"
     case inboxHead = "inbox-head"
     case inboxRemoved = "inbox-removed"
@@ -70,6 +72,7 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case .usage: .usage
     case .herdrStatus: .herdrStatus
     case .notes: .notes
+    case .folderAccess: .folderAccess
     case .inboxHeads: .inboxHeads
     case .inboxHead: .inboxHead
     case .inboxRemoved: .inboxRemoved
@@ -100,6 +103,7 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case .usage: self = .usage(try UsageEvent(from: decoder))
     case .herdrStatus: self = .herdrStatus(try HerdrStatusEvent(from: decoder))
     case .notes: self = .notes(try NotesEvent(from: decoder))
+    case .folderAccess: self = .folderAccess(try FolderAccessEvent(from: decoder))
     case .inboxHeads: self = .inboxHeads(try InboxHeadsEvent(from: decoder))
     case .inboxHead: self = .inboxHead(try InboxHeadEvent(from: decoder))
     case .inboxRemoved: self = .inboxRemoved(try InboxRemovedEvent(from: decoder))
@@ -125,6 +129,7 @@ public enum ServerEvent: Sendable, Equatable, Codable {
     case let .usage(event): try event.encode(to: encoder)
     case let .herdrStatus(event): try event.encode(to: encoder)
     case let .notes(event): try event.encode(to: encoder)
+    case let .folderAccess(event): try event.encode(to: encoder)
     case let .inboxHeads(event): try event.encode(to: encoder)
     case let .inboxHead(event): try event.encode(to: encoder)
     case let .inboxRemoved(event): try event.encode(to: encoder)

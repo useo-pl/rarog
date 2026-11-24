@@ -413,6 +413,28 @@
       }
     ]
   },
+  "dialog-exitplanmode-50kol-2.1.331.txt": {
+    "event": "permission-request",
+    "reqId": "screen:p:83e44e42bb2c",
+    "toolName": "ExitPlanMode",
+    "knownDialog": null,
+    "options": [
+      {
+        "digit": "1",
+        "label": "Yes, and use auto mode",
+        "terminalOnly": true
+      },
+      {
+        "digit": "2",
+        "label": "Yes, manually approve edits"
+      },
+      {
+        "digit": "3",
+        "label": "Tell Claude what to change"
+      }
+    ],
+    "bodyPrint": "b35e560d74548be0"
+  },
   "dialog-exitplanmode.txt": {
     "event": "permission-request",
     "reqId": "screen:p:cd976d638e38",

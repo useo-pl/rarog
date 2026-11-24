@@ -27,6 +27,21 @@ export const RELEASE_SOURCE = {
 /** Where to report a version that fails the check (the repository's security policy). */
 export const REPORT_FIX = `do not install it by hand; report it at ${RELEASE_SOURCE.repository}/security`;
 
+/**
+ * The clause of {@link attestationSigner} for a certificate the pinned authority did not issue. From here a new
+ * Sigstore certificate and a forged attestation look the same, so the clause names both.
+ */
+export const OTHER_AUTHORITY = 'has a certificate from another authority than the pinned one: Sigstore changed its'
+  + ' certificate, or the attestation is forged';
+
+/**
+ * The fix of {@link OTHER_AUTHORITY}: a version that pins Sigstore's new certificate is announced on the releases
+ * page of the repository. No install command: one typed from here would install without this check.
+ */
+export const OTHER_AUTHORITY_FIX = `check ${RELEASE_SOURCE.repository}/releases for a release with Sigstore's new`
+  + ` certificate before you install a version by hand; if there is none, report it at ${RELEASE_SOURCE.repository}`
+  + '/security';
+
 /** The predicate type of the SLSA provenance npm keeps next to a version published from a CI run. */
 const PROVENANCE = 'https://slsa.dev/provenance/v1';
 
@@ -36,7 +51,8 @@ const STATEMENT_TYPE = 'application/vnd.in-toto+json';
 /**
  * The certificate authority that issues the signing certificate of a GitHub Actions run: the intermediate of
  * Sigstore's public Fulcio (`O=sigstore.dev, CN=sigstore-intermediate`, valid until October 2031), DER in base64 as
- * Sigstore's trust root (`trusted_root.json`) carries it. A provenance signed under another authority is refused.
+ * Sigstore's trust root (`trusted_root.json`) carries it. A provenance signed under another authority is refused
+ * ({@link OTHER_AUTHORITY}); `scripts/sigstore-pin.ts` tells whether Sigstore still issues under this one.
  */
 const FULCIO_INTERMEDIATE = [
   'MIICGjCCAaGgAwIBAgIUALnViVfnU0brJasmRkHrn/UnfaQwCgYIKoZIzj0EAwMwKjEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MREw',
@@ -196,9 +212,7 @@ export function attestationSigner(signed: unknown, authority: Buffer): Attestati
   ]);
   try {
     const issuer = new X509Certificate(authority);
-    if (!certificate.checkIssued(issuer) || !certificate.verify(issuer.publicKey)) {
-      return 'has a certificate Sigstore did not issue';
-    }
+    if (!certificate.checkIssued(issuer) || !certificate.verify(issuer.publicKey)) return OTHER_AUTHORITY;
     if (!verify('sha256', signedBytes, certificate.publicKey, Buffer.from(signature.sig, 'base64'))) {
       return 'has a signature its certificate did not make';
     }
@@ -211,6 +225,12 @@ export function attestationSigner(signed: unknown, authority: Buffer): Attestati
   } catch {
     return 'has no readable statement';
   }
+}
+
+/** A provenance that does not match: what does not match and what to do. */
+export interface ProvenanceRefusal {
+  readonly summary: string;
+  readonly fix: string;
 }
 
 /** What the tarball about to be installed is. */
@@ -226,16 +246,20 @@ export interface ExpectedTarball {
  * provenance of this version passes {@link attestationSigner} under `authority`, its certificate's only subject
  * alternative name is {@link releaseIdentity}, and the signed statement is a provenance that names this package
  * version, this file's sha512 and the same repository, workflow and tag. The certificate decides, because the
- * statement is text the signing run wrote.
+ * statement is text the signing run wrote. Every refusal has {@link REPORT_FIX}, except a certificate of another
+ * authority ({@link OTHER_AUTHORITY_FIX}): that one can be a new Sigstore certificate.
  */
 export function provenanceProblem(
   audit: unknown, expected: ExpectedTarball, authority = fulcioAuthority(),
-): string | null {
+): ProvenanceRefusal | null {
+  const problem = (summary: string): ProvenanceRefusal => ({ summary, fix: REPORT_FIX });
   const id = `${RAROG_PACKAGE_NAME} ${expected.version}`;
-  if (!isRecord(audit)) return `npm gave no signature check result for ${id}`;
+  if (!isRecord(audit)) return problem(`npm gave no signature check result for ${id}`);
   const { invalid, missing, verified } = audit;
-  if (Array.isArray(invalid) && invalid.length > 0) return `npm found an invalid signature or attestation of ${id}`;
-  if (Array.isArray(missing) && missing.length > 0) return `npm found no registry signature of ${id}`;
+  if (Array.isArray(invalid) && invalid.length > 0) {
+    return problem(`npm found an invalid signature or attestation of ${id}`);
+  }
+  if (Array.isArray(missing) && missing.length > 0) return problem(`npm found no registry signature of ${id}`);
   const thisVersion = (one: unknown): boolean => isRecord(one) && one.name === RAROG_PACKAGE_NAME
     && one.version === expected.version;
   const entry = Array.isArray(verified) ? verified.find(thisVersion) : undefined;
@@ -244,24 +268,25 @@ export function provenanceProblem(
     ? attestations.filter((one: unknown) => isRecord(one) && one.predicateType === PROVENANCE)
     : [];
   const [provenance] = provenances as unknown[];
-  if (!isRecord(provenance)) return `${id} has no verified provenance`;
-  if (provenances.length !== 1) return `${id} has more than one provenance`;
+  if (!isRecord(provenance)) return problem(`${id} has no verified provenance`);
+  if (provenances.length !== 1) return problem(`${id} has more than one provenance`);
   const signer = attestationSigner(provenance.bundle, authority);
-  if (typeof signer === 'string') return `the provenance of ${id} ${signer}`;
+  if (signer === OTHER_AUTHORITY) return { summary: `the provenance of ${id} ${signer}`, fix: OTHER_AUTHORITY_FIX };
+  if (typeof signer === 'string') return problem(`the provenance of ${id} ${signer}`);
   const identity = releaseIdentity(expected.version);
   if (signer.names !== `URI:${identity}`) {
     const single = /^URI:([^,\s]+)$/u.exec(signer.names)?.[1];
     const shown = single === undefined ? 'a certificate with other names' : printable(single);
-    return `${id} was signed by ${shown}, not by ${identity}`;
+    return problem(`${id} was signed by ${shown}, not by ${identity}`);
   }
   const { statement } = signer;
-  if (statement.predicateType !== PROVENANCE) return `the provenance of ${id} is another kind of statement`;
+  if (statement.predicateType !== PROVENANCE) return problem(`the provenance of ${id} is another kind of statement`);
   const subjects = statement.subject;
   const purl = `pkg:npm/${RAROG_PACKAGE_NAME.replace(/^@/u, '%40')}@${expected.version}`;
   const subject = Array.isArray(subjects) && subjects.length === 1 ? subjects[0] as unknown : undefined;
   if (!isRecord(subject) || subject.name !== purl || !isRecord(subject.digest)
     || subject.digest.sha512 !== expected.sha512) {
-    return `the provenance of ${id} names another tarball`;
+    return problem(`the provenance of ${id} names another tarball`);
   }
   const { predicate } = statement;
   const definition = isRecord(predicate) ? predicate.buildDefinition : undefined;
@@ -269,7 +294,7 @@ export function provenanceProblem(
   const workflow = isRecord(parameters) ? parameters.workflow : undefined;
   if (!isRecord(workflow) || workflow.repository !== RELEASE_SOURCE.repository
     || workflow.path !== RELEASE_SOURCE.workflow || workflow.ref !== `refs/tags/v${expected.version}`) {
-    return `the provenance of ${id} names another workflow than ${identity}`;
+    return problem(`the provenance of ${id} names another workflow than ${identity}`);
   }
   return null;
 }
@@ -344,8 +369,8 @@ export async function verifyTarball(input: TarballCheckInput): Promise<TarballCh
   // npm before 11.12 ignores `--include-attestations` and prints only `invalid` and `missing`: the tool is too old,
   // which says nothing about the package.
   if (isRecord(report) && !found && !Array.isArray(report.verified)) return { kind: 'old-npm' };
-  const problem = provenanceProblem(report, { version, sha512 }, input.authority);
-  if (problem !== null) return { kind: 'refused', summary: problem, fix: REPORT_FIX };
+  const refusal = provenanceProblem(report, { version, sha512 }, input.authority);
+  if (refusal !== null) return { kind: 'refused', ...refusal };
   input.log(`  npm: ${id} provenance verified: ${releaseIdentity(version)}`);
   return { kind: 'verified' };
 }

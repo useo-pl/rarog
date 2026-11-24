@@ -3,7 +3,7 @@
 // relay-alert, daemon.crit) i w /var/log/relay-alert.log; kanał na telefon czyta jedno z dwóch.
 //   - ruch wychodzący (tx_bytes interfejsu): średnio ≥ 80 % sufitu `tc` (100 Mbit/s) przez godzinę,
 //     albo ≥ 15 TB w miesiącu kalendarzowym (UTC; po reboocie licznik jądra rośnie od zera, strażnik to dolicza);
-//   - połączenia TCP na 443 w stanie ESTABLISHED > 6000 (budżet nftables: 8000 równoczesnych);
+//   - established TCP connections on 80 and 443 > 6000 (nftables budget: 8000 at once over both ports);
 //   - linie `why=status:401` w dzienniku relay-access od poprzedniego przebiegu: Worker odrzucił bearer relaya,
 //     a adapter przy fail-open wpuszcza wtedy każdego. Dziennik czyta strumieniowo (przy zalewie bywa większy niż
 //     bufor spawnSync), a porażka odczytu daje własny alert i nie wstrzymuje pomiaru ruchu i połączeń.
@@ -25,8 +25,11 @@ export const LINK_BYTES_PER_S = 12_500_000;
 export const RATE_ALERT_FRACTION = 0.8;
 export const MONTH_ALERT_BYTES = 15e12;
 export const CONN_ALERT = 6000;
-/** `ss` arguments listing established TCP connections on 443, one per line (relay-stats counts the same list). */
-export const SS_ARGS = ['-Htn', 'state', 'established', '( sport = :443 )'];
+/**
+ * `ss` arguments listing established TCP connections on 80 and 443, one per line: both ports share the nftables
+ * connection budget. relay-stats counts the same list.
+ */
+export const SS_ARGS = ['-Htn', 'state', 'established', '( sport = :80 or sport = :443 )'];
 const HOUR_MS = 3_600_000;
 const UNAUTHORIZED = /\bwhy=status:401\b/;
 /** Okno średniej: najstarsza próbka nie młodsza niż 55 min (cron co 5 min, z zapasem na spóźnienie). */
@@ -101,7 +104,8 @@ export function evaluate(prev, input, nowMs) {
       + '(threshold 15 TB)');
   }
   if (input.conns > CONN_ALERT) {
-    raise('conns', `ALERT relay-watch: ${String(input.conns)} TCP connections on 443 (threshold ${String(CONN_ALERT)})`);
+    raise('conns', `ALERT relay-watch: ${String(input.conns)} TCP connections on 80 and 443 `
+      + `(threshold ${String(CONN_ALERT)})`);
   }
   if (input.journalError) {
     raise('journal', `ALERT relay-watch: reading the relay-access journal failed, Worker 401s of this window unknown: `

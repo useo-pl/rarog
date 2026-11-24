@@ -17,7 +17,7 @@ WorkingDirectory={{WORKING_DIRECTORY}}
 ExecStart={{EXEC_START}}
 Restart=always
 RestartSec=2
-# Server log in the data directory, appended; the installation creates the directory.
+# Server log in the data directory, mode 0600: the installation creates the directory and the file, systemd appends.
 StandardOutput=append:{{LOG}}
 StandardError=append:{{LOG}}
 

@@ -280,9 +280,10 @@ export interface HerdrSupervisorDeps {
    */
   onVersion?: (version: string) => void;
   /**
-   * An agent joined or left the supervisor's set, so {@link HerdrSupervisor.observedEngineSessions} may have changed.
-   * Called synchronously inside the resync; the receiver must not throw and defers its own work. Receiver: the
-   * `alive.json` writer (`bootstrap/alive-sessions.ts`), which publishes the first sessions after the start at once.
+   * An agent joined or left the supervisor's set, or a pane changed its engine session id (`/clear`, `/resume`) or its
+   * scope, so {@link HerdrSupervisor.observedEngineSessions} may have changed. Called synchronously inside the resync;
+   * the receiver must not throw and defers its own work. Receiver: the `alive.json` writer
+   * (`bootstrap/alive-sessions.ts`), which publishes a new session at once.
    */
   onAgentsChanged?: () => void;
   /**
@@ -466,7 +467,7 @@ interface TabLabelState {
 
 /** Wejście {@link launchDetail} — trzy fakty, z których powstaje zdanie dla człowieka. */
 export interface LaunchDetailInput {
-  /** Co o sobie mówi transport (nieznany protokół, zerwane gniazdo) — jego zdanie ma pierwszeństwo. */
+  /** What the transport says about itself (missing or too old protocol, lost socket); its sentence wins. */
   transportDetail?: AnyText;
   /** `rarogPanes() >= RAROG_MAX_PANES`. */
   paneCapReached: boolean;
@@ -484,8 +485,8 @@ export interface LaunchDetailInput {
  *
  * Dwie zasady, obie wynikają z tego jednego zdarzenia:
  *
- * 1. **Transport ma pierwszeństwo.** Gdy herdr milczy albo mówi nieznanym protokołem, to jest
- *    większa prawda niż sufit — a przy niedostępnym herdr sufit i tak nic nie znaczy.
+ * 1. **The transport wins.** When herdr is silent or its protocol is missing or too old, that is
+ *    a bigger truth than the cap, and with herdr unavailable the cap means nothing anyway.
  * 2. **Sufit pokazujemy TYLKO wtedy, gdy jest jedynym powodem.** Przy `RAROG_HERDR_LAUNCH=0`
  *    zdanie „zamknij którąś sesję" byłoby radą, która niczego nie odblokuje: zamknięcie
  *    panelu nie włączy killswitcha. Wtedy `undefined` jest uczciwsze — klient powie własne,
@@ -849,13 +850,13 @@ export function createHerdrSupervisor(
     if (unavailable) return 'retry';
     const client = launchClient;
     /*
-     * Kanał zapisu zamknięty (`RAROG_HERDR_SEND=0`, nieznany protokół): bramka gniazda i tak
+     * Kanał zapisu zamknięty (`RAROG_HERDR_SEND=0`): bramka gniazda i tak
      * odbiłaby `tab.rename`, ale bez tego warunku każdy klucz płaciłby odczyty i linię logu.
      * Jedna linia na proces mówi, czemu taby nie idą za kartami.
      */
     if (!config.sendEnabled || transport.status().readOnly) {
       logTabLabelOnce('read-only', 'herdr: tab labels on hold — write channel closed '
-        + '(RAROG_HERDR_SEND=0 or unknown protocol)');
+        + '(RAROG_HERDR_SEND=0)');
       return 'done';
     }
     // Manager podaje etykietę już po `normalizeSessionLabel`; tu ta sama funkcja (idempotentna)
@@ -1219,10 +1220,11 @@ export function createHerdrSupervisor(
    * warunkiem poprawności, a nie estetyką: gałąź zmiany `cwd` liczyła zakres wyłącznie
    * z korzeni, więc `cd` pod korzeń włączyłby Codexowi followera pliku, którego nie ma.
    * The roots count as the work area: no hidden entry of a root, no macOS-protected folder of home, as written
-   * and on disk, so a link into such a folder or a root that is a symlink to home does not open it.
+   * and on disk, so a link into such a folder or a root that is a symlink to home does not open it. Scope ignores
+   * the folder gate: a pane in a guarded folder a root opens stays in scope while the folder is closed.
    */
   const scopeOf = (info: HerdrAgentInfo): boolean => (
-    info.engine === 'codex' ? false : inWorkAreaOnDisk(info.cwd, config.roots, home)
+    info.engine === 'codex' ? false : inWorkAreaOnDisk(info.cwd, config.roots, home, undefined, { gate: 'ignore' })
   );
 
   /**
@@ -1435,6 +1437,7 @@ export function createHerdrSupervisor(
           // `set` nadpisuje też ewentualny wpis cudzego panelu pod tym uuid (kolizja wyżej):
           // od teraz sesję silnika ma TEN panel; tamten wpis zniknie z listy swoim trybem.
           bySession.set(info.agentSessionId, key);
+          deps.onAgentsChanged?.();
           emitPane(entry, { type: 'session-changed', agentSessionId: info.agentSessionId });
         }
       } else {
@@ -1502,6 +1505,7 @@ export function createHerdrSupervisor(
        */
       if (inScope !== entry.agent.inScope) {
         entry.agent.inScope = inScope;
+        deps.onAgentsChanged?.();
         if (entry.attached) entry.needsReattach = true;
         log(`herdr: ${entry.agent.paneId} changed scope (inScope=${String(inScope)}) after cd to ${info.cwd}`);
       }
@@ -1918,10 +1922,10 @@ export function createHerdrSupervisor(
       const raw = transport.status();
       const readOnly = raw.readOnly || !config.sendEnabled;
       /*
-       * `canLaunch` gaśnie z CZTERECH niezależnych powodów i każdy z nich jest osobną
-       * władzą: brak opt-inu (`RAROG_HERDR_LAUNCH=0` → brak launchera), tryb tylko do
-       * odczytu (nieznany protokół albo `RAROG_HERDR_SEND=0` — bo `agent.start` jest
-       * w `MUTATING_METHODS`), niedostępny herdr i osiągnięty sufit paneli Raroga.
+       * `canLaunch` goes off for FOUR independent reasons, each a separate power: no opt-in
+       * (`RAROG_HERDR_LAUNCH=0`, no launcher), read-only mode (`RAROG_HERDR_SEND=0`, because
+       * `agent.start` is in `MUTATING_METHODS`), an unavailable herdr (also a protocol below the
+       * tested minimum) and the reached cap of Rarog panes.
        *
        * Rozbite na dwie liczby, bo sufit jako JEDYNY ma dla człowieka wyjście („zamknij
        * którąś sesję") i tylko wtedy wolno je pokazać — patrz `launchDetail`.

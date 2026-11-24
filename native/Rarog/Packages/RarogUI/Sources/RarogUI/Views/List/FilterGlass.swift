@@ -6,16 +6,18 @@ import SwiftUI
 /// A glass surface in `shape`: the list footer card's material (system blur under `footerCardLayer`, near black and
 /// translucent in the dark theme), the field card's light rim in the light theme, and a lighter share of the floating
 /// cards' shadow (`filterGlassShadowShare`) drawn only outside the shape, so it never darkens what shows through. Reduce Transparency: the footer's solid
-/// color. Increase Contrast: the `border` line as the rim in both themes.
+/// color. Increase Contrast: the `border` line as the rim in both themes. `floating: false` drops the shadow, for a
+/// glass control that sits in a panel instead of floating over the list.
 struct FilterGlass<S: InsettableShape>: View {
   let shape: S
+  var floating = true
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.colorSchemeContrast) private var contrast
 
   var body: some View {
     ZStack {
-      shadow
+      if floating { shadow }
       if reduceTransparency {
         shape.fill(Color(uiColor: Palette.footerCardSolid))
       } else {

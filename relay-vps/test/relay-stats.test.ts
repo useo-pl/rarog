@@ -171,7 +171,7 @@ describe('relay-stats.mjs: report', () => {
   it('every section with its numbers and limits', () => {
     const text = render(goodReads(), NOW);
     expect(text).toMatch(/^relay-stats 2026-11-13 12:00 UTC$/m);
-    expect(text).toMatch(/^ {2}established on :443: 6 \(limit 8000 globally, relay-watch alert above 6000\)$/m);
+    expect(text).toMatch(/^ {2}established on :80 and :443: 6 \(limit 8000 globally, relay-watch alert above 6000\)$/m);
     expect(text).toMatch(/^ {2}sources: 3 \(IPv4 per address, IPv6 per \/64; limit 50 each\)$/m);
     expect(text).toMatch(/^ {6}3 {2}198\.51\.100\.7$/m);
     expect(text).toMatch(/^ {2}today 2026-11-13: 17$/m);
@@ -207,7 +207,7 @@ describe('relay-stats.mjs: report', () => {
     for (const head of ['Now', 'Peak', 'Firewall rejects', 'Relay', 'Traffic', 'Access hook']) {
       expect(text).toMatch(new RegExp(`^${head}\\b`, 'm'));
     }
-    expect(text).toMatch(/established on :443: 6/);
+    expect(text).toMatch(/established on :80 and :443: 6/);
     expect(readCount(reads)).toBe(6);
   });
 

@@ -54,7 +54,7 @@ extension UICopy {
     case .stop: L("composer.shortcutInterrupt", language: language)
     case .dictation: L("composer.shortcutDictation", language: language)
     case .voiceAgent: L("shortcutSheet.voiceAgent", language: language)
-    case .terminalHistory: L("terminal.history", language: language)
+    case .terminalHistory: L("terminal.selectOutput", language: language)
     case .closeTerminal: L("terminal.close", language: language)
     case .copy: L("terminal.copy", language: language)
     case .paste: L("terminal.paste", language: language)

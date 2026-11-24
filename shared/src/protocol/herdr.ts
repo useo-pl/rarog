@@ -1,6 +1,7 @@
 /**
  * Protocol contract, herdr area: the pane's permission mode read from the screen and the availability of the herdr
  * integration (`HerdrStatus`, the source of the "herdr unavailable" banner and of the launch permission).
+ * The live availability change, the `herdr-status` SSE frame, lives here too (`HerdrStatusEvent`).
  *
  * Re-exported unchanged by `shared/src/protocol.ts`; code imports the names from there.
  */
@@ -14,8 +15,8 @@ export const herdrModeSchema = z.enum(['manual', 'plan', 'auto', 'bypass', 'unkn
 /**
  * Dostępność integracji herdr — jedyne źródło banera „herdr niedostępny" w kliencie.
  *
- * `readOnly: true` = herdr działa, ale mutacje są zablokowane (nieznany protokół albo
- * `RAROG_HERDR_SEND=0`). To NIE jest to samo co `available: false`: przy tylko-odczycie
+ * `readOnly: true` = herdr działa, ale mutacje są zablokowane (`RAROG_HERDR_SEND=0`).
+ * To NIE jest to samo co `available: false`: przy tylko-odczycie
  * lista sesji jest prawdziwa i świeża, po prostu composer nic nie wyśle.
  */
 export interface HerdrStatus {
@@ -25,8 +26,8 @@ export interface HerdrStatus {
   /**
    * Rarog wolno ZAŁOŻYĆ nową sesję (panel) w herdr.
    *
-   * `false` przy `RAROG_HERDR_LAUNCH=0`, nieznanym protokole albo osiągniętym suficie
-   * `RAROG_MAX_PANES`. Rozłączne z `readOnly` (kanał PISANIA do istniejących paneli):
+   * `false` with `RAROG_HERDR_LAUNCH=0`, `RAROG_HERDR_SEND=0`, an unavailable herdr (also a
+   * protocol below the tested minimum) or the reached cap `RAROG_MAX_PANES`. Rozłączne z `readOnly` (kanał PISANIA do istniejących paneli):
    * killswitche są dwa i wyłączają dwie różne władze (`docs/security-model.md`, „There are FIVE killswitches…”).
    */
   canLaunch: boolean;
@@ -35,7 +36,7 @@ export interface HerdrStatus {
   /**
    * ZDANIE dla człowieka, dlaczego jest tak, jak jest — a nie kod ani nazwa flagi.
    *
-   * Niesie je transport (nieznany protokół, zerwane gniazdo) ALBO nadzorca, gdy jedynym
+   * Niesie je transport (a missing or too old protocol, zerwane gniazdo) ALBO nadzorca, gdy jedynym
    * powodem zgaszonego `canLaunch` jest sufit `RAROG_MAX_PANES` — wtedy stoi tu
    * dokładnie to samo zdanie, którym `POST /api/sessions` odmawia siódmego panelu
    * (`HERDR_PANE_CAP_MESSAGE`), czyli takie, które MÓWI WYJŚCIE: zamknij którąś sesję.
@@ -68,3 +69,40 @@ const _herdrStatusSchemaMatchesType: _HerdrStatusSchemaMatchesType = true;
 const _herdrStatusTypeMatchesSchema: _HerdrStatusTypeMatchesSchema = true;
 void _herdrStatusSchemaMatchesType;
 void _herdrStatusTypeMatchesSchema;
+
+/**
+ * Zmiana dostępności herdr NA ŻYWO (`ServerEvent` member). Event ULOTNY i GLOBALNY: `seq: null`, poza ring bufferem
+ * którejkolwiek sesji. Stan startowy odtwarza `sessions-snapshot.herdrStatus`, a nie replay.
+ */
+export interface HerdrStatusEvent {
+  type: 'herdr-status';
+  available: boolean;
+  agentCount: number;
+  readOnly: boolean;
+  canLaunch?: boolean;
+  detail?: string;
+  detailRef?: SentenceRef;
+}
+
+/**
+ * Świadomie WĘŻSZY niż `herdrStatusSchema`: `version`/`protocol` interesują tylko ramkę
+ * startową (baner „protokół nowszy niż testowany"), a nie każdą zmianę dostępności.
+ *
+ * `canLaunch` is not cosmetic: with the answer to "may I start a session" only in the
+ * `sessions-snapshot` frame, the phone would keep the last known value until the next reconnect,
+ * so a panel closed by hand at the Mac would free a slot while the app still showed a dimmed "+"
+ * and the limit sentence.
+ *
+ * OPCJONALNE, bo event jest współdzielony ze starszymi wydaniami frontu i backendu: brak pola
+ * znaczy „nie wiem", a nie „nie wolno" — klient zostawia wtedy poprzednią wartość zamiast gasić
+ * przycisk na podstawie ciszy.
+ */
+export const herdrStatusEventSchema = z.object({
+  type: z.literal('herdr-status'),
+  available: z.boolean(),
+  agentCount: z.number(),
+  readOnly: z.boolean(),
+  canLaunch: z.boolean().optional(),
+  detail: z.string().optional(),
+  detailRef: sentenceRefSchema.optional(),
+});

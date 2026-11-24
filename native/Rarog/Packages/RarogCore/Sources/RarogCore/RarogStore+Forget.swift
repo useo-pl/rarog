@@ -15,8 +15,9 @@ extension RarogStore {
   // MARK: - Forget Server
 
   /// Forget Server: the app stops reading its data at once (invalidated on disk as the FIRST step, `dropSpace`), the
-  /// server revokes this device (best effort, within ``ServerRuntime/forgetLimit``), the Keychain item, the APNs token
-  /// and the Live Activity go, and the app returns to the pairing screen. `false` = the server was not forgotten (the
+  /// server revokes this device (best effort, within ``ServerRuntime/forgetLimit``), the Keychain item, the APNs token,
+  /// the Live Activity and the server's known devices and new device notices go, and the app returns to the pairing
+  /// screen. `false` = the server was not forgotten (the
   /// disk refused to invalidate the data, `PairingState.forgetFailed`, or there was nothing to forget).
   @discardableResult
   public func forgetServer() async -> Bool {
@@ -62,6 +63,9 @@ extension RarogStore {
     dispatch(.pairing(.revoked(nil)))
     dispatch(.pairing(.forgetting(false)))
     if same { retire(.loggedOut(.notLoggedIn), unregisterPush: true) }
+    // After `retire`: a device list read of this login can no longer write them back.
+    serverPreferences?.set(nil, forKey: Self.knownDevicesKey(credential.serverId))
+    serverPreferences?.set(nil, forKey: Self.deviceNoticesKey(credential.serverId))
     // Entering "no space": the in-memory state goes, the space directories go to the trash (`selectSpace`).
     install(.none)
     interfaceEpoch += 1

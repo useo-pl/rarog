@@ -653,8 +653,8 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
    *
    * Niczego NIE zamyka (rola `lazygit`/`popup` też nie: token mógł zniknąć bez restartu herdr,
    * a w panelu żyje praca) i niczego nie zakłada. Każda mutacja stoi za `refusal()` i `disposed`,
-   * sprawdzanymi po każdym `await`; `HerdrReadOnlyError` (nieznany protokół, `SEND=0` po
-   * stronie gniazda) kończy mutacje przebiegu jedną linią logu.
+   * sprawdzanymi po każdym `await`; `HerdrReadOnlyError` (`SEND=0` at the socket, a second line
+   * behind `refusal()`) ends the pass's mutations with one log line.
    */
   async function reconcilePass(): Promise<TermReconcileResult> {
     if (disposed) return NOT_RUN;

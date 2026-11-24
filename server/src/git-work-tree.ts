@@ -4,8 +4,8 @@
  * writes, cannot move a read outside that directory. The lookup resolves the path and checks names with `lstat` only:
  * it opens no file, reads nothing inside `.git` and starts no git.
  */
-import { lstat, realpath } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { DIRECT_DISK } from './folder-gate/disk.ts';
 
 /**
  * The work tree for a read in `cwd`: walking up from `realpath(cwd)`, the first directory where `lstat` sees a `.git`
@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
  * other than `ENOENT`: a name that cannot be checked is not taken for absent.
  */
 export async function gitWorkTree(cwd: string): Promise<string | null> {
-  for (let dir = await realpath(cwd); ; dir = dirname(dir)) {
+  for (let dir = await DIRECT_DISK.call('realpathNative', { path: cwd }); ; dir = dirname(dir)) {
     if (await hasGitEntry(dir)) return dir;
     if (dirname(dir) === dir) return null;
   }
@@ -22,7 +22,7 @@ export async function gitWorkTree(cwd: string): Promise<string | null> {
 
 async function hasGitEntry(dir: string): Promise<boolean> {
   try {
-    await lstat(join(dir, '.git'));
+    await DIRECT_DISK.call('lstat', { path: join(dir, '.git') });
     return true;
   } catch (error) {
     if ((error as NodeJS.ErrnoException | null)?.code === 'ENOENT') return false;

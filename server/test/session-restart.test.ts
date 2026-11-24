@@ -21,9 +21,7 @@ import type {
   BackgroundTask, FileAttachment, HerdrMode, HerdrStatus, ServerEvent, SessionPromptBlocked, SessionSummary,
   TranscriptMessage,
 } from '@rarog/shared';
-import { PROTOCOL_VERSION, parseServerEvent } from '@rarog/shared';
 import { createManager } from '../src/sessions/manager.ts';
-import { SseHub } from '../src/sse.ts';
 import {
   CLI_VERSION_POLL_MS, HERDR_LOST_PROMPT_MESSAGE, RESTART_BUSY_MESSAGE, restartComposerMessage,
   RESTART_COMPOSER_UNKNOWN_MESSAGE, RESTART_DONE_NOTE, RESTART_EXIT_ASKED_DETAIL, RESTART_EXIT_TIMEOUT_DETAIL,
@@ -794,75 +792,6 @@ describe('manager: cliUpdate i restart sesji', () => {
       expect(texts.some((t) => t.includes('Session restarted on Claude Code 2.1.283'))).toBe(true);
     });
 
-    /*
-     * The open transcript screen keeps its list and cursor across the new panel: the new card has to number on after
-     * the old one, a cursor of the old card has to get a snapshot, and the open streams have to get one right away.
-     */
-    it.each(['restart', 'resume'] as const)('%s: the new card numbers on, the old cursor is too old, open streams reset',
-      async (path) => {
-        const built = await build();
-        const { manager, supervisor, id } = built;
-        let head = 0;
-        manager.onEvent((scope, seq) => { if (scope === id && seq !== null) head = seq; });
-        // A real hub with the transcript open on the phone, as in production (`bootstrap/sse.ts`).
-        const hub = new SseHub({ manager, serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0 });
-        hub.start();
-        const chunks: string[] = [];
-        hub.openSession(id, {
-          writeHead: () => undefined, write: (chunk) => chunks.push(chunk) > 0, end: () => undefined, on: () => undefined,
-        }, null);
-        const history = (...texts: string[]): DriverEvent => ({
-          type: 'history',
-          messages: texts.map((text) => ({
-            role: 'assistant' as const, blocks: [{ type: 'text' as const, text: foreign(text) }],
-            at: '2026-10-19T10:00:00.000Z',
-          })),
-        });
-        // More numbers on the old card than the new one takes before its first message.
-        built.driver.queue.push(history(...Array.from({ length: 20 }, (_, i) => `old ${String(i)}`)));
-        await flush();
-        if (path === 'resume') {
-          // The pane closed at the Mac with its process: the card stays without a driver, "Resume" opens a new pane.
-          built.world.registry?.delete(ENGINE_SESSION);
-          built.world.cliLive?.delete(ENGINE_SESSION);
-          supervisor.gone(KEY);
-          await until(() => manager.get(id)?.state === 'done');
-        }
-        const before = head;
-        if (path === 'restart') {
-          await manager.restart(id);
-          await until(() => supervisor.closedShellTabs.length === 1);
-        } else {
-          await manager.resume(id);
-        }
-        supervisor.driver('w9:pN1').queue.push(history('new'));
-        await flush();
-        const messages = manager.transcript(id).messages;
-        expect(messages.at(-1)?.blocks).toEqual([{ type: 'text', text: 'new' }]);
-        expect(messages.every((message) => message.seq > before)).toBe(true);
-        expect(manager.eventsSince(id, before).tooOld).toBe(true);
-        expect(manager.eventsSince(id, head).tooOld).toBe(false);
-        /*
-         * The open stream gets a snapshot of the new card before any frame of it: a client that took a new frame first
-         * and then dropped would come back with a valid cursor and keep the old list. The old card's last seq is the
-         * highest cursor the new ring calls too old.
-         */
-        let oldLast = head;
-        while (oldLast > 0 && !manager.eventsSince(id, oldLast).tooOld) oldLast -= 1;
-        expect(oldLast).toBeGreaterThanOrEqual(before);
-        const frames = chunks.join('').split('\n\n').filter((raw) => raw.includes('data: ')).map((raw) => ({
-          id: Number(/^id: [^\n:]*:(\d+)$/m.exec(raw)?.[1] ?? 0),
-          event: parseServerEvent(/^data: (.*)$/m.exec(raw)?.[1] ?? ''),
-        }));
-        const reset = frames.findIndex((frame, i) => i > 0 && frame.event?.type === 'transcript-snapshot');
-        const snapshot = frames[reset]?.event;
-        if (snapshot?.type !== 'transcript-snapshot') throw new Error('no reset snapshot');
-        expect(reset).toBeLessThan(frames.findIndex((frame) => frame.id > oldLast));
-        expect(snapshot.messages.every((message) => message.seq > oldLast)).toBe(true);
-        // The new card's live messages follow on the same stream.
-        expect(frames.slice(reset + 1).some((frame) => frame.event?.type === 'message')).toBe(true);
-      });
-
     it('rozmowa skończyła w worktree pod katalogiem karty → restart przechodzi, panel w katalogu karty', async () => {
       // `cd` do worktree agenta zostawia w ogonie pliku katalog pod projektem.
       const built = await build({
@@ -1398,18 +1327,36 @@ describe('manager: cliUpdate i restart sesji', () => {
     });
 
     /*
-     * A late tap from the old view (a second device) must not restart the session with the prompt of a new block. The
-     * new card numbers on after the old one, so the new notice has a higher `seq`; the block `id` differs as well.
+     * Karta po `#recreate` numeruje transkrypt od zera, więc nowa notka blokady
+     * w nowym procesie bywa pod TYM SAMYM `seq` co notka sprzed restartu. Spóźnione tapnięcie ze starego widoku
+     * (drugie urządzenie) nie może zrestartować sesji z nowym promptem — rozstrzyga `id` blokady.
      */
-    it('a new block after the restart: a request with the old block → 409, zero keys', async () => {
+    it('nowa blokada pod tym samym `seq` po restarcie: żądanie ze starym `id` → 409, zero klawiszy', async () => {
       const built = await build({ world: SAME() });
       const { manager, supervisor, id } = built;
+      // Historia przesuwa numer notki sprzed restartu; nowa karta dobija do niego swoją porcją historii.
+      const history = (count: number): DriverEvent => ({
+        type: 'history',
+        messages: Array.from({ length: count }, (_, i) => ({
+          role: 'assistant' as const, blocks: [{ type: 'text' as const, text: foreign(`h${String(i)}`) }],
+          at: '2026-10-19T10:00:00.000Z',
+        })),
+      });
+      built.driver.queue.push(history(20));
+      await flush();
       const old = await blockPrompt(built);
+      let head = 0;
+      manager.onEvent((scope, seq) => { if (scope === id && seq !== null) head = seq; });
       await manager.restart(id, { resend: old });
       await until(() => supervisor.closedShellTabs.length === 1);
       await flush();
 
+      // `head` to ostatni numer NOWEJ karty. Porcja n wiadomości zajmuje n numerów i jedną ramkę `session-changed`,
+      // a notka blokady bierze następny — więc n = old.seq − head − 2.
       const fresh = supervisor.driver(NEW_KEY);
+      expect(head).toBeLessThan(old.seq - 2);
+      fresh.queue.push(history(old.seq - head - 2));
+      await flush();
       // Hook blokuje prompt i w nowym procesie: nowa notka i nowy przycisk.
       fresh.queue.push({
         type: 'prompt-blocked', reason: 'Sesja sprzed aktualizacji ustawień.', promptKept: false,
@@ -1419,8 +1366,8 @@ describe('manager: cliUpdate i restart sesji', () => {
       fresh.blockedLeftover = true;
       fresh.probe = { ...fresh.probe, composer: 'filled' };
       const now = manager.get(id)?.promptBlocked;
-      // The new notice numbers on after the old card, and it is another block.
-      expect(now?.seq).toBeGreaterThan(old.seq);
+      // Warunek scenariusza: ten sam numer notki, inna blokada.
+      expect(now?.seq).toBe(old.seq);
       expect(now?.id).not.toBe(old.id);
 
       // Spóźnione tapnięcie ze starego widoku: 409 przed rezerwacją, bez klawiszy, przycisk nowej notki zostaje.

@@ -711,6 +711,25 @@ final class TunnelCoordinatorTests: XCTestCase {
     XCTAssertTrue(lines.all.allSatisfy(TunnelTrace.isAlert))
   }
 
+  /// A runtime retired by an unpairing (`install(.none)`) and a new pairing (`install(B)`) still writes its lines: they
+  /// carry the key of the server it was built for, also through the relay's buffer, never the server current then.
+  func testRetiredRuntimeLinesCarryTheirOwnServer() async throws {
+    let lines = LineRecorder()
+    let relay = TunnelLogRelay()
+    let coordinator = Self.coordinator(log: relay.send)
+    let serverA = Self.credential(https: true, deviceId: "dA", url: URL(string: "https://a.test")!)
+    let serverB = Self.credential(https: true, deviceId: "dB", url: URL(string: "https://b.test")!)
+    _ = coordinator.transport(.device(serverA), MutationRules())
+    let first = try XCTUnwrap(coordinator.currentRuntime)
+    _ = coordinator.transport(.none, MutationRules())
+    _ = coordinator.transport(.device(serverB), MutationRules())
+    try await Self.eventually("A's runtime retired") { await first.machineState == .retired }
+    relay.attach(lines.append)
+    try await Self.eventually("A's retired line") { lines.all.contains("tunnel: machine retired") }
+    let retired = lines.stamped.filter { $0.line == "tunnel: machine retired" }
+    XCTAssertEqual(Set(retired.map(\.server)), [ServerKey(serverA)], "\(lines.stamped)")
+  }
+
   /// 10:27:06 UTC.
   nonisolated static let eventTime = Date(timeIntervalSince1970: 37_626)
   nonisolated static let machineStart = ContinuousClock.now
@@ -744,7 +763,7 @@ final class TunnelCoordinatorTests: XCTestCase {
   static func coordinator(
     keychain: MemoryIrohIdentityKeychain = MemoryIrohIdentityKeychain(), clock: FakeTunnelClock? = nil,
     proxyCounters: TunnelProxyCounters = TunnelProxyCounters(), relayAccess: (any RelayAccessControl)? = nil,
-    log: @escaping @Sendable (String) -> Void = { _ in }
+    log: @escaping @Sendable (String, ServerKey?) -> Void = { _, _ in }
   ) -> TunnelCoordinator {
     TunnelCoordinator(
       label: "test·Rarog", build: 1, transport: RefusingTunnelTransport(),
@@ -928,7 +947,7 @@ final class PairingRig {
     coordinator = TunnelCoordinator(
       label: "test·Rarog", build: 1, transport: fake, identities: IrohIdentityStore(keychain: MemoryIrohIdentityKeychain()),
       timing: TunnelCoordinatorTests.timing(clock), proxyCounters: fake.proxyCounters, relayAccess: relayAccess,
-      log: { _ in })
+      log: { _, _ in })
   }
 
   func served(_ line: String) -> Int { requests.all.filter { $0 == line }.count }
@@ -982,12 +1001,14 @@ final class Flag: Sendable {
 
 /// Linie do `client.log` w kolejności.
 final class LineRecorder: Sendable {
-  private let lines = Mutex<[String]>([])
+  private let lines = Mutex<[(line: String, server: ServerKey?)]>([])
 
-  var all: [String] { lines.withLock { $0 } }
+  var all: [String] { lines.withLock { $0.map(\.line) } }
   var state: [String] { all.filter { $0.hasPrefix("tunnel state:") } }
+  /// Lines with the server each concerns.
+  var stamped: [(line: String, server: ServerKey?)] { lines.withLock { $0 } }
 
-  func append(_ line: String) { lines.withLock { $0.append(line) } }
+  func append(_ line: String, _ server: ServerKey? = nil) { lines.withLock { $0.append((line, server)) } }
 }
 
 /// Wspólny budżet śladów apki jak `ContractReporter.recordTrace` w jednej godzinie: pierwsze `cap` linii wychodzi.
@@ -1000,7 +1021,7 @@ final class SharedTraceBudget: Sendable {
   var offered: [String] { state.withLock { $0.offered } }
   var admitted: [String] { state.withLock { $0.admitted } }
 
-  func offer(_ line: String) {
+  func offer(_ line: String, _ server: ServerKey?) {
     state.withLock { state in
       state.offered.append(line)
       if state.admitted.count < cap { state.admitted.append(line) }

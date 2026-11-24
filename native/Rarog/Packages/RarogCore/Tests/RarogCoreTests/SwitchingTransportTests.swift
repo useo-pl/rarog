@@ -368,6 +368,7 @@ struct SwitchingStreamSupervisorTests {
         case .connecting: "connecting"
         case .opened: "opened"
         case .frame: "frame"
+        case .oversized: "oversized"
         case .dropped: "dropped"
         case .unauthorized: "unauthorized"
         case .sessionGone: "sessionGone"

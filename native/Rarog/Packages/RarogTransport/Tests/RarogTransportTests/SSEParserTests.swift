@@ -1,4 +1,7 @@
-import RarogTransport
+import Foundation
+import RarogContractFixtures
+@testable import RarogTransport
+import Synchronization
 import Testing
 
 @Suite("parser SSE: przypadki brzegowe (WHATWG)")
@@ -146,5 +149,125 @@ struct SSEParserTests {
   @Test("nieznane pole jest ignorowane")
   func unknownField() {
     #expect(events(parse("foo: bar\ndata: a\n\n")) == [SSEEvent(data: "a")])
+  }
+
+  // MARK: - Ceiling
+
+  /// Outputs in short form: an event of many megabytes in a failure message would flood the log.
+  private func brief(_ outputs: [SSEParser.Output]) -> [String] {
+    outputs.map { output in
+      switch output {
+      case let .event(event): "event \(event.data.utf8.count) B"
+      case let .retry(milliseconds): "retry \(milliseconds)"
+      case let .comment(text): "comment \(text.utf8.count) B"
+      case let .oversized(part): "oversized \(part)"
+      }
+    }
+  }
+
+  private static let mebibyte = [UInt8](repeating: UInt8(ascii: "x"), count: 1 << 20)
+  /// Ceiling of the 40 MiB cases: the real one sits far above, and a test must not buffer hundreds of MiB to reach it.
+  private static let testCeiling = 32 << 20
+
+  @Test("an event of 40 MiB without a line end is cut once, at the ceiling; later bytes give nothing")
+  func longLineIsCut() {
+    var parser = SSEParser(maxEventBytes: Self.testCeiling)
+    var out = parser.feed(Array("data: ".utf8))
+    for _ in 0 ..< 40 { out += parser.feed(Self.mebibyte) }
+    out += parser.feed(Array("\n\ndata: a\n\n".utf8))
+    #expect(brief(out) == ["oversized line"])
+  }
+
+  @Test("an event of 40 MiB from many short data lines is cut once, at the ceiling")
+  func manyShortLinesAreCut() {
+    var parser = SSEParser(maxEventBytes: Self.testCeiling)
+    let line = Array("data: \(String(repeating: "x", count: 1017))\n".utf8)
+    var out: [SSEParser.Output] = []
+    for _ in 0 ..< 40 * 1024 { out += parser.feed(line) }
+    out += parser.feed(Array("\ndata: a\n\n".utf8))
+    #expect(brief(out) == ["oversized event"])
+  }
+
+  @Test("a line and an event of exactly the ceiling pass; one byte more cuts")
+  func ceilingBoundary() {
+    var parser = SSEParser(maxEventBytes: 16)
+    #expect(brief(parser.feed(Array("data: 0123456789\n\n".utf8))) == ["event 10 B"])
+    #expect(brief(parser.feed(Array("data: abcdefg\ndata: hijklmno\n\n".utf8))) == ["event 16 B"])
+    var long = SSEParser(maxEventBytes: 16)
+    #expect(brief(long.feed(Array("data: 0123456789A\n\n".utf8))) == ["oversized line"])
+    var joined = SSEParser(maxEventBytes: 16)
+    #expect(brief(joined.feed(Array("data: abcdefg\ndata: hijklmnop\n\ndata: z\n\n".utf8))) == ["oversized event"])
+  }
+
+  @Test("after a big event both buffers together keep at most 256 KiB", arguments: [100, 120, 200, 300, 1024])
+  func capacityAfterBigEvent(kibibytes: Int) {
+    var parser = SSEParser()
+    let size = kibibytes * 1024
+    let out = parser.feed(Array("data: ".utf8) + Self.mebibyte.prefix(size) + Array("\n\n".utf8))
+    #expect(brief(out) == ["event \(size) B"])
+    #expect(parser.bufferCapacity <= 256 * 1024)
+  }
+
+  @Test("short lines reuse one line buffer instead of a new one per line")
+  func lineBufferReused() {
+    var parser = SSEParser()
+    _ = parser.feed(Array("data: first\n".utf8))
+    let storage = parser.lineStorage
+    var moved = 0
+    for index in 0 ..< 8 {
+      _ = parser.feed(Array("data: \(index)\n".utf8))
+      if parser.lineStorage != storage { moved += 1 }
+    }
+    #expect(storage != nil && moved == 0)
+  }
+
+  /// The largest frame the server builds is a transcript snapshot: a full ring and the image budget, plus every
+  /// pending consent card of the session, each with a presentation of up to `CONSENT_DISPLAY_MAX` bytes. JSON
+  /// escaping at most doubles a presentation (its text is already JSON or a command), hence the factors of 2.
+  @Test("the ceiling holds the server's largest legitimate frame: a full ring, the image budget and every consent card")
+  func ceilingAboveServerFrame() throws {
+    let ring = try Self.tsValue("RING_MAX_BYTES", in: "server/src/sessions/ring-buffer.ts")
+    let images = try Self.tsValue("MAX_IMAGE_DATA_URL_BYTES", in: "shared/src/protocol/attachments.ts")
+    let cards = try Self.tsValue(
+      "CONSENT_REGISTRATIONS_PER_SESSION_MAX", in: "server/src/herdr/dialogs/layer1/contract.ts")
+    let card = try Self.tsValue("CONSENT_DISPLAY_MAX", in: "server/src/herdr/dialogs/layer1/contract.ts")
+    #expect(ring > 0 && images > 0 && cards > 0 && card > 0)
+    #expect(SSEParser.maxEventBytes >= 2 * (ring + images) + 2 * cards * card)
+  }
+
+  /// Value of `export const <name> = <a> * <b> + <c> …;` (sums of products, also inside `Math.round(…)`) in a TS
+  /// file of the repo.
+  private static func tsValue(_ name: String, in path: String) throws -> Int {
+    let source = try String(contentsOf: GoldenFrames.repoRoot().appending(path: path), encoding: .utf8)
+    let pattern = try Regex(#"export const \#(name) = (?:Math\.round\()?([0-9.]+(?: [*+] [0-9.]+)*)\)?;"#)
+    let match = try #require(source.firstMatch(of: pattern), "no \(name) in \(path)")
+    let sum = try #require(match.output[1].substring).split(separator: "+").reduce(0.0) { total, term in
+      total + term.split(separator: "*").reduce(1.0) { value, factor in
+        value * (Double(factor.trimmingCharacters(in: .whitespaces)) ?? .nan)
+      }
+    }
+    return Int(try #require(sum.isFinite ? sum.rounded() : nil))
+  }
+
+  @Test("RarogClient: a 40 MiB line ends the stream with the cut and lets the request go")
+  func clientEndsCutStream() async throws {
+    let chunks = [Data("data: ".utf8)] + Array(repeating: Data(Self.mebibyte), count: 40)
+    let harness = MockHarness { _ in
+      MockURLProtocol.Reply(
+        status: 200, headers: ["Content-Type": "text/event-stream"], chunks: chunks, afterChunks: .stayOpen)
+    }
+    var client = harness.client
+    client.streamEventCeiling = Self.testCeiling
+    let outputs = Mutex<[SSEParser.Output]>([])
+    let ended = Mutex(false)
+    let stream = try await client.openStream(.global)
+    let reader = Task {
+      defer { ended.withLock { $0 = true } }
+      for try await output in stream { outputs.withLock { $0.append(output) } }
+    }
+    try await until("the stream ends", limit: .seconds(60)) { ended.withLock { $0 } }
+    reader.cancel()
+    #expect(brief(outputs.withLock { $0 }) == ["oversized line"])
+    try await until("the request is let go") { MockURLProtocol.held(port: harness.port) == 0 }
   }
 }

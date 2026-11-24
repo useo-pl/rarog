@@ -5,7 +5,8 @@
  * Bufor kompresora jest opróżniany po każdej ramce i każdym pingu, a kompresor zamyka się przy rozłączeniu
  * i przy odpięciu urządzenia. Klient testu czyta surowe bajty (`http.get` niczego nie rozpakowuje sam).
  * Edge cases with the flag on: a compressor error mid-stream, `closeAll` with frames still in the compressors,
- * backpressure, and a stream injected through the iroh listener (fake transport, `helpers/fake-iroh.ts`).
+ * backpressure, the write buffer ceiling, and a stream injected through the iroh listener (fake transport,
+ * `helpers/fake-iroh.ts`).
  */
 import { randomBytes } from 'node:crypto';
 import type { TranscriptMessage } from '@rarog/shared';
@@ -18,7 +19,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ConfigError, loadConfig } from '../src/config.ts';
 import { type IrohListener, startIroh } from '../src/iroh/listener.ts';
 import { type Logger, createRouter } from '../src/router.ts';
-import { REPLAY_SNAPSHOT_LOG, SseHub, acceptsGzip } from '../src/sse.ts';
+import { RING_MAX_BYTES } from '../src/sessions/ring-buffer.ts';
+import {
+  REPLAY_SNAPSHOT_LOG, SNAPSHOT_IMAGE_BUDGET_BYTES, SSE_WRITE_BUFFER_MAX, SseHub, type SseResponse,
+  WRITE_BUFFER_CUT_LOG, acceptsGzip,
+} from '../src/sse.ts';
 import { FakeManager, makeSummary } from './fake-manager.ts';
 import { FakeClientSocket, FakeEndpoint, ManualClock, fakeClientId } from './helpers/fake-iroh.ts';
 import { TEST_DEVICE_ID, createTestDevice } from './helpers/urzadzenie.ts';
@@ -156,6 +161,8 @@ async function openStream(
         },
       };
       res.on('end', () => { stream.rawEnded = true; });
+      // The server may cut the stream (write buffer ceiling): the raw response then fails with `aborted`.
+      res.on('error', (err: Error) => { stream.error ??= err; });
       if (options.paused !== true) stream.read();
       resolve(stream);
     });
@@ -489,4 +496,152 @@ describe('SSE compression edge cases (flag on)', () => {
     expect(viaIroh.text).toBe(tcp.text);
     expect(h.compressors).toHaveLength(1);
   });
+});
+
+/** Response whose socket never drains: every compressed byte stays counted in `writableLength`. */
+class StalledSink implements SseResponse {
+  writableLength = 0;
+  destroyed = false;
+  writeHead(): unknown { return this; }
+  write(chunk: string | Uint8Array): boolean {
+    this.writableLength += typeof chunk === 'string' ? Buffer.byteLength(chunk, 'utf8') : chunk.length;
+    return false;
+  }
+  end(): unknown { return this; }
+  on(): unknown { return this; }
+  destroy(): unknown {
+    this.destroyed = true;
+    return this;
+  }
+}
+
+/** A hub with compression on and tracked compressors, without HTTP: streams go to {@link StalledSink}. */
+function compressingHub(manager: FakeManager): { hub: SseHub; compressors: TrackedGzip[]; lines: string[] } {
+  const compressors: TrackedGzip[] = [];
+  const lines: string[] = [];
+  const hub = new SseHub({
+    manager, serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0, gzip: true,
+    logger: (line) => { lines.push(line); },
+    createGzip: () => {
+      const tracked: TrackedGzip = { stream: createGzip(), closed: false };
+      tracked.stream.once('close', () => { tracked.closed = true; });
+      compressors.push(tracked);
+      return tracked.stream;
+    },
+  });
+  hub.start();
+  return { hub, compressors, lines };
+}
+
+/** The compressor took every byte written to it and handed its output on, or it is gone. */
+async function compressorSettled(tracked: TrackedGzip | undefined): Promise<void> {
+  if (tracked === undefined) throw new Error('no compressor');
+  const { stream } = tracked;
+  await waitFor('compressor settled', () => stream.destroyed
+    || (stream.writableLength === 0 && stream.readableLength === 0), 10_000);
+  // The flush callback and the last `data` event run after the buffers empty.
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
+const cutLines = (lines: string[]): string[] => lines.filter((line) => line.startsWith(WRITE_BUFFER_CUT_LOG));
+
+describe('SSE write buffer ceiling with compression', () => {
+  it('a compressed stream that never drains is cut near the ceiling, with one log line; the compressor closes', async () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    const { hub, compressors, lines } = compressingHub(manager);
+    const sink = new StalledSink();
+    hub.openGlobal(sink, 'device-1', 'gzip');
+    const frame = 1024 * 1024;
+    for (let i = 0; i < 60 && !sink.destroyed; i += 1) {
+      manager.emit('global', null, {
+        type: 'session-changed', session: makeSummary({ id: 's1', title: `SECRET-TITLE-${noise(frame)}` }),
+      });
+      await compressorSettled(compressors[0]);
+    }
+    expect(sink.destroyed).toBe(true);
+    expect(sink.writableLength).toBeGreaterThan(SSE_WRITE_BUFFER_MAX);
+    expect(hub.clientCount).toBe(0);
+    await waitFor('compressor closed', () => compressors[0]?.closed === true);
+    expect(cutLines(lines)).toHaveLength(1);
+    expect(cutLines(lines)[0]).toContain('device-1');
+    expect(lines.join('\n')).not.toContain('SECRET-TITLE');
+
+    const written = sink.writableLength;
+    hub.sendHeartbeat();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(sink.writableLength).toBe(written);
+  });
+
+  it('a maximum-size compressed snapshot to a slowly draining client, then a heartbeat, is not cut', async () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    const head = 'data:image/png;base64,';
+    // Random base64 barely compresses, so the compressor input and its output are both close to the frame size.
+    manager.transcriptResult = {
+      messages: [
+        { seq: 1, role: 'assistant', at: '2026-11-10T10:00:00.000Z', blocks: [{ type: 'text', text: noise(RING_MAX_BYTES) }] },
+        {
+          seq: 2, role: 'user', at: '2026-11-10T10:00:00.000Z',
+          blocks: [{ type: 'image', dataUrl: head + noise(SNAPSHOT_IMAGE_BUDGET_BYTES - head.length) }],
+        },
+      ],
+      pendingPermissions: [], pendingQuestions: [],
+    };
+    const { hub, compressors, lines } = compressingHub(manager);
+    const sink = new StalledSink();
+    hub.openSession('s1', sink, null, undefined, 'gzip');
+    await compressorSettled(compressors[0]);
+    expect(sink.writableLength).toBeGreaterThan(RING_MAX_BYTES);
+    sink.writableLength = Math.floor(sink.writableLength * 0.9);
+    hub.sendHeartbeat();
+    await compressorSettled(compressors[0]);
+    expect(sink.destroyed).toBe(false);
+    expect(hub.clientCount).toBe(1);
+    expect(cutLines(lines)).toHaveLength(0);
+    hub.closeAll();
+  });
+
+  it('one compressed snapshot larger than the ceiling is not cut on its write', async () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    // Random base64 compresses to about three quarters, so the output alone still passes the ceiling.
+    manager.transcriptResult = {
+      messages: [{
+        seq: 1, role: 'assistant', at: '2026-11-10T10:00:00.000Z',
+        blocks: [{ type: 'text', text: noise(Math.floor(SSE_WRITE_BUFFER_MAX * 1.5)) }],
+      }],
+      pendingPermissions: [], pendingQuestions: [],
+    };
+    const { hub, compressors, lines } = compressingHub(manager);
+    const sink = new StalledSink();
+    hub.openSession('s1', sink, null, undefined, 'gzip');
+    await compressorSettled(compressors[0]);
+    hub.sendHeartbeat();
+    await compressorSettled(compressors[0]);
+    expect(sink.writableLength).toBeGreaterThan(SSE_WRITE_BUFFER_MAX);
+    expect(sink.destroyed).toBe(false);
+    expect(hub.clientCount).toBe(1);
+    expect(cutLines(lines)).toHaveLength(0);
+    hub.closeAll();
+  });
+
+  it.each([true, false])('over HTTP (compression %s): a client that stops reading is cut, and reconnecting gets a snapshot',
+    async (gzip) => {
+      const h = await startHarness(gzip);
+      const stalled = await openStream(h, '/api/stream', gzip ? 'gzip' : undefined, { paused: true });
+      for (let i = 0; i < 100 && h.hub.clientCount > 0; i += 1) {
+        h.manager.emit('global', null, {
+          type: 'session-changed', session: makeSummary({ id: 's1', title: `frame-${String(i)}-${noise(1024 * 1024)}` }),
+        });
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(h.hub.clientCount).toBe(0);
+      expect(cutLines(h.lines)).toHaveLength(1);
+      // A paused client sees the closed connection only once it reads again.
+      stalled.read();
+      await waitFor('stalled stream closed', () => stalled.error !== null || stalled.rawEnded, 10_000);
+      if (gzip) await waitFor('compressor closed', () => h.compressors[0]?.closed === true);
+
+      const again = await openStream(h, '/api/stream', gzip ? 'gzip' : undefined);
+      await waitFor('snapshot after reconnect', () => SNAPSHOT_DONE(again));
+      expect(h.hub.clientCount).toBe(1);
+    }, 30_000);
 });

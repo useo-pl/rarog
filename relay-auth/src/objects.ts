@@ -115,8 +115,8 @@ export class Gate extends DurableObject<Env> implements GateApi {
     return this.#desk;
   }
 
-  async register(endpointId: string, proof: GateProof): Promise<RegisterOutcome> {
-    return (await this.#ready()).register(endpointId, proof);
+  async register(endpointId: string, proof: GateProof, bucket: string): Promise<RegisterOutcome> {
+    return (await this.#ready()).register(endpointId, proof, bucket);
   }
 
   override async alarm(): Promise<void> {

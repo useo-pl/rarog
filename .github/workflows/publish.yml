@@ -6,7 +6,8 @@
 #    (`scripts/package-audit.mjs`); tarball and manifest go out as an artifact, the tarball's sha256 and the dist-tag
 #    as outputs;
 # 2. sbom-ubuntu and sbom-macos, one set of steps (YAML anchor): the tarball from build, its sha256 checked,
-#    `npm i -g` into a prefix, a CycloneDX SBOM of the installed package as an artifact per platform;
+#    `npm i -g` into a prefix, a CycloneDX SBOM of the installed package as an artifact per platform, and every
+#    command of the installed package run with `--help`;
 # 3. publish (not in dry-run mode, after build and sbom-ubuntu; it does not wait for sbom-macos): the same tarball
 #    after the sha256 check, `npm stage publish` with the trusted publisher's OIDC token, `--tag beta` for a beta.
 #    The version waits in the registry for approval with 2FA; the workflow approves nothing.
@@ -256,6 +257,31 @@ jobs:
               process.exit(1);
             }
           " "$sbom" "$NAME" "$VERSION"
+      # The tarball publish uploads is the one installed here, so a package whose command does not start stops the
+      # run before publish. The commands come from the `bin` field of the installed package.json, so the same step
+      # serves any package name; a temporary HOME keeps the runner's home out of it.
+      - name: package commands --help
+        env:
+          NAME: ${{ inputs.name }}
+        run: |
+          w="$RUNNER_TEMP/sbom"
+          mkdir -p "$w/home"
+          commands="$(node -e "
+            const bin = JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).bin ?? {};
+            console.log(typeof bin === 'object' ? Object.keys(bin).join('\n') : '');
+          " "$w/prefix/lib/node_modules/$NAME/package.json")"
+          if [ -z "$commands" ]; then
+            echo "::error::$NAME: no command in the bin field of the installed package.json"
+            exit 1
+          fi
+          while IFS= read -r command; do
+            echo "$command --help"
+            if ! HOME="$w/home" "$w/prefix/bin/$command" --help >"$w/help.out" 2>&1; then
+              cat "$w/help.out"
+              echo "::error::$command --help failed"
+              exit 1
+            fi
+          done <<<"$commands"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2, 2026-10-07
         with:
           name: sbom-${{ matrix.os }}

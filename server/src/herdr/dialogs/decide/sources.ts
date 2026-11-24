@@ -52,10 +52,13 @@ export function expectedFor(input: DecideInput, source: PendingTool): ExpectedDe
   return {
     toolName: source.toolName,
     ...(command === null ? {} : { command }),
-    // Katalog wywołania ze zrzutu hooka, a dla wpisu jsonl (bez `cwd`) katalog sesji z drivera.
+    // The call directory: the hook dump's, else the `cwd` field of the transcript entry (it follows a Bash `cd`, while
+    // the pane stays on the start directory), else the session directory from the driver.
     ...(fileChange === null
       ? {}
-      : { fileCall: { change: fileChange, input: source.input, cwd: source.cwd ?? input.cwd ?? null } }),
+      : {
+        fileCall: { change: fileChange, input: source.input, cwd: source.cwd ?? source.entryCwd ?? input.cwd ?? null },
+      }),
     ...(command !== null && bashDoubleProof(input.pending, input.hookRaw) ? { doubleProof: true } : {}),
     ...(payload === null
       ? {}

@@ -15,9 +15,9 @@ struct GoldenFramesTests {
     #expect(try frames.frameFiles() == frames.names)
   }
 
-  @Test("każdy z 20 typów ramki ma `<type>.max.json` oczekiwany jako ok i dekoduje się do swojego przypadku")
+  @Test("każdy z 21 typów ramki ma `<type>.max.json` oczekiwany jako ok i dekoduje się do swojego przypadku")
   func everyWireTypeHasMaxFrame() throws {
-    #expect(ServerEvent.WireType.allCases.count == 20)
+    #expect(ServerEvent.WireType.allCases.count == 21)
     for type in ServerEvent.WireType.allCases {
       let name = "\(type.rawValue).max.json"
       #expect(frames.entries[name]?.expect == .ok, "brak \(name)")
@@ -106,6 +106,28 @@ struct GoldenFramesTests {
       [("/heads/1/kind", JSONValue.string("summary")), ("/heads/1/version", .string(""))],
       [("/heads/1/kind", .null)],
       [("/heads/1/at", nil)],
+    ] as [[(String, JSONValue?)]] {
+      #expect(throws: EventRejection.self, "\(ops.map(\.0))") { try decode(ops).get() }
+    }
+  }
+
+  @Test("`folder-access`: blocks with an unknown state drop, a broken block still rejects the frame next to one")
+  func folderAccessLossy() throws {
+    let base = try frames.document("folder-access.max.json")
+    func decode(_ ops: [(String, JSONValue?)]) throws -> Result<DecodedEvent, EventRejection> {
+      let patched = try base.applying(ops.map { JSONPatchOp(path: $0.0, value: $0.1, remove: $0.1 == nil) })
+      return EventDecoder.decode(try JSONEncoder().encode(patched))
+    }
+    let two = try decode([("/blocked/0/state", .string("paused")), ("/blocked/2/state", .string("asking"))]).get()
+    guard case let .folderAccess(access) = two.event else { throw FixtureError("not folder-access") }
+    #expect(access.blocked.map(\.name) == ["Documents"])
+    #expect(Set(two.degradations) == [
+      Degradation(path: "/blocked/0/state", value: "paused"), Degradation(path: "/blocked/2/state", value: "asking"),
+    ])
+    for ops in [
+      [("/blocked/1/state", JSONValue.string("paused")), ("/blocked/1/path", nil)],
+      [("/blocked/1/state", .null)],
+      [("/blocked/1/name", .string(""))],
     ] as [[(String, JSONValue?)]] {
       #expect(throws: EventRejection.self, "\(ops.map(\.0))") { try decode(ops).get() }
     }

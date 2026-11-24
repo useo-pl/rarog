@@ -1,20 +1,20 @@
 /**
- * Strażnik-zapadka „karta zgody nie czyta jsonl”: moduły katalogu dialogów (`server/src/herdr/dialogs/**`)
- * nie importują transkryptu — ani czytnika wpisów (`herdr/jsonl-pending.ts`), ani śledzenia pliku rozmowy
- * (`herdr/jsonl-follow.ts`, `herdr/transcript-path.ts`, `drivers/herdr/transcript.ts`). Liczy się też sam typ
- * (`import type { PendingTool }`): wpis transkryptu w sygnaturze znaczy, że moduł składa kartę albo decyzję z treści
- * jsonl, a nie ze zrzutu hooka i ekranu.
+ * Guard "a consent card does not read jsonl": modules of the dialogs directory (`server/src/herdr/dialogs/**`) do not
+ * import the transcript, neither the entry reader (`herdr/jsonl-pending.ts`) nor the conversation file follower
+ * (`herdr/jsonl-follow.ts`, `herdr/transcript-path.ts`, `drivers/herdr/transcript.ts`). A type import counts too
+ * (`import type { PendingTool }`): a transcript entry in a signature means the module builds a card or a decision
+ * from jsonl content rather than from the hook dump and the screen.
  *
- * Dziś importuje go pięć modułów ścieżki karty z wpisu jsonl. Lista {@link WYJATKI} jest ZAMKNIĘTA: nowy
- * moduł z importem transkryptu jest czerwony, wpis bez importu (martwy) też — usunięty import ma zdjąć wpis
- * w tym samym commicie. Fasada drivera (`drivers/herdr-driver.ts`) jest poza zakresem: śledzi transkrypt dla
- * wiadomości i podaje wpis decyzji jako argument.
+ * Five modules of the card path from a jsonl entry import it. The {@link WYJATKI} list is CLOSED: a new module with
+ * a transcript import is red, and so is an entry without an import (a dead one), so a removed import takes its entry
+ * out in the same commit. The driver facade (`drivers/herdr-driver.ts`) is out of scope: it follows the transcript for
+ * messages and passes the decision's entry as an argument.
  *
- * Zakres: karta zgody z kanału hooka mieszka w warstwie 1 (`server/src/herdr/dialogs/layer1/`) i ten
- * podkatalog nie ma wyjątków: moduł `layer1/**` z importem transkryptu przewraca `layer1-granica.test.ts`
- * niezależnie od listy niżej (tam razem z zakazem modułów drivera herdr). Pięć wyjątków niesie ścieżkę cyfry
- * (karta z wpisu jsonl, karta pytania, cyfra po treści z jsonl); bez tej ścieżki lista ma
- * być pusta.
+ * Scope: the consent card of the hook channel lives in layer 1 (`server/src/herdr/dialogs/layer1/`), and that
+ * subdirectory has no exceptions: a `layer1/**` module with a transcript import fails `layer1-granica.test.ts`
+ * whatever the list below says (there together with the ban on herdr driver modules). The five exceptions carry the
+ * digit path (the card from a jsonl entry, the question card, the digit after jsonl content). The consent digit path
+ * stays as the emergency path of a consent dialog without a hook in channel mode, so these exceptions stay with it.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';

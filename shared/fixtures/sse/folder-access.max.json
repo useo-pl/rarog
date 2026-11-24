@@ -1,0 +1,23 @@
+{
+  "type": "folder-access",
+  "blocked": [
+    {
+      "name": "Desktop",
+      "path": "/Users/demo/Desktop",
+      "state": "waiting",
+      "since": "2026-10-03T08:14:05.000Z"
+    },
+    {
+      "name": "Documents",
+      "path": "/Users/demo/Documents",
+      "state": "denied",
+      "since": "2026-10-03T08:15:30.000Z"
+    },
+    {
+      "name": "Downloads",
+      "path": "/Users/demo/Downloads",
+      "state": "unchecked",
+      "since": "2026-10-03T08:16:10.000Z"
+    }
+  ]
+}

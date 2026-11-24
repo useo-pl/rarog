@@ -203,47 +203,27 @@ final class SessionSwitcherUIKitTests: XCTestCase {
     XCTAssertEqual(f.field.text, "szkic")
   }
 
-  /// The digits 1–9 with and without Cmd, from the top row and the keypad, belong to the window: the digit of a tab
-  /// jumps at once, the current tab's digit closes and gives the caret back, a digit without a tab does nothing and
-  /// the window stays. 0 is no key of the window: Cmd+0 goes on to the menu (the text size reset). Nothing reaches
-  /// the field. They do not repeat.
-  func testDigitsPickRows() async throws {
-    let digitModifiers: [UIKeyModifierFlags] = [[], .command, .numericPad, [.numericPad, .command]]
-    for modifiers in digitModifiers {
-      let f = try field()
-      open(f)
-      XCTAssertTrue(Self.press("3", modifiers, in: f.window) === f.responder, "\(modifiers) to the window")
-      XCTAssertEqual(f.clock.opened, [.session("b")], "\(modifiers): the third tab")
-      XCTAssertFalse(f.switcher.windowShown)
-      await settle()
-      XCTAssertFalse(f.field.isFirstResponder, "no caret back after a jump")
-      XCTAssertEqual(f.field.text, "szkic")
-    }
+  /// The digits are no keys of the window, with or without Cmd, from the top row or the keypad: no key command of
+  /// the window takes them, the selection stays and nothing reaches the field. Cmd+digit goes on up the chain to the
+  /// menu's tab shortcut, which closes the window like any other menu shortcut.
+  func testDigitsAreNoKeysOfTheWindow() throws {
     let f = try field()
     open(f)
-    XCTAssertTrue(Self.press("7", .command, in: f.window) === f.responder)
-    XCTAssertTrue(f.switcher.windowShown && f.clock.opened.isEmpty, "no tab 7: the window stays")
-    for modifiers in digitModifiers {
-      XCTAssertFalse(Self.keyTarget("0", modifiers, in: f.window)?.responder === f.responder, "0 \(modifiers)")
-    }
-    XCTAssertTrue(f.switcher.windowShown, "0 picks nothing")
-    XCTAssertTrue(Self.press("1", in: f.window) === f.responder)
-    XCTAssertFalse(f.switcher.windowShown)
-    XCTAssertTrue(f.clock.opened.isEmpty, "1 is the current tab: no jump")
-    await settle()
-    XCTAssertTrue(f.field.isFirstResponder, "the caret back in the field")
-    XCTAssertEqual(f.field.text, "szkic", "no digit reached the field")
-    XCTAssertEqual(f.clock.sent, 0)
-
-    let commands = try XCTUnwrap(f.responder.keyCommands)
-    for digit in SwitcherKey.digits {
-      for modifiers in digitModifiers {
-        let command = try XCTUnwrap(
-          commands.first { $0.input == digit && $0.modifierFlags == modifiers }, "\(digit) \(modifiers)")
-        XCTAssertEqual(command.repeatBehavior, .nonRepeatable, "\(digit) \(modifiers)")
-        XCTAssertTrue(command.wantsPriorityOverSystemBehavior, "\(digit) \(modifiers)")
+    XCTAssertTrue(f.responder.isFirstResponder && f.switcher.holdsKeyboard)
+    let modifiers: [UIKeyModifierFlags] = [[], .command, .numericPad, [.numericPad, .command]]
+    for digit in (0...9).map(String.init) {
+      for flags in modifiers {
+        XCTAssertFalse(
+          f.responder.keyCommands?.contains { $0.input == digit && $0.modifierFlags == flags } ?? false,
+          "\(digit) \(flags): no key command of the window")
+        XCTAssertFalse(Self.press(digit, flags, in: f.window) === f.responder, "\(digit) \(flags)")
       }
     }
+    XCTAssertTrue(f.switcher.windowShown, "a digit picks nothing")
+    XCTAssertEqual(f.switcher.machine.selected, .session("cur"), "the selection stays")
+    XCTAssertTrue(f.clock.opened.isEmpty)
+    XCTAssertEqual(f.field.text, "szkic", "no digit reached the field")
+    XCTAssertEqual(f.clock.sent, 0)
   }
 
   /// Esc and Cmd+period close the window without a jump and give the caret back to the field; the turn is not

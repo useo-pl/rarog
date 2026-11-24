@@ -95,6 +95,7 @@ import { CommandDialogSettle } from './herdr/command-dialog-settle.ts';
 import { ConsentChannel } from './herdr/consent-channel.ts';
 import { ConsentNoHook } from './herdr/consent-no-hook.ts';
 import type { ConsentNoHookSources } from './herdr/consent-no-hook.ts';
+import { ScreenFallback } from './herdr/screen-fallback.ts';
 import type { ConsentObserveRequest } from './herdr/consent-channel.ts';
 import { Layer2Cards, isLayer2Id, layer2HoldsKeys } from './herdr/layer2-card.ts';
 import type { Layer2CardPort } from './herdr/layer2-card.ts';
@@ -138,7 +139,7 @@ import type {
   ScreenDialog, ScreenOption, ShadowConsentChannel, ShadowOutcome,
 } from '../herdr/dialogs/index.ts';
 import type { ConsentEffectiveMode } from '../herdr/dialogs/layer1/mode.ts';
-import type { ConsentDeskRelease } from '../herdr/dialogs/index.ts';
+import type { ConsentDeskRelease, ScreenFallbackGuard } from '../herdr/dialogs/index.ts';
 import { consentDigitRefused, consentModeNow, consentOnlyEvent } from '../herdr/dialogs/index.ts';
 import { collapseFooterMode, parseModeFooter } from '../herdr/dialogs/screen/mode-footer.ts';
 import type { HerdrFooterMode } from '../herdr/dialogs/screen/mode-footer.ts';
@@ -808,6 +809,8 @@ export class HerdrDriver implements SessionDriver {
   readonly #cliReserve: CliReserve;
   /** Consent without a hook and cards without the approve button, in the log: `drivers/herdr/consent-no-hook.ts`. */
   readonly #noHook: ConsentNoHook;
+  /** The emergency approve button of a consent dialog without a hook: `drivers/herdr/screen-fallback.ts`. */
+  readonly #screenFallback: ScreenFallback;
   /** The port of the refusals and their audit funnel: `drivers/herdr/refusals.ts`. */
   readonly #refusals: RefusalPort;
   /** The wait behind a command dialog the driver confirmed: `drivers/herdr/command-dialog-settle.ts`. */
@@ -917,6 +920,17 @@ export class HerdrDriver implements SessionDriver {
       cliWaiting: () => this.#cliReserve.cliWaiting, screenText: () => this.#screenText,
       cliVersion: () => (this.#cliReserve.cliSignal?.kind === 'unknown' ? null : this.#cliReserve.cliSignal?.version ?? null),
       permissionMode: () => (this.#mode === 'unknown' ? null : this.#mode),
+      // The button of the standing card changed (or a card waits for it): the card goes out again under its `reqId`.
+      judged: () => {
+        if (this.#disposed || !this.#screenFallback.judged(this.#activeReq)) return;
+        this.#clearActive('screen fallback changed');
+        this.#scheduleEvaluate();
+      },
+    });
+    this.#screenFallback = new ScreenFallback({ deps, inScope: this.#inScope }, {
+      agentSessionId: () => this.#agentSessionId, cliWaiting: () => this.#cliReserve.cliWaiting,
+      screenText: () => this.#screenText, standing: () => this.#noHook.standing(),
+      keyHookWaits: () => this.#promptQueue.keyHookWaits(), pendingCallId: () => this.#pending?.id ?? null,
     });
     this.#promptQueue.restore(this.#engine === 'claude', () => ++this.#turnGuard.sendGeneration);
     if (this.#follower !== null) void this.#pumpFollower(this.#follower);
@@ -1782,6 +1796,13 @@ export class HerdrDriver implements SessionDriver {
      * po dowodzie ze świeżego ekranu. `allow-always` nie ma tu opcji, którą by wybierał.
      */
     if (active.trustArrow !== undefined && decision === 'allow') return this.#approveTrustArrow(active, active.trustArrow);
+    // The emergency button approves this one call: "don't ask again" stays at the desk.
+    if (decision === 'allow-always' && active.screenFallback !== undefined) {
+      this.#screenFallback.refused(active, 'always');
+      return Promise.resolve(refuseDecision(this.#refusals,
+        TERMINAL_ONLY_MESSAGE, 'screen fallback: once only', 'terminal-only',
+      ));
+    }
     const option = decision === 'allow-always'
       ? alwaysOption(active.options)
       : affirmativeOption(active.options);
@@ -2177,32 +2198,53 @@ export class HerdrDriver implements SessionDriver {
       if (this.#disposed) return STALE;
       // Tryb kanału (`main`): zgoda na narzędzie nie idzie cyfrą, także odpowiedź na potwierdzenie z ekranu.
       if (consentDigitRefused(this.#deps, this.#cliReserve.cliWaiting, answered, consent)) {
+        // An emergency card that lost its button under the live mode or class: 410, and the card goes out again.
+        if (consent && answered.screenFallback !== undefined) {
+          return this.#fallbackLost(answered, this.#screenFallback.gateGuard(answered), null);
+        }
         return refuseDecision(
           this.#refusals, TERMINAL_ONLY_MESSAGE, 'consent channel main: no digit for a consent', 'terminal-only',
         );
       }
       const shadow = consent && this.#shadowChannel() !== undefined ? await this.#shadowStep('allow', answered) : null;
       // Digit that only the measured mark lets through: the send shield before the fresh read and the key.
-      const mark = consent
-        && consentDigitRefused(this.#deps, this.#cliReserve.cliWaiting, { ...answered, measuredConsent: undefined }, true)
-        ? answered.measuredConsent : undefined;
-      const shield = mark === undefined ? null : await this.#promptQueue.keyShield(mark.cliDialog);
+      const bare = { ...answered, measuredConsent: undefined, screenFallback: undefined };
+      const gated = consent && consentDigitRefused(this.#deps, this.#cliReserve.cliWaiting, bare, true);
+      const mark = gated ? answered.measuredConsent : undefined;
+      // Digit that only the emergency mark lets through: "Yes" alone, the same shields, then the rule on fresh facts,
+      // which refuses whatever moved since the gate above. A marked card takes this path in every mode, and a mode that
+      // left `main` or `all` since the card refuses the key: the card goes out again as the live mode gives it.
+      const fallback = consent && mark === undefined && answered.screenFallback !== undefined;
+      if (fallback && !gated) return this.#fallbackLost(answered, this.#screenFallback.gateGuard(answered), shadow);
+      if (fallback && option.digit !== affirmativeOption(answered.options)?.digit) {
+        this.#screenFallback.refused(answered, 'always');
+        return refuseDecision(this.#refusals, TERMINAL_ONLY_MESSAGE, 'screen fallback: once only', 'terminal-only');
+      }
+      const shielded = mark?.cliDialog ?? (fallback ? 'permission' : null);
+      const shield = shielded === null ? null : await this.#promptQueue.keyShield(shielded);
+      if (shield !== null && fallback) return this.#fallbackLost(answered, shield, shadow);
       if (shield !== null) {
         return refuseDecision(this.#refusals, SCREEN_CHANGED_MESSAGE, `measured: ${shield}`, 'screen-changed');
       }
       const held = await this.#digitStillHolds(option, answered);
       if (!held.ok) {
         this.#shadowKeySent(shadow, false);
+        if (fallback) this.#screenFallback.refused(answered, 'screen');
         return held.outcome;
       }
+      // From here to the key nothing awaits: the rule, the channel card and the hook requests are asked last.
+      const verdict = fallback ? this.#screenFallback.keyGuard(answered, this.#screenText) : null;
+      if (verdict?.ok === false) return this.#fallbackLost(answered, verdict.guard, shadow);
       // Zgoda z karty, a dialog przejęła karta kanału zgód (także w trakcie świeżego odczytu): cyfra trafiłaby
       // w dialog, na który odpowiada hook. Bez klawisza; karta z ekranu wygasa (410).
       if (consent && this.#consentChannel.consentCardStands(true)) {
         this.#shadowKeySent(shadow, false);
+        if (fallback) this.#screenFallback.refused(answered, 'channel-card');
         return STALE;
       }
       // Measured digit: a hook registration without a card can come during the fresh read, after the shield.
-      if (mark !== undefined && this.#promptQueue.keyHookWaits()) {
+      if ((mark !== undefined || fallback) && this.#promptQueue.keyHookWaits()) {
+        if (fallback) return this.#fallbackLost(answered, 'hook', shadow);
         return refuseDecision(this.#refusals, SCREEN_CHANGED_MESSAGE, 'measured: hook', 'screen-changed');
       }
       const live = held.dialog;
@@ -2221,7 +2263,12 @@ export class HerdrDriver implements SessionDriver {
       const resolvedText = this.#screenText;
       const shot = { bodyPrint: live.bodyPrint, screenReqId: this.#screenIdentity(resolvedText) };
       const sent = await this.#send(
-        () => this.#deps.client.sendKeys(this.#paneId, [option.digit]),
+        () => {
+          // The emergency key is noted right before it goes, with no await in between. A note of a key that then
+          // fails stays for its minute: at worst a late hook of this dialog goes back to the terminal.
+          if (verdict?.ok === true) this.#screenFallback.keyNoted(verdict);
+          return this.#deps.client.sendKeys(this.#paneId, [option.digit]);
+        },
         {
           // `approve`, nie `send_keys`: to jest ZATWIERDZENIE dialogu z kontekstem decyzji
           // (`toolName` + `optionLabel`), a runbook kradzieży (`docs/security-model.md`)
@@ -2238,6 +2285,7 @@ export class HerdrDriver implements SessionDriver {
       );
       this.#shadowKeySent(shadow, sent);
       if (!sent) return refuseSend(this.#refusals);
+      if (verdict?.ok === true) this.#screenFallback.keySent(verdict);
       /*
        * Tryb zatwierdzania z ŻYWEGO odczytu, nie z karty: `preview` jest
        * własnością POJEDYNCZEGO pytania, a formularz przełącza zakładki bez mignięcia
@@ -2267,6 +2315,15 @@ export class HerdrDriver implements SessionDriver {
       return APPLIED;
     });
     return step.then((outcome) => outcome ?? STALE);
+  }
+
+  /** The emergency button lost before the key: no key, the refused line, 410, and the card goes out again. */
+  #fallbackLost(answered: ActiveReq, guard: ScreenFallbackGuard, shadow: ShadowOutcome | null): DecisionOutcome {
+    this.#shadowKeySent(shadow, false);
+    this.#screenFallback.refused(answered, guard);
+    if (this.#activeReq === answered) this.#clearActive('screen fallback lost');
+    this.#scheduleEvaluate();
+    return STALE;
   }
 
   /**
@@ -3667,6 +3724,8 @@ export class HerdrDriver implements SessionDriver {
       // Nowa blokada = nowy ekran i nowy identyfikator dialogu spoza jsonl.
       this.#blockedSeq += 1;
       this.#blockedAt = this.#scheduler.now();
+      // A transcript not found yet is looked up now, and the evaluation waits for that lookup before the screen.
+      this.#follower?.lookUpTranscript?.();
       this.#dropScreen();
       this.#reportBlocked();
       return;
@@ -4411,11 +4470,13 @@ export class HerdrDriver implements SessionDriver {
    * i zrzutu hooka), a WŁAŚCICIELEM stanu jest fasada — rozdzielenie tych dwóch kroków po
    * pięciu ścieżkach kończyłoby się kartą wysłaną bez zapamiętania (albo odwrotnie).
    */
-  #showCard(card: DecisionCard): void {
+  #showCard(built: DecisionCard): void {
+    this.#noHook.noteCard(built);
+    // The emergency mark from the episode the detector just noted, before the channel gate reads the card.
+    const card = this.#screenFallback.stamp(built);
     const event = consentOnlyEvent(card.event, card.active, this.#deps, this.#cliReserve.cliWaiting, {
       engineSessionId: this.#agentSessionId, cwd: this.#cwd,
     });
-    this.#noHook.noteCard(card);
     if (event.type === 'permission-request' && event.canAllow === false) {
       // Jedna karta na dialog: przy żywej karcie kanału zgód karta zgody bez przycisku zgody nie idzie do managera.
       if (this.#consentChannel.consentCardStands()) {
@@ -4428,7 +4489,8 @@ export class HerdrDriver implements SessionDriver {
        * (bramka „ta sama karta” nie zamraża oceny), a ocena na koniec czekania wystawia ją, jeśli karta kanału nie
        * przyszła.
        */
-      if (this.#consentChannel.consentCardWait()) {
+      // Through the grace of a dialog without a hook trace the card waits too; the judgement orders the evaluation.
+      if (this.#consentChannel.consentCardWait() || this.#screenFallback.waits(card)) {
         this.#undecided = null;
         return;
       }

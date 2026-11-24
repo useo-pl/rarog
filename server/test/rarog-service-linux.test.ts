@@ -12,7 +12,7 @@
  */
 import { createHash } from 'node:crypto';
 import {
-  existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, statSync,
+  chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, statSync,
   symlinkSync, writeFileSync,
 } from 'node:fs';
 import { createServer } from 'node:net';
@@ -500,6 +500,22 @@ describe('rarog service install na Linuksie: faza 1', { timeout: 60_000 }, () =>
     expect(failed.stderr).toContain('  rarog service uninstall\n');
     expect(failed.stderr).not.toContain('  cd ');
     expect(unitRollbackLines(sb.homeDir, 'clone')).toContain(`  cd '${REPO}'`);
+  });
+
+  it('the server log is 0600 before the restart: created when missing, an existing 0644 one set to 0600, text kept', () => {
+    writeConfig(ownerConfig());
+    const log = path.join(dataDir(), 'server.log');
+    // A failed `systemctl --user restart` still finds the file: systemd opens `append:` when it starts the unit.
+    sb.set('restart-rc', '1');
+    expect(rarogLinux(sb, ['service', 'install']).status).toBe(1);
+    expect((statSync(log).mode & 0o777).toString(8)).toBe('600');
+    sb.set('restart-rc', null);
+    chmodSync(log, 0o644);
+    writeFileSync(log, 'earlier line\n', { flag: 'a' });
+    const run = rarogLinux(sb, ['service', 'install']);
+    expect(run.status, run.stderr).toBe(0);
+    expect((statSync(log).mode & 0o777).toString(8)).toBe('600');
+    expect(readFileSync(log, 'utf8')).toBe('earlier line\n');
   });
 
   it('restart.sh czerwony (systemctl restart z kodem ≠ 0) → jego kod i komendy powrotu', () => {

@@ -43,6 +43,8 @@ final class FakeTransport: RarogTransporting, @unchecked Sendable {
     /// Wstrzymuje decyzję „w drodze" (równoległa zgoda i zwolnienie tej samej karty).
     var onDecision: (@Sendable (PermissionDecision) async -> Void)?
     var clientLogResult: TransportError?
+    /// Holds a `client-log` request after it is recorded in ``clientLogs`` (a send in flight during a server switch).
+    var onClientLog: (@Sendable (ClientLogBody) async -> Void)?
     var onSend: (@Sendable (String, SentBody) -> Void)?
     /// Wstrzymuje wysyłkę w trakcie „przesyłu": test dostaje ciało i raport postępu.
     var onSendAsync: (@Sendable (SentBody, @escaping @Sendable (UploadProgress) -> Void) async -> Void)?
@@ -193,10 +195,11 @@ final class FakeTransport: RarogTransporting, @unchecked Sendable {
 
   func clientLog(_ body: ClientLogBody) async throws(TransportError) {
     try await check("POST", "/api/client-log")
-    let result = lock.withLock { state in
+    let (result, hold) = lock.withLock { state in
       state.clientLogs.append(body)
-      return state.clientLogResult
+      return (state.clientLogResult, state.onClientLog)
     }
+    await hold?(body)
     if let result { throw result }
   }
 

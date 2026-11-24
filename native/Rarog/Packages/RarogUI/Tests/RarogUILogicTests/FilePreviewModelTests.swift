@@ -7,76 +7,8 @@ import Testing
 
 // The owner of a preview copy: a tap fetches, the presenter gets the copy with the real name, and every end that is
 // not a shown preview deletes the copy (a newer tap, the panel closing, a refused presentation); refusals and a lost
-// connection become one bubble. The fetch is a fake that writes real files and can hold its answer. Owner: panel.
-
-/// The fetch route of the model: each call writes its copy (when the answer is a copy) and waits for `release`.
-@MainActor
-private final class FakeFetch {
-  let directory = FileManager.default.temporaryDirectory.appending(path: "rarog-ui-fetch-\(UUID().uuidString)")
-  private(set) var paths: [String] = []
-  var answers: [String: SessionFilesOutcome<SessionFileFetch>] = [:]
-  var bytes = Data("let x = 1\n".utf8)
-  var holding = false
-  private var held: [CheckedContinuation<Void, Never>] = []
-
-  init() {
-    try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-  }
-
-  func fetch(_ path: String) async -> SessionFilesOutcome<SessionFileFetch> {
-    paths.append(path)
-    let answer: SessionFilesOutcome<SessionFileFetch>
-    if let given = answers[path] {
-      answer = given
-    } else {
-      let name = path.split(separator: "/").last.map(String.init) ?? path
-      let suffix = name.contains(".") ? ".\(name.split(separator: ".").last!)" : ""
-      let copy = directory.appending(path: "\(UUID().uuidString)\(suffix)")
-      try? bytes.write(to: copy)
-      answer = .loaded(.saved(copy))
-    }
-    if holding { await withCheckedContinuation { held.append($0) } }
-    return answer
-  }
-
-  var waiting: Int { held.count }
-
-  func release(_ index: Int = 0) {
-    held.remove(at: index).resume()
-  }
-
-  /// The copies on disk.
-  var copies: [String] {
-    ((try? FileManager.default.contentsOfDirectory(atPath: directory.path(percentEncoded: false))) ?? []).sorted()
-  }
-
-  func remove() {
-    try? FileManager.default.removeItem(at: directory)
-  }
-}
-
-/// The presenter: keeps what it showed; `accepts = false` refuses like a panel that left the window.
-@MainActor
-private final class FakePresenter {
-  var accepts = true
-  private(set) var shown: [FilePreviewCopy] = []
-  private(set) var notices: [String] = []
-
-  func present(_ copy: FilePreviewCopy) -> Bool {
-    guard accepts else { return false }
-    shown.append(copy)
-    return true
-  }
-
-  func notice(_ text: String) {
-    notices.append(text)
-  }
-
-  /// The preview closes the way the real presenter closes it.
-  func close() {
-    shown.forEach { $0.discard() }
-  }
-}
+// connection become one bubble. The fetch is a fake that writes real files and can hold its answer
+// (`FilePreviewTestSupport.swift`). Owner: panel.
 
 @MainActor
 @Suite("file preview: one owner of the copy")

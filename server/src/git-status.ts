@@ -16,7 +16,6 @@
  */
 import { spawn } from 'node:child_process';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
-import { lstat, readlink, realpath } from 'node:fs/promises';
 import { dirname, join, sep } from 'node:path';
 import { MAX_DIFF_PATCH_BYTES } from '@rarog/shared';
 import type {
@@ -25,6 +24,7 @@ import type {
 import {
   CONFIG_NAMES_ENCODING, CONFIG_NAMES_READ_CAP_BYTES, filterDriverNames, withFilterDriversOff,
 } from './git-config-guard.ts';
+import { DIRECT_DISK, closedFolderOf } from './folder-gate/disk.ts';
 import { SANDBOX_EXEC, gitSandboxLogLine, probeGitSandbox } from './git-sandbox.ts';
 import type { GitSandbox, GitSandboxState } from './git-sandbox.ts';
 import { gitWorkTree } from './git-work-tree.ts';
@@ -618,7 +618,8 @@ export function spawnGitArgs(
  * - no directory up from `cwd` has `.git`: exit code 128, what git answers outside a repository. Git does not run,
  *   because a `.git` created between the lookup and its start would come with its own `core.worktree`;
  * - `cwd` cannot be resolved, or the command is not one the runner takes ({@link gitArgv} throws): `spawnFailed`,
- *   as for a process that did not start.
+ *   as for a process that did not start;
+ * - `cwd` or its work tree lies in a guarded folder the folder gate holds closed: `spawnFailed` with `EFOLDERGATE`.
  * The config names read ({@link filterDriversOff}) runs in the same `cwd` with the same pin.
  */
 async function bindWorkTree(
@@ -626,6 +627,9 @@ async function bindWorkTree(
 ): Promise<{ command: BoundGitCommand } | { refused: GitArgsResult }> {
   try {
     const workTree = await gitWorkTree(cwd);
+    // Git in a guarded folder the folder gate holds closed would wait for the consent window; it does not start.
+    const closed = closedFolderOf(cwd) ?? (workTree === null ? null : closedFolderOf(workTree));
+    if (closed !== null) return { refused: { ok: false, stdout: '', spawnFailed: closed.code } };
     if (workTree === null) return { refused: { ok: false, stdout: '', exitCode: 128 } };
     // Built field by field: a `workTree` or a `probe` in the caller's object does not reach the argv.
     const bound: BoundGitCommand = { global: command.global, sub: command.sub, rest: command.rest, workTree };
@@ -995,10 +999,13 @@ export async function probeUntracked(cwd: string, path: string): Promise<Untrack
     const full = join(cwd, path);
     // Katalog nadrzędny po rozwiązaniu dowiązań ma leżeć w katalogu sesji: `ls-files` nie schodzi
     // w dowiązania, więc katalog podmieniony na dowiązanie PO wypisaniu listy odpada tutaj.
-    const [root, parent] = await Promise.all([realpath(cwd), realpath(dirname(full))]);
+    const [root, parent] = await Promise.all([
+      DIRECT_DISK.call('realpathNative', { path: cwd }),
+      DIRECT_DISK.call('realpathNative', { path: dirname(full) }),
+    ]);
     if (parent !== root && !parent.startsWith(root + sep)) return { kind: 'other' };
-    const info = await lstat(full);
-    if (info.isSymbolicLink()) return { kind: 'symlink', target: await readlink(full) };
+    const info = await DIRECT_DISK.call('lstat', { path: full });
+    if (info.isSymbolicLink()) return { kind: 'symlink', target: await DIRECT_DISK.call('readlink', { path: full }) };
     return info.isFile() ? { kind: 'file' } : { kind: 'other' };
   } catch {
     return { kind: 'other' };

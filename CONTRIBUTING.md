@@ -33,7 +33,7 @@ the [Code of Conduct](CODE_OF_CONDUCT.md).
 - **Demo server.** `RAROG_PORT=18931 RAROG_ORIGINS=http://127.0.0.1:18931 pnpm run demo:server` runs every scenario
   on fakes, without herdr and without `claude` processes. A Debug build of the app reaches it with the launch
   variable `RAROG_UI_TEST_BASE_URL=http://127.0.0.1:18931` and pairs with a code from `POST /api/demo/pairing`, a
-  route that exists only in the demo ([native/Rarog/docs/tests.md](native/Rarog/docs/tests.md), section „Tests”). The demo
+  route that exists only in the demo ([native/Rarog/docs/tests.md](native/Rarog/docs/tests.md), section "Tests"). The demo
   content is English; `RAROG_DEMO_LANG=pl` switches to the Polish set that the UI tests use.
 - **Docs with the code.** The docs describe the system as it works today. A change in behavior must update the
   matching document in the same commit.

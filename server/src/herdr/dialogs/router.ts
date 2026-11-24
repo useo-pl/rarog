@@ -16,6 +16,8 @@ import type { CliDialogClass } from '@rarog/shared';
 import { HOOK_PERMISSION_REQUEST_EVENT, HOOK_QUESTION_TOOL } from './hook/contract.ts';
 import type { PendingHookTool } from './hook/dump.ts';
 import type { MeasuredConsentMark } from './policy/measured-consent.ts';
+import { screenFallbackHolds } from './screen-fallback.ts';
+import type { ScreenFallbackMark } from './screen-fallback.ts';
 import { askFormOnScreen, cliDialogOnScreen } from './presence.ts';
 
 /**
@@ -136,7 +138,12 @@ export interface ConsentDigitInput {
   readonly consent: boolean;
   /** Measured consent dialog the card came from (`ActiveReq.measuredConsent`); absent = not that path. */
   readonly measured?: MeasuredConsentMark;
+  /** Emergency approve button of a consent dialog without a hook (`ActiveReq.screenFallback`); absent = not that path. */
+  readonly fallback?: ScreenFallbackMark;
 }
+
+/** Which exception lets the "Yes" digit of a consent class card through, measured shape first. */
+export type ConsentDigitException = 'measured' | 'screen-fallback';
 
 /**
  * Bramka cyfry w trybie kanału : przy efektywnym `main` i `all` (i przy trybie nieznanym) klasa
@@ -149,19 +156,31 @@ export interface ConsentDigitInput {
  * z ekranu, które bywa zgodą `WebFetch`) tylko przy klasie `input` albo `dialog` z rejestru. Przy `off` i `shadow`
  * nic się nie zmienia. Klawisz `escape` (odmowa) tej bramki nie przechodzi: niczego nie zatwierdza.
  *
- * Exception: the "Yes" button of a card that carries a measured consent mark under the
- * same registry class passes (sandbox network, MCP tool with user interaction). Neither has a working hook answer,
- * and the driver still checks the mark on a fresh screen and the registry right before the key.
+ * Two exceptions ({@link consentDigitException}) let the "Yes" button through; the driver checks each again on a fresh
+ * screen and the registry right before the key.
  */
 export function consentDigitBlocked(input: ConsentDigitInput): boolean {
   if (input.mode === 'off' || input.mode === 'shadow') return false;
-  if (input.cliDialog === 'permission' || input.cliDialog === 'sandbox') {
-    return !(input.consent && input.measured?.cliDialog === input.cliDialog);
-  }
+  if (input.cliDialog === 'permission' || input.cliDialog === 'sandbox') return consentDigitException(input) === null;
   if (KNOWN_DIALOG_CARD_TOOLS.has(input.toolName)) return false;
   if (input.consent) return true;
   if (ANSWER_CARD_TOOLS.has(input.toolName)) return false;
   return input.cliDialog !== 'input' && input.cliDialog !== 'dialog';
+}
+
+/**
+ * The exception that lets the "Yes" button of a `permission` or `sandbox` card through in channel mode, or `null`:
+ * a measured consent mark under the same registry class (sandbox network, MCP tool with user interaction: neither has
+ * a working hook answer), else the emergency mark of a `permission` dialog without a hook, by the rule of
+ * `screen-fallback.ts` under the live mode and class. Never for an answer (`consent: false`).
+ */
+export function consentDigitException(input: ConsentDigitInput): ConsentDigitException | null {
+  if (!input.consent) return null;
+  if (input.measured !== undefined && input.measured.cliDialog === input.cliDialog) return 'measured';
+  if (input.fallback !== undefined && screenFallbackHolds(input.fallback, input.mode, input.cliDialog)) {
+    return 'screen-fallback';
+  }
+  return null;
 }
 
 /**

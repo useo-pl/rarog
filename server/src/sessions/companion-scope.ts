@@ -8,7 +8,7 @@ import { homedir } from 'node:os';
 import { say } from '@rarog/shared/sentences';
 import type { CompanionTarget } from '../companion/ask.ts';
 import type { CompanionEntry } from '../companion/catalog.ts';
-import { inWorkAreaOnDisk } from '../config/work-area.ts';
+import { inWorkAreaOnDisk, type WalkOptions } from '../config/work-area.ts';
 import { BadStateError } from './errors.ts';
 import type { Session } from './session.ts';
 
@@ -30,9 +30,11 @@ export type ConversationListener = (sessionId: string, agentSessionId: string) =
  * root), as for the diff, because the list carries the names and descriptions of skills from `.claude/` of that
  * directory. A card without a pane is in scope with its directory; demo mode reads the registry only.
  */
-export function inCommandScope(session: Session, config: SessionScopeConfig): boolean {
+export function inCommandScope(
+  session: Session, config: SessionScopeConfig, options: WalkOptions = {},
+): boolean {
   if (session.engine === 'codex' || session.outOfScope === true) return false;
-  return config.demo || sessionCwdInArea(session, config);
+  return config.demo || sessionCwdInArea(session, config, options);
 }
 
 /**
@@ -42,9 +44,11 @@ export function inCommandScope(session: Session, config: SessionScopeConfig): bo
  * as written and on disk ({@link inWorkAreaOnDisk}): a link into a protected folder of home, or a root that is a
  * symlink to home, does not open that folder to a read.
  */
-export function sessionCwdInArea(session: Session, config: SessionScopeConfig): boolean {
+export function sessionCwdInArea(
+  session: Session, config: SessionScopeConfig, options: WalkOptions = {},
+): boolean {
   return session.herdrKey === undefined
-    || inWorkAreaOnDisk(session.cwd, config.herdrRoots ?? [], config.home ?? homedir());
+    || inWorkAreaOnDisk(session.cwd, config.herdrRoots ?? [], config.home ?? homedir(), undefined, options);
 }
 
 /**
@@ -53,7 +57,12 @@ export function sessionCwdInArea(session: Session, config: SessionScopeConfig): 
  * own sentence instead of the 400 of the commands list.
  */
 export function companionTargetOf(session: Session, config: SessionScopeConfig): CompanionTarget | null {
-  return inCommandScope(session, config) ? { cwd: session.cwd, agentSessionId: session.engineSessionId } : null;
+  // The target names a transcript in the engine's store outside the session directory, so a macOS folder the gate
+  // holds closed does not take the session from the Inbox or the voice agent; the commands list and the diff,
+  // which read the directory itself, keep the gate.
+  return inCommandScope(session, config, { gate: 'ignore' })
+    ? { cwd: session.cwd, agentSessionId: session.engineSessionId }
+    : null;
 }
 
 /**

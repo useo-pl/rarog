@@ -1,4 +1,5 @@
 import Foundation
+import RarogCore
 import Synchronization
 
 // Linie tunelu do `client.log` przed wspólnym budżetem śladów apki (`ContractReporter.traceCap`, 20 na godzinę).
@@ -103,13 +104,15 @@ nonisolated final class TunnelTrace: Sendable {
     var lastOver: [String]?
   }
 
-  private let sink: @Sendable (String) -> Void
+  private let sink: @Sendable (String, ServerKey?) -> Void
   private let now: @Sendable () -> ContinuousClock.Instant
   private let wallClock: @Sendable () -> Date
   private let state = Mutex(State())
 
-  /// - Parameter wallClock: time of day for alarm lines (tests pass a fixed date).
-  init(sink: @escaping @Sendable (String) -> Void, now: @escaping @Sendable () -> ContinuousClock.Instant,
+  /// - Parameters:
+  ///   - sink: a line and the server it concerns (`nil` = no single server).
+  ///   - wallClock: time of day for alarm lines (tests pass a fixed date).
+  init(sink: @escaping @Sendable (String, ServerKey?) -> Void, now: @escaping @Sendable () -> ContinuousClock.Instant,
        wallClock: @escaping @Sendable () -> Date = { Date() }) {
     self.sink = sink
     self.now = now
@@ -133,8 +136,9 @@ nonisolated final class TunnelTrace: Sendable {
     return String(format: "%02d:%02d:%02d", parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0)
   }
 
-  /// Linia tunelu przez swój podbudżet.
-  func send(_ line: String) {
+  /// Linia tunelu przez swój podbudżet. `server` = the server the line concerns (a runtime's key); `nil` = the shared
+  /// endpoint, lease or watchdog, no single server.
+  func send(_ line: String, server: ServerKey? = nil) {
     let alert = Self.isAlert(line)
     let at = now()
     let admitted = state.withLock { state -> Bool in
@@ -152,11 +156,12 @@ nonisolated final class TunnelTrace: Sendable {
       return true
     }
     guard admitted else { return }
-    sink(alert ? "\(line) at \(Self.clockTime(wallClock())) UTC" : line)
+    sink(alert ? "\(line) at \(Self.clockTime(wallClock())) UTC" : line, server)
   }
 
   /// Linia stanu przy wyjściu z tła (chwila `at`): pierwsza w procesie, potem co ``stateInterval``; nadmiar od razu,
   /// chyba że ten sam nadmiar (``TunnelSnapshot/excessKey``) miała już poprzednia linia.
+  /// The numbers sum every runtime, so the line has no single server.
   func state(_ snapshot: TunnelSnapshot, at: ContinuousClock.Instant) {
     let over = !snapshot.excess.isEmpty
     let line = state.withLock { state -> String? in
@@ -172,6 +177,6 @@ nonisolated final class TunnelTrace: Sendable {
       }
       return snapshot.line(droppedInfo: state.droppedInfo, droppedAlerts: state.droppedAlerts)
     }
-    if let line { sink(line) }
+    if let line { sink(line, nil) }
   }
 }

@@ -123,7 +123,13 @@ export const SENTENCES = Object.freeze({
 /**
  * Kody wycofane. Wpis przenosi się tu z pliku obszaru bez zmiany szablonu i argumentów, z `since`; nie znika nigdy.
  */
-export const RETIRED = Object.freeze({} as const satisfies RetiredSentenceArea);
+export const RETIRED = Object.freeze({
+  'herdr.protocol-unknown': {
+    en: 'herdr protocol {protocol} is unknown (tested: {tested}), read-only',
+    args: ['protocol:text', 'tested:text'],
+    since: '1.1.0',
+  },
+} as const satisfies RetiredSentenceArea);
 
 /** Kod zdania, które serwer może dziś powiedzieć (bez kodów wycofanych). */
 export type SentenceCode = keyof typeof SENTENCES & string;

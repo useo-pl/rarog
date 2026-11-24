@@ -262,6 +262,7 @@ const DEGRADATION_PATHS: Record<keyof typeof DEGRADATIONS, RegExp> = {
   seenBy: at(`${SUMMARY}/seenBy`),
   // Only the list frame: a single `inbox-head` with an unknown value is ignored whole.
   'inbox.head': at(String.raw`/heads/\d+/(?:kind|state|dialog)`),
+  'folder-access.block': at(String.raw`/blocked/\d+/state`),
 };
 
 const isDegradation = (key: string): key is keyof typeof DEGRADATIONS =>
@@ -512,7 +513,7 @@ describe('złote ramki SSE: manifest i pliki', () => {
   });
 
   it('każdy typ zdarzenia z kontraktu ma ramkę `<type>.max.json` oczekiwaną jako ok', () => {
-    expect(EVENT_TYPES).toHaveLength(20);
+    expect(EVENT_TYPES).toHaveLength(21);
     for (const type of EVENT_TYPES) {
       expect(manifest[`${type}.max.json`]?.expect, `brak ${type}.max.json`).toBe('ok');
     }

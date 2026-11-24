@@ -3,9 +3,22 @@
  * sufitu `tc`, ruch w miesiącu wobec 15 TB (także przez reboot, gdy licznik jądra wraca do zera), liczba połączeń
  * i 401 Workera w dzienniku adaptera; powtórka tego samego alertu najwyżej raz na godzinę.
  */
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { countMatching, countUnauthorized, emptyState, evaluate, LINK_BYTES_PER_S } from '../relay-watch.mjs';
+import { countMatching, countUnauthorized, emptyState, evaluate, LINK_BYTES_PER_S, SS_ARGS } from '../relay-watch.mjs';
 import type { WatchInput, WatchState } from '../relay-watch.mjs';
+
+describe('relay-watch.mjs: the ss filter covers the firewall connection budget', () => {
+  it('every TCP port that nftables.conf sends to relay_tcp is a source port of the ss filter, and no other', () => {
+    const nft = readFileSync(path.resolve(import.meta.dirname, '../nftables.conf'), 'utf8');
+    const ports = /tcp dport \{ ([\d, ]+) \} ct state new jump relay_tcp/.exec(nft)?.[1]?.split(/,\s*/) ?? [];
+    expect(ports.length).toBeGreaterThan(0);
+    const filter = SS_ARGS.at(-1) ?? '';
+    expect([...filter.matchAll(/sport = :(\d+)/g)].map((m) => m[1])).toEqual(ports);
+    expect(filter).toBe(`( ${ports.map((port) => `sport = :${port}`).join(' or ')} )`);
+  });
+});
 
 const MIN = 60_000;
 const T0 = Date.UTC(2026, 10, 10, 12, 0, 0);
@@ -78,7 +91,7 @@ describe('relay-watch.mjs: połączenia i 401 Workera', () => {
   it('ponad 6000 połączeń = alert, 6000 nie', () => {
     expect(evaluate(null, { txBytes: 0, conns: 6000, unauthorized: 0 }, T0).alerts).toEqual([]);
     expect(evaluate(null, { txBytes: 0, conns: 6001, unauthorized: 0 }, T0).alerts)
-      .toEqual([expect.stringMatching(/6001 TCP connections on 443/)]);
+      .toEqual([expect.stringMatching(/6001 TCP connections on 80 and 443/)]);
   });
 
   it('401 w dzienniku adaptera = alert o fail-open przy złym bearerze', () => {
@@ -149,7 +162,7 @@ describe('relay-watch.mjs: daily connection peak (read by relay-stats)', () => {
       lastRunMs: null, alertedAt: {} };
     const res = evaluate(old, conns(6001), at('2026-11-13T10:00:00Z'));
     expect(res.state.connPeaks).toEqual({ '2026-11-13': 6001 });
-    expect(res.alerts).toEqual([expect.stringMatching(/6001 TCP connections on 443/)]);
+    expect(res.alerts).toEqual([expect.stringMatching(/6001 TCP connections on 80 and 443/)]);
     expect(res.state.monthBytes).toBe(5);
   });
 

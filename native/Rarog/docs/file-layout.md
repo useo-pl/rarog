@@ -78,12 +78,18 @@ own files and only reads the others; an "owner" comment stands at the top of eac
 - **Session screen:** `Session/SessionViewController*.swift`: the core (lifecycle, layout, render) and extensions per
   area (`+Cells`, `+Send`, `+Decisions`, `+Answers`, `+Pinning`, `+UnderFoot`, `+StateCard`, `+Reading`, `+Keys<Area>`,
   `+Controls`, `Voice/+Voice`, `+Interrupt`, `+Drafts`, `+PromptBar`, `+Toast`, `+CommandSuggestions`,
-  `+AppCommands`, `+Diagnostics`, `+PointerSelection`, `+PointerAutoscroll`). The core calls each area's
-  `build…`/`render…`/`leave…` in one line, and the area's fields live in its own chrome type (`ReadingChrome`,
-  `TurnChrome`, `ToastChrome`, `TranscriptPointerChrome`). The pointer selection's model has no view and compiles on
-  macOS (`Model/TranscriptPointerSelection*.swift`: the selection, its copy text, the autoscroll curve and the trace
-  budget); a message row's part of it, the highlight and the geometry under the pointer, is
-  `Session/MessageContentView+PointerHighlight.swift`. The cell factory picks
+  `+AppCommands`, `+Diagnostics`, `+PointerSelection`, `+PointerAutoscroll`, `+FileOpen`, `+FileHover`). The core
+  calls each area's `build…`/`render…`/`leave…` in one line, and the area's fields live in its own chrome type
+  (`ReadingChrome`, `TurnChrome`, `ToastChrome`, `TranscriptPointerChrome`, `TranscriptFileChrome`). The pointer
+  selection's model has no view and compiles on macOS (`Model/TranscriptPointerSelection*.swift`: the selection, its
+  copy text, the autoscroll curve and the trace budget); a message row's part of it, the highlight and the geometry under the
+  pointer (also the inline code under a click or tap), is `Session/MessageContentView+PointerHighlight.swift`. A path
+  in inline code opens the session file: `+FileOpen` holds the finger's tap recognizer and the screen's one opener,
+  and the pointer's click reaches it through `+PointerSelection`; `+FileHover` holds the pointer's hover over such
+  code, and `Session/MessageContentView+FileHover.swift` its underline and pointer shape. Its logic compiles on macOS:
+  `Model/TranscriptFilePath` (the candidate in one inline code run and its match in the file index) and
+  `Model/TranscriptFileOpener` (its own index load and refresh, the newest tap, the pending limit, the miss trace,
+  then `Model/FilePreviewModel`). The cell factory picks
   a cell by row kind and calls the area's function; `keyCommands` and `canPerformAction` assemble the areas' lists,
   so a new area adds one element. `+KeysInterrupt` stands BEHIND the card keys in `keyCommands`, so Esc on a
   focused card or a sheet wins.
@@ -149,7 +155,7 @@ own files and only reads the others; an "owner" comment stands at the top of eac
   `ToolRows`, `PromptFolds`, `TranscriptMarkers` and `TranscriptReading`.
 - **Copy:** `UICopy.swift` and its extensions `UICopy+<Area>`; an empty area is an empty `extension` with a comment.
 - **Views:** `Views/<Area>/` (`List`, `Header`, `Inspector`, `Inbox`, `Notes`, `NewSession`, `Projects`,
-  `SessionControl`, `Presentation`, `Settings`, `Usage`, `Common`), cards and rows in `Session/Cards/` and
+  `SessionControl`, `Presentation`, `Settings`, `Usage`, `Banners`, `Common`), cards and rows in `Session/Cards/` and
   `Session/Rows/`, the terminal in `RarogUI/Terminal/`, the session switcher in `Switcher/`, attachments in
   `Session/Attachments/`.
 
@@ -216,8 +222,11 @@ Behavior of the surfaces that the sections above do not describe:
   stale note, the machine section with metric details and its own stale note). The server update row, when shown,
   is the card's first line, in link ink, and its one target (`list.serverUpdate`): it opens the update steps
   (`Views/List/Footer/ServerUpdateSheet`: versions, the command with a copy button, what it does). Banners:
-  `Views/BannerStack`, column placement in `Model/BannerSlots`, the push invite at the end
-  (`pushPromptVisible(in:global:now:)`).
+  `Views/BannerStack`, column placement in `Model/BannerSlots` (`bannerSlots(in:)`), the push
+  invite at the end (`pushPromptVisible(in:global:now:)`). The macOS folder card (`Views/Banners/MacFolderBanner`,
+  texts in `Copy/UICopy+MacFolders`) draws the folders the server keeps closed: `AppState.macFolders` from the
+  `folder-access` frame (`Reducer+MacFolders`), the sessions they hold from `macFolder(holding:)`,
+  `macFolder(forSession:)` and `macFolderSessions` (`Selectors`).
 - **Navigation** (`Model/Navigation`, `RarogNavigation`): the right column (session, project without a session,
   terminal), tab and project memory, the list collapse (Cmd+B and `HeaderListToggle`), the 5 s arming of "×" (the
   current tab's "×" and the arming card: `Model/TabClose`), the notice under the tab bar and the inspector. In the
@@ -280,15 +289,16 @@ Behavior of the surfaces that the sections above do not describe:
   VoiceOver in 40 pt steps) sets 280–560 pt live and saves the device preference `rarog.inspectorWidth` once, at the
   end of the gesture (`RarogInspector.drag`, `endDrag`). The width shown is `InspectorModel.displayedWidth`: the
   transcript keeps at least 560 pt, so a narrower column narrows the panel without changing the preference. Over
-  the strip the iPad pointer is a vertical beam with arrows to both sides (UIKit `UIPointerInteraction`, since
-  SwiftUI `PointerStyle` is unavailable on iOS). Content in one `ScrollView` with ONE anchor: background tasks, recently
+  the strip the iPad pointer is a vertical beam with arrows to both sides, and on a Mac a double arrow shape, since
+  the Mac draws the beam as the text cursor (UIKit `UIPointerInteraction`; SwiftUI `PointerStyle` is unavailable on
+  iOS). Content in one `ScrollView` with ONE anchor: background tasks, recently
   finished (`FinishedTasks`, up to three finish notices from the transcript tail), scheduled tasks
   (`ScheduledTaskRows.rows` in the server's order, chosen under the panel's 30 s clock `ScheduledTasksClock` and on
   return to the foreground, so an expired one leaves without a frame), artifacts (`ArtifactRows.rows` in the server's
   order; a live artifact is a link with `#no_universal_links`), pull requests (`PullRequestRows`) and Files
   (`Views/Inspector/InspectorFilesSection`): the whole file tree of the session directory, rows of 30 pt
   (`FileTreeMetrics`), collapsible, with the Files / Changed only toggle (the glass capsule of the list filter,
-  `ListFilterBar`) and the search field under the header
+  `ListFilterBar`, without its shadow) and the search field under the header
   (`Views/Inspector/InspectorFilesSearch`: the field is a `UITextField` with its own Esc key command); the store wiring
   (mode, query per session, the index state through `FileSearchIndexMemo`, `setSearchActive`, result folds) is
   `Views/Inspector/InspectorFilesContainer`, and `Model/FileSearchRunner` runs the search after a 150 ms pause, off the
@@ -432,20 +442,18 @@ Behavior of the surfaces that the sections above do not describe:
   keyboard shortcut and stays open until a row is picked or it is closed. `SessionSwitcher` holds the machine without
   UIKit (`SwitcherMachine`, rows and selection as `ProjectTabRef`; phases `idle` and `open`; `open` knows whether the
   window holds the keyboard; an opening needs a current tab and selects it; `tabsChanged` follows the bar while the
-  window stands, the selection staying on its tab; moves at most every 100 ms; `menuDigit` lets Cmd+1…9 of the menu
-  reach the open window instead of the tabs), `SessionSwitcherRows` the rows from the bar's list
-  (`RarogNavigation.stripTabs` → `SwitcherRows.rows`: tabs with a target only, a session row or a terminal row) and
-  the digits (`SwitcherRows.tab(forDigit:in:)` and `digitKey(for:digits:keyboard:)`: the bar's digits from
-  `ShortcutMenu.tabDigits`, 9 also the last tab, only with the keyboard), the jump goes through
-  `RarogNavigation.openTab`,
+  window stands, the selection staying on its tab; moves at most every 100 ms), `SessionSwitcherRows` the rows from
+  the bar's list (`RarogNavigation.stripTabs` → `SwitcherRows.rows`: tabs with a target only, a session row titled
+  without the project or a terminal row) and the heading (`SwitcherRows.heading`: the project's name once, then the
+  count), the jump goes through `RarogNavigation.openTab`,
   `SwitcherKeyResponder` the window's first responder (the `SheetKeyboardAnchor` pattern: it takes the focus only with
   a hardware keyboard, remembers the previous responder weakly and gives it back after any close without a jump),
   `SwitcherPresentationGate` keeps the tap silent while anything is presented, `SwitcherWatch` closes the open
   window when the scene goes inactive or a presentation appears (asked every 250 ms) and hands it a hardware keyboard
   connected while it stands (`GCKeyboardDidConnect` → `keyboardConnected`), and `SessionSwitcherOverlay` draws the
-  window. With the window open, ↑/↓ (with or without Cmd) move the selection, Return goes, a
-  digit 1–9 (with or without Cmd) picks its tab, Esc and Cmd+. close, Tab is swallowed and other keys without Cmd do
-  nothing; the window closes when another responder takes
+  window. With the window open, ↑/↓ (with or without Cmd) move the selection, Return goes, Esc and Cmd+. close, Tab
+  is swallowed and other keys without Cmd (digits included) do nothing; Cmd+1…9 stay the menu's tab shortcuts, which
+  close the window like the other menu shortcuts except text size; the window closes when another responder takes
   the focus. Esc guards in the field, the card and the terminal stay as a safety net (`SessionSwitcher.absorbsEscape`
   is true while the window is open).
 - **Shortcut sheet (held Cmd)** (`ShortcutSheet/`, logic without UIKit): `CommandKeyEvent` turns a HID key usage

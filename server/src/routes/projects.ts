@@ -10,6 +10,7 @@ import { MAX_RECENT_PROJECTS, MAX_RECENT_SESSIONS, makeDirBodySchema } from '@ra
 import { say } from '@rarog/shared/sentences';
 import { redact } from '../auth/index.ts';
 import { type CwdCheck, type RarogConfig, validateProjectCwd } from '../config.ts';
+import { closedFolderOf } from '../folder-gate/disk.ts';
 import { type BrowseResult, browseDirectory, demoListing } from '../fs-browse.ts';
 import { makeDirectory, mkdirRefusal } from '../fs-mkdir.ts';
 import {
@@ -26,6 +27,8 @@ import type { RouteContext, RouteRequest } from './context.ts';
  *   seedów (`/Users/demo/Projects/...`) NIE istnieją na dysku,
  * - poza demo dowolna inna ścieżka („inna ścieżka…") musi przejść walidację korzeni:
  *   istniejący katalog wewnątrz `RAROG_PROJECT_ROOTS`, bez segmentów ukrytych.
+ * Outside the demo a listed directory in a guarded folder the folder gate holds closed is refused with the sentence
+ * of the folder's state, judged by its text and without the disk, as `validateProjectCwd` refuses any other path.
  *
  * @returns znormalizowany katalog albo zdanie do odesłania w 400.
  */
@@ -52,7 +55,8 @@ export function checkCwd(
   }
   const target = path.resolve(raw);
   if (manager.projects().some((p) => path.resolve(p.path) === target)) {
-    return { ok: true, cwd: target };
+    const closed = config.demo ? null : closedFolderOf(target);
+    return closed === null ? { ok: true, cwd: target } : { ok: false, sentence: closed.sentence };
   }
   if (config.demo) {
     return { ok: false, sentence: say('rest.cwd-not-in-projects') };

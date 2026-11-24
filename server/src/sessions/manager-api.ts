@@ -281,7 +281,7 @@ export interface ManagerApi {
    * Rzuca NotFound (404) dla nieznanej sesji; BadState (409), gdy sesja nie ma (już) panelu
    * w herdr ALBO gniazdo jest niedostępne (`agent.focus` to mutacja — bez tej bramki błąd
    * transportu wyszedłby jako 500); BadRequest (400) przy zamkniętym kanale zapisu
-   * (`RAROG_HERDR_SEND=0`, nieznany protokół herdr) — `agent.focus` przestawia CUDZY
+   * (`RAROG_HERDR_SEND=0`) — `agent.focus` przestawia CUDZY
    * terminal, więc podlega temu samemu wyłącznikowi co wysyłka.
    */
   focus(id: string): Promise<void>;
@@ -365,12 +365,6 @@ export interface ManagerApi {
   eventsSince(id: string, seq: number | null)
     : { tooOld: boolean; events: { seq: number | null; event: ServerEvent }[] };
   onEvent(cb: (scope: 'global' | string, seq: number | null, ev: ServerEvent) => void): void;
-  /**
-   * A new card replaced the card under this id (restart, "Resume"): the transcript the open streams of that id show
-   * is the old card's. The new card numbers on after the old one; the SSE hub sends each open stream a snapshot.
-   * Missing = the manager never replaces a card.
-   */
-  onTranscriptReset?(cb: (sessionId: string) => void): void;
   projects(): { path: string; name: string }[];
   /**
    * Stan integracji herdr do ramki `sessions-snapshot`.

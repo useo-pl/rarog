@@ -34,13 +34,16 @@
  * - **The start sweep reads a registry, not the disk tree.** Every successful write records the real path of its
  *   `<cwd>` in `<dataDir>/uploads-dirs.json` (`uploads-registry.ts`), and `sweepAll` cleans only those directories,
  *   each only while `realpath` still gives the entry itself. It walks the roots once, when the registry is missing
- *   or unreadable, and writes the registry from what it found.
+ *   or unreadable, and writes the registry from what it found once every part of the walk ran.
+ * - **A guarded folder of home waits for the folder gate.** A write in a folder the gate holds closed is refused with
+ *   the sentence of the folder's state. A write the folder's helper did not answer in time may still land, so its
+ *   `<cwd>` goes to the registry anyway and the next sweep removes the file. The start sweep does not enter a guarded
+ *   folder until the gate holds it `open`: that part waits for the change and runs then, only while its directory
+ *   still resolves to itself. Until it ran, the walk writes no registry, so a restart before then walks again.
  */
 import { randomBytes } from 'node:crypto';
-import type { Stats } from 'node:fs';
-import { chmod, lstat, mkdir, readdir, realpath, unlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, isAbsolute, join } from 'node:path';
+import { basename, isAbsolute, join, relative } from 'node:path';
 import {
   FILE_DATA_URL_PATTERN, IMAGE_DATA_URL_PATTERN, UPLOAD_IMAGE_FILE_PATTERN,
 } from '@rarog/shared';
@@ -49,7 +52,10 @@ import { type AnyText, type ServerSentence, foreign, say, textOf } from '@rarog/
 import { HERDR_UPLOAD_TTL_MS } from '../config.ts';
 import { inWorkAreaOnDisk } from '../config/work-area.ts';
 import { isProtectedPath } from '../config/protected-dirs.ts';
-import { appendRegularFile, readRegularFile } from '../safe-read.ts';
+import { DIRECT_DISK, type WorkAreaDisk } from '../folder-gate/disk.ts';
+import { folderGate } from '../folder-gate/install.ts';
+import { FolderGateError } from '../folder-gate/types.ts';
+import type { DiskStats } from '../folder-gate/types.ts';
 import type { UploadsRegistry } from './uploads-registry.ts';
 
 /** Katalog załączników (zdjęć i plików) wewnątrz workspace'u panelu: zapis, odczyt miniatur i sprzątanie. */
@@ -170,8 +176,9 @@ export interface HerdrUploads {
    * Start sweep. With a readable registry: only the registered directories that still resolve to themselves, the
    * roots are not read, and an entry whose `.rarog-uploads` is gone or empty after the sweep, or whose path now leads
    * through a symlink, leaves the registry. With the registry missing or unreadable, or without a registry: a walk
-   * of the roots; with a registry it is then written from the directories that still hold files or could not be
-   * read. Never throws.
+   * of the roots; with a registry it is written from the directories that still hold files or could not be read, once
+   * every part of the walk ran. A part in a guarded folder that is not `open` runs when the folder opens, after this
+   * promise settles. Never throws.
    */
   sweepAll(roots: readonly string[]): Promise<void>;
 }
@@ -207,6 +214,8 @@ export interface UploadsOptions {
    * `sweepAll` walks the roots.
    */
   registry?: UploadsRegistry;
+  /** The disk of every call under a `cwd` and the roots: they lie in the work area. */
+  disk?: WorkAreaDisk;
 }
 
 /**
@@ -348,7 +357,7 @@ function uploadFileName(nowMs: number, name: string): string {
  * Odmowa zapisu do wpisu, który nie jest katalogiem; rodzaj wpisu wybiera zdanie, bo użytkownik ma wiedzieć,
  * co dokładnie ma usunąć z katalogu projektu.
  */
-function notDirectory(info: Stats, dir: string): ServerSentence {
+function notDirectory(info: DiskStats, dir: string): ServerSentence {
   if (info.isSymbolicLink()) return say('uploads.dir-not-directory.symlink', { dir });
   if (info.isFile()) return say('uploads.dir-not-directory.file', { dir });
   return say('uploads.dir-not-directory.other', { dir });
@@ -366,10 +375,10 @@ function notDirectory(info: Stats, dir: string): ServerSentence {
  * tym sprawdzeniem a `chmod` wymagałby ŻYWEGO procesu atakującego na Macu, a wektor, przed którym
  * ta bramka stoi (sklonowane repozytorium z dowiązaniem w drzewie), takiego procesu nie daje.
  */
-async function assertPlainUploadDir(dir: string): Promise<void> {
-  let info: Stats;
+async function assertPlainUploadDir(disk: WorkAreaDisk, dir: string): Promise<void> {
+  let info: DiskStats;
   try {
-    info = await lstat(dir);
+    info = await disk.call('lstat', { path: dir });
   } catch {
     return; // wpisu nie ma (albo nie da się go obejrzeć) — resztę powie `mkdir`
   }
@@ -393,22 +402,22 @@ async function assertPlainUploadDir(dir: string): Promise<void> {
  * {@link EXCLUDE_MAX_BYTES} bez linii — dopisanie; cokolwiek innego (dowiązanie, FIFO, urządzenie, plik
  * ponad sufit) — BEZ zapisu. Zapis po nieudanym odczycie byłby `appendFile`, które na FIFO bez
  * czytelnika blokuje wątek puli libuv. Dopisanie sprawdza typ jeszcze raz na własnym deskryptorze
- * (`appendRegularFile`).
+ * (`appendRegular` portu dysku).
  */
-async function ensureGitExclude(cwd: string): Promise<void> {
+async function ensureGitExclude(disk: WorkAreaDisk, cwd: string): Promise<void> {
   const gitDir = join(cwd, '.git');
   try {
-    const info = await lstat(gitDir);
+    const info = await disk.call('lstat', { path: gitDir });
     if (!info.isDirectory()) return;
     const infoDir = join(gitDir, 'info');
-    await mkdir(infoDir).catch((err: unknown) => {
+    await disk.call('mkdir', { path: infoDir }).catch((err: unknown) => {
       if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
     });
-    if (!(await lstat(infoDir)).isDirectory()) return;
+    if (!(await disk.call('lstat', { path: infoDir })).isDirectory()) return;
     const file = join(infoDir, 'exclude');
     let current = '';
     try {
-      const read = await readRegularFile(file, { maxBytes: EXCLUDE_MAX_BYTES, followSymlink: false });
+      const read = await disk.call('readHead', { path: file, maxBytes: EXCLUDE_MAX_BYTES, followSymlink: false });
       if (read === null || read.truncated) return;
       current = read.bytes.toString('utf8');
     } catch (err) {
@@ -417,7 +426,7 @@ async function ensureGitExclude(cwd: string): Promise<void> {
     const present = new Set(current.split('\n').map((line) => line.trim()));
     if (present.has(EXCLUDE_LINE)) return;
     const prefix = current === '' || current.endsWith('\n') ? '' : '\n';
-    await appendRegularFile(file, `${prefix}${EXCLUDE_LINE}\n`);
+    await disk.call('appendRegular', { path: file, text: `${prefix}${EXCLUDE_LINE}\n` });
   } catch {
     // celowo cicho — patrz komentarz nad funkcją
   }
@@ -429,6 +438,10 @@ class Uploads implements HerdrUploads {
   readonly #maxDepth: number;
   readonly #home: string;
   readonly #registry: UploadsRegistry | undefined;
+  readonly #disk: WorkAreaDisk;
+  /** Start sweeps that wait for a guarded folder to open, by folder. */
+  readonly #waiting = new Map<string, (() => Promise<void>)[]>();
+  #offGate: (() => void) | null = null;
 
   constructor(opts: UploadsOptions = {}) {
     this.#now = opts.now ?? Date.now;
@@ -436,6 +449,7 @@ class Uploads implements HerdrUploads {
     this.#maxDepth = opts.maxDepth ?? SWEEP_MAX_DEPTH;
     this.#home = opts.home ?? homedir();
     this.#registry = opts.registry;
+    this.#disk = opts.disk ?? DIRECT_DISK;
   }
 
   async write(cwd: string, images: readonly string[]): Promise<readonly string[]> {
@@ -443,16 +457,17 @@ class Uploads implements HerdrUploads {
     const dir = await this.#prepareDir(cwd);
 
     const paths: string[] = [];
+    const late: string[] = [];
     try {
       for (const image of images) {
         const parsed = parseImageDataUrl(image);
         if (parsed === null) {
           throw new UploadError(say('uploads.not-image'));
         }
-        paths.push(await this.#writeOne(dir, uploadName(this.#now(), parsed.ext), parsed.bytes));
+        paths.push(await this.#writeOne(dir, uploadName(this.#now(), parsed.ext), parsed.bytes, late));
       }
     } finally {
-      await this.#remember(cwd, paths);
+      await this.#remember(cwd, [...paths, ...late]);
     }
     return paths;
   }
@@ -462,6 +477,7 @@ class Uploads implements HerdrUploads {
     const dir = await this.#prepareDir(cwd);
 
     const paths: string[] = [];
+    const late: string[] = [];
     try {
       for (const file of files) {
         const bytes = parseFileDataUrl(file.dataUrl);
@@ -469,16 +485,17 @@ class Uploads implements HerdrUploads {
           const shown = sanitizeUploadName(file.name);
           throw new UploadError(say('uploads.bad-content', { name: shown }));
         }
-        paths.push(await this.#writeOne(dir, uploadFileName(this.#now(), file.name), bytes));
+        paths.push(await this.#writeOne(dir, uploadFileName(this.#now(), file.name), bytes, late));
       }
     } finally {
-      await this.#remember(cwd, paths);
+      await this.#remember(cwd, [...paths, ...late]);
     }
     return paths;
   }
 
   /**
-   * Records `cwd` in the registry once a file is on disk, also when a later file of the same message failed: the
+   * Records `cwd` in the registry once a file is on disk or may land there late (a write the folder gate refused
+   * after its helper did not answer in time), also when a later file of the same message failed: the
    * start sweep must find every file Rarog left. AFTER the write, never before: a start sweep that saw the directory
    * empty drops it unless it was recorded after the sweep's mark, so a record made before the bytes land could be
    * dropped together with the file it should cover. The entry is the real path of `cwd` (no symlink in it): the
@@ -487,7 +504,7 @@ class Uploads implements HerdrUploads {
    */
   async #remember(cwd: string, written: readonly string[]): Promise<void> {
     if (written.length === 0 || this.#registry === undefined) return;
-    const real = await realpath(cwd).catch(() => null);
+    const real = await this.#disk.call('realpathNative', { path: cwd }).catch(() => null);
     if (real !== null) await this.#registry.add(real);
   }
 
@@ -500,29 +517,38 @@ class Uploads implements HerdrUploads {
   async #prepareDir(cwd: string): Promise<string> {
     const dir = join(cwd, UPLOAD_DIR_NAME);
     // PRZED `mkdir`, bo `mkdir` na dowiązaniu nie rzuca, a `chmod` niżej idzie za dowiązaniem.
-    await assertPlainUploadDir(dir);
+    await assertPlainUploadDir(this.#disk, dir);
     try {
-      await mkdir(dir, { recursive: true, mode: UPLOAD_DIR_MODE });
+      await this.#disk.call('mkdir', { path: dir, recursive: true, mode: UPLOAD_DIR_MODE });
       // `mkdir` przycina tryb umaskiem, a katalog z załącznikami ma być 0700 NIEZALEŻNIE od
       // ustawień powłoki, z której wystartował Rarog.
-      await chmod(dir, UPLOAD_DIR_MODE);
+      await this.#disk.call('chmod', { path: dir, mode: UPLOAD_DIR_MODE });
     } catch (err) {
+      if (err instanceof FolderGateError) throw new UploadError(err.sentence, { cause: err });
       throw new UploadError(say('uploads.mkdir-failed', { dir, reason: foreign(describe(err)) }));
     }
 
     // Sprzątamy PRZED zapisem, żeby katalog nie puchł przy użytkowniku, który nigdy nie restartuje
     // Raroga. Błąd sprzątania nie ma prawa zablokować wysyłki.
     await this.sweep(cwd);
-    await ensureGitExclude(cwd);
+    await ensureGitExclude(this.#disk, cwd);
     return dir;
   }
 
-  async #writeOne(dir: string, name: string, bytes: Buffer): Promise<string> {
+  /**
+   * One file. A write the folder gate refused is reported with the sentence of the folder's state, and its path goes
+   * to `late`: when the folder's helper did not answer in time, the bytes may land after the refusal.
+   */
+  async #writeOne(dir: string, name: string, bytes: Buffer, late: string[]): Promise<string> {
     const path = join(dir, name);
     try {
       // `wx` — nigdy nie nadpisujemy cudzego pliku, nawet gdyby nazwa się powtórzyła.
-      await writeFile(path, bytes, { mode: UPLOAD_FILE_MODE, flag: 'wx' });
+      await this.#disk.call('writeFile', { path, data: bytes, mode: UPLOAD_FILE_MODE, flag: 'wx' });
     } catch (err) {
+      if (err instanceof FolderGateError) {
+        late.push(path);
+        throw new UploadError(err.sentence, { cause: err });
+      }
       throw new UploadError(say('uploads.write-failed', { path, reason: foreign(describe(err)) }));
     }
     return path;
@@ -540,7 +566,7 @@ class Uploads implements HerdrUploads {
       // (`lstat` widzi dowiązanie; `stat` widziałby cel). Wyścig między tym sprawdzeniem
       // a otwarciem pliku przyjęty świadomie, tak samo jak przy `write` — patrz
       // `assertPlainUploadDir`: wymaga żywego procesu atakującego na Macu.
-      if (!(await lstat(dir)).isDirectory()) return null;
+      if (!(await this.#disk.call('lstat', { path: dir })).isDirectory()) return null;
       /*
        * Sam plik czytamy przez JEDEN deskryptor: `O_NOFOLLOW` odmawia
        * otwarcia dowiązania w ostatnim członie ścieżki, a `fstat` na tym samym uchwycie pyta
@@ -548,7 +574,7 @@ class Uploads implements HerdrUploads {
        * Przez `safe-read.ts`: `O_NONBLOCK` (FIFO pod nazwą zdjęcia nie zajmuje wątku puli libuv)
        * i sufit {@link UPLOAD_READ_MAX_BYTES} (większy plik to nie zdjęcie Raroga).
        */
-      const read = await readRegularFile(path, { maxBytes: UPLOAD_READ_MAX_BYTES, followSymlink: false });
+      const read = await this.#disk.call('readHead', { path, maxBytes: UPLOAD_READ_MAX_BYTES, followSymlink: false });
       return read === null || read.truncated ? null : { bytes: read.bytes, mime };
     } catch {
       return null;
@@ -562,7 +588,7 @@ class Uploads implements HerdrUploads {
   async sweepAll(roots: readonly string[]): Promise<void> {
     const registry = this.#registry;
     if (registry === undefined) {
-      await this.#walkRoots(roots);
+      await this.#walkRoots(roots, null);
       return;
     }
     const state = await registry.load();
@@ -570,7 +596,45 @@ class Uploads implements HerdrUploads {
       await this.#sweepRegistered(registry, state.dirs);
       return;
     }
-    await registry.rebuild(await this.#walkRoots(roots));
+    // Written only when the whole walk ran, its deferred parts too: a registry written before would leave a subtree
+    // nobody swept out of every later start sweep.
+    await this.#walkRoots(roots, (found) => registry.rebuild(found));
+  }
+
+  /**
+   * The guarded folder of home `dir` lies in while the folder gate does not hold it `open` (`unknown` too), or `null`:
+   * the start sweep does not enter such a folder yet. Text only, against home as given and on disk.
+   */
+  #waitingFolderOf(dir: string, realHome: string): string | null {
+    const gate = folderGate();
+    if (!gate.enabled) return null;
+    const rel = relative(realHome, dir);
+    const asGiven = rel !== '' && !rel.startsWith('..') && !isAbsolute(rel) ? join(this.#home, rel) : dir;
+    const at = gate.stateOf(dir) ?? gate.stateOf(asGiven);
+    return at === null || at.state === 'open' ? null : at.folder;
+  }
+
+  /**
+   * Runs `job` once the folder gate holds `folder` open. One listener on the gate serves every folder that waits;
+   * a job never throws into the gate.
+   */
+  #afterOpen(folder: string, job: () => Promise<void>): void {
+    const jobs = this.#waiting.get(folder) ?? [];
+    jobs.push(job);
+    this.#waiting.set(folder, jobs);
+    if (this.#offGate !== null) return;
+    this.#offGate = folderGate().onChange((changed, state) => {
+      const ready = state === 'open' ? this.#waiting.get(changed) : undefined;
+      if (ready === undefined) return;
+      this.#waiting.delete(changed);
+      if (this.#waiting.size === 0) {
+        this.#offGate?.();
+        this.#offGate = null;
+      }
+      void (async () => {
+        for (const run of ready) await run().catch(() => undefined);
+      })();
+    });
   }
 
   /**
@@ -581,7 +645,18 @@ class Uploads implements HerdrUploads {
   async #sweepRegistered(registry: UploadsRegistry, dirs: readonly string[]): Promise<void> {
     const mark = registry.mark();
     const leaving: string[] = [];
+    const home = await this.#disk.call('realpathNative', { path: this.#home }).catch(() => this.#home);
     for (const cwd of dirs) {
+      const folder = this.#waitingFolderOf(cwd, home);
+      if (folder !== null) {
+        // The entry stays registered until its sweep runs.
+        this.#afterOpen(folder, async () => {
+          const later = registry.mark();
+          const outcome = await this.#sweepEntry(cwd);
+          if (outcome === 'gone' || outcome === 'empty') await registry.drop([cwd], later);
+        });
+        continue;
+      }
       const outcome = await this.#sweepEntry(cwd);
       if (outcome === 'gone' || outcome === 'empty') leaving.push(cwd);
     }
@@ -598,7 +673,7 @@ class Uploads implements HerdrUploads {
   async #sweepEntry(cwd: string): Promise<SweepOutcome> {
     let real: string;
     try {
-      real = await realpath(cwd);
+      real = await this.#disk.call('realpathNative', { path: cwd });
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       return code === 'ENOENT' || code === 'ENOTDIR' ? 'gone' : 'unknown';
@@ -612,27 +687,60 @@ class Uploads implements HerdrUploads {
   }
 
   /**
-   * Walk of the roots; returns the directories whose `.rarog-uploads` still holds files after the sweep, or could
-   * not be read (`unknown`), so the next start tries those again. The walk enters no symlinked directory, so every
-   * path it returns is already a real path.
+   * Whether a deferred part of the walk may sweep `dir`, a real path when the walk reached it: only while its real path
+   * is still `dir` itself. The `lstat` in `#sweepDir` sees only the last name, so a `dir` or a parent replaced by a
+   * symlink while the folder was closed would lead the sweep into another tree, where it deletes old files. Otherwise
+   * one log line and nothing under `dir` is touched; a `realpath` error other than a missing path keeps `dir` among
+   * what the walk found, so the next start tries it again.
    */
-  async #walkRoots(roots: readonly string[]): Promise<string[]> {
+  async #stillItself(dir: string, walk: Walk): Promise<boolean> {
+    let real: string;
+    try {
+      real = await this.#disk.call('realpathNative', { path: dir });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code ?? 'error';
+      console.warn(`rarog: skipping the deferred cleanup of ${dir} — its real path cannot be read (${code}).`);
+      if (code !== 'ENOENT' && code !== 'ENOTDIR') walk.found.push(dir);
+      return false;
+    }
+    if (real === dir) return true;
+    console.warn(`rarog: skipping the deferred cleanup of ${dir} — the path now leads through a symlink; `
+      + 'nothing under it is cleaned.');
+    return false;
+  }
+
+  /**
+   * Walk of the roots. Once every part of it ran, the first pass and each subtree deferred until its guarded folder
+   * opens, `complete` gets the directories whose `.rarog-uploads` still holds files after the sweep, or could not be
+   * read (`unknown`), so the next start tries those again. A folder that does not open in this process, or a part
+   * that throws, leaves the walk incomplete and `complete` uncalled. The walk enters no symlinked directory, so every
+   * path it gives is already a real path.
+   */
+  async #walkRoots(
+    roots: readonly string[], complete: ((found: readonly string[]) => Promise<void>) | null,
+  ): Promise<void> {
     // Home and roots in their on-disk form before the walk: the protected-folder check compares paths as text, so
     // a root that names home in another case (`/users/demo`) or through a symlink would otherwise reach `Desktop`.
     // `fs/promises` `realpath` has the native semantics and returns the stored case on APFS. Only the roots and home
     // are resolved, not every visited folder; a root that does not resolve is skipped, as a missing one always was.
-    const home = await realpath(this.#home).catch(() => this.#home);
+    const home = await this.#disk.call('realpathNative', { path: this.#home }).catch(() => this.#home);
     const resolved: string[] = [];
     for (const root of roots) {
       if (!isAbsolute(root)) continue;
-      const real = await realpath(root).catch(() => null);
+      const real = await this.#disk.call('realpathNative', { path: root }).catch(() => null);
       if (real !== null) resolved.push(real);
     }
-    const walk: Walk = { seen: new Set<string>(), roots: resolved, home, found: [] };
+    const walk: Walk = { seen: new Set<string>(), roots: resolved, home, found: [], parts: { left: 1, complete } };
     for (const root of resolved) {
       await this.#sweepTree(root, this.#maxDepth, walk);
     }
-    return walk.found;
+    await this.#partRan(walk);
+  }
+
+  /** One part of the walk ran; after the last one, `complete` gets what the whole walk found. */
+  async #partRan(walk: Walk): Promise<void> {
+    walk.parts.left -= 1;
+    if (walk.parts.left === 0) await walk.parts.complete?.(walk.found);
   }
 
   async #sweepTree(dir: string, depth: number, walk: Walk): Promise<void> {
@@ -641,31 +749,43 @@ class Uploads implements HerdrUploads {
     // No read at all in a macOS-protected folder (not even `lstat` of `.rarog-uploads`): macOS would ask for access
     // and the walk would wait for an answer nobody gives. A root placed inside such a folder keeps its subtree.
     if (isProtectedPath(dir, walk.roots, walk.home)) return;
+    const folder = this.#waitingFolderOf(dir, walk.home);
+    if (folder !== null) {
+      // A root inside a guarded folder the gate does not hold open yet: this subtree is a part of the walk that runs
+      // once the folder opens, and only while `dir` is still itself.
+      walk.parts.left += 1;
+      this.#afterOpen(folder, async () => {
+        if (await this.#stillItself(dir, walk)) await this.#sweepTree(dir, depth, { ...walk, seen: new Set<string>() });
+        await this.#partRan(walk);
+      });
+      return;
+    }
     const outcome = await this.#sweepDir(join(dir, UPLOAD_DIR_NAME));
     if (outcome === 'kept' || outcome === 'unknown') walk.found.push(dir);
     if (depth <= 0) return;
     let entries;
     try {
-      entries = await readdir(dir, { withFileTypes: true });
+      entries = await this.#disk.call('readdir', { path: dir, encoding: 'utf8' });
     } catch {
       return;
     }
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
+      const name = String(entry.name);
       // Katalogi ukryte i `node_modules` odpadają: projektów tam nie ma, a skan kosztuje.
-      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
-      await this.#sweepTree(join(dir, entry.name), depth - 1, walk);
+      if (name.startsWith('.') || name === 'node_modules') continue;
+      await this.#sweepTree(join(dir, name), depth - 1, walk);
     }
   }
 
   async #sweepDir(dir: string): Promise<SweepOutcome> {
-    let info: Stats;
+    let info: DiskStats;
     try {
       // `lstat` przed `readdir`: to jest ta ścieżka, która kasuje pliki BEZ żądania z telefonu
       // (sweep startowy leci przy każdym starcie serwera). `readdir` listuje CEL dowiązania,
       // a `unlink` przez nie przechodzi — dowiązane `.rarog-uploads` oznaczałoby ciche kasowanie
       // wszystkiego starszego niż 48 h w cudzym katalogu.
-      info = await lstat(dir);
+      info = await this.#disk.call('lstat', { path: dir });
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       return code === 'ENOENT' || code === 'ENOTDIR' ? 'gone' : 'unknown';
@@ -680,9 +800,9 @@ class Uploads implements HerdrUploads {
     let names: string[];
     try {
       // `Dirent` z `readdir` nie podąża za dowiązaniem, więc `isFile()` odsiewa dowiązane wpisy.
-      names = (await readdir(dir, { withFileTypes: true }))
+      names = (await this.#disk.call('readdir', { path: dir, encoding: 'utf8' }))
         .filter((e) => e.isFile())
-        .map((e) => e.name);
+        .map((e) => String(e.name));
     } catch {
       return 'unknown';
     }
@@ -692,9 +812,10 @@ class Uploads implements HerdrUploads {
       const path = join(dir, name);
       try {
         // `lstat` także tutaj — wiek liczymy z tego wpisu, który za chwilę kasujemy, a nie z celu.
-        const entry = await lstat(path);
-        if (entry.mtimeMs >= cutoff) continue;
-        await unlink(path);
+        const entry = await this.#disk.call('lstat', { path });
+        // Milliseconds with their fraction, as the number form of `lstat` gave them; bigint `mtimeMs` drops it.
+        if (Number(entry.mtimeNs) / 1e6 >= cutoff) continue;
+        await this.#disk.call('unlink', { path });
         left -= 1;
       } catch {
         // Plik zniknął w międzyczasie albo brak praw — sprzątanie jest best-effort.
@@ -704,12 +825,17 @@ class Uploads implements HerdrUploads {
   }
 }
 
-/** One walk of the roots: visited directories, the resolved roots and home, and what still holds files. */
+/**
+ * One walk of the roots: visited directories, the resolved roots and home, and what still holds files. A deferred part
+ * gets its own `seen` and shares the rest, so `found` and `parts` stay one for the whole walk.
+ */
 interface Walk {
   readonly seen: Set<string>;
   readonly roots: readonly string[];
   readonly home: string;
   readonly found: string[];
+  /** Parts still to run, the first pass and each deferred subtree, and what gets `found` after the last one. */
+  readonly parts: { left: number; readonly complete: ((found: readonly string[]) => Promise<void>) | null };
 }
 
 function describe(err: unknown): string {

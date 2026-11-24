@@ -295,6 +295,11 @@ public struct AppState: Sendable, Equatable {
   /// changes nothing. A new 202 clears it. Changed only by `Reducer+Send`.
   var unconfirmedOpenings: [UUID: Date] = [:]
 
+  /// The macOS folders the server keeps closed (`folder-access`), sorted by name; empty = every folder open or a server
+  /// without the folder gate. Changed only by `Reducer+MacFolders`; the banners: `macFolder(holding:)` and
+  /// `macFolderSessions`.
+  public internal(set) var macFolders: [MacFolderBlock] = []
+
   public init(clientBuild: Int) {
     self.clientBuild = clientBuild
   }

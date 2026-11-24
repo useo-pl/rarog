@@ -30,7 +30,7 @@ import type { Logger } from './router.ts';
 import { readHookHealth } from './health.ts';
 import type { HealthProbes } from './health.ts';
 import {
-  consentAdminControl, consentCardAwaitedAt, consentCardLive, consentManagerPort, consentTranscriptOf,
+  consentAdminControl, consentCardAwaitedAt, consentCardLive, consentForgottenPort, consentManagerPort, consentTranscriptOf,
   createConsentChannel, observeConsent, startConsentCycle, startConsentRegistration, watchConsentMode,
 } from './bootstrap/consent.ts';
 import { createAliveSessionsSignal } from './bootstrap/alive-sessions.ts';
@@ -38,6 +38,7 @@ import type { AliveSessionsSignal } from './bootstrap/alive-sessions.ts';
 import { consentNoHookSources, consentSessionEntry } from './bootstrap/consent.ts';
 import type { ConsentLink } from './bootstrap/consent.ts';
 import { createDeviceAuth, startDeviceSweep } from './bootstrap/devices.ts';
+import { startFolderGate } from './bootstrap/folder-gate.ts';
 import { healthProbes } from './bootstrap/health.ts';
 import { prepareHookFiles } from './bootstrap/hook-files.ts';
 import type { HerdrRuntime } from './bootstrap/herdr.ts';
@@ -225,6 +226,7 @@ async function loadHerdr(
     const consentNoHook = cliVersionReader === null ? undefined : consentNoHookSources({
       link: consentLink, dataDir: config.dataDir, home: homedir(), roots: config.herdrRoots,
       entry: consentSessionEntry(cliVersionReader), proofGate: consentProofGate,
+      restartGraceMs: config.consentRestartGraceMs, startedAt: Date.now(),
     });
     const supervisor = herdr.createHerdrSupervisor({
       socketPath: config.herdrSocket,
@@ -246,7 +248,7 @@ async function loadHerdr(
       ...(versionWatch === null ? {} : {
         onVersion: (version: string) => { versionWatch.observe('herdr', version); },
       }),
-      // The first sessions after the start go to `alive.json` at once (`bootstrap/alive-sessions.ts`).
+      // A new session goes to `alive.json` at once (`bootstrap/alive-sessions.ts`).
       onAgentsChanged: aliveSessions.onAgentsChanged,
       /*
        * Fabryka dostaje `HerdrLaunchClient` zbudowany na TYM SAMYM gnieździe co reszta
@@ -484,6 +486,16 @@ async function main(): Promise<void> {
   const server = http.createServer();
   const iroh = await startServerIroh(config, server, log);
 
+  /*
+   * The folder gate before the first disk call of the work area: calls in a guarded folder of home go to a helper.
+   * It stays routed until the process ends: a call in such a folder during shutdown must not fall back to the server
+   * process, and the exit hook of the client kills the helpers when the process exits.
+   */
+  startFolderGate({
+    enabled: config.folderGate, home: homedir(), roots: [...config.projectRoots, ...config.herdrRoots],
+    log: (line) => { log.info(line); },
+  });
+
   // Hook files in the data directory, before anything reads them: roots, start cleanup, log rotation.
   prepareHookFiles(config, log);
 
@@ -643,6 +655,7 @@ async function main(): Promise<void> {
     }),
     // Karty kanału zgód: decyzje i zwolnienie tylko przy otwartym kanale (`main`, `all`), inaczej 410.
     ...(consentCycle === null ? {} : { consent: consentManagerPort(consentCycle, consentMode, log) }),
+    ...(consentCycle === null ? {} : { consentForgotten: consentForgottenPort(consentCycle, log) }),
     ...(prStatus === null ? {} : { prStatus: prStatus.port }),
   });
   managerRef = manager;
@@ -744,7 +757,13 @@ async function main(): Promise<void> {
       socket.destroy();
       return;
     }
-    term.handleUpgrade(req, socket, head);
+    // An exception in an `upgrade` listener is uncaught and would end the process before any credential.
+    try {
+      term.handleUpgrade(req, socket, head);
+    } catch (err: unknown) {
+      log.error(`term: upgrade failed (${err instanceof Error ? err.name : 'non-error'}), socket closed`);
+      socket.destroy();
+    }
   });
 
   // Timeouty dla strumieni SSE i obsługa błędu `listen` (EADDRINUSE = kod 1), `bootstrap/http.ts`.

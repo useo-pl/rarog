@@ -5,6 +5,9 @@ import RarogCore
 // Pas banerów w dwóch kolumnach. Właściciel: łączność.
 //
 // Kolejność z wymagań: niezgodność wersji, połączenie, „Transkrypt nie dochodzi", herdr, pushe.
+// The macOS folder cards (`bannerSlots(in:)`): the session card right after the session's own banners, the list card
+// among the global ones after herdr and before push notifications. A column with the session card shows no list card:
+// one closed folder, one card.
 // Połączenie to JEDNA karta: szara „Łączę z serwerem…”, dopóki żadna próba nie padła,
 // potem w tym samym miejscu czerwona „Serwer nie odpowiada” (`ConnectionMemory.connectionCard`).
 // The gray card has two sources: the global stream, and the viewed session's stream while the global one is online
@@ -78,11 +81,70 @@ extension AppState {
   }
 }
 
-/// Ton kropki karty banera: czerwień = coś nie dochodzi albo wersja blokuje zmiany; szarość (`done`) = informacja.
-/// Bursztyn ZAWSZE znaczy „ktoś czeka na Ciebie”, więc banerów nie barwi.
+/// Ton kropki karty banera: czerwień = coś nie dochodzi albo wersja blokuje zmiany; szarość (`done`) = informacja;
+/// bursztyn (`wait`) = ktoś czeka na Ciebie. Among banners only the macOS folder cards are amber: the Mac waits for the
+/// human's click or setting; every other banner keeps red or gray.
 public enum BannerTone: Sendable, Equatable {
   case failure
   case info
+  /// Amber, `Palette.wait`: something waits for the human, as an agent waiting for an answer.
+  case wait
+}
+
+/// A macOS folder card of the banner strip: a bold title and a muted second line with the reach and what to do.
+public struct MacFolderCard: Sendable, Equatable {
+  public let title: String
+  public let detail: String
+
+  public init(title: String, detail: String) {
+    self.title = title
+    self.detail = detail
+  }
+
+  public var tone: BannerTone { .wait }
+}
+
+/// One card of a banner strip in its order: an app banner (one line) or a macOS folder card.
+public enum BannerSlot: Sendable, Equatable {
+  case banner(Banner)
+  case macFolders(MacFolderCard)
+}
+
+extension AppState {
+  /// The cards of one column in order: ``banners(in:global:transcript:)`` with the macOS folder cards in their places.
+  /// None while the server is unreachable: the app has no fresh word about the folders then.
+  /// - Parameter timeZone: the clock of "since 14:32" in the list card.
+  public func bannerSlots(
+    in column: BannerColumn, global: ConnectionMemory, transcript: ConnectionMemory, timeZone: TimeZone = .current
+  ) -> [BannerSlot] {
+    let banners = banners(in: column, global: global, transcript: transcript)
+    var out = banners.map(BannerSlot.banner)
+    guard !macFolders.isEmpty, global.connectionCard != .serverUnreachable else { return out }
+    var sessionCard: MacFolderCard?
+    if case let .detail(sessionId?, _) = column, let block = macFolder(forSession: sessionId) {
+      sessionCard = UICopy.macFolderSessionCard(block)
+    }
+    if let sessionCard {
+      // After the version, connection and transcript cards: they concern the whole app or this stream.
+      let at = banners.firstIndex { banner in
+        switch banner {
+        case .incompatible, .connecting, .serverUnreachable, .transcriptStalled: false
+        case .herdrUnavailable, .herdrReadOnly, .pushDegraded: true
+        }
+      } ?? banners.count
+      out.insert(.macFolders(sessionCard), at: at)
+    } else if column.showsGlobals,
+      let listCard = UICopy.macFolderListCard(
+        blocked: macFolders, sessions: macFolderSessions, folderOf: { macFolder(holding: $0.cwd) }, timeZone: timeZone)
+    {
+      let at = out.firstIndex { slot in
+        if case .banner(.pushDegraded) = slot { return true }
+        return false
+      } ?? out.count
+      out.insert(.macFolders(listCard), at: at)
+    }
+    return out
+  }
 }
 
 extension Banner {
@@ -111,5 +173,21 @@ extension Array where Element == Banner {
       if case let .connecting(visibleFrom) = banner, visibleFrom > now { return visibleFrom }
       return nil
     }.min()
+  }
+}
+
+extension Array where Element == BannerSlot {
+  /// The cards visible at `now`: the connecting card waits for its moment as in ``Swift/Array/visible(at:)`` of
+  /// banners; a folder card always stands.
+  public func visible(at now: Date) -> [BannerSlot] {
+    filter {
+      if case let .banner(.connecting(visibleFrom)) = $0 { return visibleFrom <= now }
+      return true
+    }
+  }
+
+  /// The moment the strip changes by itself (a connecting card still waits), or `nil`.
+  public func pendingUntil(_ now: Date) -> Date? {
+    compactMap { slot -> Banner? in if case let .banner(banner) = slot { banner } else { nil } }.pendingUntil(now)
   }
 }

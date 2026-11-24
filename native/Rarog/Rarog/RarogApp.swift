@@ -41,15 +41,18 @@ struct RarogApp: App {
     let logs = TunnelLogRelay()
     // One iroh identity store for the endpoint and the relay registry client: the same key, written once.
     let identities = IrohIdentityStore(keychain: AppEnvironment.irohIdentityKeychain())
+    // The relay registry client serves the device, not one server: its lines carry no server key.
     let relayAccess = RelayAccessWiring.live(
-      identities: identities, makeSigner: { secretKey in try IrohSigner(secretKey: secretKey) }, log: logs.send)
+      identities: identities, makeSigner: { secretKey in try IrohSigner(secretKey: secretKey) },
+      log: { line in logs.send(line, server: nil) })
     let tunnel = TunnelCoordinator(
       label: AppEnvironment.clientLabel, build: AppEnvironment.build(), transport: IrohTunnelTransport(),
       identities: identities, relayAccess: relayAccess, log: logs.send)
     let store = RarogStore.live(
       connector: RelayAccessWiring.connect(AppEnvironment.connector(coordinator: tunnel), to: relayAccess),
       preferences: UserDefaults.standard, spaces: AppEnvironment.spaces())
-    logs.attach { line in Task { @MainActor in store.trace(line, budget: .connectivity) } }
+    // The key travels with the line through the hop to the main actor: the store may serve another server by then.
+    logs.attach { line, server in Task { @MainActor in store.trace(line, budget: .connectivity, server: server) } }
     // The registry client's statuses for the Server screen, then T-start; the store's first server list went to the
     // client while the store was built (`TunnelCoordinator.transport`).
     RelayAccessWiring.start(relayAccess) { status in store.relayAccessChanged(status) }

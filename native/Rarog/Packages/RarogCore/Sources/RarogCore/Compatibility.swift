@@ -11,8 +11,8 @@ public enum Compatibility: Sendable, Equatable {
   /// `build < hello.minClientBuild` — „zaktualizuj apkę".
   case tooOld(minClientBuild: Int)
   /// `hello.protocolVersion != 3` (porównanie ścisłe). Kierunek: serwer nowszy → zaktualizuj apkę; apka nowsza →
-  /// zaktualizuj serwer (``ServerRelease/unknownServerCommand(release:)``; sam `rarog restart` nie podniesie
-  /// protokołu).
+  /// zaktualizuj serwer (``ServerRelease/unknownServerUpdateCommand(release:)``, then
+  /// ``ServerRelease/unknownServerCommand(release:)``; sam `rarog restart` nie podniesie protokołu).
   /// Połączenia NIE zrywamy.
   case protocolMismatch(server: Int)
 

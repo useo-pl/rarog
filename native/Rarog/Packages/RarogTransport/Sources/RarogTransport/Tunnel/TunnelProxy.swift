@@ -87,6 +87,9 @@ public final class TunnelProxy: Sendable {
   /// Port nasłuchu na `127.0.0.1` po udanym ``start()``.
   public var port: Int? { state.withLock { $0.port } }
 
+  /// The listener until it stops (tests watch it go away after ``close(code:)``).
+  var listener: NWListener? { state.withLock { $0.listener } }
+
   /// Nasłuch na `127.0.0.1` z portem od systemu; oddaje port. Drugi start albo start po zamknięciu rzuca.
   public func start() async throws -> Int {
     let parameters = NWParameters.tcp
@@ -125,6 +128,9 @@ public final class TunnelProxy: Sendable {
           listener.cancel()
         case .cancelled:
           resume(.failure(TunnelFailure.unavailable("proxy closed")))
+          // A stopped listener lets its handlers go here, not only inside Network: this one holds the listener.
+          listener.stateUpdateHandler = nil
+          listener.newConnectionHandler = nil
           self?.listenerStopped()
         default:
           break
@@ -259,6 +265,7 @@ public final class TunnelProxy: Sendable {
       guard !state.listenerStopped else { return nil }
       state.listenerStopped = true
       state.closed = true
+      state.listener = nil
       defer { state.stopWaiters.removeAll() }
       return state.stopWaiters
     }

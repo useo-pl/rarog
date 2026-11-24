@@ -1,9 +1,13 @@
 import type { ServerEvent, TranscriptMessage } from '@rarog/shared';
 import { IMAGE_DATA_URL_PATTERN, PROTOCOL_VERSION, parseServerEvent } from '@rarog/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { installFolderGate } from '../src/folder-gate/install.ts';
+import type { FolderBlock, FolderGate, FolderState } from '../src/folder-gate/types.ts';
+import { RING_MAX_BYTES } from '../src/sessions/ring-buffer.ts';
 import {
-  REPLAY_SNAPSHOT_LOG, REPLAY_SNAPSHOT_MIN_MESSAGES, SNAPSHOT_IMAGE_BUDGET_BYTES, SNAPSHOT_IMAGE_PLACEHOLDER, SseHub,
-  type SseResponse, budgetSnapshotImages, formatSseEvent, parseLastEventId,
+  REPLAY_SNAPSHOT_LOG, REPLAY_SNAPSHOT_MIN_MESSAGES, SNAPSHOT_IMAGE_BUDGET_BYTES, SNAPSHOT_IMAGE_PLACEHOLDER,
+  SSE_WRITE_BUFFER_MAX, SseHub, type SseInbox, type SseResponse, WRITE_BUFFER_CUT_LOG, budgetSnapshotImages,
+  formatSseEvent, parseLastEventId,
 } from '../src/sse.ts';
 import { FakeManager, makeSummary } from './fake-manager.ts';
 
@@ -401,34 +405,6 @@ describe('strumień sesji', () => {
   });
 });
 
-describe('new card under an open session id', () => {
-  it('each open stream of that id gets a fresh transcript-snapshot; other streams get nothing', () => {
-    const manager = new FakeManager([makeSummary({ id: 's1' }), makeSummary({ id: 's2' })]);
-    const hub = makeHub(manager);
-    const open = new FakeRes();
-    const other = new FakeRes();
-    const global = new FakeRes();
-    hub.openSession('s1', open, null);
-    hub.openSession('s2', other, null);
-    hub.openGlobal(global);
-    const counts = [open, other, global].map((res) => res.frames().length);
-    manager.transcriptResult = { messages: [message(41), message(42)], pendingPermissions: [], pendingQuestions: [] };
-
-    manager.resetTranscript('s1');
-
-    const fresh = open.frames().slice(counts[0]);
-    expect(fresh).toHaveLength(1);
-    expect(fresh[0]?.id).toBeNull();
-    const event = fresh[0]?.event;
-    if (event?.type !== 'transcript-snapshot') throw new Error('no snapshot');
-    expect(event.messages.map((m) => m.seq)).toEqual([41, 42]);
-    expect(other.frames()).toHaveLength(counts[1] ?? 0);
-    expect(global.frames()).toHaveLength(counts[2] ?? 0);
-    // A push the server starts is not an opening of the transcript: no git refresh.
-    expect(manager.calls.filter((c) => c.method === 'transcript').at(-1)?.args).toEqual(['s1', { peek: true }]);
-  });
-});
-
 /*
  * A frame-by-frame replay reaches the phone in batches and each batch renders separately, so entering
  * a session after a break would "scroll down" in several jumps. From two missed messages on, the server
@@ -808,5 +784,347 @@ describe('SseHub: number of open streams for the PR status', () => {
     hub.start();
     hub.openGlobal(new FakeRes());
     expect(hub.clientCount).toBe(1);
+  });
+});
+
+/** A gate whose blocked list the test sets; `change` tells the listeners, as the real gate does on each change. */
+class FakeFolderGate implements FolderGate {
+  readonly enabled: boolean;
+  readonly listeners = new Set<(folder: string, state: FolderState) => void>();
+  list: FolderBlock[] = [];
+
+  constructor(enabled = true) {
+    this.enabled = enabled;
+  }
+
+  stateOf(): null { return null; }
+  report(): void {}
+  check(): Promise<FolderState> { return Promise.resolve('unknown'); }
+  blocked(): FolderBlock[] { return this.list.map((block) => ({ ...block })); }
+  onChange(listener: (folder: string, state: FolderState) => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+  dispose(): void {}
+
+  change(folder: string, state: FolderState, list: FolderBlock[]): void {
+    this.list = list;
+    for (const listener of [...this.listeners]) listener(folder, state);
+  }
+}
+
+const DESKTOP = '/Users/demo/Desktop';
+const DESKTOP_WAITING: FolderBlock = {
+  name: 'Desktop', path: DESKTOP, state: 'waiting', since: '2026-11-24T08:14:00.000Z',
+};
+const DOCUMENTS_DENIED: FolderBlock = {
+  name: 'Documents', path: '/Users/demo/Documents', state: 'denied', since: '2026-11-24T08:15:00.000Z',
+};
+
+describe('folder-access: blocked macOS folders on the global stream', () => {
+  const types = (res: FakeRes): string[] => res.frames().map((frame) => frame.event.type);
+  const folderFrames = (res: FakeRes) => res.frames().filter((frame) => frame.event.type === 'folder-access');
+
+  function gateHub(gate: FolderGate | undefined, extra: { inbox?: SseInbox } = {}): SseHub {
+    const hub = new SseHub({
+      manager: new FakeManager([makeSummary({ id: 's1' })]), serverStartId: 'start-1',
+      protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0, ...(gate === undefined ? {} : { folderGate: gate }), ...extra,
+    });
+    hub.start();
+    return hub;
+  }
+
+  it('with the gate on, a global stream opens with hello, sessions-snapshot, folder-access, then inbox-heads', () => {
+    const gate = new FakeFolderGate();
+    const hub = gateHub(gate, { inbox: { heads: () => [], onEvent: () => () => undefined } });
+    const res = new FakeRes();
+    hub.openGlobal(res, undefined, undefined, true);
+    expect(types(res)).toEqual(['hello', 'sessions-snapshot', 'folder-access', 'inbox-heads']);
+    // Nothing blocked is an answer too: it clears a banner the app kept from before the reconnect.
+    expect(res.frames()[2]).toEqual({ id: null, event: { type: 'folder-access', blocked: [] } });
+
+    gate.list = [DESKTOP_WAITING, DOCUMENTS_DENIED];
+    const later = new FakeRes();
+    hub.openGlobal(later);
+    expect(types(later)).toEqual(['hello', 'sessions-snapshot', 'folder-access']);
+    expect(later.frames()[2]?.event).toEqual({ type: 'folder-access', blocked: [DESKTOP_WAITING, DOCUMENTS_DENIED] });
+  });
+
+  it('a change of the blocked list goes to every global stream without `id:`; a session stream gets none', () => {
+    const gate = new FakeFolderGate();
+    const hub = gateHub(gate);
+    const first = new FakeRes();
+    const second = new FakeRes();
+    const session = new FakeRes();
+    hub.openGlobal(first);
+    hub.openGlobal(second, 'device-1');
+    hub.openSession('s1', session, null);
+    const sessionBefore = session.frames().length;
+
+    gate.change(DESKTOP, 'waiting', [DESKTOP_WAITING]);
+
+    for (const res of [first, second]) {
+      expect(folderFrames(res).slice(1)).toEqual([
+        { id: null, event: { type: 'folder-access', blocked: [DESKTOP_WAITING] } },
+      ]);
+      expect(res.chunks.join('').split('\n\n').filter((raw) => raw.includes('"folder-access"')).at(-1))
+        .not.toMatch(/^id:/m);
+    }
+    expect(session.frames().length).toBe(sessionBefore);
+  });
+
+  it('a state change that leaves the blocked list as it was sends nothing', () => {
+    const gate = new FakeFolderGate();
+    const hub = gateHub(gate);
+    const res = new FakeRes();
+    hub.openGlobal(res);
+    const sent = (): number => folderFrames(res).length - 1;
+
+    // unknown → open: the gate tells about it, the list stays empty.
+    gate.change(DESKTOP, 'open', []);
+    expect(sent()).toBe(0);
+    gate.change(DESKTOP, 'waiting', [DESKTOP_WAITING]);
+    expect(sent()).toBe(1);
+    // A missing folder is closed, but it is not in the list, so the list is the same.
+    gate.change('/Users/demo/Downloads', 'absent', [DESKTOP_WAITING]);
+    expect(sent()).toBe(1);
+    gate.change(DESKTOP, 'open', []);
+    expect(sent()).toBe(2);
+    expect(folderFrames(res).at(-1)?.event).toEqual({ type: 'folder-access', blocked: [] });
+  });
+
+  it('the list a change sends is compared with the last one sent, also while no stream is open', () => {
+    const gate = new FakeFolderGate();
+    const hub = gateHub(gate);
+    gate.change(DESKTOP, 'waiting', [DESKTOP_WAITING]);
+    const res = new FakeRes();
+    hub.openGlobal(res);
+    gate.change(DESKTOP, 'waiting', [DESKTOP_WAITING]);
+    expect(folderFrames(res)).toHaveLength(1);
+  });
+
+  it('with the gate off a stream gets no folder-access frame and the hub does not listen to the gate', () => {
+    const gate = new FakeFolderGate(false);
+    const hub = gateHub(gate);
+    const res = new FakeRes();
+    hub.openGlobal(res);
+    expect(types(res)).toEqual(['hello', 'sessions-snapshot']);
+    expect(gate.listeners.size).toBe(0);
+
+    // No option: the gate of a process that installed none is the disabled one.
+    const plain = new FakeRes();
+    gateHub(undefined).openGlobal(plain);
+    expect(types(plain)).toEqual(['hello', 'sessions-snapshot']);
+  });
+
+  it('without the option the hub reads the gate the process installed when it starts', () => {
+    const gate = new FakeFolderGate();
+    gate.list = [DOCUMENTS_DENIED];
+    const remove = installFolderGate(gate);
+    try {
+      const hub = gateHub(undefined);
+      const res = new FakeRes();
+      hub.openGlobal(res);
+      expect(res.frames()[2]?.event).toEqual({ type: 'folder-access', blocked: [DOCUMENTS_DENIED] });
+      gate.change(DESKTOP, 'waiting', [DESKTOP_WAITING, DOCUMENTS_DENIED]);
+      expect(folderFrames(res)).toHaveLength(2);
+    } finally {
+      remove();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Write buffer ceiling: a stalled client does not grow server memory
+// ---------------------------------------------------------------------------
+
+/** Response whose socket never drains: every byte written stays counted in `writableLength`. */
+class StalledRes extends FakeRes {
+  destroyed = false;
+
+  override write(chunk: string): boolean {
+    super.write(chunk);
+    this.writableLength += Buffer.byteLength(chunk, 'utf8');
+    return false;
+  }
+
+  destroy(): unknown {
+    this.destroyed = true;
+    return this;
+  }
+}
+
+/** A `session-changed` frame of roughly `bytes` bytes; the title is a marker the log line must not carry. */
+function bulkyChange(bytes: number): ServerEvent {
+  return { type: 'session-changed', session: makeSummary({ id: 's1', title: `SECRET-TITLE-${'x'.repeat(bytes)}` }) };
+}
+
+describe('write buffer ceiling', () => {
+  it('is twice the transcript ring limit plus the snapshot image budget', () => {
+    expect(SSE_WRITE_BUFFER_MAX).toBe(2 * (RING_MAX_BYTES + SNAPSHOT_IMAGE_BUDGET_BYTES));
+  });
+
+  it('a stream that never drains is cut on the first write over the ceiling plus twice its largest frame, with one'
+    + ' log line', () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    const lines: string[] = [];
+    const hub = new SseHub({
+      manager, serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0,
+      logger: (line) => { lines.push(line); },
+    });
+    hub.start();
+    const res = new StalledRes();
+    hub.openGlobal(res, 'device-1');
+    let before = 0;
+    for (let i = 0; i < 40 && !res.destroyed; i += 1) {
+      before = res.writableLength;
+      manager.emit('global', null, bulkyChange(1024 * 1024));
+    }
+    expect(res.destroyed).toBe(true);
+    const largest = Math.max(...res.chunks.map((chunk) => Buffer.byteLength(chunk, 'utf8')));
+    expect(before).toBeLessThanOrEqual(SSE_WRITE_BUFFER_MAX + 2 * largest);
+    expect(res.writableLength).toBeGreaterThan(SSE_WRITE_BUFFER_MAX + 2 * largest);
+    expect(hub.clientCount).toBe(0);
+    const cut = lines.filter((line) => line.startsWith(WRITE_BUFFER_CUT_LOG));
+    expect(cut).toHaveLength(1);
+    expect(cut[0]).toContain('device-1');
+    expect(lines.join('\n')).not.toContain('SECRET-TITLE');
+
+    // Nothing more reaches the cut stream: neither live frames nor the heartbeat.
+    const written = res.chunks.length;
+    manager.emit('global', null, bulkyChange(16));
+    hub.sendHeartbeat();
+    expect(res.chunks).toHaveLength(written);
+    expect(lines.filter((line) => line.startsWith(WRITE_BUFFER_CUT_LOG))).toHaveLength(1);
+  });
+
+  it('a stream opened over a stalled socket stops writing as soon as it is cut', () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    const lines: string[] = [];
+    const hub = new SseHub({
+      manager, serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0,
+      logger: (line) => { lines.push(line); },
+    });
+    hub.start();
+    const res = new StalledRes();
+    // The socket is already full when the stream opens: `retry:` crosses the ceiling, nothing after it is written.
+    res.writableLength = SSE_WRITE_BUFFER_MAX + 1024 * 1024;
+    hub.openGlobal(res);
+    expect(res.destroyed).toBe(true);
+    expect(hub.clientCount).toBe(0);
+    expect(res.chunks.some((chunk) => chunk.includes('"hello"'))).toBe(false);
+    expect(res.chunks.some((chunk) => chunk.includes('sessions-snapshot'))).toBe(false);
+    expect(lines.filter((line) => line.startsWith(WRITE_BUFFER_CUT_LOG))).toHaveLength(1);
+  });
+
+  it('a maximum-size snapshot to a slowly draining client, then a heartbeat, is not cut', () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    manager.transcriptResult = {
+      messages: [
+        { ...message(1), blocks: [{ type: 'text', text: 'a'.repeat(RING_MAX_BYTES) }] },
+        userWithImages(2, [imageOf(SNAPSHOT_IMAGE_BUDGET_BYTES)]),
+      ],
+      pendingPermissions: [], pendingQuestions: [],
+    };
+    const lines: string[] = [];
+    const hub = new SseHub({
+      manager, serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0,
+      logger: (line) => { lines.push(line); },
+    });
+    hub.start();
+    const res = new StalledRes();
+    hub.openSession('s1', res, null);
+    expect(res.writableLength).toBeGreaterThan(RING_MAX_BYTES + SNAPSHOT_IMAGE_BUDGET_BYTES);
+    // The client drains a little, then the heartbeat comes.
+    res.writableLength = Math.floor(res.writableLength * 0.9);
+    hub.sendHeartbeat();
+    expect(res.destroyed).toBe(false);
+    expect(hub.clientCount).toBe(1);
+    expect(res.chunks.at(-1)).toBe(': ping\nevent: ping\ndata: {}\n\n');
+    expect(lines.filter((line) => line.startsWith(WRITE_BUFFER_CUT_LOG))).toHaveLength(0);
+  });
+
+  it('one valid snapshot larger than the ceiling is not cut, a heartbeat after it neither; a stall after it is', () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    // Many large pending consent cards can make a valid snapshot bigger than the ceiling on their own.
+    manager.transcriptResult = {
+      messages: [{ ...message(1), blocks: [{ type: 'text', text: 'a'.repeat(SSE_WRITE_BUFFER_MAX + 1024 * 1024) }] }],
+      pendingPermissions: [], pendingQuestions: [],
+    };
+    const lines: string[] = [];
+    const hub = new SseHub({
+      manager, serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0,
+      logger: (line) => { lines.push(line); },
+    });
+    hub.start();
+    const res = new StalledRes();
+    hub.openSession('s1', res, null);
+    hub.sendHeartbeat();
+    expect(res.writableLength).toBeGreaterThan(SSE_WRITE_BUFFER_MAX);
+    expect(res.destroyed).toBe(false);
+    expect(lines.filter((line) => line.startsWith(WRITE_BUFFER_CUT_LOG))).toHaveLength(0);
+
+    for (let i = 0; i < 60 && !res.destroyed; i += 1) manager.emit('s1', null, bulkyChange(1024 * 1024));
+    expect(res.destroyed).toBe(true);
+    expect(lines.filter((line) => line.startsWith(WRITE_BUFFER_CUT_LOG))).toHaveLength(1);
+  });
+
+  it('reconnecting after a cut gets a snapshot', () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    manager.transcriptResult = { messages: [message(1)], pendingPermissions: [], pendingQuestions: [] };
+    const hub = makeHub(manager);
+    const stalled = new StalledRes();
+    hub.openSession('s1', stalled, null);
+    for (let i = 0; i < 60 && !stalled.destroyed; i += 1) manager.emit('s1', null, bulkyChange(1024 * 1024));
+    expect(stalled.destroyed).toBe(true);
+
+    const session = new FakeRes();
+    const global = new FakeRes();
+    hub.openSession('s1', session, null);
+    hub.openGlobal(global);
+    expect(session.frames().map((f) => f.event.type)).toEqual(['transcript-snapshot']);
+    expect(global.frames().map((f) => f.event.type)).toEqual(['hello', 'sessions-snapshot']);
+    expect(hub.clientCount).toBe(2);
+  });
+});
+
+describe('closeAll detaches what start attached', () => {
+  function fakeInbox(): SseInbox & { listeners: number } {
+    const inbox = {
+      listeners: 0,
+      heads: () => [],
+      onEvent: () => {
+        inbox.listeners += 1;
+        return () => { inbox.listeners -= 1; };
+      },
+    };
+    return inbox;
+  }
+
+  it('the Inbox listener is detached', () => {
+    const inbox = fakeInbox();
+    const hub = new SseHub({
+      manager: new FakeManager(), serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0, inbox,
+    });
+    hub.start();
+    expect(inbox.listeners).toBe(1);
+    hub.closeAll();
+    expect(inbox.listeners).toBe(0);
+  });
+
+  it('start after closeAll delivers each manager event once', () => {
+    const manager = new FakeManager([makeSummary({ id: 's1' })]);
+    const inbox = fakeInbox();
+    const hub = new SseHub({
+      manager, serverStartId: 'start-1', protocolVersion: PROTOCOL_VERSION, heartbeatMs: 0, inbox,
+    });
+    hub.start();
+    hub.closeAll();
+    hub.start();
+    expect(inbox.listeners).toBe(1);
+    const res = new FakeRes();
+    hub.openGlobal(res);
+    manager.emit('global', null, { type: 'herdr-status', available: true, agentCount: 1, readOnly: false });
+    expect(res.frames().filter((f) => f.event.type === 'herdr-status')).toHaveLength(1);
   });
 });

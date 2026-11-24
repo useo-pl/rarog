@@ -18,7 +18,7 @@ final class SwitcherUITests: XCTestCase {
 
   /// A tap on the current tab shows the project's tabs in the bar's order with the current one selected; the window
   /// stays; the arrows move the selection, S, Shift+S, Cmd+S and Shift+Cmd+S do not; Cmd+digit of another tab with
-  /// the window open picks that row (the window wins over the tab shortcut); a tap on a row opens its tab.
+  /// the window open is the tab shortcut: it closes the window and opens that tab; a tap on a row opens its tab.
   @MainActor
   func testRowsAreTheProjectTabs() throws {
     let port = try DemoServer.requirePort()
@@ -55,8 +55,8 @@ final class SwitcherUITests: XCTestCase {
     XCTAssertTrue(rowSelected(app, below), "the window still holds the keyboard")
     XCTAssertTrue(selected(app, home), "the screen under the window stays")
     app.typeKey(String(other + 1), modifierFlags: .command)
-    XCTAssertTrue(window.waitForDisappearance(timeout: 5), "Cmd+digit picks the row and closes the window")
-    XCTAssertTrue(selected(app, bar[other]), "the jump to the row with that digit")
+    XCTAssertTrue(window.waitForDisappearance(timeout: 5), "the tab shortcut Cmd+digit closes the window")
+    XCTAssertTrue(selected(app, bar[other]), "the tab shortcut opens the tab with that digit")
 
     settle(1)
     element(app, "tab.\(bar[other])").tap()

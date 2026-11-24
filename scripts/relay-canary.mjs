@@ -1,43 +1,51 @@
 #!/usr/bin/env node
-// Kanarek relaya iroh z zewnątrz (z CI według harmonogramu albo ręcznie z dowolnej maszyny po `pnpm install`).
-// Sprawdza relay tak, jak widzi go klient: przyjęcie, odmowę, limit `rx` i burst.
+// The iroh relay canary from outside (from CI on a schedule, or by hand on any machine after `pnpm install`).
+// It checks the relay the way a client sees it: admission, denial, the `rx` limit and the burst.
 //
 //   node scripts/relay-canary.mjs [--relay-only]
 //
-// `--relay-only`: wołający gwarantuje sieć bez UDP poza DNS (CI blokuje go przed kanarkiem). Tylko wtedy krok
-// `rate` mierzy relay: nadawca i odbiorca biegną na jednej maszynie, a z UDP połączyłyby się wprost, z pominięciem
-// relaya (biblioteka nie ma trybu „tylko relay”). Bez flagi krok `rate` jest pominięty.
+// `--relay-only`: the caller guarantees a network without UDP other than DNS (CI blocks it before the canary).
+// Only then does the `rate` step measure the relay: sender and receiver run on one machine, and with UDP they would
+// connect directly, bypassing the relay (the library has no relay-only mode). Without the flag `rate` is skipped.
 //
-// Zmienne:
-//   RELAY_CANARY_URL   relay (domyślnie https://relay.rarog.ai/)
-//   RELAY_CANARY_MODE  shadow (domyślnie: hak wpuszcza każdego) albo enforce (Worker odmawia kluczom bez wpisu)
-//   RELAY_CANARY_KEYS  dwa klucze tajne (64 znaki hex, po przecinku) z wpisem w rejestrze; bez nich kroki, które ich
-//                      wymagają, mówią „skipped” z powodem
+// Variables:
+//   RELAY_CANARY_URL       the relay (default https://relay.rarog.ai/)
+//   RELAY_CANARY_REGISTRY  the relay's registry Worker (default https://relay-auth.rarog.ai/)
+//   RELAY_CANARY_MODE      shadow (default: the hook admits everyone) or enforce (the Worker denies keys without an
+//                          entry)
+//   RELAY_CANARY_KEYS      two secret keys (64 hex characters each, comma-separated) with registry entries; without
+//                          them the steps that need them say "skipped" with a reason
 //
-// Kroki (próg w nawiasie):
-//   unknown     świeży losowy klucz: shadow = relay domowy (≤ 10 s); enforce = odmowa relaya w 10 s
-//   registered  pierwszy klucz z RELAY_CANARY_KEYS: relay domowy (≤ 10 s)
-//   rate        60 MB jednym połączeniem przez sam relay, 14–18 s. Limit `rx` 3 MB/s z burstem 16 MB
-//               daje ok. (60 − 16) MB / 3 MB/s ≈ 14,7 s niezależnie od szybkości klienta (byle ponad
-//               3 MB/s); bez burstu 60 MB / 3 MB/s = 20 s. Szybciej niż 14 s = limit `rx` nie działa;
-//               wolniej niż 18 s = brak burstu albo ciaśniejszy limit; ścieżka bezpośrednia obok relaya =
-//               porażka. Pierwsze 16 MB wolniej niż 4,5 MB/s = pomiar nieważny: klient ze stałym tempem do
-//               60 MB / 14 s ≈ 4,29 MB/s zmieściłby się w oknie 14–18 s także bez żadnego limitu, więc tylko
-//               szybszy klient odróżnia limit relaya od własnej sieci
-// Kod 0: każdy krok zaliczony albo pominięty; 1: porażka; 2: zły argument albo brak modułu iroh.
+// Key roles: key 0 has an app entry in the registry and sponsors key 1, which has a server entry. Both entries live
+// 90 days from the last renewal, and the `renew` step renews both on every run.
+//
+// Steps (threshold in parentheses):
+//   unknown     a fresh random key: shadow = home relay (≤ 10 s); enforce = relay denial within 10 s
+//   renew       key 0 signs the registry's `renew` listing key 1 (200 with nothing unsponsored); a 404 means key 0
+//               lost its app entry, a server in `unsponsored` means key 1 lost its sponsorship
+//   registered  the first key from RELAY_CANARY_KEYS: home relay (≤ 10 s)
+//   rate        60 MB over one connection through the relay alone, 14–18 s. The `rx` limit of 3 MB/s with a 16 MB
+//               burst gives about (60 − 16) MB / 3 MB/s ≈ 14.7 s whatever the client's speed (as long as it is
+//               above 3 MB/s); without the burst 60 MB / 3 MB/s = 20 s. Faster than 14 s = the `rx` limit does not
+//               work; slower than 18 s = no burst or a tighter limit; a direct path next to the relay = failure.
+//               The first 16 MB slower than 4.5 MB/s = invalid measurement: a client with a steady pace up to
+//               60 MB / 14 s ≈ 4.29 MB/s would fit the 14–18 s window even without any limit, so only a faster
+//               client tells the relay's limit from its own network
+// Exit code 0: every step passed or was skipped; 1: a failure; 2: a bad argument or no iroh module.
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { randomBytes } from 'node:crypto';
+import { createPrivateKey, createPublicKey, randomBytes, sign } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { isMainModule } from './lib/is-main.mjs';
 
 const RELAY = process.env.RELAY_CANARY_URL || 'https://relay.rarog.ai/';
+const REGISTRY = process.env.RELAY_CANARY_REGISTRY || 'https://relay-auth.rarog.ai/';
 const MODE = process.env.RELAY_CANARY_MODE || 'shadow';
 const ONLINE_MS = 10_000;
 const BYTES = 60_000_000;
 const BURST = 16_000_000;
-/** Najwolniejsze pierwsze 16 MB (MB/s), przy którym klient mierzy relay, a nie siebie: powyżej 60 MB / 14 s. */
+/** The slowest first 16 MB (MB/s) at which the client measures the relay, not itself: above 60 MB / 14 s. */
 const CLIENT_MIN_MBS = 4.5;
 const TOTAL_MIN_MS = 14_000;
 const TOTAL_MAX_MS = 18_000;
@@ -45,8 +53,23 @@ const XFER_DEADLINE_MS = 60_000;
 const CHUNK = 64 * 1024;
 const ALPN = Array.from(Buffer.from('rarog-canary/1'));
 const DENIED = 'relay denied our authentication';
+/** Deadline of the registry call in the `renew` step. */
+const REGISTRY_DEADLINE_MS = 10_000;
+/**
+ * The registry contract for `renew` (`shared/src/relay-auth.ts`), kept here so the canary runs under plain `node`;
+ * `relay-vps/test/canary.test.ts` holds the signing text equal to the contract's.
+ */
+const SIGNING_DOMAIN = 'rarog-relay-auth/v1';
+const RENEW_PATH = '/v1/app/renew';
+const CLIENT_HEADER = 'x-rarog-relay-client';
+const CLIENT = 'rarog-canary/1';
+/**
+ * PKCS#8 prefix of a raw 32-byte Ed25519 secret: an iroh secret key is an Ed25519 seed whose public key is the
+ * EndpointId.
+ */
+const PKCS8_ED25519_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 
-/** Klucze z RELAY_CANARY_KEYS: pusta lista, dwa klucze albo błąd z opisem (wartości nigdy w komunikacie). */
+/** Keys from RELAY_CANARY_KEYS: an empty list, two keys, or an error description (never with key values). */
 export function parseKeys(raw) {
   const text = (raw ?? '').trim();
   if (text === '') return { keys: [] };
@@ -57,7 +80,7 @@ export function parseKeys(raw) {
   return { keys: keys.map((one) => Array.from(Buffer.from(one, 'hex'))) };
 }
 
-/** Werdykt kroku `rate` z czasów odbiorcy (ms od pierwszego bajtu): `null` = zaliczony, inaczej powód. */
+/** Verdict of the `rate` step from the receiver's times (ms from the first byte): `null` = passed, else the reason. */
 export function judgeTransfer({ burstMs, totalMs, bytes }) {
   if (bytes !== BYTES) return `received ${String(bytes)} of ${String(BYTES)} B`;
   if (totalMs < TOTAL_MIN_MS) return `faster than ${String(TOTAL_MIN_MS)} ms: the rx limit does not work`;
@@ -69,11 +92,67 @@ export function judgeTransfer({ burstMs, totalMs, bytes }) {
   return null;
 }
 
-/** Opis transferu do logu kanarka: czasy i tempo obu części. */
+/** Transfer description for the canary log: times and pace of both parts. */
 export function describeTransfer({ burstMs, totalMs }) {
   const mbs = (bytes, ms) => (bytes / ms / 1000).toFixed(2);
   return `60 MB in ${String(totalMs)} ms; first 16 MB in ${String(burstMs)} ms (${mbs(BURST, burstMs)} MB/s), `
     + `rest ${mbs(BYTES - BURST, totalMs - burstMs)} MB/s`;
+}
+
+const privateKeyOf = (secret) =>
+  createPrivateKey({ key: Buffer.concat([PKCS8_ED25519_PREFIX, Buffer.from(secret)]), format: 'der', type: 'pkcs8' });
+
+/** EndpointId (64 hex characters) of an iroh secret key given as 32 bytes. */
+export function endpointIdOf(secret) {
+  const { x } = createPublicKey(privateKeyOf(secret)).export({ format: 'jwk' });
+  return Buffer.from(x, 'base64url').toString('hex');
+}
+
+/** Text that key 0 signs for `renew`: lines joined by `\n`, the servers comma-separated on the last one. */
+export function renewSigningText({ endpointId, issuedAt, servers }) {
+  return [SIGNING_DOMAIN, RENEW_PATH, endpointId, String(issuedAt), servers.join(',')].join('\n');
+}
+
+/**
+ * The `renew` step: key 0 renews its app entry and its sponsorship of key 1 in the registry, which recreates key 1's
+ * server entry when it is gone. Both terms run 90 days from this call, so a canary every 6 h keeps both keys
+ * registered. `fetch` and `nowSec` stand in for the network and the clock in tests.
+ */
+export async function renewEntries(keys, {
+  registry = REGISTRY, fetch = globalThis.fetch, nowSec = () => Math.floor(Date.now() / 1000),
+} = {}) {
+  if (keys.length === 0) return { skip: 'no RELAY_CANARY_KEYS (keys with registry entries)' };
+  const [app, server] = keys;
+  const unsigned = { v: 1, endpointId: endpointIdOf(app), issuedAt: nowSec(), servers: [endpointIdOf(server)] };
+  const sig = sign(null, Buffer.from(renewSigningText(unsigned)), privateKeyOf(app)).toString('hex');
+  let response;
+  let body;
+  try {
+    response = await fetch(new URL(RENEW_PATH.slice(1), registry), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [CLIENT_HEADER]: CLIENT },
+      body: JSON.stringify({ ...unsigned, sig }),
+      signal: AbortSignal.timeout(REGISTRY_DEADLINE_MS),
+    });
+    body = await response.json().catch(() => null);
+  } catch (err) {
+    return { ok: false, text: `registry unreachable: ${String(err?.message ?? err).slice(0, 200)}` };
+  }
+  const error = typeof body?.error === 'string' ? body.error : '';
+  if (response.status === 404 && error === 'not-registered') {
+    return { ok: false, text: 'key 0 has no app entry in the registry: set up both keys again' };
+  }
+  if (response.status !== 200) {
+    return { ok: false, text: `registry answered ${String(response.status)}${error === '' ? '' : ` ${error}`}` };
+  }
+  if (!Array.isArray(body?.unsponsored) || !Number.isSafeInteger(body?.expiresAt)) {
+    return { ok: false, text: 'unexpected response from the registry (no expiresAt or unsponsored)' };
+  }
+  if (body.unsponsored.length > 0) {
+    return { ok: false, text: 'key 1 is not sponsored by key 0 (renew lists it as unsponsored): sponsor it again' };
+  }
+  const until = new Date(body.expiresAt * 1000).toISOString().slice(0, 10);
+  return { ok: true, text: `both registry entries renewed until ${until}` };
 }
 
 function loadIroh() {
@@ -104,7 +183,7 @@ async function onlineWithin(ep, ms) {
   return res === 'ok' ? Math.round(performance.now() - t0) : null;
 }
 
-/** Proces potomny z logiem biblioteki na Debug: tylko tam widać odmowę relaya. */
+/** A child process with the library log at Debug: only there does the relay's denial show. */
 function probeChild(keyHex) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [fileURLToPath(import.meta.url), '--probe'], {
@@ -157,8 +236,8 @@ async function stepWpis(iroh, keys) {
 }
 
 /**
- * 60 MB od nadawcy do odbiorcy przez sam relay (sieć bez UDP, `--relay-only`). Czasy liczy odbiorca od pierwszego
- * bajtu.
+ * 60 MB from sender to receiver through the relay alone (a network without UDP, `--relay-only`). The receiver
+ * counts the times from the first byte.
  */
 async function stepTempo(iroh, keys, relayOnly) {
   if (!relayOnly) return { skip: 'no --relay-only (needs a network without UDP except DNS)' };
@@ -233,7 +312,11 @@ async function main(args) {
   const iroh = loadIroh();
   console.log(`relay-canary: ${RELAY} (mode ${MODE})`);
   let failed = 0;
-  for (const [name, step] of [['unknown', stepObcy], ['registered', stepWpis], ['rate', stepTempo]]) {
+  const steps = [
+    ['unknown', stepObcy], ['renew', (_iroh, keys) => renewEntries(keys)], ['registered', stepWpis],
+    ['rate', stepTempo],
+  ];
+  for (const [name, step] of steps) {
     let res;
     try {
       res = await step(iroh, parsed.keys, relayOnly);

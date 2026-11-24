@@ -1,7 +1,7 @@
 import Foundation
 import Network
 import RarogContract
-import RarogTransport
+@testable import RarogTransport
 import RarogTransportTesting
 import Synchronization
 import Testing
@@ -179,6 +179,19 @@ struct TunnelProxyTests {
     for client in clients { #expect(await client.receiveEnd().data.isEmpty) }
     await #expect(throws: (any Error).self) { try await LoopbackTCP.connect(port: port, limit: .seconds(2)) }
     #expect(await proxy.close(code: 0))  // drugie zamknięcie: nic do zrobienia
+  }
+
+  @Test("a stopped listener drops its handlers and is let go while the proxy lives on")
+  func stoppedListenerReleased() async throws {
+    let (_, _, proxy, _) = try await Self.started(FakeTunnelScript())
+    var held = proxy.listener
+    weak var listener = held
+    #expect(held?.stateUpdateHandler != nil && held?.newConnectionHandler != nil)
+    #expect(await proxy.close(code: 0))
+    #expect(held?.stateUpdateHandler == nil && held?.newConnectionHandler == nil, "handlers dropped at .cancelled")
+    held = nil
+    try await until("listener released", limit: .seconds(5)) { listener == nil }
+    #expect(proxy.listener == nil && proxy.port != nil, "the proxy is still here, without its listener")
   }
 
   static func connection(_ fake: FakeTunnelTransport) async throws -> any TunnelConnection {

@@ -26,7 +26,7 @@
   <!-- `Interactive`, not `Background`: the server serves a person in real time. -->
   <key>ProcessType</key>
   <string>Interactive</string>
-  <!-- Server log in the data directory; launchd APPENDS to it (it creates the file, the installation the directory). -->
+  <!-- Server log in the data directory, mode 0600: the installation creates it, launchd APPENDS to it. -->
   <key>StandardOutPath</key>
   <string>{{LOG}}</string>
   <key>StandardErrorPath</key>

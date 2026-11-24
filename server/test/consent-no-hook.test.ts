@@ -11,7 +11,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { consentHookTrace } from '../src/bootstrap/consent.ts';
 import type { ConsentLink } from '../src/bootstrap/consent.ts';
-import { ConsentNoHook, NO_HOOK_EVALUATIONS, NO_HOOK_GRACE_MS } from '../src/drivers/herdr/consent-no-hook.ts';
+import {
+  ConsentNoHook, NO_HOOK_EVALUATIONS, NO_HOOK_GRACE_MS, NO_HOOK_REJUDGE_MAX, NO_HOOK_REJUDGE_MS,
+} from '../src/drivers/herdr/consent-no-hook.ts';
 import type { Scheduler } from '../src/drivers/runtime.ts';
 import type { DecisionCard } from '../src/herdr/dialogs/cards/build.ts';
 import { HOOK_MARKERS_DIRNAME, HOOK_PENDING_DIRNAME } from '../src/herdr/dialogs/hook/contract.ts';
@@ -79,6 +81,9 @@ async function pane(opts: {
     outsideWorkArea: () => false,
     statusline: async () => 'fresh',
     proofRules: () => ({ main: 'channel', subagents: 'screen' }),
+    // The restart grace keeps the emergency approve button away, so the card goes out at once and never gets it: these
+    // tests read the detector's lines. The button has its own tests (`screen-fallback-key.test.ts`).
+    restarting: () => true,
     ...opts.sources,
   };
   const fx = await makeDriver({
@@ -284,6 +289,8 @@ interface Unit {
   readonly registrations: number[];
   readonly at: (t: number) => Promise<void>;
   readonly lines: () => string[];
+  /** Calls of the port's `judged`, the driver's cue that the emergency button may have changed. */
+  readonly judged: () => number;
 }
 
 const EPOCH = 1_800_000_000_000;
@@ -310,6 +317,7 @@ function unit(sources: Partial<ConsentNoHookSources> = {}, throws: (line: string
   };
   const registrations: number[] = [];
   const logged: string[] = [];
+  let judged = 0;
   const detector = new ConsentNoHook({
     deps: {
       consentMode: () => port.mode, now: () => EPOCH + now,
@@ -320,7 +328,9 @@ function unit(sources: Partial<ConsentNoHookSources> = {}, throws: (line: string
       consentNoHook: {
         hookTrace: (_id, since) => registrations.some((acceptedAt) => EPOCH + acceptedAt >= since),
         facts: async () => FACTS, hookRunning: async () => false, outsideWorkArea: () => false,
-        statusline: async () => 'fresh', proofRules: () => ({ main: 'channel', subagents: 'screen' }), ...sources,
+        statusline: async () => 'fresh', proofRules: () => ({ main: 'channel', subagents: 'screen' }),
+        restarting: () => false,
+        ...sources,
       },
     },
     scheduler, inScope: true, cwd: '/srv/project',
@@ -328,10 +338,10 @@ function unit(sources: Partial<ConsentNoHookSources> = {}, throws: (line: string
     disposed: () => false, agentSessionId: () => SESSION, blockedNow: () => port.blockedNow,
     blockedSeq: () => port.blockedSeq, blockedAt: () => port.blockedAt, answeredAt: () => port.answeredAt,
     cliWaiting: () => port.cliWaiting, cliVersion: () => '2.1.330', permissionMode: () => 'manual',
-    screenText: () => null,
+    screenText: () => null, judged: () => { judged += 1; },
   });
   return {
-    detector, port, registrations, lines: () => logged,
+    detector, port, registrations, lines: () => logged, judged: () => judged,
     at: async (target) => {
       for (;;) {
         await flush();
@@ -528,6 +538,102 @@ describe('consent-without-hook evaluation in flight', () => {
     u.detector.registrySignal(false);
     await u.at(NO_HOOK_GRACE_MS + 100);
     expect(noHookOf(u)).toHaveLength(1);
+  });
+});
+
+describe('the judgement the emergency approve button stands on', () => {
+  it('the standing episode: waiting in the grace and the first judgement, then judged; start and trace window', async () => {
+    const held = heldFacts();
+    const u = unit(held.sources);
+    await u.at(200);
+    u.detector.noteCard(callCard(1));
+    expect(u.detector.standing()).toMatchObject({ pending: true, judgement: null, t0: EPOCH, since: 0 });
+    await u.at(NO_HOOK_GRACE_MS + 100);
+    expect(u.detector.standing(), 'the first judgement reads its facts').toMatchObject({ pending: true });
+    held.release();
+    await u.at(NO_HOOK_GRACE_MS + 200);
+    expect(u.detector.standing()).toMatchObject({
+      pending: false, judgement: { cause: 'not-in-session-hooks', hookRunning: false, foreignHook: false },
+    });
+    expect(u.judged(), 'the grace end and the end of the judgement').toBe(2);
+    u.port.answeredAt = NO_HOOK_GRACE_MS + 300;
+    expect(u.detector.standing(), 'a key of Rarog ends it').toBeNull();
+  });
+
+  it('the hook process in `ps` mends at a later registry signal, without a second line', async () => {
+    let running = true;
+    const calls = { hookRunning: 0 };
+    const u = unit({ hookRunning: async () => { calls.hookRunning += 1; return running; } });
+    u.detector.noteCard(callCard(1));
+    await u.at(NO_HOOK_GRACE_MS + 100);
+    expect(u.detector.standing()?.judgement).toMatchObject({ cause: 'hook-running', hookRunning: true });
+    // A signal closer than the pause reads nothing again.
+    u.detector.registrySignal(false);
+    await u.at(NO_HOOK_GRACE_MS + 500);
+    expect(calls.hookRunning).toBe(1);
+    running = false;
+    await u.at(NO_HOOK_GRACE_MS + 1_200);
+    const before = u.judged();
+    u.detector.registrySignal(false);
+    await u.at(NO_HOOK_GRACE_MS + 1_300);
+    expect(calls.hookRunning).toBe(2);
+    expect(u.detector.standing()?.judgement).toMatchObject({ cause: 'not-in-session-hooks', hookRunning: false });
+    expect(u.judged()).toBeGreaterThan(before);
+    expect(noHookOf(u), 'the line keeps the first judgement').toHaveLength(1);
+    expect(noHookOf(u)[0]).toContain('cause hook-running');
+    // Mended: a later signal reads nothing.
+    await u.at(NO_HOOK_GRACE_MS + 3_000);
+    u.detector.registrySignal(false);
+    await u.at(NO_HOOK_GRACE_MS + 3_100);
+    expect(calls.hookRunning).toBe(2);
+  });
+
+  it('a doubt that does not mend is judged again at most the rejudge budget', async () => {
+    const calls = { hookRunning: 0 };
+    const u = unit({ hookRunning: async () => { calls.hookRunning += 1; return true; } });
+    u.detector.noteCard(callCard(1));
+    let t = NO_HOOK_GRACE_MS + 100;
+    await u.at(t);
+    for (let i = 0; i < NO_HOOK_REJUDGE_MAX + 10; i += 1) {
+      await u.at(t += NO_HOOK_REJUDGE_MS);
+      u.detector.registrySignal(false);
+    }
+    await u.at(t + 100);
+    expect(calls.hookRunning).toBe(1 + NO_HOOK_REJUDGE_MAX);
+  });
+
+  it('an episode with a hook trace at its judgement is never judged again, even when the trace goes', async () => {
+    const calls = { facts: 0 };
+    const u = unit({ facts: async () => { calls.facts += 1; return FACTS; } });
+    u.detector.noteCard(callCard(1));
+    u.registrations.push(1_000);
+    await u.at(NO_HOOK_GRACE_MS + 100);
+    u.registrations.pop();
+    for (let i = 1; i <= 3; i += 1) {
+      await u.at(NO_HOOK_GRACE_MS + 100 + i * NO_HOOK_REJUDGE_MS);
+      u.detector.registrySignal(false);
+    }
+    await u.at(NO_HOOK_GRACE_MS * 3);
+    expect(calls.facts).toBe(0);
+    expect(u.detector.standing()?.judgement).toBeNull();
+  });
+
+  it('the end of the restart grace past the judgement asks the driver once, without reading the facts', async () => {
+    let restarting = true;
+    const calls = { facts: 0 };
+    const u = unit({ restarting: () => restarting, facts: async () => { calls.facts += 1; return FACTS; } });
+    u.detector.noteCard(callCard(1));
+    await u.at(NO_HOOK_GRACE_MS + 100);
+    const judged = u.judged();
+    u.detector.registrySignal(false);
+    await u.at(NO_HOOK_GRACE_MS + 1_200);
+    expect(u.judged(), 'still within the restart grace').toBe(judged);
+    restarting = false;
+    u.detector.registrySignal(false);
+    u.detector.registrySignal(false);
+    await u.at(NO_HOOK_GRACE_MS + 1_300);
+    expect(u.judged()).toBe(judged + 1);
+    expect(calls.facts).toBe(1);
   });
 });
 

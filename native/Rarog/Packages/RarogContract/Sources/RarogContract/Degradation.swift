@@ -15,7 +15,7 @@ public struct Degradation: Sendable, Hashable, Codable {
 }
 
 /// Fields the decoder MAY degrade: a mirror of the `DEGRADATIONS` keys in `shared/src/decode.ts` and nothing else
-/// (35 entries; the last one is an Inbox head the app cannot read, which drops out of `inbox-heads`).
+/// (36 entries; the last one is a closed folder whose state the app cannot read, which drops out of `folder-access`).
 ///
 /// Reguła: nieznany ŁAŃCUCH w polu wyliczeniowym psuje JEDNO pole, nie ramkę. `null`,
 /// brak wymaganego pola, zły typ i uszkodzony znany blok dalej odrzucają całą ramkę.
@@ -57,6 +57,7 @@ public enum DegradationKey: String, CaseIterable, Sendable {
   case pullRequestsState = "pullRequests.state"
   case seenBy
   case inboxHead = "inbox.head"
+  case folderAccessBlock = "folder-access.block"
 
   /// Wartość zapasowa na drucie albo `nil` = pole znika (przy `*.kind` obiektu: CAŁY obiekt).
   ///
@@ -70,7 +71,7 @@ public enum DegradationKey: String, CaseIterable, Sendable {
     case .herdrMode, .noticeKind: "unknown"
     case .herdrDialog, .herdrDialogReason, .cliDialog, .contextKind, .activityKind, .waitingForKind,
       .blockDetailKind, .channel, .blockInputKind, .permissionInputKind, .noticeOutcome, .pullRequestsState, .seenBy,
-      .inboxHead:
+      .inboxHead, .folderAccessBlock:
       nil
     case .messageRole: "system"
     case .attachmentsKind: "file"

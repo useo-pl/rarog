@@ -6,30 +6,36 @@
  * roots and home, never a path of the request.
  */
 import { homedir } from 'node:os';
-import { type AreaDisk, inWorkAreaOnDisk, onDiskForms } from '../config/work-area.ts';
+import { type AreaDisk, inWorkAreaOnDisk, onDiskForms, resolveInWorkArea } from '../config/work-area.ts';
 import type { SessionScopeConfig } from '../sessions/companion-scope.ts';
 import type { DiffSessionPort } from '../sessions/session-scope.ts';
 import type { Session } from '../sessions/session.ts';
 import { FILES_DISK, type FilesArea, type Ruled } from './path-rule.ts';
-import { CODEX, type FilesRefusal, NOT_FOUND, NO_PANE, OUT_OF_SCOPE } from './refusals.ts';
+import { CODEX, type FilesRefusal, NOT_FOUND, NO_PANE, OUT_OF_SCOPE, closedFolder } from './refusals.ts';
 
 /**
  * The area of the session directory `cwd`: refused when `cwd` lies outside the work area as written or on disk
- * (`out-of-scope`), and when it no longer resolves (`not-found`: the directory is gone).
+ * (`out-of-scope`), when the way to it passes a guarded folder that a root opens and the folder gate holds closed
+ * (404 with the sentence of the folder's state), and when it no longer resolves (`not-found`: the directory is gone).
  */
 export function filesArea(
   cwd: string, config: SessionScopeConfig, disk: AreaDisk = FILES_DISK.area,
 ): Ruled<FilesArea> {
   const roots = config.herdrRoots ?? [];
   const home = config.home ?? homedir();
-  if (!inWorkAreaOnDisk(cwd, roots, home, disk)) return { ok: false, refusal: OUT_OF_SCOPE };
+  const real = onDiskForms(roots, home, disk.realpath);
+  if (!inWorkAreaOnDisk(cwd, roots, home, disk)) {
+    // The walk again, metadata only, for the one case a closed folder put `cwd` out: say why.
+    const walked = resolveInWorkArea(cwd, real.roots, real.home, disk);
+    const closed = walked.kind === 'excluded' ? walked.closed : undefined;
+    return { ok: false, refusal: closed === undefined ? OUT_OF_SCOPE : closedFolder(closed) };
+  }
   let realCwd: string;
   try {
     realCwd = disk.realpath(cwd);
   } catch {
     return { ok: false, refusal: NOT_FOUND };
   }
-  const real = onDiskForms(roots, home, disk.realpath);
   return { ok: true, value: { cwd, realCwd, roots, realRoots: real.roots, home, realHome: real.home } };
 }
 

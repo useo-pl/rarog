@@ -4,7 +4,8 @@ import UIKit
 
 // The keys of the session switcher window. The window takes the
 // hardware keyboard like a command palette: a UIKit view in the overlay becomes the first responder, so Return, Esc,
-// the arrows, the digits and Tab go through ITS responder chain and never reach the message field or the terminal under the window. Same
+// the arrows and Tab go through ITS responder chain and never reach the message field or the terminal under the
+// window; a digit without Cmd does nothing, and Cmd+digit goes on to the menu's tab shortcut. Same
 // pattern as the sheet anchor (`Views/Presentation/SheetKeyboardAnchor.swift`): the previous responder is kept
 // weakly and gets the keyboard back after a close without a jump, if nobody else took it meanwhile. The machine
 // (`SwitcherMachine`) decides when the window takes or releases the keyboard. Owner: shortcuts.
@@ -125,17 +126,7 @@ final class SwitcherKeyResponder: UIView {
       (".", .command, close, false),
       ("\t", [], swallow, true), ("\t", .shift, swallow, true),
     ]
-    // The digits pick a row and close the window, so they do not repeat either. With or without Cmd; a keypad digit
-    // comes with `.numericPad`. Cmd+1–9 are also the tab shortcuts of the menu: the menu asks the
-    // window first (`SwitcherMachine.menuDigit`), so the window wins in whichever order UIKit delivers the press.
-    // 0 is no key of the window: Cmd+0 goes up the chain to the menu's text size reset.
-    var digits: [(String, UIKeyModifierFlags, Selector, Bool)] = []
-    for digit in SwitcherKey.digits {
-      for modifiers in [[], .command, .numericPad, [.numericPad, .command]] as [UIKeyModifierFlags] {
-        digits.append((digit, modifiers, #selector(SwitcherKeyResponder.switcherDigit(_:)), false))
-      }
-    }
-    return (table + digits).map { input, modifiers, action, repeats in
+    return table.map { input, modifiers, action, repeats in
       let command = UIKeyCommand(input: input, modifierFlags: modifiers, action: action)
       command.wantsPriorityOverSystemBehavior = true
       if !repeats { command.repeatBehavior = .nonRepeatable }
@@ -145,7 +136,7 @@ final class SwitcherKeyResponder: UIView {
 
   private static let actions: Set<Selector> = [
     #selector(switcherDown), #selector(switcherUp), #selector(switcherConfirm), #selector(switcherClose),
-    #selector(switcherSwallow), #selector(switcherDigit(_:)),
+    #selector(switcherSwallow),
   ]
 
   override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
@@ -157,11 +148,6 @@ final class SwitcherKeyResponder: UIView {
   @objc func switcherUp() { onKey(.up) }
   @objc func switcherConfirm() { onKey(.confirm) }
   @objc func switcherClose() { onKey(.close) }
-  /// 1–9: the row whose tab carries that digit.
-  @objc func switcherDigit(_ sender: UIKeyCommand) {
-    guard let digit = sender.input.flatMap(Int.init) else { return }
-    onKey(.digit(digit))
-  }
   /// Tab and Shift+Tab: nothing, and nothing under the window.
   @objc func switcherSwallow() {}
 

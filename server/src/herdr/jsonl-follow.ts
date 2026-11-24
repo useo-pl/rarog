@@ -76,7 +76,7 @@ import {
 import type { ClosedTool, JsonlMeta, PendingTool, PendingTracker, UltracodeTracker } from './jsonl-pending.ts';
 import { createCliQueueTracker } from './jsonl-queue.ts';
 import type { CliQueuePops, CliQueueRead, CliQueueTracker } from './jsonl-queue.ts';
-import { TRANSCRIPT_EXT, locateTranscript, transcriptHasConversation } from './transcript-path.ts';
+import { LookupRequests, TRANSCRIPT_EXT, locateTranscript, transcriptHasConversation } from './transcript-path.ts';
 import { UPLOAD_DIR_NAME } from './uploads.ts';
 
 // ---------------------------------------------------------------------------
@@ -412,8 +412,17 @@ export interface JsonlFollower {
    * promptu, pliku nie ma z definicji — i to jest stan zdrowy, a nie awaria (alarm dotyczy sesji,
    * które PISZĄ, a mimo to nie mają transkryptu). Wołanie jest idempotentne: karencja liczy się
    * od PIERWSZEGO uzbrojenia, więc druga wiadomość nie odsuwa alarmu w nieskończoność.
+   *
+   * Each call also looks a file not found yet up now ({@link JsonlFollower.lookUpTranscript}).
    */
   expectTranscript(): void;
+  /**
+   * Looks a file not found yet up now instead of at the next retry (the driver calls it when the pane enters a block).
+   * Requests share the one retry chain. Until a lookup that began after the request ends, `hasTranscript()` answers
+   * `'unknown'`, not the `'no'` of an earlier lookup. Nothing happens when the path is known, the file is open or the
+   * id is not a session id. Optional, because follower stubs in tests read no file.
+   */
+  lookUpTranscript?(): void;
   /**
    * Czy plik transkryptu jest ZNALEZIONY — z trzecią odpowiedzią „jeszcze nie wiem".
    *
@@ -811,6 +820,10 @@ class Follower implements JsonlFollower {
    * to nowe pytanie.
    */
   #pathLookedUp = false;
+  /** Lookup requests of this engine session; a new session gets a new one, so an old lookup in flight answers none. */
+  #lookups = new LookupRequests();
+  /** The armed retry of the lookup (`#armLookup`): one at a time, so requests never start a second chain. */
+  #lookupTimer: ReturnType<typeof setTimeout> | null = null;
   /** Ile BAJTÓW pliku już skonsumowaliśmy. */
   #offset = 0;
   /**
@@ -1098,17 +1111,27 @@ class Follower implements JsonlFollower {
   }
 
   expectTranscript(): void {
-    if (this.#closed || this.#expecting) return;
-    this.#expecting = true;
-    // Karencja liczy się od chwili, w której powstał POWÓD oczekiwania — nie od podpięcia
-    // drivera. Panel podpięty rano i użyty wieczorem ma dostać pełne 15 s, a nie alarm
-    // w tej samej sekundzie, w której poszła pierwsza wiadomość.
-    this.#missingSince = this.#now();
+    if (this.#closed) return;
+    if (!this.#expecting) {
+      this.#expecting = true;
+      // Karencja liczy się od chwili, w której powstał POWÓD oczekiwania — nie od podpięcia
+      // drivera. Panel podpięty rano i użyty wieczorem ma dostać pełne 15 s, a nie alarm
+      // w tej samej sekundzie, w której poszła pierwsza wiadomość.
+      this.#missingSince = this.#now();
+    }
+    // The file is due now; after the fast window the next retry is seconds away.
+    this.lookUpTranscript();
+  }
+
+  lookUpTranscript(): void {
+    // An open file follows its own relocation tries, and a known path or a missing uuid has nothing to look for.
+    if (this.#closed || this.#primed || this.#path !== null || this.#agentSessionId === null) return;
+    if (this.#lookups.ask()) this.#armLookup(0);
   }
 
   hasTranscript(): TranscriptPresence {
     if (this.#path !== null) return 'yes';
-    return this.#pathLookedUp ? 'no' : 'unknown';
+    return this.#pathLookedUp && !this.#lookups.unanswered ? 'no' : 'unknown';
   }
 
   openToolUses(): readonly PendingTool[] | null {
@@ -1252,6 +1275,7 @@ class Follower implements JsonlFollower {
      * Sam `#closed` nie wystarczy: follower ŻYJE dalej, zmienia tylko plik.
      */
     this.#generation += 1;
+    this.#lookups = new LookupRequests();
     // Identyfikator spoza wzorca = brak transkryptu. Świadomie po cichu: to nie jest sytuacja,
     // z którą użytkownik telefonu może cokolwiek zrobić, a stan panelu dalej działa.
     this.#agentSessionId = ENGINE_SESSION_ID_PATTERN.test(agentSessionId) ? agentSessionId : null;
@@ -1289,12 +1313,23 @@ class Follower implements JsonlFollower {
     const uuid = this.#agentSessionId;
     if (uuid === null) return null;
     const gen = this.#generation;
-    const found = await locateTranscript(this.#root, this.#cwd, uuid);
+    const lookups = this.#lookups;
+    const mark = lookups.began();
+    let found: string | null;
+    try {
+      found = await locateTranscript(this.#root, this.#cwd, uuid);
+    } finally {
+      lookups.ended(mark);
+    }
     // Odpowiedź dotyczy TEJ sesji silnika: po `/clear` w trakcie globu wynik opisuje stary uuid
     // i nie ma prawa ani ustawić ścieżki, ani zamknąć okna „nie wiem" nowej sesji.
     if (this.#stale(gen)) return found;
     this.#pathLookedUp = true;
-    if (found !== null) this.#path = found;
+    if (found !== null) {
+      this.#path = found;
+      // A request left open would make every retry of a failed read of this file immediate.
+      lookups.found();
+    }
     return found;
   }
 
@@ -1672,11 +1707,25 @@ class Follower implements JsonlFollower {
       this.#noTranscriptReported = true;
       this.#push({ type: 'error', reason: 'no-transcript' });
     }
-    const delay = elapsed < this.#missingWindowMs ? this.#missingFastMs : this.#missingSlowMs;
+    // A request that came during the lookup which just missed wants a lookup that begins after it: now.
+    const delay = this.#lookups.unanswered ? 0
+      : elapsed < this.#missingWindowMs ? this.#missingFastMs : this.#missingSlowMs;
+    this.#armLookup(delay);
+  }
+
+  /** Arms the retry of the lookup in `delay` ms in place of the one armed before. */
+  #armLookup(delay: number): void {
+    if (this.#lookupTimer !== null) {
+      clearTimeout(this.#lookupTimer);
+      this.#timers.delete(this.#lookupTimer);
+    }
     // Ponowienie należy do TEJ sesji silnika. Po `repoint()` nowy plik ma własne otwarcie i własne
     // ponowienia; stare, które wypadłoby w trakcie, otwierałoby go drugi raz.
     const gen = this.#generation;
-    this.#after(delay, () => { if (!this.#stale(gen)) void this.#prime(); });
+    this.#lookupTimer = this.#after(delay, () => {
+      this.#lookupTimer = null;
+      if (!this.#stale(gen)) void this.#prime();
+    });
   }
 
   #startWatch(): void {
@@ -2762,8 +2811,8 @@ class Follower implements JsonlFollower {
     }
   }
 
-  #after(ms: number, fn: () => void): void {
-    if (this.#closed) return;
+  #after(ms: number, fn: () => void): ReturnType<typeof setTimeout> | null {
+    if (this.#closed) return null;
     const timer = setTimeout(() => {
       this.#timers.delete(timer);
       if (this.#closed) return;
@@ -2771,6 +2820,7 @@ class Follower implements JsonlFollower {
     }, ms);
     timer.unref?.();
     this.#timers.add(timer);
+    return timer;
   }
 }
 

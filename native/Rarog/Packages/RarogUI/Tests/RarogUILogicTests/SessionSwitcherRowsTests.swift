@@ -5,7 +5,7 @@ import RarogCore
 import Testing
 
 // The session switcher window: its rows are the tabs of the current project in the order of the bar (sessions from
-// the oldest, then terminals), read from the same list the bar draws, with the bar's digits. Owner: shortcuts.
+// the oldest, then terminals), read from the same list the bar draws. Owner: shortcuts.
 
 private let willow = "/Users/demo/Projects/willow"
 private let zsh = "00000000000000a1"
@@ -73,7 +73,7 @@ struct SessionSwitcherRowsTests {
     #expect(machine.isOpen && machine.selected == .session("b") && machine.order == rows.map(\.tab))
   }
 
-  @Test("a terminal row: the tab label, a quiet line, the terminal's sentence; a session row as on the list")
+  @Test("a terminal row: the tab label, a quiet line, the terminal's sentence; a session row keeps its state")
   func terminalRow() throws {
     let state = switcherProject()
     let rows = rows(state, navigation(state, on: .terminal(zsh)))
@@ -110,7 +110,7 @@ struct SessionSwitcherRowsTests {
     #expect(opened(state, nav).selected == .session("solo"))
   }
 
-  @Test("12 tabs, the eleventh current: 12 rows, the eleventh selected; digits 1–8 and 9 on the last, as on the bar")
+  @Test("12 tabs, the eleventh current: 12 rows, the eleventh selected")
   func twelveTabs() {
     let ids = (1...10).map { "s\($0)" }
     let state = switcherProject(sessionIds: ids)
@@ -118,10 +118,6 @@ struct SessionSwitcherRowsTests {
     let rows = rows(state, nav)
     #expect(rows.count == 12 && rows[10].tab == .terminal(zsh))
     #expect(opened(state, nav).selected == .terminal(zsh))
-    let digits = ShortcutMenu.tabDigits(rows.map(\.tab), hardwareKeyboard: true)
-    let keys = rows.map { SwitcherRows.digitKey(for: $0.tab, digits: digits, keyboard: true) }
-    #expect(keys == (1...8).map { .digit($0) } + [.blank, .blank, .blank, .digit(9)])
-    #expect(SwitcherRows.digitKey(for: rows[0].tab, digits: digits, keyboard: false) == .none, "without the keyboard")
     #expect(nav.tabRefs(state) == rows.map(\.tab), "the window and the bar have one list")
   }
 
@@ -145,26 +141,32 @@ struct SessionSwitcherRowsTests {
     #expect(!machine.isOpen, "no current tab: the window stays shut")
   }
 
-  @Test("digit keys: the tab for a digit is the bar's, 9 is the last tab also with eight or fewer")
-  func digitTargets() {
-    let five: [ProjectTabRef] = ["a", "b", "c", "d", "e"].map { .session($0) }
-    #expect(SwitcherRows.tab(forDigit: 3, in: five) == .session("c"))
-    #expect(SwitcherRows.tab(forDigit: 9, in: five) == .session("e"))
-    #expect(SwitcherRows.tab(forDigit: 7, in: five) == nil)
-    #expect(SwitcherRows.tab(forDigit: 0, in: five) == nil, "no row 0")
-    let twelve: [ProjectTabRef] = (1...12).map { .session("s\($0)") }
-    #expect(SwitcherRows.tab(forDigit: 8, in: twelve) == .session("s8"))
-    #expect(SwitcherRows.tab(forDigit: 9, in: twelve) == .session("s12"))
-    let digits = ShortcutMenu.tabDigits(twelve, hardwareKeyboard: true)
-    for digit in 1...9 {
-      #expect(digits[SwitcherRows.tab(forDigit: digit, in: twelve)!] == digit, "the digit drawn on that tab")
-    }
+  @Test("rows carry the session title without the project, terminals their label; VoiceOver hears the same")
+  func titlesWithoutProject() throws {
+    let state = switcherProject()
+    let rows = rows(state, navigation(state, on: .session("b")))
+    #expect(rows.map(\.title) == ["tab a", "tab b", "tab c", "zsh", "lazygit"])
+    let spoken = rows[0].spoken(now: Sample.now)
+    #expect(spoken.hasPrefix("tab a, "), "\(spoken)")
+    #expect(!rows.contains { $0.spoken(now: Sample.now).contains("willow") }, "no project in a row's sentence")
+
+    let unnamed = Sample.session(id: "d00d", title: "willow", label: nil, createdAgo: 10)
+    let bare = switcherProject(extra: [unnamed])
+    let row = try #require(self.rows(bare, navigation(bare, on: .session("d00d"))).first { $0.tab == .session("d00d") })
+    #expect(row.title == "#d00d", "a session without a name: the tab's short id, never an empty row")
   }
 
-  @Test("heading: Zakładki projektu · N, the footer's digits 1–9")
+  @Test("heading: the project once, then Zakładki projektu · N; the footer without digits")
   func heading() {
-    #expect(UICopy.switcherHeading(6) == "Zakładki projektu · 6")
-    #expect(UICopy.switcherHints.map(\.key) == ["↑↓", "↩", "1–9", "esc"])
-    #expect(UICopy.switcherHints.map(\.action) == ["wybierz", "przejdź", "skocz", "zamknij"])
+    let state = switcherProject()
+    let nav = navigation(state, on: .session("b"))
+    let heading = SwitcherRows.heading(cwd: nav.currentProjectCwd(state), count: 5)
+    #expect(heading.project == "willow" && heading.tabs == "Zakładki projektu · 5")
+    #expect(heading.text == "willow · Zakładki projektu · 5")
+    #expect(SwitcherRows.heading(cwd: nil, count: 5).text == "Zakładki projektu · 5", "no project: the count alone")
+    #expect(heading.label == "willow, Zakładki projektu", "VoiceOver hears the project once, in the window's name")
+    #expect(SwitcherRows.heading(cwd: nil, count: 5).label == "Zakładki projektu")
+    #expect(UICopy.switcherHints.map(\.key) == ["↑↓", "↩", "esc"])
+    #expect(UICopy.switcherHints.map(\.action) == ["wybierz", "przejdź", "zamknij"])
   }
 }

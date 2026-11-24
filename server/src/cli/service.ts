@@ -20,7 +20,7 @@
  *   (`loadState` z `restart.ts`), a „nie wiem” (`launchctl print` z kodem innym niż 0 i 113) to odmowa przed
  *   `bootout`.
  * - **faza 1:** `bootout` `ai.rarog.server`, jeśli jest załadowana, z czekaniem (do 30 s), aż launchd zdejmie
- *   etykietę ({@link waitUntilAbsent}); katalog danych 0700 (launchd zakłada plik logu, ale nie katalog); zapis
+ *   etykietę ({@link waitUntilAbsent}); katalog danych 0700, przed `bootstrap` plik logu 0600 (`service-log.ts`); zapis
  *   plistu; `bootstrap`; `scripts/restart.sh` z etykietą, portem i logiem (ubija resztki na porcie, `kickstart`,
  *   health), wołany wprost, bo blokadę trzyma już `install`; na końcu dowiązanie `~/.local/bin/rarog` (tylko klon
  *   repo; w paczce polecenie `rarog` daje menedżer paczek).
@@ -48,7 +48,7 @@
  * `~/.config/systemd/user`; jednostka bez drop-inów; węzeł; `curl`, `ps`, `pgrep`; `serve --check` na środowisku
  * menedżera; gniazdo ≤ 103 B i żaden serwer tych danych na innym porcie; wrapper; jednostka z szablonu w pliku
  * tymczasowym i `systemd-analyze verify` (tryb systemowy, działa bez menedżera; brak narzędzia = linia „nie
- * sprawdzone”); pełne `--check` przez wrapper (ten sam katalog danych i port co bez niego); stan jednostki. Faza 1: zapis atomowy, `daemon-reload`, `enable`, katalog danych 0700, `restart.sh`
+ * sprawdzone”); pełne `--check` przez wrapper (ten sam katalog danych i port co bez niego); stan jednostki. Faza 1: zapis atomowy, `daemon-reload`, `enable`, katalog danych 0700, plik logu 0600, `restart.sh`
  * z `RAROG_RESTART_UNIT`, linia o lingerze, dowiązanie; porażka wypisuje komendy powrotu. `uninstall` = `disable
  * --now`, unit file removal, `daemon-reload`, this clone's symlink as on macOS. Inna platforma = odmowa.
  */
@@ -83,6 +83,7 @@ import type { CliIo } from './io.ts';
 import { childExitText } from './child-output.ts';
 import type { ChildSink } from './child-output.ts';
 import { acquireLock } from './lock.ts';
+import { prepareServiceLog } from './service-log.ts';
 import {
   LAUNCHD_PATH, LINUX_RESTART_TOOLS, NOTHING_STOPPED, SERVICE_LABEL, accepts, decidedLoadState,
   installedServiceDataDir, launchdDomain, launchdEnv, launchdTarget, loadState, nodeRequirement, onPath,
@@ -699,6 +700,7 @@ async function switchOver(
   const plistFile = servicePlistPath(home);
   try {
     mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+    prepareServiceLog(io, path.join(dataDir, 'server.log'));
     mkdirSync(path.dirname(plistFile), { recursive: true });
     writeAtomic(plistFile, plist);
     out(io, `  plist ${plistFile}`);
@@ -1083,6 +1085,7 @@ async function applyUnit(io: CliIo, prepared: PreparedUnit, output?: ChildSink):
       out(io, `  systemctl --user ${args.join(' ')}`);
     }
     mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+    prepareServiceLog(io, path.join(dataDir, 'server.log'));
     out(io, `  restart.sh with unit ${UNIT_NAME}, port ${String(port)}:`);
     const result = await runRestartScript(scriptEnv(io, {
       RAROG_RESTART_UNIT: UNIT_NAME,

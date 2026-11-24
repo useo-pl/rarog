@@ -20,13 +20,20 @@
  *   od zera; bufor kompresora opróżniany po każdej ramce i każdym pingu, kompresor zamykany przy rozłączeniu
  *   i odpięciu urządzenia,
  * - Inbox heads go only to a global stream opened with `inbox=1` and only when the server keeps an Inbox: `inbox-heads`
- *   right after `sessions-snapshot`, then the events of {@link SseInbox} as they come; a stream without it gets none.
+ *   right after `sessions-snapshot`, then the events of {@link SseInbox} as they come; a stream without it gets none,
+ * - with the folder gate on, every global stream gets `folder-access` (the macOS folders the gate keeps closed, also an
+ *   empty list) right after `sessions-snapshot`, and again whenever that list changes; without the gate, never,
+ * - a stream whose unsent bytes (socket buffer plus compressor input) pass {@link SSE_WRITE_BUFFER_MAX} plus twice its
+ *   largest frame is cut with one log line; the client reconnects and gets a snapshot or a replay.
  */
 import type { Block, InboxEventOf, InboxHeadOf, ServerEvent, SessionState, TranscriptMessage } from '@rarog/shared';
 import { HELLO_HEARTBEAT_MS, MAX_IMAGE_DATA_URL_BYTES } from '@rarog/shared';
 import { say } from '@rarog/shared/sentences';
 import { type Gzip, constants as zlibConstants, createGzip } from 'node:zlib';
+import { folderGate as processFolderGate } from './folder-gate/install.ts';
+import type { FolderGate } from './folder-gate/types.ts';
 import type { ManagerApi } from './sessions/manager-api.ts';
+import { RING_MAX_BYTES } from './sessions/ring-buffer.ts';
 
 /**
  * Default heartbeat interval (SSE comment plus a `ping` event) in ms. Every stream gets it, and `hello` announces it
@@ -71,6 +78,24 @@ export const REPLAY_SNAPSHOT_LOG = 'sse: replay';
  * dziennie.
  */
 export const SNAPSHOT_IMAGE_BUDGET_BYTES = MAX_IMAGE_DATA_URL_BYTES;
+
+/**
+ * Backlog a stream may hold unsent on top of twice its largest frame: the socket buffer of the response plus the
+ * compressor input.
+ *
+ * A single valid frame has no fixed upper size (a snapshot carries every pending consent card besides a full ring
+ * ({@link RING_MAX_BYTES}) and the image budget), and with compression it sits in the compressor input while its
+ * output already fills the socket buffer, so the allowance grows with the largest frame the stream was sent and one
+ * frame never cuts a healthy client. A stream above the ceiling is a client that stopped reading, and its bytes would
+ * otherwise stay in server memory until the socket times out.
+ */
+export const SSE_WRITE_BUFFER_MAX = 2 * (RING_MAX_BYTES + SNAPSHOT_IMAGE_BUDGET_BYTES);
+
+/**
+ * Phrase of the log line of a stream cut at the ceiling:
+ * `sse: write buffer over ceiling <MiB> MiB, stream closed (global|session <id>[, device <id>])`.
+ */
+export const WRITE_BUFFER_CUT_LOG = 'sse: write buffer over ceiling';
 
 /**
  * Podmienny data URL dla obrazka poza budżetem: przezroczysty PNG 1×1.
@@ -150,6 +175,11 @@ export interface SseResponse {
    * traktujemy jak „bufor pusty", czyli tak, jak zachowywał się hub przed backpressure.
    */
   readonly writableLength?: number;
+  /**
+   * Drops the connection without ending the body (`http.ServerResponse.destroy`): a stream cut at
+   * {@link SSE_WRITE_BUFFER_MAX} never gets its bytes out, so `end()` would wait for nothing. Missing = `end()`.
+   */
+  destroy?(): unknown;
 }
 
 /** The Inbox heads the hub sends to streams that ask for them (`InboxHeads` in `server/src/inbox/`). */
@@ -173,6 +203,10 @@ interface SseClient {
   /** Bajty, które kompresor oddał do gniazda, i stan licznika po ostatnim opróżnieniu bufora. */
   bytesOut: number;
   flushedBytes: number;
+  /** The stream passed {@link SSE_WRITE_BUFFER_MAX} and was cut: nothing more is written to it. */
+  cut: boolean;
+  /** Bytes of the largest frame written to the stream: twice this rides on top of the ceiling. */
+  largestFrame: number;
 }
 
 export interface SseHubOptions {
@@ -193,8 +227,8 @@ export interface SseHubOptions {
    */
   readonly notesFor?: (cwds: readonly string[]) => readonly string[];
   /**
-   * Linia do `server.log`. Dziś pisze ją tylko zamiana powtórki na snapshot: liczba wiadomości
-   * i waga ramki, bez treści — po to, żeby po tygodniu ocenić koszt bajtów.
+   * A line for `server.log`, without content: the replay turned into a snapshot (message count and frame weight)
+   * and a stream cut at {@link SSE_WRITE_BUFFER_MAX} (the stream's session or device id at most).
    */
   readonly logger?: (line: string) => void;
   /**
@@ -212,6 +246,11 @@ export interface SseHubOptions {
   readonly onClientCount?: (count: number) => void;
   /** The Inbox heads; missing = the server keeps no Inbox (`RAROG_INBOX=0`), so `inbox=1` gives nothing. */
   readonly inbox?: SseInbox;
+  /**
+   * The folder gate whose closed folders go out as `folder-access`. Missing = the gate of the process, read in
+   * `start()` (bootstrap installs it before the hub starts); a disabled gate means no frame at all.
+   */
+  readonly folderGate?: FolderGate;
   /** Odstęp heartbeatu; w testach zwykle bardzo mały albo heartbeat wyłączony (`0`). */
   readonly heartbeatMs?: number;
   /** Injected timers: tests pass fakes so they do not wait for a real interval. */
@@ -301,6 +340,11 @@ export class SseHub {
   private readonly logger: ((line: string) => void) | undefined;
   private readonly onClientCount: ((count: number) => void) | undefined;
   private readonly inbox: SseInbox | undefined;
+  private readonly folderGateOption: FolderGate | undefined;
+  /** The enabled gate the hub listens to since `start()`; `undefined` = no `folder-access` frames. */
+  private folderGate: FolderGate | undefined;
+  /** The closed folders as JSON, as the streams last heard them: a change that keeps the list sends nothing. */
+  private folderBlocked = '';
   private readonly gzipEnabled: boolean;
   private readonly createGzipFn: () => Gzip;
   /**
@@ -317,6 +361,13 @@ export class SseHub {
   private heartbeat: unknown = null;
   private nextClientId = 1;
   private started = false;
+  /**
+   * Token of the current {@link start}. The manager offers no way to detach a listener, so the listeners of an earlier
+   * start check it and do nothing after {@link closeAll}; the Inbox and folder gate listeners are detached for real.
+   */
+  private subscription: object | null = null;
+  private detachInbox: (() => void) | undefined;
+  private detachFolderGate: (() => void) | undefined;
 
   constructor(options: SseHubOptions) {
     this.manager = options.manager;
@@ -327,6 +378,7 @@ export class SseHub {
     this.logger = options.logger;
     this.onClientCount = options.onClientCount;
     this.inbox = options.inbox;
+    this.folderGateOption = options.folderGate;
     this.gzipEnabled = options.gzip ?? false;
     this.createGzipFn = options.createGzip ?? ((): Gzip => createGzip());
     this.heartbeatMs = options.heartbeatMs ?? HEARTBEAT_MS;
@@ -355,9 +407,16 @@ export class SseHub {
   start(): void {
     if (this.started) return;
     this.started = true;
-    this.manager.onEvent((scope, seq, ev) => { this.broadcast(scope, seq, ev); });
-    this.manager.onTranscriptReset?.((sessionId) => { this.resetTranscript(sessionId); });
-    this.inbox?.onEvent((event) => { this.broadcastInbox(event); });
+    const token = {};
+    this.subscription = token;
+    this.manager.onEvent((scope, seq, ev) => { if (this.subscription === token) this.broadcast(scope, seq, ev); });
+    this.detachInbox = this.inbox?.onEvent((event) => { this.broadcastInbox(event); });
+    const gate = this.folderGateOption ?? processFolderGate();
+    if (gate.enabled) {
+      this.folderGate = gate;
+      this.folderBlocked = JSON.stringify(gate.blocked());
+      this.detachFolderGate = gate.onChange(() => { this.broadcastFolderAccess(gate); });
+    }
     if (this.heartbeatMs > 0) {
       this.heartbeat = this.setIntervalFn(() => { this.sendHeartbeat(); }, this.heartbeatMs);
     }
@@ -428,17 +487,6 @@ export class SseHub {
   }
 
   /**
-   * A new card under an open session id: each open stream of that id gets a `transcript-snapshot` of the new card, which
-   * replaces the old card's list in the app. A push the server starts is not an opening of the transcript, so the
-   * snapshot is read with `peek` (no git refresh).
-   */
-  resetTranscript(sessionId: string): void {
-    for (const client of [...this.clients.values()]) {
-      if (client.scope === sessionId) this.sendTranscriptSnapshot(client, sessionId, undefined, true);
-    }
-  }
-
-  /**
    * Sends an Inbox event to the global streams opened with `inbox=1`; an older app never asks, so it never gets one.
    * Fleeting like `herdr-status`: no `id:`, nothing to replay, a stream that opens later gets `inbox-heads`.
    */
@@ -449,6 +497,19 @@ export class SseHub {
       frame ??= formatSseEvent(event, null, this.serverStartId);
       this.writeRaw(client, frame);
     }
+  }
+
+  /**
+   * Sends `folder-access` to every global stream when the list of closed folders changed. The gate tells about every
+   * change of state, also one the list does not show (unknown to open, a missing folder). Fleeting like `herdr-status`:
+   * no `id:`, and a stream that opens later gets the list right after `sessions-snapshot`.
+   */
+  private broadcastFolderAccess(gate: FolderGate): void {
+    const blocked = gate.blocked();
+    const json = JSON.stringify(blocked);
+    if (json === this.folderBlocked) return;
+    this.folderBlocked = json;
+    this.broadcast('global', null, { type: 'folder-access', blocked });
   }
 
   /**
@@ -496,6 +557,7 @@ export class SseHub {
   /**
    * Otwiera strumień globalny: `hello` + `sessions-snapshot`, potem live.
    * `Last-Event-ID` jest tu celowo ignorowany — snapshot listy jest tani i zawsze aktualny.
+   * With the folder gate on, `folder-access` follows the list.
    * `inbox`: the client asked for the Inbox heads (`inbox=1`); on a server with an Inbox `inbox-heads` follows the
    * list and the stream gets the Inbox events from then on.
    */
@@ -526,6 +588,10 @@ export class SseHub {
      * Liczy to `withNotes`, ta sama metoda co przy ramkach z managera — patrz `broadcast`.
      */
     this.send(client, this.withNotes(snapshot), null);
+    // The closed macOS folders, also none: an empty list clears a banner the app kept from before the reconnect.
+    if (this.folderGate !== undefined) {
+      this.send(client, { type: 'folder-access', blocked: this.folderGate.blocked() }, null);
+    }
     // The Inbox heads after the list (`inbox=1`), so the app knows every session a head names.
     if (client.inbox && this.inbox !== undefined) {
       this.send(client, { type: 'inbox-heads', heads: this.inbox.heads() }, null);
@@ -607,7 +673,7 @@ export class SseHub {
     return closed;
   }
 
-  /** Zamyka wszystkie strumienie i zatrzymuje heartbeat (graceful shutdown). */
+  /** Closes every stream, stops the heartbeat and detaches what {@link start} attached (graceful shutdown). */
   closeAll(): void {
     for (const client of this.clients.values()) this.endClient(client);
     this.clients.clear();
@@ -616,6 +682,13 @@ export class SseHub {
       this.clearIntervalFn(this.heartbeat);
       this.heartbeat = null;
     }
+    this.subscription = null;
+    this.detachInbox?.();
+    this.detachInbox = undefined;
+    this.detachFolderGate?.();
+    this.detachFolderGate = undefined;
+    this.folderGate = undefined;
+    this.started = false;
   }
 
   /**
@@ -623,9 +696,9 @@ export class SseHub {
    * kompresji albo `null`, gdy kompresor zamknął się przed opróżnieniem bufora; bez kompresji nie jest wołane.
    */
   private sendTranscriptSnapshot(
-    client: SseClient, sessionId: string, onFlushed?: (packed: number | null) => void, peek = false,
+    client: SseClient, sessionId: string, onFlushed?: (packed: number | null) => void,
   ): string {
-    const t = peek ? this.manager.transcript(sessionId, { peek: true }) : this.manager.transcript(sessionId);
+    const t = this.manager.transcript(sessionId);
     const event: ServerEvent = {
       type: 'transcript-snapshot',
       sessionId,
@@ -647,7 +720,8 @@ export class SseHub {
   ): SseClient {
     const id = this.nextClientId++;
     const gzip = this.gzipEnabled && acceptsGzip(acceptEncoding) ? this.createGzipFn() : undefined;
-    const client: SseClient = { id, scope, inbox, res, owner, gzip, bytesOut: 0, flushedBytes: 0 };
+    const client: SseClient = { id, scope, inbox, res, owner, gzip, bytesOut: 0, flushedBytes: 0, cut: false,
+      largestFrame: 0 };
     res.writeHead(200, {
       ...SSE_HEADERS,
       // Przy włączonej kompresji odpowiedź zależy od `Accept-Encoding`; pośrednik nie ma jej podać innemu klientowi.
@@ -661,6 +735,7 @@ export class SseHub {
        */
       const sink = res as unknown as { write(chunk: Uint8Array): boolean };
       gzip.on('data', (bytes: Buffer) => {
+        if (client.cut) return;
         client.bytesOut += bytes.length;
         try {
           sink.write(bytes);
@@ -668,7 +743,9 @@ export class SseHub {
           // Zerwane gniazdo: klient znika z rejestru, kompresor się zamyka.
           this.dropClient(id);
           gzip.destroy();
+          return;
         }
+        this.cutIfOverCeiling(client);
       });
       // Błąd kompresora kończy strumień; klient łączy się od nowa.
       gzip.on('error', () => {
@@ -681,8 +758,11 @@ export class SseHub {
       });
     }
     this.writeRaw(client, `retry: ${RETRY_MS}\n\n`);
-    this.clients.set(id, client);
-    this.countChanged();
+    // A socket already over the ceiling cuts the stream at its first line; such a client never enters the register.
+    if (!client.cut) {
+      this.clients.set(id, client);
+      this.countChanged();
+    }
     res.on('close', () => {
       this.dropClient(id);
       // Rozłączenie: kompresor nie ma już dokąd pisać, więc zamyka się od razu.
@@ -729,10 +809,16 @@ export class SseHub {
   private writeChecked(
     client: SseClient, chunk: string, onFlushed?: (packed: number | null) => void,
   ): boolean | null {
+    if (client.cut) return null;
+    client.largestFrame = Math.max(client.largestFrame, Buffer.byteLength(chunk));
     try {
       const gzip = client.gzip;
-      if (gzip === undefined) return client.res.write(chunk);
+      if (gzip === undefined) {
+        const accepted = client.res.write(chunk);
+        return this.cutIfOverCeiling(client) ? null : accepted;
+      }
       const accepted = gzip.write(chunk);
+      if (this.cutIfOverCeiling(client)) return null;
       /*
        * Opróżnienie bufora po KAŻDYM zapisie (ramka, ping, `retry:`): bez niego gzip trzyma bajty, aż uzbiera blok,
        * a ping czekałby na następną ramkę. `Z_SYNC_FLUSH` zostawia słownik, więc ramka dalej kompresuje się względem
@@ -750,5 +836,32 @@ export class SseHub {
       this.dropClient(client.id);
       return null;
     }
+  }
+
+  /**
+   * Cuts the stream when its unsent bytes pass {@link SSE_WRITE_BUFFER_MAX} plus twice its largest frame: the response
+   * buffer plus, with compression, the compressor input not yet compressed. The connection is destroyed rather than ended, because the
+   * stream would never get its bytes out; the client reconnects and gets a snapshot or a replay.
+   *
+   * @returns `true` = the stream was cut now.
+   */
+  private cutIfOverCeiling(client: SseClient): boolean {
+    if (client.cut) return false;
+    const buffered = (client.res.writableLength ?? 0) + (client.gzip?.writableLength ?? 0);
+    if (buffered <= SSE_WRITE_BUFFER_MAX + 2 * client.largestFrame) return false;
+    client.cut = true;
+    this.dropClient(client.id);
+    client.gzip?.destroy();
+    try {
+      if (client.res.destroy === undefined) client.res.end();
+      else client.res.destroy();
+    } catch {
+      // The client may already be gone.
+    }
+    const mib = (bytes: number): string => (bytes / (1024 * 1024)).toFixed(1);
+    const scope = client.scope === 'global' ? 'global' : `session ${client.scope}`;
+    const device = client.owner === undefined ? '' : `, device ${client.owner}`;
+    this.logger?.(`${WRITE_BUFFER_CUT_LOG} ${mib(SSE_WRITE_BUFFER_MAX)} MiB, stream closed (${scope}${device})`);
+    return true;
   }
 }

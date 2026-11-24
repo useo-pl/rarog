@@ -132,6 +132,49 @@ struct DeviceCredentialStoredTests {
     #expect(ServerIrohConfig(validating: "", relay: "https://relay.rarog.ai/") == nil)
   }
 
+  /// Item of a newer app: `version` 2 and a credential of another shape (no `secret`, a nested key).
+  static let newer = Data(
+    (#"{"version":2,"credential":{"deviceId":"03030303030303030303030303030303","key":{"kind":"p256","#
+      + #""material":"BQUF"},"serverURL":"https:\/\/rarog.example"},"pushKey":{"kid":"f849d673"}}"#).utf8)
+
+  /// `load()` over one read of the private item; the result and how many times it deleted the item.
+  static func load(_ data: Data?, status: OSStatus = errSecSuccess) -> (KeychainRead, wipes: Int) {
+    var wipes = 0
+    let read = SystemKeychain.load(status: status, data: data) { wipes += 1 }
+    return (read, wipes)
+  }
+
+  @Test("item of a newer app (version 2, another credential shape): a failed read, the item not deleted")
+  func newerVersionKept() {
+    let (read, wipes) = Self.load(Self.newer)
+    #expect(read == .failed(errSecDecode))
+    #expect(wipes == 0, "the item stays as it is")
+    let (higher, higherWipes) = Self.load(Data(#"{"version":7}"#.utf8))
+    #expect(higher == .failed(errSecDecode) && higherWipes == 0)
+  }
+
+  @Test("a version that is not an integer above 1 stays unreadable and is deleted, as a broken v1 item")
+  func unreadableStillDeleted() {
+    let broken = [
+      #"{"credential":{},"pushKey":"BQUF"}"#, #"{"version":"2"}"#, #"{"version":2.5}"#, #"{"version":0}"#,
+      #"{"version":1,"credential":{"deviceId":"03"},"pushKey":"BQUF"}"#, "not json",
+    ]
+    for text in broken {
+      let (read, wipes) = Self.load(Data(text.utf8))
+      #expect(read == KeychainRead.none && wipes == 1, "\(text)")
+    }
+  }
+
+  @Test("load: v1 found without a delete; no item, a locked phone and another status pass through")
+  func loadStatuses() throws {
+    let (found, wipes) = Self.load(Self.stored())
+    let entry = try #require(SystemKeychain.decode(Self.stored()))
+    #expect(found == .found(entry.credential, pushKey: "BQUF") && wipes == 0)
+    #expect(Self.load(nil, status: errSecItemNotFound).0 == KeychainRead.none)
+    #expect(Self.load(nil, status: errSecInteractionNotAllowed).0 == .locked)
+    #expect(Self.load(nil, status: errSecMissingEntitlement).0 == .failed(errSecMissingEntitlement))
+  }
+
   @Test("zapis poświadczenia bez żadnej trasy odmawia (errSecParam), zamiast zostawić wpis, który odczyt skasuje")
   func saveWithoutRouteRefused() throws {
     var credential = DeviceCredential(

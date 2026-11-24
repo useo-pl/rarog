@@ -21,6 +21,8 @@ import RarogContract
 //   pokazuje najważniejszy (kolejność `RelayAccessProblem`), a przerwa trwa do najpóźniejszego terminu.
 // - Parowanie dostaje wynik, gdy los s jest znany (reszta poręczeń idzie dalej). Nieudane kasowanie rezygnacji to
 //   `.unavailable` bez rejestracji: zapis `pending`, który zostałby w Keychainie, po restarcie wysłałby `forget`.
+// - `.ready` carries when this process got the server's sponsorship (a sync in the background counts too), so the core
+//   can wait for the relay after a sponsorship from a moment ago; the moment is not saved in the Keychain.
 // - Pamięć nieczytelna przy starcie (Keychain odmówił odczytu) to brak pamięci bez zapisu: maszyna pracuje w pamięci
 //   procesu i nie nadpisuje wpisu, którego nie przeczytała.
 
@@ -122,6 +124,9 @@ public struct RelayAccessMachine: Sendable, Equatable {
   private var cacheSaveFailing = false
   /// Koniec przerwy po `unsupported`; T-parowanie jej nie zna.
   private var unsupportedUntil: Int64?
+  /// When this process got each server's sponsorship (seconds of the epoch), for `.ready(sponsoredAt:)`: the relay
+  /// admits a sponsorship from a moment ago only after a while. Process memory only, like `unsupportedUntil`.
+  private var sponsoredAt: [String: Int64] = [:]
 
   /// `cache` i `optOut` to odczyty magazynu, które actor `RelayAccess` robi przy pierwszej paczce wejść z tożsamością
   /// (przed pierwszym odblokowaniem urządzenia Keychain odmawia odczytu); `gateSupported` = `RelayGate.isSupported`
@@ -183,6 +188,7 @@ public struct RelayAccessMachine: Sendable, Equatable {
     case let .forget(ticket, appId):
       forgetArrived(ticket: ticket, appId: appId, &out)
     case let .replied(gen, reply):
+      noteSponsorship(gen, reply, t)
       if accept(gen, { $0 == .reply }, &out) { replied(reply, t, &out) }
     case let .proved(gen, result):
       if accept(gen, { $0 == .proof }, &out) { proved(result, t, &out) }
@@ -205,6 +211,16 @@ public struct RelayAccessMachine: Sendable, Equatable {
     commands += out.answers
     if let request = out.request { commands.append(request) }
     return commands
+  }
+
+  /// A sponsorship the registry gave also counts for an operation already superseded (a pairing that preempts a sync
+  /// mid-`sponsor` then finds the server alive): like the opt-out store, the moment describes what already happened.
+  private mutating func noteSponsorship(_ gen: Generation, _ reply: RelayAuthReply, _ t: Int64) {
+    guard let awaiting, awaiting.generation == gen, awaiting.kind == .reply, let operation,
+      operation.generation == gen, case let .sponsoring(server) = operation.phase,
+      case let .sponsored(result) = reply, result.server == server
+    else { return }
+    sponsoredAt[server] = t
   }
 
   /// Wynik pasuje do polecenia w drodze i operacja jest bieżąca; inaczej wynik nie zmienia stanu (poza magazynem).
@@ -358,6 +374,7 @@ public struct RelayAccessMachine: Sendable, Equatable {
   private mutating func adopt(appId: String, registry: URL, _ out: inout Outbox) -> RelayAccessCache {
     if let cache, cache.appId == appId, cache.registry == registry { return cache }
     if cache != nil { out.logs.append("relay-access: cache of another identity or registry replaced") }
+    sponsoredAt = [:]
     let fresh = RelayAccessCache(appId: appId, registry: registry)
     cache = fresh
     return fresh
@@ -437,6 +454,7 @@ public struct RelayAccessMachine: Sendable, Equatable {
         return
       }
       cache = RelayAccessCache(appId: op.appId, registry: record.registry)  // pamięć wyczyszczona
+      sponsoredAt = [:]
       status = .optedOut(appId: op.appId, removal: .pending)
       operation?.phase = .forgetting
       send(.forget, registry: record.registry, t, &out)
@@ -589,6 +607,7 @@ public struct RelayAccessMachine: Sendable, Equatable {
     switch reply {
     case let .sponsored(result) where result.server == server:
       cache?.sponsored[server] = result.expiresAt
+      sponsoredAt[server] = t
       if server == run.target { run.sponsoredTarget = true }
       operation?.run = run
       sponsorNext(t, &out)
@@ -630,7 +649,8 @@ public struct RelayAccessMachine: Sendable, Equatable {
     if run.targetFailed {
       answerPrepare(.unavailable, &out)
     } else if alive(target, cache, t) {
-      answerPrepare(run.registered || run.sponsoredTarget ? .fresh : .ready, &out)
+      let ready = RelayPrepareResult.ready(sponsoredAt: sponsoredAt[target].map(Self.date))
+      answerPrepare(run.registered || run.sponsoredTarget ? .fresh : ready, &out)
     }
   }
 
@@ -648,6 +668,7 @@ public struct RelayAccessMachine: Sendable, Equatable {
     cache?.registeredUntil = nil
     cache?.lastSyncAt = nil
     cache?.sponsored = [:]
+    sponsoredAt = [:]
   }
 
   private mutating func record(_ problem: RelayAccessProblem, _ t: Int64) {

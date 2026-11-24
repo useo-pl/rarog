@@ -8,7 +8,6 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFile, link, mkdir, mkdtemp, rm, symlink, truncate, writeFile } from 'node:fs/promises';
-import type { FileHandle } from 'node:fs/promises';
 import http from 'node:http';
 import net from 'node:net';
 import type { AddressInfo } from 'node:net';
@@ -123,22 +122,21 @@ function watched(): Watched {
       counts.opens += 1;
       const { handle } = opened;
       const close = handle.close.bind(handle);
-      type Read = (buffer: Buffer, offset: number, length: number, position: number) => ReturnType<FileHandle['read']>;
-      const read = handle.read.bind(handle) as Read;
+      const read = handle.read.bind(handle);
       const hold = held;
       let reads = 0;
       handle.close = async () => {
         counts.closes += 1;
         return close();
       };
-      handle.read = (async (buffer: Buffer, offset: number, length: number, position: number) => {
+      handle.read = async (length, position) => {
         reads += 1;
         if (hold !== null && reads === hold.at) {
           hold.reach();
           await hold.gate;
         }
-        return read(buffer, offset, length, position);
-      }) as unknown as FileHandle['read'];
+        return read(length, position);
+      };
       return opened;
     },
   };

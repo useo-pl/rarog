@@ -39,7 +39,7 @@ extension ServerEvent {
       event.translate(render)
       return .herdrStatus(event)
     case .hello, .delta, .activity, .permissionResolved, .permissionSettled, .questionResolved, .gitStatus, .usage,
-      .notes, .inboxHeads, .inboxHead, .inboxRemoved:
+      .notes, .folderAccess, .inboxHeads, .inboxHead, .inboxRemoved:
       return self
     }
   }

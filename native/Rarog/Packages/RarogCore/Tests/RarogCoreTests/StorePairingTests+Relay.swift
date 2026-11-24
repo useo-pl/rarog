@@ -5,11 +5,12 @@ import RarogTransport
 import Testing
 
 // Pairing over iroh with the relay registry (`RarogStore+RelayAccess`): the registry client prepares the app and the
-// link's server before `POST /api/pair` (at most the core's ceiling), and after a fresh sponsorship the sheet waits for
-// the relay with "Cancel" from the first pairing request on, repeating it after a transport failure in a readiness
-// window. Times in milliseconds; the production values are checked by `relayTimingProduction`. The fake `relayPrepare`
-// answers at once (or the test holds it), so every test but `relayPrepareCeiling` keeps the ceiling far away: a short
-// one would race that answer when the main actor is busy, and a lost race turns `.fresh` into `.unavailable`.
+// link's server before `POST /api/pair` (at most the core's ceiling), and when the relay may not admit the server yet
+// (`.fresh`, `.unavailable`, `.ready` with a recent sponsorship) the sheet waits for the relay with "Cancel" from the
+// first pairing request on, repeating it after a transport failure in a readiness window. Times in milliseconds; the
+// production values are checked by `relayTimingProduction`. The fake `relayPrepare` answers at once (or the test holds
+// it), so every test but `relayPrepareCeiling` keeps the ceiling far away: a short one would race that answer when the
+// main actor is busy, and a lost race turns the answer into `.unavailable`.
 
 /// What the fake registry client and the pairing transport saw, in order.
 @MainActor
@@ -96,7 +97,7 @@ extension StorePairingTests {
       (PairingFixtures.link(), []),
     ]
     for (link, expected) in cases {
-      let (server, store, record) = await relayStore { _ in .ready }
+      let (server, store, record) = await relayStore { _ in .ready(sponsoredAt: nil) }
       store.offerPairing(link)
       #expect(await store.confirmPairing() == .paired)
       #expect(record.prepared == expected, "\(link.target)")
@@ -105,13 +106,13 @@ extension StorePairingTests {
     }
   }
 
-  @Test("relayPrepare that never returns: POST /api/pair starts after the ceiling, pairing ends normally")
+  @Test("relayPrepare that never returns: after the ceiling .waitingForRelay, a transport failure repeats the request")
   func relayPrepareCeiling() async {
     let ceiling = Duration.milliseconds(150)
     let late = Hold()
     var timing = Self.relayTiming()
     timing.prepareCeiling = ceiling
-    let (server, store, record) = await relayStore(timing: timing) { _ in
+    let (server, store, record) = await relayStore(timing: timing, replies: [.offline(.cannotConnectToHost)]) { _ in
       await late.wait()
       return .fresh
     }
@@ -120,12 +121,12 @@ extension StorePairingTests {
     let start = ContinuousClock.now
     #expect(await store.confirmPairing() == .paired)
     #expect(ContinuousClock.now - start >= ceiling)
-    #expect(record.events == ["prepare", "pair"])
-    #expect(record.flows == [.pairing(link)])
+    #expect(record.events == ["prepare", "pair", "pair"], "the registration may still be going on: not one request")
+    #expect(record.flows.count == 2 && record.flows.allSatisfy { isWaiting($0, link) }, "\(record.flows)")
     // The late `.fresh` after the ceiling changes nothing.
     late.release()
     try? await Task.sleep(for: .milliseconds(100))
-    #expect(store.state.pairing.flow == .idle && server.pairingTargets.count == 1)
+    #expect(store.state.pairing.flow == .idle && server.pairingTargets.count == 2)
   }
 
   @Test("`.fresh` and the first request in flight → .waitingForRelay until the end of the preparation + the window")
@@ -215,11 +216,12 @@ extension StorePairingTests {
     #expect(server.keychain.load() == .none)
   }
 
-  @Test("`.ready`, `.unavailable`, `.skipped` and a transport failure → .failed without waiting")
+  @Test("`.ready` without a recent sponsorship, `.skipped` and a transport failure → .failed without waiting")
   func notFreshFailsAtOnce() async {
     // A long window: waiting would take at least `retryEvery` and repeat the request.
     let timing = Self.relayTiming(window: .seconds(5), retry: .seconds(1))
-    for prepared in [RelayPrepareResult.ready, .unavailable, .skipped] {
+    let old = Date().addingTimeInterval(-60)
+    for prepared in [RelayPrepareResult.ready(sponsoredAt: nil), .ready(sponsoredAt: old), .skipped] {
       let (server, store, record) = await relayStore(timing: timing, replies: [.offline(.cannotConnectToHost)]) { _ in
         prepared
       }
@@ -231,6 +233,35 @@ extension StorePairingTests {
       #expect(server.pairingTargets.count == 1 && record.flows == [.pairing(link)], "\(prepared)")
       #expect(store.state.pairing.flow == .failed(link, .offline), "\(prepared)")
     }
+  }
+
+  @Test("`.unavailable` or `.ready` with a recent sponsorship: transport failures wait for the relay, 3 calls")
+  func notSettledWaitsThenPairs() async {
+    for prepared in [RelayPrepareResult.unavailable, .ready(sponsoredAt: Date().addingTimeInterval(-1))] {
+      let (server, store, record) = await relayStore(replies: [.offline(.cannotConnectToHost), .timedOut]) { _ in
+        prepared
+      }
+      let link = relayLink()
+      store.offerPairing(link)
+      #expect(await store.confirmPairing() == .paired, "\(prepared)")
+      #expect(server.pairingTargets == [link.target, link.target, link.target], "\(prepared)")
+      #expect(record.flows.count == 3 && record.flows.allSatisfy { isWaiting($0, link) }, "\(record.flows)")
+      #expect(store.state.pairing.flow == .idle && store.state.pairing.paired != nil, "\(prepared)")
+    }
+  }
+
+  @Test("`.unavailable` and an HTTP answer of the server (401 for the code) → .failed at once, one request")
+  func unavailableHttpAnswerFails() async {
+    let timing = Self.relayTiming(window: .seconds(5), retry: .seconds(1))
+    let refused = TransportError.unauthorized(APIFailure(status: 401, message: "bad code"))
+    let (server, store, record) = await relayStore(timing: timing, replies: [refused]) { _ in .unavailable }
+    let link = relayLink()
+    store.offerPairing(link)
+    let start = ContinuousClock.now
+    #expect(await store.confirmPairing() == .failed(.failed("bad code")))
+    #expect(ContinuousClock.now - start < timing.retryEvery)
+    #expect(server.pairingTargets.count == 1 && record.flows.count == 1)
+    #expect(store.state.pairing.flow == .failed(link, .failed("bad code")))
   }
 
   @Test("an HTTP answer of the server in the window (401 for the code) → .failed at once")
@@ -312,9 +343,10 @@ extension StorePairingTests {
     #expect(server.built.count == transports && store.state.pairing.flow == .idle, "no switch, no sheet")
   }
 
-  @Test("`.ready`, `.unavailable`, `.skipped`: .pairing through the whole request, Cancel does nothing, it pairs")
+  @Test("`.ready` without a recent sponsorship, `.skipped`: .pairing through the request, no Cancel, it pairs")
   func notFreshPairsWithoutCancel() async {
-    for prepared in [RelayPrepareResult.ready, .unavailable, .skipped] {
+    let old = Date().addingTimeInterval(-120)
+    for prepared in [RelayPrepareResult.ready(sponsoredAt: nil), .ready(sponsoredAt: old), .skipped] {
       let held = Hold()
       let (server, store, record) = await relayStore(holdAt: 1, hold: held) { _ in prepared }
       let link = relayLink()
@@ -354,7 +386,7 @@ extension StorePairingTests {
     let held = Hold()
     let (server, store, record) = await relayStore { _ in
       await held.wait()
-      return .ready
+      return .ready(sponsoredAt: nil)
     }
     let link = relayLink()
     store.offerPairing(link)

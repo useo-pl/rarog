@@ -33,11 +33,12 @@
  * zapis atomowy. Retencji NIE MA — treść kasuje wyłącznie człowiek.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { notesEmpty } from '@rarog/shared';
 import type { NotesDoc } from '@rarog/shared';
 import { type OwnText, say, textOf } from '@rarog/shared/sentences';
+import { DIRECT_DISK } from '../folder-gate/disk.ts';
 
 /**
  * Katalog plików notatek w `<dataDir>`. Cytują go `docs/security-model.md` (runbook)
@@ -89,7 +90,7 @@ interface NotesFile extends NotesDoc {
 export function notesPath(dataDir: string, cwd: string): string {
   let real: string;
   try {
-    real = realpathSync(cwd);
+    real = DIRECT_DISK.sync('realpath', { path: cwd });
   } catch {
     throw new NotesFailure(
       'cwd-not-allowed',

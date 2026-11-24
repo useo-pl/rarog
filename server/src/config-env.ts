@@ -221,6 +221,15 @@ export const CONSENT_RESTART_GRACE_ENV = 'RAROG_CONSENT_RESTART_GRACE';
 export const DIALOG_LAYER2_ENV = 'RAROG_DIALOG_LAYER2';
 
 /**
+ * Folder gate kill switch (`docs/macos-folders.md`): missing or empty = on on macOS and off elsewhere, `1` = on,
+ * `0` = off; any other value is a config error at start, also in the demo, which never runs the gate. On, a disk call
+ * of the work area in Desktop, Documents or Downloads (and any other guarded folder of home) runs in a helper
+ * process the server can kill, so a macOS consent window waits there instead of in the server. Off = every call in
+ * the server process, without helpers or the relay thread. It approves and sends nothing.
+ */
+export const FOLDER_GATE_ENV = 'RAROG_FOLDER_GATE';
+
+/**
  * SSE STREAM COMPRESSION flag: missing, empty or `1` = the server gzips the stream when the client sent
  * `Accept-Encoding` with `gzip` at a weight above zero; `0` = no compression for any client; any other value is a
  * config error at startup. It approves and sends nothing, so it is NOT a sixth killswitch.
@@ -466,6 +475,7 @@ export const SERVER_ENV = {
   [CONSENT_ALWAYS_ENV]: 'plain',
   [CONSENT_RESTART_GRACE_ENV]: 'plain',
   [DIALOG_LAYER2_ENV]: 'plain',
+  [FOLDER_GATE_ENV]: 'plain',
   [SSE_GZIP_ENV]: 'plain',
   [COMPANION_ENV]: 'plain',
   [COMPANION_SESSIONS_ENV]: 'plain',

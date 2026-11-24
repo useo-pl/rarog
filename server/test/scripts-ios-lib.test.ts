@@ -9,6 +9,10 @@
  * zawsze odpowiada 0), bez prawdziwego toolchainu. Wynik nie zależy więc od tego, czy repo testu jest płytkim
  * klonem.
  *
+ * A directory without git (an unpacked archive) has no commit count: there `RAROG_BUILD_NUMBER` is the number as
+ * given, with a warning below the minimum app build of a package install (read from `server/src/config/clients.ts`
+ * copied into the dummy), and without it the build stops.
+ *
  * Klucz przychodzi wyłącznie ze środowiska (trzy zmienne `RAROG_ASC_*`); pliku sekretów skrypt nie czyta.
  * Wartości są fikcyjne, a klucz `.p8` to atrapa w katalogu tymczasowym (treść „atrapa”).
  *
@@ -20,6 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { DEFAULT_MIN_CLIENT_BUILD } from '../src/config/clients.ts';
 import { IS_MAC, macOnly } from './platform.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -83,6 +88,9 @@ const COMMIT = [
   '-c', 'core.hooksPath=/dev/null', 'commit', '-q',
 ];
 
+/** Server source the build reads the package's minimum app build from (a build without git warns below it). */
+const CLIENTS = 'server/src/config/clients.ts';
+
 /** Katalog z kopiami skryptów builda w `scripts/`, bez gita. */
 function scriptsDir(prefix: string): string {
   const dir = tempDir(prefix);
@@ -90,6 +98,8 @@ function scriptsDir(prefix: string): string {
   for (const script of BUILD_SCRIPTS) {
     copyFileSync(path.join(repoRoot, 'scripts', script), path.join(dir, 'scripts', script));
   }
+  mkdirSync(path.join(dir, path.dirname(CLIENTS)), { recursive: true });
+  copyFileSync(path.join(repoRoot, CLIENTS), path.join(dir, CLIENTS));
   return dir;
 }
 
@@ -211,6 +221,13 @@ describe('ios-build.sh: numer builda z ios_build_number', () => {
     expect(run.stderr).toContain('HEAD commit count unknown (empty)');
     expect(run.xcodebuild).toEqual([]);
   });
+
+  it('a directory without git builds with RAROG_BUILD_NUMBER', () => {
+    const run = iosBuild(scriptsDir('rarog-ios-bez-gita-'), { RAROG_BUILD_NUMBER: '6000' });
+    expect(run.status, run.stderr).toBe(0);
+    expect(projectVersion(run)).toBe('6000');
+    expect(run.stdout).toContain('ios: built (build 6000)');
+  });
 });
 
 describe('ios_build_number', () => {
@@ -265,6 +282,41 @@ describe('ios_build_number', () => {
     expect(res.status).toBe(1);
     expect(res.stdout).toBe('');
     expect(res.stderr).toContain('cannot check whether the clone has the full history');
+  });
+
+  describe('a directory without git (an unpacked archive) with RAROG_BUILD_NUMBER', () => {
+    const above = String(DEFAULT_MIN_CLIENT_BUILD + 386);
+    const below = String(DEFAULT_MIN_CLIENT_BUILD - 1);
+
+    it.each(['', '1450'])('takes the number as given (commit count %j)', (count) => {
+      expect(buildNumber(count, above, scriptsDir('rarog-ios-bez-gita-'))).toEqual({
+        status: 0, stdout: above, stderr: '',
+      });
+    });
+
+    it('below the minimum app build of a package install: the number, and a warning on stderr', () => {
+      const res = buildNumber('', below, scriptsDir('rarog-ios-bez-gita-'));
+      expect(res.status).toBe(0);
+      expect(res.stdout).toBe(below);
+      expect(res.stderr).toContain(`warning: build ${below} is below the minimum app build of a package install`
+        + ` (${String(DEFAULT_MIN_CLIENT_BUILD)})`);
+    });
+
+    it('without the server source: the number, and a warning that the minimum could not be read', () => {
+      const dir = scriptsDir('rarog-ios-bez-gita-');
+      rmSync(path.join(dir, 'server'), { recursive: true });
+      const res = buildNumber('', above, dir);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toBe(above);
+      expect(res.stderr).toContain(`warning: cannot read DEFAULT_MIN_CLIENT_BUILD from ${CLIENTS}`);
+    });
+
+    it.each(['abc', '01600', '-1'])('refuses %j, which is not a number', (override) => {
+      const res = buildNumber('', override, scriptsDir('rarog-ios-bez-gita-'));
+      expect(res.status).toBe(1);
+      expect(res.stdout).toBe('');
+      expect(res.stderr).toContain('is not a number');
+    });
   });
 
   // Git bez `--is-shallow-repository` (starszy niż 2.15) wypisuje nieznaną opcję i kończy się kodem 0: tylko
@@ -423,6 +475,31 @@ describe.skipIf(!IS_MAC)(macOnly('ios_asc_auth', 'stat -f'), () => {
     expect(res.status).toBe(1);
     expect(res.stdout).toBe('');
     expect(res.stderr).toContain('uncommitted changes');
+  });
+
+  it.each<[string, () => string, boolean, string]>([
+    ['a checkout with uncommitted script changes, without the key: refusal', () => {
+      const repo = fakeRepo(1);
+      writeFileSync(path.join(repo, 'scripts/ios-lib.sh'), `${readFileSync(LIB, 'utf8')}\n# change\n`);
+      return repo;
+    }, false, 'uncommitted changes'],
+    ['a directory without git, without the key: no key, no refusal', () => scriptsDir('rarog-ios-bez-gita-'), false, ''],
+    ['a directory without git, with the key trio: the guard cannot run, so a refusal',
+      () => scriptsDir('rarog-ios-bez-gita-'), true, 'uncommitted changes'],
+  ])('%s', (_, makeRoot, trio, stderr) => {
+    const root = makeRoot();
+    const { developerDir, bin } = fakeXcode();
+    const home = tempDir('rarog-ios-home-');
+    const env: NodeJS.ProcessEnv = {
+      PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: home, DEVELOPER_DIR: developerDir,
+      GIT_CEILING_DIRECTORIES: path.dirname(root),
+      ...(trio ? envTrio(fakeKey(path.join(home, 'atrapa-klucza'))) : {}),
+    };
+    const script = `source "${path.join(root, 'scripts/ios-lib.sh')}"\nios_asc_auth || exit $?`;
+    const res = spawnSync('bash', ['-c', script], { encoding: 'utf8', env });
+    expect(res.status).toBe(1);
+    if (stderr === '') expect(res.stderr.trim()).toBe('');
+    else expect(res.stderr).toContain(stderr);
   });
 });
 

@@ -1,8 +1,10 @@
 import Foundation
 
-// What a collapsed card shows of an agent's message: a short text whole; a long one as its first paragraph, the
-// question block (``MarkdownQuestion``) and the number of lines hidden in between. A line is a source line with
-// a visible character: blank lines are spacing, so they count neither towards the limit nor as hidden lines.
+// What a collapsed card shows of an agent's message: a short text whole; a long one as its lead, the question
+// block (``MarkdownQuestion``) and the number of lines hidden besides them. The lead is the agent's summary
+// (``MarkdownSummary``) when one stands before the question, so a headed reply leads with its TLDR, not with its
+// first heading; otherwise it is the first paragraph. A line is a source line with a visible character: blank
+// lines are spacing, so they count neither towards the limit nor as hidden lines.
 // One parser pass gives the blocks with their start lines, so the question block starts on the line of the block
 // that ``MarkdownQuestion/start(in:)`` points at, and the work stays linear in the length of the text.
 // Owner: transcript, markdown.
@@ -36,8 +38,23 @@ public struct MarkdownFold: Sendable, Equatable {
     guard content.count > wholeLineLimit, let first = content.first, let last = content.last else { return whole }
 
     let (blocks, startLines) = MarkdownParser.located(lines)
-    let questionLine = MarkdownQuestion.start(in: blocks).map { startLines[$0] }
+    let questionIndex = MarkdownQuestion.start(in: blocks)
+    let questionLine = questionIndex.map { startLines[$0] }
     let stop = questionLine ?? last + 1
+    if let summary = MarkdownSummary.start(in: blocks), summary < questionIndex ?? blocks.count {
+      // The summary leads wherever it stands; every other line before the question is hidden. A fold that would
+      // hide too little stands whole rather than falling back to the first paragraph, which would hide the summary.
+      let summaryFirst = startLines[summary]
+      let summaryEnd = summary + 1 < startLines.count ? startLines[summary + 1] : lines.count
+      let summaryLast = content.last { $0 < summaryEnd } ?? summaryFirst
+      let hidden = content.count { $0 < stop && ($0 < summaryFirst || $0 > summaryLast) }
+      guard hidden >= minimumHiddenLines else { return whole }
+      return MarkdownFold(
+        lead: lines[summaryFirst...summaryLast].joined(separator: "\n"),
+        question: questionLine.map { lines[$0...last].joined(separator: "\n") },
+        hiddenLineCount: hidden
+      )
+    }
     let leadLimit: Int
     if case .paragraph = blocks.first {
       leadLimit = startLines.count > 1 ? startLines[1] : lines.count

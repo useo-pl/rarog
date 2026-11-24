@@ -14,11 +14,12 @@ import path from 'node:path';
 import { MAX_FILE_ENTRIES, compareFileEntries } from '@rarog/shared';
 import type { FileEntry, FileListing } from '@rarog/shared';
 import { insideWorkArea } from '../config/work-area.ts';
+import { FolderGateError } from '../folder-gate/types.ts';
 import {
   FILES_DISK, type FilesArea, type FilesDisk, type Ruled, type SessionDir, inAreaText, isHiddenName,
   resolveSessionDir, stillSessionDir,
 } from './path-rule.ts';
-import { NOT_FOUND } from './refusals.ts';
+import { NOT_FOUND, closedFolder } from './refusals.ts';
 
 export interface ListingOptions {
   /** The largest file the server sends, announced in the listing (`RAROG_FILES_MAX_MB` in bytes). */
@@ -36,12 +37,16 @@ function utf8Name(bytes: Buffer): string | null {
 /**
  * The entries of the directory, read through its identity: `[]` for a directory the server may not read (`EACCES`,
  * `EPERM`), as in the directory browser; `null` (404) when the read cannot be bound to the directory the walk found
- * (another platform, another directory under the path now) or fails otherwise. Never a read by path.
+ * (another platform, another directory under the path now) or fails otherwise; the refusal of a guarded folder the
+ * folder gate holds closed, never an empty listing. Never a read by path.
  */
-async function entriesOf(dir: SessionDir, disk: FilesDisk): Promise<readonly Dirent<Buffer>[] | null> {
+async function entriesOf(
+  dir: SessionDir, disk: FilesDisk,
+): Promise<readonly Dirent<Buffer>[] | null | FolderGateError> {
   try {
     return await disk.readdirByIdentity(dir);
   } catch (error) {
+    if (error instanceof FolderGateError) return error;
     const code = (error as { code?: unknown } | null)?.code;
     return code === 'EACCES' || code === 'EPERM' ? [] : null;
   }
@@ -78,6 +83,7 @@ export async function listSessionDir(
   if (!dir.ok) return dir;
   const read = await entriesOf(dir.value, disk);
   if (read === null) return { ok: false, refusal: NOT_FOUND };
+  if (read instanceof FolderGateError) return { ok: false, refusal: closedFolder(read) };
   const pending: Promise<FileEntry | null>[] = [];
   for (const entry of read) {
     const name = utf8Name(entry.name);

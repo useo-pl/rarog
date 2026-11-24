@@ -308,7 +308,7 @@ describe('reguła `channel`: przycisk zgody z kanału, bez wierzchu ekranu', () 
 
 describe('bramka wersji CLI (`CONSENT_CHANNEL_MEASURED_CLI`)', () => {
   it('stała w rejestrze literałów CLI: wersja i data pomiaru', () => {
-    expect(CONSENT_CHANNEL_MEASURED_CLI).toEqual({ cli: '2.1.330', excluded: ['2.1.327'] });
+    expect(CONSENT_CHANNEL_MEASURED_CLI).toEqual({ cli: '2.1.331', excluded: ['2.1.327'] });
   });
 
   it('wersja wyższa od zmierzonej → `screen`; równa i niższa → `channel`; nieznana → `screen`; konfiguracja `screen`'

@@ -765,7 +765,7 @@ final class WindowsUITests: XCTestCase {
     let menu = element(app, "terminal.popup.menu")
     guard menu.waitForAppearance(timeout: 5) else { return false }
     menu.tap()
-    let item = app.buttons["Historia"].firstMatch
+    let item = app.buttons["Zaznacz output"].firstMatch
     guard item.waitForAppearance(timeout: 5) else { return false }
     item.tap()
     return true

@@ -23,19 +23,19 @@ extension DirectoryBrowserTests {
     }
   }
 
-  static let notes = "\(useo)/notes"
+  static let notes = "\(group)/notes"
 
-  /// `~/Projects/USEO` listed with `canCreate`, opened from the project `app`; its new directory `notes` lists empty
+  /// `~/Projects/demo` listed with `canCreate`, opened from the project `app`; its new directory `notes` lists empty
   /// and, like every directory the server creates, has neither `git` nor history.
   private func creatable(_ creator: Creator?, canCreate: Bool? = true) async -> (DirectoryBrowser, Loader) {
     let loader = Loader()
     loader.listing(nil, parent: nil, [DirEntry(name: "Projects", path: Self.projects)])
-    loader.listing(Self.app, parent: Self.useo, [])
-    loader.replies[Self.useo] = .loaded(DirListing(
-      path: Self.useo, parent: Self.projects,
+    loader.listing(Self.app, parent: Self.group, [])
+    loader.replies[Self.group] = .loaded(DirListing(
+      path: Self.group, parent: Self.projects,
       entries: [DirEntry(name: "app", path: Self.app, git: true, history: true)], canCreate: canCreate))
     loader.replies[Self.notes] = .loaded(DirListing(
-      path: Self.notes, parent: Self.useo, entries: [], git: false, history: false, canCreate: canCreate))
+      path: Self.notes, parent: Self.group, entries: [], git: false, history: false, canCreate: canCreate))
     var create: DirectoryBrowser.Creator?
     if let creator { create = { parent, name in await creator.create(parent, name) } }
     let browser = DirectoryBrowser(debounce: .milliseconds(5), load: { await loader.load($0) }, create: create)
@@ -43,7 +43,7 @@ extension DirectoryBrowserTests {
     await settle { loader.calls.contains(Self.app) }
     try? await Task.sleep(for: .milliseconds(10))
     browser.change()
-    await settle { browser.view.status == .ready && browser.view.dir == Self.useo }
+    await settle { browser.view.status == .ready && browser.view.dir == Self.group }
     return (browser, loader)
   }
 
@@ -81,7 +81,7 @@ extension DirectoryBrowserTests {
     #expect(browser.creating?.canSend == true)
     browser.submitCreate()
     await settle { browser.view.dir == Self.notes && browser.view.status == .ready }
-    #expect(creator.calls.map(\.parent) == [Self.useo] && creator.calls.map(\.name) == ["notes"])
+    #expect(creator.calls.map(\.parent) == [Self.group] && creator.calls.map(\.name) == ["notes"])
     #expect(loader.calls.last == Self.notes && browser.creating == nil, "the browser lists the new directory")
     #expect(browser.target?.path == Self.notes && browser.chosen == Self.app, "entering chooses nothing")
     browser.choose()
@@ -128,7 +128,7 @@ extension DirectoryBrowserTests {
       #expect(!loader.calls.contains(Self.notes) && browser.view.dir != Self.notes, "\(leave): nothing entered")
       #expect(browser.chosen == Self.app, "\(leave): nothing chosen")
       if leave == "field cancel" {
-        #expect(browser.browsing && browser.view.dir == Self.useo && browser.view.status == .ready)
+        #expect(browser.browsing && browser.view.dir == Self.group && browser.view.status == .ready)
         browser.enter(Self.notes)
         await settle { browser.view.dir == Self.notes && browser.view.status == .ready }
         browser.choose()
@@ -153,7 +153,7 @@ extension DirectoryBrowserTests {
       browser.typeName(".hidden")
       #expect(browser.creating?.error == nil, "editing the name clears the sentence")
     }
-    #expect(loader.calls.count == listings && browser.view.dir == Self.useo, "a refusal lists nothing")
+    #expect(loader.calls.count == listings && browser.view.dir == Self.group, "a refusal lists nothing")
   }
 
   @Test("an existing name: the sentence stays under the field and the parent is listed again")
@@ -161,17 +161,17 @@ extension DirectoryBrowserTests {
     let creator = Creator()
     creator.replies = [.exists("Something with that name already exists here.")]
     let (browser, loader) = await creatable(creator)
-    loader.replies[Self.useo] = .loaded(DirListing(
-      path: Self.useo, parent: Self.projects,
+    loader.replies[Self.group] = .loaded(DirListing(
+      path: Self.group, parent: Self.projects,
       entries: [DirEntry(name: "app", path: Self.app, git: true, history: true), DirEntry(name: "notes", path: Self.notes)],
       canCreate: true))
     browser.openCreate()
     browser.typeName("notes")
     browser.submitCreate()
-    await settle { loader.calls.filter { $0 == Self.useo }.count == 2 && browser.view.status == .ready }
+    await settle { loader.calls.filter { $0 == Self.group }.count == 2 && browser.view.status == .ready }
     #expect(browser.view.entries.map(\.name) == ["app", "notes"], "the listing shows what is there now")
     #expect(browser.creating?.error == "Something with that name already exists here.")
     #expect(browser.creating?.name == "notes" && browser.creating?.sending == false)
-    #expect(browser.view.dir == Self.useo && browser.chosen == Self.app)
+    #expect(browser.view.dir == Self.group && browser.chosen == Self.app)
   }
 }

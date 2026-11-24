@@ -30,10 +30,11 @@ and log retention: `docs/security-model.md`, "iroh relay on a VPS".
   every other one. Tailscale on the VPS runs with `--netfilter-mode=off`, so this file holds every firewall rule.
 - `relay-watch.mjs` (`/opt/relay-vps/`, state in `/var/lib/relay-watch`): a watchdog that alerts on outgoing
   traffic averaging at least 80% of the 100 Mbit/s `tc` cap over an hour, on 15 TB in a calendar month (UTC), on
-  over 6000 established connections on 443 and on `why=status:401` lines in the adapter log. Its state also keeps
-  the highest connection count of today and yesterday (UTC).
+  over 6000 established connections on 80 and 443 (the ports of the firewall connection budget) and on
+  `why=status:401` lines in the adapter log. Its state also keeps the highest connection count of today and
+  yesterday (UTC).
 - `relay-stats.mjs` (`/opt/relay-vps/`, linked as `/usr/local/bin/relay-stats`): a one-screen load summary for root:
-  established connections on 443 per source (IPv4 address, IPv6 /64) against the firewall limits, today's and
+  established connections on 80 and 443 per source (IPv4 address, IPv6 /64) against the firewall limits, today's and
   yesterday's peak, packet counters of the firewall's drop and reject rules since the last rule load (a service
   start or `nft -f`), the relay's metrics counters, uptime and memory, this month's outgoing traffic and the average
   rate over relay-watch's sample window (up to an hour, labelled with its length), and the access hook's decisions
@@ -63,8 +64,11 @@ COPYFILE_DISABLE=1 tar -czf - relay-vps | ssh root@<host> 'tar -C /root -xzf - &
 
 `install.sh [--certs <archive>]` runs these steps in order:
 
-1. installs `nodejs`, `nftables`, `iproute2`, `cron`, `unattended-upgrades`, `curl` and `openssl` from the distribution;
+1. installs `nodejs`, `nftables`, `iproute2`, `cron`, `unattended-upgrades`, `curl` and `openssl` from the distribution,
+   then checks `nftables.conf` with `nft -c`; rules that `nft` rejects end the run with code 2 before any relay file
+   is written and before the rollback timer;
 2. downloads iroh-relay 1.4.1 from the GitHub release and checks the archive and program sha256 pinned in the script;
+   the binary it overwrites stays as `/usr/local/bin/iroh-relay.prev`;
 3. creates the `iroh-relay` user, copies only the files above that differ from those already on the VPS and saves
    the original `/etc/nftables.conf` once as `/etc/nftables.conf.orig`;
 4. generates the hook bearer token into `/etc/iroh-relay/relay.env` (0600) only when missing, without printing it;
@@ -122,6 +126,9 @@ node scripts/relay-canary.mjs [--relay-only]
 - `unknown`: a fresh random key; the relay admits it within 10 s in `shadow` mode and rejects it within 10 s in
   `enforce` mode. The registry Worker's `ENFORCE` variable sets the mode (`relay-auth/README.md`); in `shadow` mode
   the Worker answers `true` to every key and only logs its decision.
+- `renew`: key 0 from `RELAY_CANARY_KEYS` signs the registry's `renew` with key 1's EndpointId on the list, which
+  extends both entries by 90 days. The step fails on a 404 (key 0 lost its app entry), on a non-empty
+  `unsponsored` (key 1 lost its sponsorship) and on any other answer than 200. Without the variable it is skipped.
 - `registered`: the first key from `RELAY_CANARY_KEYS` (two comma-separated secret keys with a registry entry) gets
   in within 10 s. Without the variable the step is skipped with a reason.
 - `rate`: 60 MB over one connection through the relay alone in 14–18 s, which confirms the 3 MB/s limit and the
@@ -130,9 +137,16 @@ node scripts/relay-canary.mjs [--relay-only]
   `RELAY_CANARY_KEYS`, or two random keys in `shadow` mode; in `enforce` mode without the variable the step is
   skipped.
 
-Variables: `RELAY_CANARY_URL` (default `https://relay.rarog.ai/`), `RELAY_CANARY_MODE` (the mode the canary
-expects: `shadow`, the default, or `enforce`), `RELAY_CANARY_KEYS`. Exit code 0: every step passed or was
-skipped; 1: a failure; 2: a bad argument or a missing iroh module.
+Variables: `RELAY_CANARY_URL` (default `https://relay.rarog.ai/`), `RELAY_CANARY_REGISTRY` (the registry Worker,
+default `https://relay-auth.rarog.ai/`), `RELAY_CANARY_MODE` (the mode the canary expects: `shadow`, the default,
+or `enforce`), `RELAY_CANARY_KEYS`. Exit code 0: every step passed or was skipped; 1: a failure; 2: a bad argument
+or a missing iroh module.
+
+Key roles in `RELAY_CANARY_KEYS`: each key is 32 random bytes in hex (an iroh secret key; `openssl rand -hex 32`
+gives one). Key 0 has an app entry in the registry, which only `register` with a gate proof from Apple creates
+(`relay-auth/README.md`, "How it works"). Key 1 has a server entry, created when key 0 sponsors it with `sponsor`.
+Both entries end 90 days after the last renewal, and the `renew` step renews both on every run, so the canary every
+6 h keeps them alive. After a red `renew` both keys need these two entries again.
 
 ## How it is checked
 
@@ -157,7 +171,7 @@ CI on Ubuntu runs the same checks as separate steps (`docs/publishing.md`, "CI")
   daily connection peak;
 - `relay-stats.test.ts`: parsers of `ss`, `nft`, metrics and the adapter log, the report with a failed read, and no
   EndpointId prefix in the output;
-- `canary.test.ts`: canary keys, the verdict of the `rate` step, arguments;
+- `canary.test.ts`: canary keys, the signed `renew` and its verdicts, the verdict of the `rate` step, arguments;
 - `bramka.test.ts`: `scripts/check.sh` in a fake repo with broken bash, ShellCheck and TOML files from
   `test/fixtures/`; each fails its step. In the repo the fixtures sit in a subdirectory, so the gate's glob skips
   them.

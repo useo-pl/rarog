@@ -402,20 +402,6 @@ describe('zdania bramki protokołu herdr', () => {
     expectSay(status.detail, 'herdr.protocol-too-old', [String(oldest - 1), String(oldest)]);
     expect(status).toMatchObject({ available: false, readOnly: true });
   });
-
-  it('protokół nieznany nowszy: tylko odczyt, mutacja odbita tym samym zdaniem', async () => {
-    const h = socketHarness({ protocol: TESTED_PROTOCOL + 1 });
-    sockets.push(h.socket);
-    h.reply.fn = (conn, frame) => { queueMicrotask(() => conn.reply({ id: frame.id, result: { agents: [] } })); };
-    await h.socket.request('agent.list', {});
-    const tested = [...KNOWN_PROTOCOLS].join(', ');
-    const status = h.socket.status();
-    expectSay(status.detail, 'herdr.protocol-unknown', [String(TESTED_PROTOCOL + 1), tested]);
-    expect(status).toMatchObject({ available: true, readOnly: true });
-    const mutating = [...MUTATING_METHODS][0] ?? '';
-    expectSay(await sentenceRejected(h.socket.request(mutating, {})), 'herdr.protocol-unknown',
-      [String(TESTED_PROTOCOL + 1), tested]);
-  });
 });
 
 // ---------------------------------------------------------------------------

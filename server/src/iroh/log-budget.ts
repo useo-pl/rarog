@@ -28,6 +28,7 @@ export const IROH_REFUSALS = [
   'origin', // mutation with an `Origin` other than `IROH_ORIGIN`
   'upgrade-refused', // WebSocket upgrade refused
   'login', // `/api/login` over iroh
+  'bad-url', // request target that `URL` cannot parse
 ] as const;
 
 export type IrohRefusal = typeof IROH_REFUSALS[number];

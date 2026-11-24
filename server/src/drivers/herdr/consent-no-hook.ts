@@ -2,9 +2,12 @@
  * Consent without a hook, a module of the herdr driver: it recognizes a tool permission dialog in channel mode (`main`,
  * `all`) to which Rarog's `PermissionRequest` hook left no trace within the grace {@link NO_HOOK_GRACE_MS}, gathers the
  * session facts and writes one `consent: no hook` line per dialog episode; it also writes one `consent: no approve
- * button` line per card whose approve button the channel gate took. It only reads and logs: the card, its buttons and
- * every key stay with the facade `drivers/herdr-driver.ts`. The cause rule and the line format live in
- * `herdr/dialogs/no-hook.ts`; the sources (traces, session facts, `ps`, `statusLine`) come from the server start.
+ * button` line per card whose approve button the channel gate took. It keeps the judgement of the episode (cause,
+ * `ps`, foreign hook) for the emergency approve button (`screen-fallback.ts`), judges again, without a line, while a
+ * fact that refuses the button may mend, and tells the driver when the server's restart grace ends. It only reads and
+ * logs: the card, its buttons and every key stay with the facade `drivers/herdr-driver.ts`. The cause rule and the
+ * line format live in `herdr/dialogs/no-hook.ts`; the sources (traces, session facts, `ps`, `statusLine`, the restart
+ * grace) come from the server start.
  */
 import type { CliDialogClass } from '@rarog/shared';
 import type { Scheduler, TimerHandle } from '../runtime.ts';
@@ -12,10 +15,11 @@ import {
   consentModeNow, noApproveButtonLine, noHookCause, noHookLine, offPathApprove, subagentDialogOnScreen,
 } from '../../herdr/dialogs/index.ts';
 import type {
-  ConsentGateSource, DecisionCard, NoHookThread, StatuslineFreshness,
+  ConsentGateSource, DecisionCard, NoHookCause, NoHookThread, StatuslineFreshness,
 } from '../../herdr/dialogs/index.ts';
 import { consentChannelOpen } from '../../herdr/dialogs/hook/contract.ts';
 import type { SessionFacts, SessionFactsQuery } from '../../herdr/dialogs/layer1/hook-list/session-facts.ts';
+import type { ConsentScreenKey } from '../../herdr/dialogs/layer1/screen-key.ts';
 import type { ConsentProofRules } from '../../herdr/dialogs/layer1/version-gate.ts';
 
 /**
@@ -33,8 +37,23 @@ export const NO_HOOK_GRACE_MS = 3_000;
  */
 export const NO_HOOK_EVALUATIONS = 3;
 
+/**
+ * How long past the grace a card waits for the first judgement ({@link NoHookStanding.pending}): `ps` gives up after
+ * 1 s, but a facts read that hangs must not keep the card from the phone. Past it the card goes out without the
+ * emergency button, and a judgement that ends later can still give it to the same card.
+ */
+export const NO_HOOK_JUDGE_WAIT_MS = 2_000;
+
 /** Reads of the session facts per episode: a read that ends on another process or `cwd` gives none and goes again. */
 const FACTS_READS = 2;
+
+/**
+ * Judgements after the first, at a registry signal at most once per {@link NO_HOOK_REJUDGE_MS}, while the hook process
+ * stands in `ps` or the hook list is in doubt: the same card gets the emergency button once the fact mends. Past the
+ * budget (about a minute of signals) the doubt stays and the card stays without it.
+ */
+export const NO_HOOK_REJUDGE_MAX = 40;
+export const NO_HOOK_REJUDGE_MS = 1_000;
 
 /** Card identities remembered for the `no approve button` line; past the cap the memory starts again. */
 const BUTTONLESS_MAX = 256;
@@ -56,6 +75,32 @@ export interface ConsentNoHookSources {
   statusline(engineSessionId: string): Promise<StatuslineFreshness>;
   /** The proof rules of the session now; `null` = unknown. */
   proofRules(engineSessionId: string): ConsentProofRules | null;
+  /** The server is within its restart grace (`RAROG_CONSENT_RESTART_GRACE` from the process start). */
+  restarting(): boolean;
+  /** The emergency button sent its digit: the consent cycle ties a hook that registers after it to the key. */
+  screenKey?(engineSessionId: string, key: ConsentScreenKey): void;
+}
+
+/** The judgement of an episode the emergency approve button stands on. */
+export interface NoHookJudgement {
+  readonly cause: NoHookCause;
+  readonly hookRunning: boolean | null;
+  readonly foreignHook: boolean | null;
+}
+
+/** The standing episode as the emergency approve button reads it ({@link ConsentNoHook.standing}). */
+export interface NoHookStanding {
+  readonly id: string;
+  readonly sessionId: string;
+  /** The judgement past the grace; `null` while in the grace, while judging the first time or without channel mode. */
+  readonly judgement: NoHookJudgement | null;
+  /** The card waits: in the grace, or while the first judgement reads, {@link NO_HOOK_JUDGE_WAIT_MS} at most. */
+  readonly pending: boolean;
+  /** The episode start, epoch ms, and the start of its trace window (end of the previous episode). */
+  readonly t0: number;
+  readonly since: number;
+  /** End of the grace in the scheduler's clock. */
+  readonly graceEnd: number;
 }
 
 /** Driver dependencies the module reads; the same fields as in the driver's deps. */
@@ -83,6 +128,8 @@ export interface ConsentNoHookPort {
   blockedNow(): boolean;
   /** Number of the effective block. */
   blockedSeq(): number;
+  /** A judgement of the episode began or ended: the emergency approve button may have changed. */
+  judged?(): void;
   /** Start of the effective block: herdr `blocked` or the entry into the CLI registry hold, whichever came first. */
   blockedAt(): number;
   /** When Rarog's own last key went to the pane. */
@@ -117,6 +164,12 @@ interface Episode {
   timer: TimerHandle | null;
   /** Evaluations begun so far, bounded by {@link NO_HOOK_EVALUATIONS}. */
   evaluations: number;
+  judgement: NoHookJudgement | null;
+  /** The judgement came within the server's restart grace: its end changes the emergency approve button. */
+  restarting: boolean;
+  judging: boolean;
+  rejudged: number;
+  judgedAt: number;
   /** `grace` within the grace, `due` past it without a judgement yet, `judged` once judged, `ended` after its end. */
   state: 'grace' | 'due' | 'judged' | 'ended';
 }
@@ -190,6 +243,7 @@ export class ConsentNoHook {
       id: `no-hook:${String(episodes)}`, sessionId, blockSeq: this.#port.blockedSeq(), t0, openedAt: now,
       since: this.#since, callId: undefined, print: undefined, tool: card.active.toolName, screenButton: false,
       thread: 'main', waiting: this.#port.cliWaiting() === 'permission', timer: null, evaluations: 0, state: 'grace',
+      judgement: null, restarting: false, judging: false, rejudged: 0, judgedAt: 0,
     };
     this.#describe(episode, card);
     this.#episode = episode;
@@ -197,7 +251,31 @@ export class ConsentNoHook {
       episode.timer = null;
       if (episode.state === 'grace') episode.state = 'due';
       this.#observe(() => { this.#judge(episode); });
+      this.#judged();
+      // A first judgement still reading its facts at the end of the wait lets the card go.
+      if (episode.judging && episode.state !== 'ended') {
+        episode.timer = this.#scheduler.setTimeout(() => {
+          episode.timer = null;
+          this.#judged();
+        }, NO_HOOK_JUDGE_WAIT_MS);
+      }
     }, Math.max(0, t0 + NO_HOOK_GRACE_MS - now));
+  }
+
+  /** The standing episode, `null` without one; never throws. */
+  standing(): NoHookStanding | null {
+    try {
+      const episode = this.#episode;
+      if (episode === null || !this.#stands(episode)) return null;
+      return {
+        id: episode.id, sessionId: episode.sessionId, judgement: episode.judgement,
+        pending: episode.state === 'grace' || (episode.judging && episode.judgement === null
+          && this.#scheduler.now() < episode.t0 + NO_HOOK_GRACE_MS + NO_HOOK_JUDGE_WAIT_MS),
+        t0: this.#epochOf(episode.t0), since: episode.since, graceEnd: episode.t0 + NO_HOOK_GRACE_MS,
+      };
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -241,6 +319,27 @@ export class ConsentNoHook {
     }
     if (this.#port.cliWaiting() === 'permission') episode.waiting = true;
     if (episode.state === 'due') this.#judge(episode);
+    else if (this.#mendable(episode)) this.#rejudge(episode);
+    else if (episode.state === 'judged' && !episode.judging && episode.restarting && !this.#restarting()) {
+      // The restart grace ended past the judgement: no fact to read again, only the button to ask again.
+      episode.restarting = false;
+      this.#judged();
+    }
+  }
+
+  /** A judged episode whose `ps` or hook list refuses the button, with budget and pause left, and no read running. */
+  #mendable(episode: Episode): boolean {
+    const judgement = episode.judgement;
+    return episode.state === 'judged' && judgement !== null && !episode.judging
+      && (judgement.hookRunning !== false || judgement.foreignHook !== false)
+      && episode.rejudged < NO_HOOK_REJUDGE_MAX && this.#scheduler.now() - episode.judgedAt >= NO_HOOK_REJUDGE_MS;
+  }
+
+  #rejudge(episode: Episode): void {
+    const sources = this.#deps.consentNoHook;
+    if (sources === undefined || !this.#stands(episode) || this.#traced(sources, episode)) return;
+    episode.rejudged += 1;
+    void this.#judgeFacts(sources, episode, false).catch((err: unknown) => { this.#failed(err); });
   }
 
   /**
@@ -342,10 +441,27 @@ export class ConsentNoHook {
     episode.state = 'judged';
     if (this.#traced(sources, episode)) return;
     episode.evaluations += 1;
-    void this.#judgeFacts(sources, episode).catch((err: unknown) => { this.#failed(err); });
+    void this.#judgeFacts(sources, episode, true).catch((err: unknown) => { this.#failed(err); });
   }
 
-  async #judgeFacts(sources: ConsentNoHookSources, episode: Episode): Promise<void> {
+  /** The first judgement writes the `no hook` line; a later one only renews the facts of the emergency button. */
+  async #judgeFacts(sources: ConsentNoHookSources, episode: Episode, first: boolean): Promise<void> {
+    episode.judging = true;
+    try {
+      await this.#judgeOnce(sources, episode, first);
+    } finally {
+      episode.judging = false;
+      episode.judgedAt = this.#scheduler.now();
+      // The first judgement ended: the wait it had (grace timer callback) is over.
+      if (first && episode.timer !== null) {
+        this.#scheduler.clearTimeout(episode.timer);
+        episode.timer = null;
+      }
+      this.#judged();
+    }
+  }
+
+  async #judgeOnce(sources: ConsentNoHookSources, episode: Episode, first: boolean): Promise<void> {
     let facts: SessionFacts | null = null;
     for (let read = 0; read < FACTS_READS && facts === null; read += 1) {
       facts = await sources.facts({ sessionId: episode.sessionId, episode: episode.id }).catch((): null => null);
@@ -360,17 +476,21 @@ export class ConsentNoHook {
     // the episode has evaluations left.
     if (this.#episode !== episode || !this.#stands(episode) || this.#traced(sources, episode)) return;
     if (!consentChannelOpen(consentModeNow(this.#deps)) || this.#port.cliWaiting() !== 'permission') {
-      if (episode.evaluations < NO_HOOK_EVALUATIONS) episode.state = 'due';
+      if (first && episode.evaluations < NO_HOOK_EVALUATIONS) episode.state = 'due';
       return;
     }
     const layers = facts?.layers ?? null;
+    const cause = noHookCause({
+      hookRunning, outsideWorkArea: this.#outsideWorkArea(sources, facts?.cwd ?? null),
+      disableAllHooks: layers?.disableAllHooks ?? null, allowManagedHooksOnly: layers?.allowManagedHooksOnly ?? null,
+      rarogEntry: layers?.rarogEntry ?? null,
+    });
+    episode.judgement = { cause, hookRunning, foreignHook: facts?.foreignHook ?? null };
+    episode.restarting = this.#restarting();
+    if (!first) return;
     this.#log(noHookLine({
       sessionId: episode.sessionId,
-      cause: noHookCause({
-        hookRunning, outsideWorkArea: this.#outsideWorkArea(sources, facts?.cwd ?? null),
-        disableAllHooks: layers?.disableAllHooks ?? null, allowManagedHooksOnly: layers?.allowManagedHooksOnly ?? null,
-        rarogEntry: layers?.rarogEntry ?? null,
-      }),
+      cause,
       tool: episode.tool, cli: this.#port.cliVersion(), mode: this.#port.permissionMode(), thread: episode.thread,
       afterMs: this.#scheduler.now() - episode.t0, hooks: facts?.verdict ?? null, statusline,
       screenButton: episode.screenButton,
@@ -403,6 +523,15 @@ export class ConsentNoHook {
     return screen !== null && subagentDialogOnScreen(screen) ? 'subagent' : 'main';
   }
 
+  /** The server is within its restart grace; an exception counts as within. */
+  #restarting(): boolean {
+    try {
+      return this.#deps.consentNoHook?.restarting() ?? false;
+    } catch {
+      return true;
+    }
+  }
+
   #proofRules(sessionId: string): ConsentProofRules | null {
     try {
       return this.#deps.consentNoHook?.proofRules(sessionId) ?? null;
@@ -413,5 +542,10 @@ export class ConsentNoHook {
 
   #log(line: string): void {
     this.#deps.logger?.(line);
+  }
+
+  /** Tells the port that the judgement changed; its failure stays here. */
+  #judged(): void {
+    this.#observe(() => { this.#port.judged?.(); });
   }
 }

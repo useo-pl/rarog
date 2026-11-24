@@ -20,7 +20,7 @@ import type { Scheduler, TimerHandle } from '../src/drivers/runtime.ts';
 import {
   ALLOWED_METHODS, HerdrMethodNotAllowedError, HerdrRemoteError, HerdrUnavailableError,
   LINE_MAX_CHARS, LineSplitter, MAX_INFLIGHT, MUTATING_METHODS, READ_METHODS,
-  SUBSCRIBE_METHOD, SUBSCRIBE_START_TIMEOUT_MS, TESTED_PROTOCOL, createHerdrSocket,
+  KNOWN_PROTOCOLS, SUBSCRIBE_METHOD, SUBSCRIBE_START_TIMEOUT_MS, TESTED_PROTOCOL, createHerdrSocket,
   normalizeEventKind,
 } from '../src/herdr/socket.ts';
 import type { HerdrConnectFn, HerdrStreamEvent } from '../src/herdr/socket.ts';
@@ -140,7 +140,7 @@ interface Harness {
   /** Połączenia bramki protokołu — po nich widać, czy memo zostało unieważnione. */
   pings(): FakeConnection[];
   /** Podmienia wersję protokołu ODDAWANĄ przez atrapę (herdr zaktualizowany pod nami). */
-  setProtocol(next: number | null): void;
+  setProtocol(next: number | 'missing' | null): void;
   /**
    * SZCZYT liczby jednocześnie żywych gniazd — mierzony w chwili otwierania każdego z nich.
    *
@@ -153,17 +153,15 @@ interface Harness {
 /**
  * Atrapa gniazda + klient na niej.
  *
- * `protocol` domyślnie {@link TESTED_PROTOCOL}, a przypadki „obcego numeru" liczą się
- * arytmetyką `TESTED_PROTOCOL ± 1`. To jest poprawne DOPÓKI zbiór `KNOWN_PROTOCOLS` ma JEDEN
- * element: wtedy `−1` wpada pod minimum (integracja wyłączona), a `+1` jest nieznany (tylko
- * odczyt). Przy dołożeniu DRUGIEGO numeru arytmetyka przestaje trafiać (`max − 1` może być
- * numerem ZNANYM) i te testy trzeba przepiąć na jawne numery spoza zbioru.
+ * `protocol` defaults to {@link TESTED_PROTOCOL}; `'missing'` answers the ping with a pong without a protocol
+ * number, and `null` does not answer it at all. Cases around the gate count from the minimum of `KNOWN_PROTOCOLS`
+ * (below it: off) and from its maximum (above it: an untested number with full integration).
  *
  * `capabilities` domyślnie NIE MA w pongu — tak wygląda odpowiedź serwera bez tego pola
  * (schemat 0.9.0: `capabilities` ma `default: null`, więc brak i `null` są oba normalne).
  */
 function harness(opts: {
-  protocol?: number | null; autoConnect?: boolean; sendEnabled?: boolean;
+  protocol?: number | 'missing' | null; autoConnect?: boolean; sendEnabled?: boolean;
   capabilities?: Record<string, unknown> | null;
   onStatus?: (status: { available: boolean }) => void;
 } = {}): Harness {
@@ -184,7 +182,7 @@ function harness(opts: {
             result: {
               type: 'pong',
               version: '0.9.0',
-              protocol,
+              ...(protocol === 'missing' ? {} : { protocol }),
               ...(opts.capabilities === undefined ? {} : { capabilities: opts.capabilities }),
             },
           })}\n`);
@@ -466,8 +464,8 @@ describe('allow-lista metod', () => {
 
   it('każda metoda ma jawną klasę: ALLOWED = ODCZYTY ∪ ZAPISY, zbiory rozłączne', () => {
     /*
-     * To jest DOZÓR nad granicą bezpieczeństwa, nie inwentaryzacja. `readOnly` (czyli
-     * `RAROG_HERDR_SEND=0` ORAZ nieznany protokół) jest sprawdzany WYŁĄCZNIE po
+     * To jest DOZÓR nad granicą bezpieczeństwa, nie inwentaryzacja. `readOnly` (that is,
+     * `RAROG_HERDR_SEND=0`) is checked ONLY against
      * `MUTATING_METHODS`, więc metoda zapisu, która wejdzie na allow-listę z pominięciem tej
      * listy, pisałaby do panelu przy zamkniętym kanale zapisu — runbook „kradzież telefonu"
      * byłby fikcją. Poprzednia wersja tego testu chodziła po SZTYWNEJ liście siedmiu nazw
@@ -546,18 +544,38 @@ describe('allow-lista metod', () => {
 });
 
 describe('bramka protokołu', () => {
-  it('testowany protokół → wszystko działa', async () => {
-    const h = harness({ protocol: TESTED_PROTOCOL });
-    const pending = h.socket.request('agent.list', {});
-    await flush();
-    // `id` odbite z ramki żądania, a nie wymyślone: od kontroli korelacji obce `id` jest
-    // błędem protokołu (patrz test „odpowiedź z obcym `id`…").
-    const connOk = h.requests()[0]!;
-    connOk.push(`${JSON.stringify({ id: connOk.frame.id, result: { agents: [] } })}\n`);
-    await expect(pending).resolves.toBeDefined();
-    expect(h.socket.status())
-      .toMatchObject({ available: true, readOnly: false, protocol: TESTED_PROTOCOL });
-  });
+  /*
+   * The gate is a minimum: a number at or above the oldest tested one gets full integration, also above the tested
+   * maximum. Today the rows are 21, 22, 23 and a pong without a number. A full row sends a mutating method, checks
+   * that its frame reached the socket and that the status is the plain `{available: true, readOnly: false}`.
+   */
+  const oldest = Math.min(...KNOWN_PROTOCOLS);
+  const rows: readonly { protocol: number | 'missing'; full: boolean }[] = [
+    { protocol: oldest - 1, full: false },
+    { protocol: oldest, full: true },
+    { protocol: TESTED_PROTOCOL + 1, full: true },
+    { protocol: 'missing', full: false },
+  ];
+  for (const row of rows) {
+    const outcome = row.full ? 'full integration, `agent.prompt` goes out' : 'off, nothing goes past the ping';
+    it(`protocol ${String(row.protocol)} → ${outcome}`, async () => {
+      const h = harness({ protocol: row.protocol });
+      const pending = h.socket.request('agent.prompt', { target: 'w9:p72', text: 'x' });
+      if (!row.full) {
+        await expect(pending).rejects.toBeInstanceOf(HerdrUnavailableError);
+        expect(h.requests()).toHaveLength(0);
+        expect(h.socket.status()).toMatchObject({ available: false, readOnly: true });
+        return;
+      }
+      await flush();
+      const conn = h.requests()[0]!;
+      expect(conn.frame).toMatchObject({ method: 'agent.prompt', params: { target: 'w9:p72', text: 'x' } });
+      conn.push(`${JSON.stringify({ id: conn.frame.id, result: { ok: true } })}\n`);
+      await expect(pending).resolves.toBeDefined();
+      expect(h.socket.status()).toMatchObject({ available: true, readOnly: false, protocol: row.protocol });
+      expect(h.socket.status().detail).toBeUndefined();
+    });
+  }
 
   it('znany protokół + `capabilities` z generacją → pełna integracja, generacja w statusie',
     async () => {
@@ -614,33 +632,6 @@ describe('bramka protokołu', () => {
       });
     });
 
-  it('protokół starszy o 1 → integracja nieaktywna, żadne żądanie nie idzie dalej', async () => {
-    const h = harness({ protocol: TESTED_PROTOCOL - 1 });
-    await expect(h.socket.request('agent.list', {})).rejects.toBeInstanceOf(
-      HerdrUnavailableError,
-    );
-    // Poszedł WYŁĄCZNIE ping bramki.
-    expect(h.requests()).toHaveLength(0);
-    expect(h.socket.status()).toMatchObject({ available: false, readOnly: true });
-  });
-
-  it('protokół nowszy o 1 → `agent.list` przechodzi, `agent.prompt` jest blokowany', async () => {
-    const h = harness({ protocol: TESTED_PROTOCOL + 1 });
-    const pending = h.socket.request('agent.list', {});
-    await flush();
-    const conn = h.requests()[0]!;
-    conn.push(`${JSON.stringify({ id: conn.frame.id, result: { agents: [] } })}\n`);
-    await expect(pending).resolves.toBeDefined();
-
-    const before = h.conns.length;
-    await expect(h.socket.request('agent.prompt', { target: 'w9:p72', text: 'x' }))
-      .rejects.toBeInstanceOf(HerdrReadOnlyError);
-    // Mutacja nie otworzyła ANI JEDNEGO nowego połączenia.
-    expect(h.conns).toHaveLength(before);
-    expect(h.socket.status().readOnly).toBe(true);
-    expect(h.socket.status().detail?.text).toContain(String(TESTED_PROTOCOL + 1));
-  });
-
   it('RAROG_HERDR_SEND=0 → odczyty działają, mutacje rzucają', async () => {
     const h = harness({ protocol: TESTED_PROTOCOL, sendEnabled: false });
     const pending = h.socket.request('agent.read', { target: 'w9:p72', source: 'visible' });
@@ -669,11 +660,11 @@ describe('bramka protokołu', () => {
       expect(h.requests()).toHaveLength(0);
     });
 
-  it('RAROG_HERDR_SEND=0 i nieznany protokół → `pane.rename` i `tab.rename` rzucają',
+  it('RAROG_HERDR_SEND=0 on the tested and on a newer protocol → `pane.rename` and `tab.rename` throw',
     async () => {
       for (const opts of [
         { protocol: TESTED_PROTOCOL, sendEnabled: false },
-        { protocol: TESTED_PROTOCOL + 1 },
+        { protocol: TESTED_PROTOCOL + 1, sendEnabled: false },
       ]) {
         const h = harness(opts);
         await expect(h.socket.request('pane.rename', { pane_id: 'w9:p9', label: 'x' }))
@@ -721,16 +712,14 @@ describe('bramka protokołu', () => {
     await expect(pending).resolves.toBeDefined();
   });
 
-  it('utrata gniazda unieważnia memo — herdr wznowiony na nowszym protokole blokuje mutację',
+  it('a socket loss clears the memo: herdr back below the minimum blocks the mutation',
     async () => {
       /*
-       * Scenariusz `herdr update --handoff`: bramka protokołu przeszła na testowany numer, potem gniazdo
-       * padło, a wrócił serwer z INNYM numerem protokołu. Memo `probe` kasowała dotąd wyłącznie
-       * pętla reconnectu subskrypcji — i to dopiero po backoffie (1–30 s), więc przez całe to
-       * okno `request()` uważał nowy protokół za przetestowany i przepuszczał zapisy do panelu.
-       * Tu nie ma subskrypcji w ogóle, więc bez naprawy memo nie kasuje NIC i `agent.prompt`
-       * wysyła ramkę do serwera o niezweryfikowanej semantyce.
+       * `herdr update --handoff`: the gate passed on the tested number, then the socket dropped and a server with
+       * ANOTHER protocol number came back. There is no subscription here, so only the socket loss can clear the
+       * `probe` memo; a kept memo would let `agent.prompt` send its frame to a server whose protocol nobody checked.
        */
+      const below = Math.min(...KNOWN_PROTOCOLS) - 1;
       const h = harness({ protocol: TESTED_PROTOCOL });
       const first = h.socket.request('agent.list', {});
       await flush();
@@ -741,39 +730,27 @@ describe('bramka protokołu', () => {
         .toMatchObject({ available: true, readOnly: false, protocol: TESTED_PROTOCOL });
       expect(h.pings()).toHaveLength(1);
 
-      // herdr znika w trakcie żądania…
+      // herdr goes away during a request…
       const dropped = h.socket.request('agent.list', {});
       await flush();
       h.requests().at(-1)!.fail('ECONNRESET');
       await expect(dropped).rejects.toBeInstanceOf(HerdrUnavailableError);
       expect(h.socket.status().available).toBe(false);
-      // …i wraca jako nowsza wersja.
-      h.setProtocol(TESTED_PROTOCOL + 1);
+      // …and comes back with a protocol below the minimum.
+      h.setProtocol(below);
 
       const before = h.requests().length;
       const blocked = h.socket.request('agent.prompt', { target: 'w9:p72', text: 'x' });
-      // Asercję zakładamy OD RAZU: bez naprawy `blocked` nigdy się nie rozstrzyga (ramka poszła
-      // do gniazda i czeka na odpowiedź), więc test ma paść na liczbie połączeń, nie na timeoucie.
-      const rozstrzygniecie = expect(blocked).rejects.toBeInstanceOf(HerdrReadOnlyError);
+      // The assertion is set up at once: with a kept memo `blocked` never settles (the frame went to the socket and
+      // waits for an answer), so the test fails on the request count, not on a timeout.
+      const settled = expect(blocked).rejects.toBeInstanceOf(HerdrUnavailableError);
       await flush();
-      // Bramka poszła jeszcze raz (drugi ping) i zobaczyła nowszy numer — ramka promptu nie powstała.
+      // The gate ran again (a second ping) and saw the old number: no prompt frame was made.
       expect(h.pings()).toHaveLength(2);
       expect(h.requests()).toHaveLength(before);
-      await rozstrzygniecie;
-      expect(h.socket.status()).toMatchObject({ readOnly: true, protocol: TESTED_PROTOCOL + 1 });
+      await settled;
+      expect(h.socket.status()).toMatchObject({ available: false, readOnly: true, protocol: below });
     });
-
-  it('nowszy protokół blokuje tworzenie, ale `pane.list` dalej działa', async () => {
-    const h = harness({ protocol: TESTED_PROTOCOL + 1 });
-    const pending = h.socket.request('pane.list', {});
-    await flush();
-    const conn = h.requests().at(-1)!;
-    conn.push(`${JSON.stringify({ id: conn.frame.id, result: { panes: [] } })}\n`);
-    await expect(pending).resolves.toBeDefined();
-
-    await expect(h.socket.request('agent.start', { name: 'rarog-abc', kind: 'claude' }))
-      .rejects.toBeInstanceOf(HerdrReadOnlyError);
-  });
 });
 
 describe('timeouty', () => {

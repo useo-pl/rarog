@@ -141,6 +141,8 @@ export async function routeSystem(
    * Endpoint nie przyjmuje żadnych parametrów i nigdy ich nie przyjmie: wszystko, co
    * konfiguruje strumień (region, model, format, limity), jest decyzją serwera. Ciało
    * czytamy wyłącznie po to, żeby domknąć żądanie i utrzymać limit 64 kB.
+   * After the key arrives the device is checked again: a device revoked meanwhile gets 401 and the key is dropped (it
+   * expires on its own).
    */
   if (pathname === '/api/voice/token') {
     if (method !== 'POST') return methodNotAllowed(res, 'POST');
@@ -151,6 +153,7 @@ export async function routeSystem(
       sendError(res, result.status, result.error, result.sentence);
       return true;
     }
+    if (!recheckDevice(req, res, 'while minting a dictation key for')) return true;
     // `sendJson` ustawia `Cache-Control: no-store` na KAŻDEJ odpowiedzi API — dla tej
     // jednej to nie jest higiena, tylko wymóg: w ciele jedzie klucz.
     sendJson(res, 200, result.token);

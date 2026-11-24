@@ -25,7 +25,8 @@ import {
   ageGateText, ageGateWait, compareVersions, gateDaysOf, nodeSatisfies,
 } from '../src/cli/update-registry.ts';
 import {
-  RELEASE_SOURCE, provenanceProblem, releaseIdentity, sha512OfIntegrity,
+  OTHER_AUTHORITY, OTHER_AUTHORITY_FIX, RELEASE_SOURCE, REPORT_FIX, provenanceProblem, releaseIdentity,
+  sha512OfIntegrity,
 } from '../src/cli/update-provenance.ts';
 import {
   HOOK_INSTALL_FILES, HOOK_MANIFEST_FILENAME, STATUSLINE_INSTALL_FILES, hookInstallDir, statuslineCommand,
@@ -308,14 +309,18 @@ describe('rarog update: a new version from the npm registry', () => {
   describe('only the attested tarball is installed (provenance)', () => {
     const REPORT = 'Fix: do not install it by hand; report it at https://github.com/useo-pl/rarog/security';
 
-    /** The run refused before any install: code 1, this version untouched, nothing finished, the work dir gone. */
-    function refusedBeforeInstall(run: UpdateRun, root: string, summary: string): void {
+    /**
+     * The run refused before any install: code 1, this version untouched, nothing finished, the work dir gone. The fix
+     * is {@link REPORT} unless the case gives its own.
+     */
+    function refusedBeforeInstall(run: UpdateRun, root: string, summary: string, fix = REPORT): void {
       expect(run.code, run.screen).toBe(1);
       expect(npmArgs().some((args) => args.startsWith('i ')), npmArgs().join('\n')).toBe(false);
       expect(stepLines(run.screen)).toEqual([expect.stringMatching(/^ ✗ Download {7}\S/u)]);
       const screen = flat(run.screen.replace(/\/\n +/gu, '/'));
       expect(screen).toContain(`✗ Download ${summary}`);
-      expect(screen).toContain(REPORT);
+      expect(screen).toContain(fix);
+      if (fix === REPORT) expect(screen).not.toContain('/releases');
       expect(JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))).toMatchObject({ version: '0.1.0' });
       expect(started()).toBeNull();
       expect(started(oldRecord())).toBeNull();
@@ -358,10 +363,6 @@ describe('rarog update: a new version from the npm registry', () => {
       `@rarog/server 0.2.0 was signed by ${identityOf('0.1.9')}`],
       ['a provenance of another tarball', { version: '0.2.0', sha512: sha512Hex('another tarball') },
         'the provenance of @rarog/server 0.2.0 names another tarball'],
-      // What a registry can put into npm's list of verified attestations on its own: every name right, its own keys.
-      ['a provenance with the right names that the certificate authority did not issue',
-        { version: '0.2.0', sha512: sha512Hex(BYTES), authority: FOREIGN },
-        'the provenance of @rarog/server 0.2.0 has a certificate Sigstore did not issue'],
     ])('3. %s → refused before any install', async (_case, provenance: Provenance, summary) => {
       const root = npmInstallation('0.1.0');
       configured();
@@ -369,6 +370,25 @@ describe('rarog update: a new version from the npm registry', () => {
       const run = await runUpdate({ root, npmCli });
       expect(npmArgs().at(-1)).toBe('audit signatures --json --include-attestations');
       refusedBeforeInstall(run, root, summary);
+    });
+
+    // What a registry can put into npm's list of verified attestations on its own: every name right, its own keys.
+    // A new Sigstore certificate looks the same from here, so the fix sends the user to the releases page and gives
+    // no command that would install a version without this check.
+    it('3. a provenance with the right names under another certificate authority (a changed Sigstore certificate or'
+      + ' a forged attestation) → refused before any install, the fix names the releases page', async () => {
+      const root = npmInstallation('0.1.0');
+      configured();
+      const provenance = { version: '0.2.0', sha512: sha512Hex(BYTES), authority: FOREIGN };
+      const npmCli = fakeRegistryNpm({ audit: auditReport(provenance), install: newVersion() });
+      const run = await runUpdate({ root, npmCli });
+      expect(npmArgs().at(-1)).toBe('audit signatures --json --include-attestations');
+      refusedBeforeInstall(run, root, 'the provenance of @rarog/server 0.2.0 has a certificate from another'
+        + ' authority than the pinned one: Sigstore changed its certificate, or the attestation is forged',
+      'Fix: check https://github.com/useo-pl/rarog/releases for a release with Sigstore\'s new certificate before'
+        + ' you install a version by hand; if there is none, report it at https://github.com/useo-pl/rarog/security');
+      expect(run.screen).not.toContain('@latest');
+      expect(run.screen).not.toMatch(/\bnpm (?:i|install)\b/u);
     });
 
     it('4. a matching provenance and sha512 → npm installs exactly the checked file, then the new version finishes',
@@ -679,7 +699,8 @@ describe('rarog update: the provenance npm verified', () => {
   const SHA = sha512Hex('tarball of 0.2.0');
   const expected = { version: '0.2.0', sha512: SHA };
   const report = (p: Partial<Provenance> = {}): unknown => auditReport({ version: '0.2.0', sha512: SHA, ...p });
-  const problemOf = (audit: unknown): string | null => provenanceProblem(audit, expected, AUTHORITY.certificate);
+  const problemOf = (audit: unknown): string | null =>
+    provenanceProblem(audit, expected, AUTHORITY.certificate)?.summary ?? null;
 
   it('the release source is this repository and its publish workflow: an update after a rename would refuse every'
     + ' version', () => {
@@ -717,9 +738,9 @@ describe('rarog update: the provenance npm verified', () => {
   it('provenanceProblem: the attestation is checked here, whatever npm listed as verified', () => {
     const refused = (p: Partial<Provenance>): string | null => problemOf(report(p));
     // Without an authority given, the pinned one decides: a certificate of any other issuer is refused.
-    expect(provenanceProblem(report(), expected))
-      .toBe('the provenance of @rarog/server 0.2.0 has a certificate Sigstore did not issue');
-    expect(refused({ authority: FOREIGN })).toContain('has a certificate Sigstore did not issue');
+    expect(provenanceProblem(report(), expected)?.summary)
+      .toBe(`the provenance of @rarog/server 0.2.0 ${OTHER_AUTHORITY}`);
+    expect(refused({ authority: FOREIGN })).toBe(`the provenance of @rarog/server 0.2.0 ${OTHER_AUTHORITY}`);
     expect(refused({ signature: 'forged' })).toContain('has a signature its certificate did not make');
     expect(refused({ signature: 'none' })).toContain('has a signature its certificate did not make');
     // A second piece of verification material: the signature checker and the name reader could pick different ones.
@@ -730,6 +751,19 @@ describe('rarog update: the provenance npm verified', () => {
     twice.verified[0]?.attestationBundles.push(twice.verified[0].attestationBundles[1]);
     expect(problemOf(twice)).toBe('@rarog/server 0.2.0 has more than one provenance');
   });
+
+  it('provenanceProblem: only another certificate authority gets the releases fix; every other refusal reports',
+    () => {
+      const fixOf = (p: Partial<Provenance>): string | undefined =>
+        provenanceProblem(report(p), expected, AUTHORITY.certificate)?.fix;
+      expect(fixOf({ authority: FOREIGN })).toBe(OTHER_AUTHORITY_FIX);
+      expect(OTHER_AUTHORITY_FIX).toContain(`${RELEASE_SOURCE.repository}/releases`);
+      // A certificate that names someone else is no rotation, whatever text it carries.
+      for (const p of [{ repository: 'https://github.com/someone/rarog' }, { sha512: sha512Hex('another tarball') },
+        { certificate: [`${identityOf('0.2.0')} ${OTHER_AUTHORITY}`] }, { signature: 'forged' as const }]) {
+        expect(fixOf(p), JSON.stringify(p)).toBe(REPORT_FIX);
+      }
+    });
 
   it('sha512OfIntegrity: the sha512 of an SRI string beside other algorithms; anything else gives none', () => {
     expect(sha512OfIntegrity(sriOf('x'))).toBe(sha512Hex('x'));

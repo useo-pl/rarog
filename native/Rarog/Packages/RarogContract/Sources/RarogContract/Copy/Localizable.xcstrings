@@ -4094,7 +4094,7 @@
       }
     },
     "server.herdr.protocol-unknown" : {
-      "comment" : "Server sentence, area herdr, code herdr.protocol-unknown. Arguments: 1. protocol (text), 2. tested (text).",
+      "comment" : "Server sentence, area herdr, code herdr.protocol-unknown. Arguments: 1. protocol (text), 2. tested (text). Retired since 1.1.0.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -5547,6 +5547,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podaj ścieżkę katalogu projektu."
+          }
+        }
+      }
+    },
+    "server.rest.cwd-folder-denied" : {
+      "comment" : "Server sentence, area rest, code rest.cwd-folder-denied. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS doesn't let Rarog into this folder. Change it in System Settings on the Mac (Privacy & Security → Files & Folders)."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS nie wpuszcza Raroga do tego folderu. Zmień to w Ustawieniach systemowych Maca (Prywatność i ochrona → Pliki i foldery)."
+          }
+        }
+      }
+    },
+    "server.rest.cwd-folder-unchecked" : {
+      "comment" : "Server sentence, area rest, code rest.cwd-folder-unchecked. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog can't check access to this folder. The server log has the details."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog nie umie sprawdzić dostępu do tego folderu. Szczegóły są w logu serwera."
+          }
+        }
+      }
+    },
+    "server.rest.cwd-folder-waiting" : {
+      "comment" : "Server sentence, area rest, code rest.cwd-folder-waiting. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog can't open this folder: macOS is probably waiting for someone to click Allow on the Mac."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rarog nie może otworzyć tego folderu: macOS prawdopodobnie czeka, aż ktoś kliknie „Pozwól” przy Macu."
           }
         }
       }

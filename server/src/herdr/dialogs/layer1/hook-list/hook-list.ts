@@ -79,13 +79,13 @@
  * `disableAllHooks`, `allowManagedHooksOnly` and Rarog's entry from those layers; the verdict above ignores them.
  */
 import { execFile } from 'node:child_process';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DISK_LAYOUT } from '../../../commands/registry.ts';
 import type { HookCallDump } from '../../hook/contract.ts';
 import { parseElapsed } from '../../shadow/liveness.ts';
 import { HOOK_PERMISSION_EVENT } from '../../../hook-commands.ts';
-import { readRegularFile } from '../../../../safe-read.ts';
+import { DIRECT_DISK, type WorkAreaDisk } from '../../../../folder-gate/disk.ts';
+import type { DiskHead } from '../../../../folder-gate/types.ts';
 
 /** Zapas na rozdzielczość `etime` (pełne sekundy) i czas samego `ps`. */
 export const HOOK_LIST_START_SLACK_MS = 2_000;
@@ -1007,28 +1007,38 @@ function absent(err: unknown): null {
   throw err;
 }
 
+/** Milliseconds with the fraction the number form of `stat` carries; the port's bigint `*Ms` drops it. */
+const msOf = (ns: bigint): number => Number(ns) / 1e6;
+
+/** The disk side of {@link HookListIo} on a work-area disk: settings layers lie under home and in project folders. */
+function hookListDiskIo(disk: WorkAreaDisk): Omit<HookListIo, 'ps'> {
+  return {
+    async lstat(file) {
+      const info = await disk.call('lstat', { path: file }).catch(absent);
+      if (info === null) return null;
+      const kind = info.isSymbolicLink() ? 'link' : info.isFile() ? 'file' : info.isDirectory() ? 'dir' : 'other';
+      return { kind, size: Number(info.size), changedAt: Math.max(msOf(info.ctimeNs), msOf(info.mtimeNs)) };
+    },
+    readlink: (file) => disk.call('readlink', { path: file }),
+    // Odczyt przez `safe-read.ts`: FIFO albo urządzenie pod nazwą pliku ustawień nie zawiesza serwera. Nie-plik
+    // i plik ponad sufit to błąd z kodem, więc lista daje „brak dowodu”, a nie pustą warstwę.
+    async readFile(file) {
+      let read: DiskHead | null;
+      try {
+        read = await disk.call('readHead', { path: file, maxBytes: HOOK_LIST_MAX_FILE_BYTES, followSymlink: true });
+      } catch (err) {
+        return absent(err);
+      }
+      if (read === null) throw Object.assign(new Error(`not a regular file: ${file}`), { code: 'EFTYPE' });
+      if (read.truncated) throw Object.assign(new Error(`over the read ceiling: ${file}`), { code: 'EFBIG' });
+      return read.bytes.toString('utf8');
+    },
+    readdir: (dir) => disk.call('readdirNames', { path: dir }).then((names) => [...names], absent),
+  };
+}
+
 export const nodeHookListIo: HookListIo = {
-  async lstat(file) {
-    const info = await fs.lstat(file).catch(absent);
-    if (info === null) return null;
-    const kind = info.isSymbolicLink() ? 'link' : info.isFile() ? 'file' : info.isDirectory() ? 'dir' : 'other';
-    return { kind, size: info.size, changedAt: Math.max(info.ctimeMs, info.mtimeMs) };
-  },
-  readlink: (file) => fs.readlink(file),
-  // Odczyt przez `safe-read.ts`: FIFO albo urządzenie pod nazwą pliku ustawień nie zawiesza serwera. Nie-plik
-  // i plik ponad sufit to błąd z kodem, więc lista daje „brak dowodu”, a nie pustą warstwę.
-  async readFile(file) {
-    let read: Awaited<ReturnType<typeof readRegularFile>>;
-    try {
-      read = await readRegularFile(file, { maxBytes: HOOK_LIST_MAX_FILE_BYTES, followSymlink: true });
-    } catch (err) {
-      return absent(err);
-    }
-    if (read === null) throw Object.assign(new Error(`not a regular file: ${file}`), { code: 'EFTYPE' });
-    if (read.truncated) throw Object.assign(new Error(`over the read ceiling: ${file}`), { code: 'EFBIG' });
-    return read.bytes.toString('utf8');
-  },
-  readdir: (dir) => fs.readdir(dir).catch(absent),
+  ...hookListDiskIo(DIRECT_DISK),
   ps: (pid) => new Promise((resolve) => {
     execFile(PS_PATH, ['-ww', '-o', 'etime=,args=', '-p', String(pid)], {
       timeout: PS_TIMEOUT_MS, killSignal: 'SIGKILL', env: { LC_ALL: 'C' }, maxBuffer: 1024 * 1024,

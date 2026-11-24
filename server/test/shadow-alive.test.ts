@@ -24,6 +24,7 @@ import type { HookAliveFile, HookChannelMode } from '../src/herdr/dialogs/hook/c
 
 const S1 = '550e8400-e29b-41d4-a716-446655440000';
 const S2 = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+const S3 = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -187,8 +188,9 @@ describe('alive.json: pisarz serwera', { timeout: 5_000 }, () => {
 });
 
 /*
- * The first sessions after the start reach `alive.json` at once, not with the next 10 s tick: a hook started during
- * a server restart waits for its session on the list, so the tick would add up to 10 s to the restart window.
+ * A new session reaches `alive.json` at once, not with the next 10 s tick: a hook whose session is not on the list
+ * leaves without the consent channel, so the tick would send the first request of a new session to the terminal.
+ * A session that left waits for the tick.
  */
 describe('alive.json: sessions changed', { timeout: 5_000 }, () => {
   it('published list empty, current list not → written now', () => {
@@ -207,8 +209,7 @@ describe('alive.json: sessions changed', { timeout: 5_000 }, () => {
     writer.stop();
   });
 
-  it('published list not empty → nothing written, the change waits for the tick', () => {
-    vi.useFakeTimers();
+  it('a session joins a published list → written now with the current list, also when another one left', () => {
     const dir = dataDir();
     let sessions = [S1];
     let clock = 1_000;
@@ -218,11 +219,56 @@ describe('alive.json: sessions changed', { timeout: 5_000 }, () => {
     writer.start();
     sessions = [S1, S2];
     clock = 1_050;
+    expect(writer.sessionsChanged()).toBe(true);
+    expect(readAlive(dir)).toMatchObject({ ts: 1_050, sessions: [S1, S2] });
+    // The same list again: a signal that brings no new session writes nothing.
+    clock = 1_075;
     expect(writer.sessionsChanged()).toBe(false);
-    expect(readAlive(dir)).toMatchObject({ ts: 1_000, sessions: [S1] });
+    expect(readAlive(dir)).toMatchObject({ ts: 1_050 });
+    sessions = [S2, S3];
+    clock = 1_100;
+    expect(writer.sessionsChanged()).toBe(true);
+    expect(readAlive(dir)).toMatchObject({ ts: 1_100, sessions: [S2, S3] });
+    writer.stop();
+  });
+
+  it('a session leaves and none joins → nothing written now, the tick writes the shorter list', () => {
+    vi.useFakeTimers();
+    const dir = dataDir();
+    let sessions = [S1, S2];
+    let clock = 1_000;
+    const writer = createAliveWriter({
+      dataDir: dir, mode: 'all', send: () => true, bootId: 'b', sessions: () => sessions, now: () => clock,
+    });
+    writer.start();
+    sessions = [S1];
+    clock = 1_050;
+    expect(writer.sessionsChanged()).toBe(false);
+    expect(readAlive(dir)).toMatchObject({ ts: 1_000, sessions: [S1, S2] });
     clock = 11_000;
     vi.advanceTimersByTime(ALIVE_WRITE_INTERVAL_MS);
-    expect(readAlive(dir)).toMatchObject({ ts: 11_000, sessions: [S1, S2] });
+    expect(readAlive(dir)).toMatchObject({ ts: 11_000, sessions: [S1] });
+    writer.stop();
+  });
+
+  it('a failed write does not count as published: the next signal writes the new session', () => {
+    const dir = dataDir();
+    let sessions = [S1];
+    let clock = 1_000;
+    let sendFails = false;
+    const writer = createAliveWriter({
+      dataDir: dir, mode: 'all', bootId: 'b', sessions: () => sessions, now: () => clock,
+      send: () => { if (sendFails) throw new Error('send unreadable'); return true; },
+    });
+    writer.start();
+    sessions = [S1, S2];
+    sendFails = true;
+    expect(writer.sessionsChanged()).toBe(false);
+    expect(readAlive(dir)).toMatchObject({ ts: 1_000, sessions: [S1] });
+    sendFails = false;
+    clock = 1_050;
+    expect(writer.sessionsChanged()).toBe(true);
+    expect(readAlive(dir)).toMatchObject({ ts: 1_050, sessions: [S1, S2] });
     writer.stop();
   });
 

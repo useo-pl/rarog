@@ -166,7 +166,7 @@ struct ContractContainer<Key: CodingKey> {
     }
   }
 
-  /// Enum field of a list element that drops whole on an unknown value (Inbox heads and cards): `false` and a
+  /// Enum field of a list element that drops whole on an unknown value (Inbox heads and cards, macOS folder blocks): `false` and a
   /// recorded degradation for an unknown string; `null`, another type and a missing field reject as in `strict`.
   func known<E: ContractEnum>(_ key: Key, as type: E.Type) throws -> Bool {
     let raw: String = try required(key)

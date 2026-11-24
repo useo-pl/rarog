@@ -554,6 +554,20 @@ describe.skipIf(!IS_MAC)(macOnly('rarog service install: faza 1', 'launchd, plut
     expect(sb.calls('curl')).toEqual([]);
   });
 
+  it('the server log is 0600 before bootstrap: created when missing, an existing 0644 one set to 0600, text kept', () => {
+    ownerBefore();
+    const log = path.join(sb.homeDir, '.local', 'share', 'rarog', 'server.log');
+    // A failed bootstrap still finds the file: launchd opens the log for appending when it loads the job.
+    expect(rarog(['service', 'install'], { FAKE_BOOTSTRAP_FAIL: '1' }).status).toBe(1);
+    expect((statSync(log).mode & 0o777).toString(8)).toBe('600');
+    chmodSync(log, 0o644);
+    writeFileSync(log, 'earlier line\n', { flag: 'a' });
+    const run = rarog(['service', 'install']);
+    expect(run.status, run.stderr).toBe(0);
+    expect((statSync(log).mode & 0o777).toString(8)).toBe('600');
+    expect(readFileSync(log, 'utf8')).toBe('earlier line\n');
+  });
+
   it('ponowna instalacja, porażka bootout → komendy powrotu, bez bootstrap, plist nietknięty', () => {
     const plist = serviceLoaded();
     const run = rarog(['service', 'install'], { FAKE_BOOTOUT_FAIL: '1' });

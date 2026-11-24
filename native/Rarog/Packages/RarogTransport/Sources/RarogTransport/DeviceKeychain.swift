@@ -83,23 +83,40 @@ public struct SystemKeychain: DeviceKeychain {
     var pushKey: String
   }
 
+  /// The private item's `version` alone, read before anything else: a newer app may change every other field.
+  private struct Envelope: Decodable {
+    let version: Int
+  }
+
   /// Odczyt wpisu prywatnego BEZ skutków ubocznych: nieczytelną treść kasuje dopiero ``load()``.
   private enum PrivateRead {
     case found(Stored)
     case unreadable
+    /// Written by a newer app (`version` above 1): kept as it is, for that app after an update back.
+    case newer
     case none
     case locked
     case failed(Int32)
   }
 
   public func load() -> KeychainRead {
-    switch readPrivate() {
+    let read = readPrivateItem()
+    return Self.load(status: read.status, data: read.data) { _ = delete(deviceId: nil) }
+  }
+
+  /// ``load()`` over one read of the private item (its status and bytes). Nothing here writes the item: `wipe`
+  /// deletes it, and only an unreadable item calls it.
+  static func load(status: OSStatus, data: Data?, wipe: () -> Void) -> KeychainRead {
+    switch privateRead(status: status, data: data) {
     case let .found(stored):
       return .found(stored.credential, pushKey: stored.pushKey)
     case .unreadable:
       // Nieczytelny wpis to brak klucza; zostawiony wracałby przy każdym starcie.
-      _ = delete(deviceId: nil)
+      wipe()
       return .none
+    case .newer:
+      // Not a key this app can use, and not garbage: after a rollback the newer app reads it again.
+      return .failed(errSecDecode)
     case .none:
       return .none
     case .locked:
@@ -187,14 +204,26 @@ public struct SystemKeychain: DeviceKeychain {
   }
 
   private func readPrivate() -> PrivateRead {
+    let read = readPrivateItem()
+    return Self.privateRead(status: read.status, data: read.data)
+  }
+
+  /// One read of the private item: its status and, when it is there, its bytes.
+  private func readPrivateItem() -> (status: OSStatus, data: Data?) {
     var query = Self.query(Self.deviceService, group: appGroup)
     query[kSecMatchLimit as String] = kSecMatchLimitOne
     query[kSecReturnData as String] = true
     var result: CFTypeRef?
     let status = SecItemCopyMatching(query as CFDictionary, &result)
+    return (status, result as? Data)
+  }
+
+  private static func privateRead(status: OSStatus, data: Data?) -> PrivateRead {
     switch status {
     case errSecSuccess:
-      guard let data = result as? Data, let stored = Self.decode(data) else { return .unreadable }
+      guard let data, let envelope = try? JSONDecoder().decode(Envelope.self, from: data) else { return .unreadable }
+      if envelope.version > 1 { return .newer }
+      guard let stored = decode(data) else { return .unreadable }
       return .found(stored)
     case errSecItemNotFound:
       return .none

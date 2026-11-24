@@ -65,6 +65,14 @@ export const REST_SENTENCES = {
   'rest.companion-throttled': { en: 'Too soon. Wait a moment and start the conversation again.' },
   'rest.companion-timeout': { en: 'Checking the session took too long. Try again.' },
   'rest.cwd-empty': { en: 'Enter the path to a project directory.' },
+  'rest.cwd-folder-denied': {
+    en: "macOS doesn't let Rarog into this folder. Change it in System Settings on the Mac "
+      + '(Privacy & Security → Files & Folders).',
+  },
+  'rest.cwd-folder-unchecked': { en: "Rarog can't check access to this folder. The server log has the details." },
+  'rest.cwd-folder-waiting': {
+    en: "Rarog can't open this folder: macOS is probably waiting for someone to click Allow on the Mac.",
+  },
   'rest.cwd-hidden': { en: "Hidden directories (those starting with a dot) aren't allowed." },
   'rest.cwd-not-absolute': { en: 'Enter the full directory path, starting with “/” or “~/”.' },
   'rest.cwd-not-found': { en: "That directory doesn't exist." },

@@ -489,7 +489,14 @@ export function createDemoControl(
   }
 
   const handler: RequestHandler = (req, res) => {
-    const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    let url: URL;
+    try {
+      url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    } catch {
+      // A target `URL` rejects would end the process here; the router answers it with its 400.
+      router(req, res);
+      return;
+    }
     const pathname = url.pathname;
     if (pathname === '/api/demo/control') {
       controlChain = controlChain.then(() => control(req, res)).catch(() => {

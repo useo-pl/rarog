@@ -3,9 +3,11 @@
  * (`source-scan.ts`), like `herdr-background-boundary.test.ts`:
  * - the directory does not import a facade (the session manager, the router, the start, the configuration, the
  *   herdr driver) nor a route group, so the rule takes the session and the configuration through its ports;
- * - it opens files only through `server/src/safe-read.ts`; from `fs` it takes only the calls that list, describe and
- *   resolve (`readdir`, `lstat`, `stat`, `realpath`, and the synchronous `lstat`, `readlink`, `realpath` the
- *   work-area walk needs), never one that opens or reads a file, and it starts no process.
+ * - it opens files only through the work-area port (`server/src/folder-gate/disk.ts`), which opens a file in a guarded
+ *   home folder in that folder's helper; the rule does not reach `server/src/safe-read.ts` itself. From `fs` it takes
+ *   only the calls that list, describe and resolve (`readdir`, `lstat`, `stat`, `realpath`, and the synchronous
+ *   `lstat`, `readlink`, `realpath` the work-area walk needs), never one that opens or reads a file, and it starts no
+ *   process.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -76,8 +78,10 @@ describe('session files: one way to open a file', () => {
     expect(scan(read(join(REPO, file))).code).not.toMatch(/['"](?:node:)?child_process['"]/u);
   });
 
-  it('the rule opens through `safe-read.ts`', () => {
-    expect(importsOf('server/src/files/path-rule.ts')).toContain('server/src/safe-read.ts');
+  it('the rule opens through the work-area port, not through `safe-read.ts` past it', () => {
+    const imported = importsOf('server/src/files/path-rule.ts');
+    expect(imported).toContain('server/src/folder-gate/disk.ts');
+    expect(imported).not.toContain('server/src/safe-read.ts');
   });
 
   it('the name check sees an open, an alias, a namespace, a default import and a dynamic import', () => {

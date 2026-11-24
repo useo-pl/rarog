@@ -141,4 +141,97 @@ struct MarkdownFoldTests {
     #expect(fold == MarkdownFold(lead: "Format:", question: "**Do Ciebie:** ship it?", hiddenLineCount: 20002))
     #expect(elapsed < .seconds(2))
   }
+
+  // MARK: - The agent's summary paragraph
+
+  @Test("a headed reply with a TLDR quote before the question: the TLDR leads, the sections fold")
+  func tldrQuoteBeforeQuestionLeads() {
+    let sections = [
+      "## Changes", "", "Line one of the changes.", "Line two of the changes.", "Line three of the changes.", "",
+      "## Checks", "", "Line one of the checks.", "Line two of the checks.", "Line three of the checks.",
+      "Line four of the checks.",
+    ]
+    let summary = ["> **TLDR:** the fold now shows the summary,", "> and the question stays below."]
+    let question = ["**Do Ciebie:**", "", "1. merge the branch?", "2. ship the build?"]
+    let source = (sections + [""] + summary + [""] + question).joined(separator: "\n")
+    #expect(MarkdownFold.fold(source) == MarkdownFold(
+      lead: summary.joined(separator: "\n"),
+      question: question.joined(separator: "\n"),
+      hiddenLineCount: 9
+    ))
+  }
+
+  @Test("a one-line TLDR quote leads the same way")
+  func oneLineTldrQuoteLeads() {
+    let summary = "> **TLDR:** a b"
+    let question = ["**To you:** ship it?", "- yes", "- no"]
+    let source = (["## Done"] + paragraphs(12) + ["", summary, ""] + question).joined(separator: "\n")
+    #expect(MarkdownFold.fold(source) == MarkdownFold(
+      lead: summary,
+      question: question.joined(separator: "\n"),
+      hiddenLineCount: 13
+    ))
+  }
+
+  @Test("a TL;DR paragraph in the middle leads; the lines before and after it are hidden")
+  func tldrParagraphInTheMiddleLeads() {
+    let summary = "**TL;DR:** the summary sits in the middle."
+    let source = (paragraphs(6) + ["", summary, ""] + paragraphs(6, from: 7)).joined(separator: "\n")
+    #expect(MarkdownFold.fold(source) == MarkdownFold(lead: summary, question: nil, hiddenLineCount: 12))
+  }
+
+  @Test("a text that opens with a two-line TLDR quote leads with those two lines, not four")
+  func openingTldrQuoteLeadsWithItsLines() {
+    let summary = ["> **TLDR:** first line of the summary,", "> second line of the summary."]
+    let items = (1...12).map { "- item \($0)" }
+    let source = (summary + [""] + items).joined(separator: "\n")
+    #expect(MarkdownFold.fold(source) == MarkdownFold(
+      lead: summary.joined(separator: "\n"),
+      question: nil,
+      hiddenLineCount: 12
+    ))
+  }
+
+  @Test("a marker that is not a summary leaves the first-paragraph fold: plain, in a list, a heading, code")
+  func markerThatIsNotASummaryKeepsTheFold() {
+    let lead = ["Intro.", ""]
+    let before = paragraphs(6)
+    let after = paragraphs(6, from: 7)
+    for (name, marker) in [
+      ("not bold", ["TLDR: plain text."]),
+      ("in a list item", ["- **TLDR:** inside a list."]),
+      ("in a heading", ["## **TLDR:** inside a heading"]),
+    ] {
+      let source = (lead + before + [""] + marker + [""] + after).joined(separator: "\n")
+      #expect(
+        MarkdownFold.fold(source) == MarkdownFold(lead: "Intro.", question: nil, hiddenLineCount: 13), "\(name)")
+    }
+    let fence = ["```markdown", "**TLDR:** an example summary", "```"]
+    let fenced = (lead + before + [""] + fence + [""] + after).joined(separator: "\n")
+    #expect(MarkdownFold.fold(fenced) == MarkdownFold(lead: "Intro.", question: nil, hiddenLineCount: 15))
+  }
+
+  @Test("a TLDR inside the question block leaves the first-paragraph fold")
+  func tldrAfterQuestionKeepsTheFold() {
+    let question = ["**Do Ciebie:** ok?", "", "> **TLDR:** written after the question."]
+    let source = (["Intro.", ""] + paragraphs(12) + [""] + question).joined(separator: "\n")
+    #expect(MarkdownFold.fold(source) == MarkdownFold(
+      lead: "Intro.",
+      question: question.joined(separator: "\n"),
+      hiddenLineCount: 12
+    ))
+  }
+
+  @Test("a short text with a TLDR stands whole")
+  func shortTextWithTldrIsWhole() {
+    let source = (paragraphs(10) + ["", "> **TLDR:** short."]).joined(separator: "\n")
+    #expect(MarkdownFold.fold(source) == whole(source))
+  }
+
+  @Test("a TLDR fold that would hide fewer than two lines stands whole, so the summary is never hidden")
+  func tinyTldrFoldIsWhole() {
+    let question = ["**Do Ciebie:** ok?"] + (1...10).map { "Question line \($0)." }
+    let source = (["Intro.", "", "> **TLDR:** one,", "> two.", ""] + question).joined(separator: "\n")
+    #expect(MarkdownFold.fold(source) == whole(source))
+  }
 }

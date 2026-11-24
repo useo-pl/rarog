@@ -17,7 +17,7 @@ WorkingDirectory=/home/rarog/repo z %%spacją$
 ExecStart="/home/rarog/bin/$wrap 50%%.sh" "rarog" "--only" "A,B" "--klucz=a \"b\"" "c\\d" "$$HOME" "--" "/home/rarog/.nvm/versions/node/v22.22.3/bin/node" "/home/rarog/repo z %%spacją$$/bin/rarog.mjs" "serve"
 Restart=always
 RestartSec=2
-# Server log in the data directory, appended; the installation creates the directory.
+# Server log in the data directory, mode 0600: the installation creates the directory and the file, systemd appends.
 StandardOutput=append:/home/rarog/dane 50%%/server.log
 StandardError=append:/home/rarog/dane 50%%/server.log
 

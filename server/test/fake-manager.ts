@@ -430,14 +430,13 @@ export class FakeManager implements ManagerApi {
     return { sessionId: id };
   }
 
-  transcript(id: string, opts?: { peek?: boolean }): {
+  transcript(id: string): {
     messages: TranscriptMessage[];
     pendingPermissions: PermissionRequest[];
     pendingQuestions: QuestionRequest[];
     activity?: Activity;
   } {
-    if (opts === undefined) this.record('transcript', id);
-    else this.record('transcript', id, opts);
+    this.record('transcript', id);
     return this.transcriptResult;
   }
 
@@ -448,17 +447,6 @@ export class FakeManager implements ManagerApi {
 
   onEvent(cb: (scope: 'global' | string, seq: number | null, ev: ServerEvent) => void): void {
     this.listeners.push(cb);
-  }
-
-  private readonly resetListeners: ((sessionId: string) => void)[] = [];
-
-  onTranscriptReset(cb: (sessionId: string) => void): void {
-    this.resetListeners.push(cb);
-  }
-
-  /** Simulates a new card under an existing id (restart, "Resume"). */
-  resetTranscript(sessionId: string): void {
-    for (const cb of this.resetListeners) cb(sessionId);
   }
 
   projects(): { path: string; name: string }[] {

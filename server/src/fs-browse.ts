@@ -22,12 +22,15 @@
  *    korzeni; filtr `isDirectory()` w wierszach chronił listę, nie parametr żądania; then `stat` (not a
  *    directory → 404) and `readdir` (no permission → an empty list).
  *
+ * A guarded folder of home that the folder gate holds closed (`FolderGateError` from the walk or the port) is a 404
+ * with the sentence of the folder's state, the status of a path that cannot be read, never an empty listing.
+ *
  * A row is shown only for a folder in the work area, so with the root `~` the protected folders of home neither
  * appear nor get the `stat` of their `.git`. The listing of a directory carries `git` and `history` of the
  * directory itself, and `canCreate` when the route gives it; the roots level carries none of them. Creating a
  * directory is `fs-mkdir.ts`, which reuses the parent steps and the row rule below.
  */
-import { readdir, realpath, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { MAX_DIR_ENTRIES } from '@rarog/shared';
@@ -36,6 +39,8 @@ import { type ServerSentence, say } from '@rarog/shared/sentences';
 import { expandTilde, isInsideAnyRoot } from './config.ts';
 import { type WalkDisk, insideWorkArea, resolveInWorkArea } from './config/work-area.ts';
 import { defaultStoreRoot, projectSlug } from './cli-store.ts';
+import { DIRECT_DISK, type WorkAreaDisk } from './folder-gate/disk.ts';
+import { FolderGateError } from './folder-gate/types.ts';
 
 /** Katalogi, których nigdy nie pokazujemy — szum, nie projekty. */
 const SKIPPED_DIRS: ReadonlySet<string> = new Set(['node_modules']);
@@ -59,6 +64,8 @@ export interface BrowseOptions {
   maxEntries?: number;
   /** The disk calls of the symlink walk; tests record them. */
   walk?: WalkDisk;
+  /** The disk of every other call in the work area: `realpath`, `stat`, `readdir` and the `.git` marker. */
+  disk?: WorkAreaDisk;
   /**
    * `canCreate` of a directory listing: whether this server creates directories (`mkdirRefusal` of `fs-mkdir.ts`,
    * decided by the route). Left out when not given; the roots level never carries it.
@@ -84,8 +91,28 @@ function deny(sentence: ServerSentence): BrowseRefusal {
   return { ok: false, status: 400, error: PATH_NOT_ALLOWED, sentence };
 }
 
+/** A closed guarded folder: the status of a path that cannot be read, with the sentence of the folder's state. */
+function closedFolder(error: FolderGateError): BrowseRefusal {
+  return { ok: false, status: 404, error: 'not-found', sentence: error.sentence };
+}
+
+/** The value of a port call, or the refusal of a closed folder; any other error gives `fallback`. */
+async function orClosed<T, F>(call: Promise<T>, fallback: F): Promise<T | F | FolderGateError> {
+  return call.catch((error: unknown) => (error instanceof FolderGateError ? error : fallback));
+}
+
 /** Czy katalog istnieje? Każdy błąd (ENOENT, EACCES, ELOOP) znaczy „nie ma znacznika". */
-async function exists(candidate: string): Promise<boolean> {
+async function exists(candidate: string, disk: WorkAreaDisk): Promise<boolean> {
+  try {
+    await disk.call('stat', { path: candidate });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The same question in the CLI store under `~/.claude`, which never lies in the work area. */
+async function inStore(candidate: string): Promise<boolean> {
   try {
     await stat(candidate);
     return true;
@@ -95,24 +122,28 @@ async function exists(candidate: string): Promise<boolean> {
 }
 
 /** Znaczniki wiersza: repo gita i historia sesji CLI dla tego katalogu. */
-async function markers(dir: string, storeRoot: string): Promise<{ git: boolean; history: boolean }> {
+async function markers(
+  dir: string, storeRoot: string, disk: WorkAreaDisk,
+): Promise<{ git: boolean; history: boolean }> {
   const [git, history] = await Promise.all([
-    exists(path.join(dir, '.git')),
-    exists(path.join(storeRoot, projectSlug(dir))),
+    exists(path.join(dir, '.git'), disk),
+    inStore(path.join(storeRoot, projectSlug(dir))),
   ]);
   return { git, history };
 }
 
-export async function toEntry(dir: string, name: string, storeRoot: string): Promise<DirEntry> {
-  return { name, path: dir, ...await markers(dir, storeRoot) };
+export async function toEntry(
+  dir: string, name: string, storeRoot: string, disk: WorkAreaDisk = DIRECT_DISK,
+): Promise<DirEntry> {
+  return { name, path: dir, ...await markers(dir, storeRoot, disk) };
 }
 
 async function toEntries(
-  dirs: readonly string[], storeRoot: string,
+  dirs: readonly string[], storeRoot: string, disk: WorkAreaDisk,
 ): Promise<DirEntry[]> {
   // Podkatalogi jednego katalogu mają z definicji unikalne nazwy — tu basename WYSTARCZA
   // i ujednoznacznianie z `rootNames()` byłoby tylko szumem („willow" → „Projects/willow").
-  return Promise.all(dirs.map((dir) => toEntry(dir, path.basename(dir), storeRoot)));
+  return Promise.all(dirs.map((dir) => toEntry(dir, path.basename(dir), storeRoot, disk)));
 }
 
 /**
@@ -151,7 +182,7 @@ function rootNames(roots: readonly string[]): string[] {
  * decyduje, co jest pierwsze. Duplikaty odsiewamy po ścieżce.
  */
 async function rootListing(
-  roots: readonly string[], storeRoot: string,
+  roots: readonly string[], storeRoot: string, disk: WorkAreaDisk,
 ): Promise<DirListing> {
   const unique = [...new Set(roots.map((root) => path.resolve(root)))];
   const names = rootNames(unique);
@@ -159,7 +190,7 @@ async function rootListing(
     path: null,
     parent: null,
     entries: await Promise.all(
-      unique.map((dir, index) => toEntry(dir, names[index] ?? path.basename(dir), storeRoot)),
+      unique.map((dir, index) => toEntry(dir, names[index] ?? path.basename(dir), storeRoot, disk)),
     ),
     truncated: false,
   };
@@ -170,9 +201,10 @@ async function rootListing(
  * an empty string is refused as not absolute. Returns the directory in both forms or the refusal to send.
  */
 export async function resolveListedDir(
-  raw: string, opts: Pick<BrowseOptions, 'roots' | 'home' | 'walk'>,
+  raw: string, opts: Pick<BrowseOptions, 'roots' | 'home' | 'walk' | 'disk'>,
 ): Promise<ListedDir | BrowseRefusal> {
   const home = opts.home ?? os.homedir();
+  const disk = opts.disk ?? DIRECT_DISK;
   const roots = opts.roots.map((root) => path.resolve(expandTilde(root, home)));
 
   const expanded = expandTilde(raw, home);
@@ -196,22 +228,25 @@ export async function resolveListedDir(
    * (klasyk: `/tmp` na macOS) odcinałby własne, legalne podkatalogi. The directory itself is resolved by the walk,
    * one segment at a time, which stops before an excluded folder; only home and the roots go through `realpath`.
    */
-  const realHome = await realpath(home).catch(() => home);
+  const realHome = await disk.call('realpathNative', { path: home }).catch(() => home);
   const realRoots = await Promise.all(
-    roots.map(async (root) => realpath(root).catch(() => root)),
+    roots.map(async (root) => disk.call('realpathNative', { path: root }).catch(() => root)),
   );
   const walked = resolveInWorkArea(dir, realRoots, realHome, opts.walk);
   if (walked.kind === 'missing') {
     return { ok: false, status: 404, error: 'not-found', sentence: say('rest.cwd-not-found') };
   }
-  if (walked.kind === 'excluded') return deny(say('rest.cwd-symlink-escape'));
+  if (walked.kind === 'excluded') {
+    return walked.closed === undefined ? deny(say('rest.cwd-symlink-escape')) : closedFolder(walked.closed);
+  }
   /*
    * The walk keeps the letter case of the request, while `realpath` gives the roots in the case stored on disk, so on
    * the default macOS disk a root written in another case refused its own folders. The walked path has no symlink
    * left and no excluded folder on it, so the same `realpath` as for the roots reads nothing new and gives the case
    * the comparison needs.
    */
-  const realDir = await realpath(walked.path).catch(() => null);
+  const realDir = await orClosed(disk.call('realpathNative', { path: walked.path }), null);
+  if (realDir instanceof FolderGateError) return closedFolder(realDir);
   if (realDir === null) {
     return { ok: false, status: 404, error: 'not-found', sentence: say('rest.cwd-not-found') };
   }
@@ -252,28 +287,31 @@ export async function browseDirectory(
   const home = opts.home ?? os.homedir();
   const storeRoot = opts.storeRoot ?? defaultStoreRoot();
   const maxEntries = opts.maxEntries ?? MAX_DIR_ENTRIES;
+  const disk = opts.disk ?? DIRECT_DISK;
   const roots = opts.roots.map((root) => path.resolve(expandTilde(root, home)));
 
   const raw = (rawPath ?? '').trim();
-  if (raw === '') return { ok: true, listing: await rootListing(roots, storeRoot) };
+  if (raw === '') return { ok: true, listing: await rootListing(roots, storeRoot, disk) };
 
   const ctx = await resolveListedDir(raw, opts);
   if (!ctx.ok) return ctx;
   const { dir, realDir } = ctx;
 
-  const info = await stat(realDir).catch(() => null);
+  const info = await orClosed(disk.call('stat', { path: realDir }), null);
+  if (info instanceof FolderGateError) return closedFolder(info);
   if (info === null || !info.isDirectory()) {
     return { ok: false, status: 404, error: 'not-found', sentence: say('rest.cwd-not-found') };
   }
 
   // Brak uprawnień do odczytu katalogu NIE jest błędem żądania: użytkownik ma zobaczyć pusty
-  // katalog i móc się z niego cofnąć, a nie czerwony komunikat.
-  const dirents = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  // katalog i móc się z niego cofnąć, a nie czerwony komunikat. A closed guarded folder is a refusal.
+  const dirents = await orClosed(disk.call('readdir', { path: dir, encoding: 'utf8' }), []);
+  if (dirents instanceof FolderGateError) return closedFolder(dirents);
   const names = dirents
     // `isDirectory()` jest fałszem dla dowiązania — symlinków świadomie NIE rozwijamy, bo
     // dowiązanie do `/` wyprowadziłoby przeglądarkę poza korzenie jednym tapnięciem.
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
+    .map((entry) => String(entry.name))
     .filter((name) => isListedChild(ctx, name))
     .sort((a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' }));
 
@@ -286,9 +324,9 @@ export async function browseDirectory(
       path: dir,
       // Korzeń → `null`: cofnięcie wraca na poziom korzeni, a nie do katalogu nad korzeniem.
       parent: isRoot ? null : path.dirname(dir),
-      ...await markers(dir, storeRoot),
+      ...await markers(dir, storeRoot, disk),
       ...(opts.canCreate === undefined ? {} : { canCreate: opts.canCreate }),
-      entries: await toEntries(shown.map((name) => path.join(dir, name)), storeRoot),
+      entries: await toEntries(shown.map((name) => path.join(dir, name)), storeRoot, disk),
       truncated,
     },
   };

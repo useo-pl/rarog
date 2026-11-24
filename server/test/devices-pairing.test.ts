@@ -541,6 +541,27 @@ describe('label and build of a device on the way in and out', () => {
       .toContainEqual(expect.objectContaining({ id: 'e'.repeat(32), label: 'oldlabel', build: null }));
     expect(JSON.stringify(list.body)).not.toContain(RLO);
   });
+
+  it('a tombstone on the admin socket carries the label after the pairing rule: list and both revoke replies', async () => {
+    const h = await start();
+    const phone = await firstDevice(h);
+    const template = h.store.get(phone.id);
+    if (template === undefined) throw new Error('no record');
+    const admin = createAdminHandler({ store: h.store, pairing: h.pairing, publicUrl: null, log: () => {}, now: h.now });
+    const stored = (id: string): void => {
+      h.store.add({ ...template, id, creator: phone.id, label: `iPad${RLO}${ESC}[2Jx` });
+    };
+    stored('e'.repeat(32));
+    stored('f'.repeat(32));
+    const single = await adminCall(admin, 'POST', '/api/admin/devices/revoke', { id: 'e'.repeat(32) });
+    const all = await adminCall(admin, 'POST', '/api/admin/devices/revoke', { all: true });
+    const list = await adminCall(admin, 'GET', '/api/admin/devices');
+    for (const [name, reply] of [['revoke', single], ['revoke all', all], ['list', list]] as const) {
+      const labels = (reply.body as { revoked: { label: string }[] }).revoked.map((row) => row.label);
+      expect(labels, name).toContain('iPad[2Jx');
+      for (const hidden of [RLO, ESC]) expect(labels.join(' '), name).not.toContain(hidden);
+    }
+  });
 });
 
 describe('macierz uprawnień: trasy tylko dla klucza urządzenia, cookie niczego nie otwiera', () => {

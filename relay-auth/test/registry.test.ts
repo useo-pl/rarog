@@ -11,7 +11,7 @@ import {
   bitsCount, settle,
 } from '../src/registry.ts';
 import type {
-  AdmitOutcome, AppRecord, EndpointState, GateSettings, Ids, Peers, ServerRecord,
+  AdmitOutcome, AppRecord, EndpointApi, EndpointState, GateSettings, Ids, Peers, ServerRecord,
 } from '../src/registry.ts';
 import { sha256Hex } from '../src/wspolne.ts';
 import {
@@ -495,7 +495,11 @@ describe('EndpointBook: wpis serwera i rodzaj niezmienny', () => {
 
 const GATE_SETTINGS: GateSettings = { gate: 'devicecheck', registerMonthly: 3, registerDailyBrake: 200, graceUntil: null };
 
-function desk(settings: Partial<GateSettings> = {}, start = T0) {
+/** The gate's view of an entry: `wrap` lets a test stand between the gate and one entry. */
+type GateEntry = Pick<EndpointApi, 'extendApp' | 'admitApp'>;
+
+function desk(settings: Partial<GateSettings> = {}, start = T0,
+  wrap: (id: string, entry: EndpointBook) => GateEntry = (_id, entry) => entry) {
   const clock = new ManualClock(start);
   const store = new MemoryStore();
   const apple = new FakeApple(clock);
@@ -508,28 +512,38 @@ function desk(settings: Partial<GateSettings> = {}, start = T0) {
     }
     return entry;
   };
-  const gate = new GateDesk({ store, clock, settings: { ...GATE_SETTINGS, ...settings }, apple, endpoint, sha256Hex });
+  const gate = new GateDesk({
+    store, clock, settings: { ...GATE_SETTINGS, ...settings }, apple, endpoint: (id) => wrap(id, endpoint(id)),
+    sha256Hex,
+  });
   return { clock, store, apple, endpoint, gate };
 }
 
 const id = (n: number): string => server(n);
+/** Client bucket of the sequential gate tests: one address, never two requests at once. */
+const ADDRESS = '198.51.100.7';
+/** A distinct IPv4 bucket per concurrent request. */
+const address = (n: number): string => `198.51.100.${String(n + 1)}`;
 
 describe('GateDesk: rejestracja przez DeviceCheck', () => {
   it('nowy EndpointId: query, update bitów 0→1, wpis apki; powtórka bez Apple i bez kwoty', async () => {
     const { apple, gate, endpoint } = desk();
     const proof = deviceCheckProof('A');
-    expect(await gate.register(id(1), proof)).toEqual({ ok: true, expiresAt: T0 + ENTRY_TTL_SECONDS, fresh: true });
+    expect(await gate.register(id(1), proof, ADDRESS))
+      .toEqual({ ok: true, expiresAt: T0 + ENTRY_TTL_SECONDS, fresh: true });
     expect(apple.calls.map((call) => call.call)).toEqual(['query', 'update']);
     expect(apple.bits.get(proof.token)).toEqual({ bit0: true, bit1: false, lastUpdate: '2026-11' });
     expect(await endpoint(id(1)).status()).toMatchObject({ kind: 'app' });
-    expect(await gate.register(id(1), proof)).toEqual({ ok: true, expiresAt: T0 + ENTRY_TTL_SECONDS, fresh: false });
+    expect(await gate.register(id(1), proof, ADDRESS))
+      .toEqual({ ok: true, expiresAt: T0 + ENTRY_TTL_SECONDS, fresh: false });
     expect(apple.calls).toHaveLength(2);
   });
 
   it('równoległe rejestracje tego samego EndpointId: jedna rozmowa z Apple, jedna jednostka kwoty', async () => {
     const { apple, gate } = desk();
     const proof = deviceCheckProof('A');
-    const results = await Promise.all(Array.from({ length: 5 }, () => gate.register(id(1), proof)));
+    const results = await Promise.all(Array.from({ length: 5 }, (_unused, n) =>
+      gate.register(id(1), proof, address(n))));
     expect(results.filter((result) => result.ok && result.fresh)).toHaveLength(1);
     expect(results.every((result) => result.ok)).toBe(true);
     expect(apple.count('update')).toBe(1);
@@ -538,9 +552,11 @@ describe('GateDesk: rejestracja przez DeviceCheck', () => {
   it('kwota urządzenia w miesiącu: licznik w dwóch bitach do 3, czwarty EndpointId odpada', async () => {
     const { apple, gate } = desk();
     const proof = deviceCheckProof('A');
-    for (const n of [1, 2, 3]) expect(await gate.register(id(n), proof), String(n)).toMatchObject({ ok: true, fresh: true });
+    for (const n of [1, 2, 3]) {
+      expect(await gate.register(id(n), proof, ADDRESS), String(n)).toMatchObject({ ok: true, fresh: true });
+    }
     expect(apple.bits.get(proof.token)).toMatchObject({ bit0: true, bit1: true });
-    expect(await gate.register(id(4), proof)).toEqual({ ok: false, error: 'quota-exceeded' });
+    expect(await gate.register(id(4), proof, ADDRESS)).toEqual({ ok: false, error: 'quota-exceeded' });
     expect(apple.count('update')).toBe(3);
   });
 
@@ -552,39 +568,39 @@ describe('GateDesk: rejestracja przez DeviceCheck', () => {
     const grace = desk({ graceUntil: T0 + 1 });
     const proof = deviceCheckProof('B');
     grace.apple.bits.set(proof.token, { bit0: true, bit1: true, lastUpdate: '2026-11' });
-    expect(await grace.gate.register(id(1), proof)).toMatchObject({ ok: true, fresh: true });
+    expect(await grace.gate.register(id(1), proof, ADDRESS)).toMatchObject({ ok: true, fresh: true });
     grace.clock.advance(1);
-    expect(await grace.gate.register(id(2), proof)).toEqual({ ok: false, error: 'quota-exceeded' });
+    expect(await grace.gate.register(id(2), proof, ADDRESS)).toEqual({ ok: false, error: 'quota-exceeded' });
   });
 
   it('kwota 1 z REGISTER_MONTHLY_QUOTA', async () => {
     const { gate } = desk({ registerMonthly: 1 });
-    expect(await gate.register(id(1), deviceCheckProof('A'))).toMatchObject({ ok: true });
-    expect(await gate.register(id(2), deviceCheckProof('A'))).toEqual({ ok: false, error: 'quota-exceeded' });
+    expect(await gate.register(id(1), deviceCheckProof('A'), ADDRESS)).toMatchObject({ ok: true });
+    expect(await gate.register(id(2), deviceCheckProof('A'), ADDRESS)).toEqual({ ok: false, error: 'quota-exceeded' });
   });
 
   it('porażki Apple: odrzucony dowód, Apple niedostępny, Apple odmawia kluczowi; wpis nie powstaje', async () => {
     const { apple, gate, endpoint } = desk();
     const proof = deviceCheckProof('A');
     apple.failNext.set('query', { kind: 'rejected', status: 400 });
-    expect(await gate.register(id(1), proof)).toEqual({
+    expect(await gate.register(id(1), proof, ADDRESS)).toEqual({
       ok: false, error: 'proof-rejected', apple: { kind: 'rejected', status: 400 },
     });
     apple.failNext.set('query', { kind: 'unreachable', cause: 'timeout' });
-    expect(await gate.register(id(1), proof)).toMatchObject({ ok: false, error: 'gate-unreachable' });
+    expect(await gate.register(id(1), proof, ADDRESS)).toMatchObject({ ok: false, error: 'gate-unreachable' });
     apple.failNext.set('update', { kind: 'refused', status: 401 });
-    expect(await gate.register(id(1), proof)).toMatchObject({ ok: false, error: 'unavailable' });
+    expect(await gate.register(id(1), proof, ADDRESS)).toMatchObject({ ok: false, error: 'unavailable' });
     expect(await endpoint(id(1)).status()).toBeNull();
   });
 
   it('hamulec dobowy bramki; nowa doba UTC zaczyna od zera; alarm porządków kasuje stare dni', async () => {
     const { clock, store, gate } = desk({ registerDailyBrake: 2 });
-    expect(await gate.register(id(1), deviceCheckProof('A'))).toMatchObject({ ok: true });
-    expect(await gate.register(id(2), deviceCheckProof('B'))).toMatchObject({ ok: true });
-    expect(await gate.register(id(3), deviceCheckProof('C'))).toEqual({ ok: false, error: 'limited' });
+    expect(await gate.register(id(1), deviceCheckProof('A'), ADDRESS)).toMatchObject({ ok: true });
+    expect(await gate.register(id(2), deviceCheckProof('B'), ADDRESS)).toMatchObject({ ok: true });
+    expect(await gate.register(id(3), deviceCheckProof('C'), ADDRESS)).toEqual({ ok: false, error: 'limited' });
     expect(store.alarm).toBe((T0 + DAY) * 1000);
     clock.advance(DAY);
-    expect(await gate.register(id(3), deviceCheckProof('C'))).toMatchObject({ ok: true });
+    expect(await gate.register(id(3), deviceCheckProof('C'), ADDRESS)).toMatchObject({ ok: true });
     clock.advance(2 * DAY);
     expect(await fire(store, clock, () => gate.alarm())).toBe(true);
     expect([...store.data.keys()]).toEqual([]);
@@ -592,29 +608,98 @@ describe('GateDesk: rejestracja przez DeviceCheck', () => {
   });
 
   it('bramka nie wybrana albo bez klucza = unavailable; dowód innego rodzaju = gate-mismatch', async () => {
-    expect(await desk({ gate: null }).gate.register(id(1), deviceCheckProof('A')))
+    expect(await desk({ gate: null }).gate.register(id(1), deviceCheckProof('A'), ADDRESS))
       .toEqual({ ok: false, error: 'unavailable' });
-    expect(await desk().gate.register(id(1), apnsProof('ab'))).toEqual({ ok: false, error: 'gate-mismatch' });
+    expect(await desk().gate.register(id(1), apnsProof('ab'), ADDRESS)).toEqual({ ok: false, error: 'gate-mismatch' });
     const clock = new ManualClock(T0);
     const keyless = new GateDesk({
       store: new MemoryStore(), clock, settings: GATE_SETTINGS, apple: null,
       endpoint: () => new EndpointBook(new MemoryStore(), clock, peers().of), sha256Hex,
     });
-    expect(await keyless.register(id(1), deviceCheckProof('A'))).toEqual({ ok: false, error: 'unavailable' });
+    expect(await keyless.register(id(1), deviceCheckProof('A'), ADDRESS)).toEqual({ ok: false, error: 'unavailable' });
   });
 
   it('EndpointId z żywym wpisem serwera = kind-conflict, bez Apple', async () => {
     const { apple, gate, endpoint } = desk();
     await endpoint(id(1)).addSponsor(id(9), E1, 't1', T0 + 100);
-    expect(await gate.register(id(1), deviceCheckProof('A'))).toEqual({ ok: false, error: 'kind-conflict' });
+    expect(await gate.register(id(1), deviceCheckProof('A'), ADDRESS)).toEqual({ ok: false, error: 'kind-conflict' });
     expect(apple.calls).toEqual([]);
   });
 
   it('kolejka bramki ma sufit: nadmiar dostaje unavailable od razu', async () => {
     const { gate } = desk({ registerDailyBrake: 1000 });
     const results = await Promise.all(Array.from({ length: GATE_QUEUE_MAX + 3 }, (_unused, n) =>
-      gate.register(id(n + 1), deviceCheckProof(String.fromCharCode(65 + (n % 26))))));
+      gate.register(id(n + 1), deviceCheckProof(String.fromCharCode(65 + (n % 26))), address(n))));
     expect(results.filter((result) => !result.ok && result.error === 'unavailable')).toHaveLength(3);
+  });
+});
+
+describe('GateDesk: one registration in flight per client bucket', () => {
+  /** The first registration of `held` stops at its entry check until `release()`; the gate queue waits behind it. */
+  function holding(held: string) {
+    let reach = (): void => undefined;
+    let release = (): void => undefined;
+    const reached = new Promise<void>((resolve) => { reach = resolve; });
+    const released = new Promise<void>((resolve) => { release = resolve; });
+    let first = true;
+    const wrap = (entryId: string, entry: EndpointBook): GateEntry => (entryId !== held ? entry : {
+      extendApp: async () => {
+        if (first) {
+          first = false;
+          reach();
+          await released;
+        }
+        return entry.extendApp();
+      },
+      admitApp: (appId, admission) => entry.admitApp(appId, admission),
+    });
+    return { reached, release, wrap };
+  }
+
+  /** The outcome, or `'queued'` when it has not settled shortly (the gate queue holds it). */
+  const settledSoon = <T>(outcome: Promise<T>): Promise<T | 'queued'> =>
+    Promise.race([outcome, new Promise<'queued'>((resolve) => { setTimeout(() => { resolve('queued'); }, 200); })]);
+
+  it('a second request from a bucket in flight gets limited without Apple; another bucket queues', async () => {
+    const hold = holding(id(1));
+    const { apple, gate } = desk({}, T0, hold.wrap);
+    const bucket = '2001:0db8:0001::/48';
+    const first = gate.register(id(1), deviceCheckProof('A'), bucket);
+    await hold.reached;
+    expect(await settledSoon(gate.register(id(2), deviceCheckProof('B'), bucket)))
+      .toEqual({ ok: false, error: 'limited' });
+    expect(apple.calls).toEqual([]);
+    const other = gate.register(id(3), deviceCheckProof('C'), '198.51.100.9');
+    expect(await settledSoon(other)).toBe('queued');
+    hold.release();
+    expect(await first).toMatchObject({ ok: true, fresh: true });
+    expect(await other).toMatchObject({ ok: true, fresh: true });
+    // The request is over, so the bucket is free again.
+    expect(await gate.register(id(2), deviceCheckProof('B'), bucket)).toMatchObject({ ok: true, fresh: true });
+  });
+
+  it('the bucket is free again after an exception inside the gate', async () => {
+    const { gate } = desk({}, T0, (entryId, entry) => (entryId !== id(1) ? entry : {
+      extendApp: () => Promise.reject(new Error('stub: the entry does not answer')),
+      admitApp: (appId, admission) => entry.admitApp(appId, admission),
+    }));
+    await expect(gate.register(id(1), deviceCheckProof('A'), ADDRESS)).rejects.toThrow('the entry does not answer');
+    expect(await gate.register(id(2), deviceCheckProof('B'), ADDRESS)).toMatchObject({ ok: true, fresh: true });
+  });
+
+  it('a request refused by the full queue does not hold its bucket', async () => {
+    const hold = holding(id(1));
+    const { gate } = desk({ registerDailyBrake: 1000 }, T0, hold.wrap);
+    const queued = [gate.register(id(1), deviceCheckProof('A'), address(0))];
+    await hold.reached;
+    for (let n = 1; n < GATE_QUEUE_MAX; n += 1) {
+      queued.push(gate.register(id(n + 1), deviceCheckProof(String.fromCharCode(65 + (n % 26))), address(n)));
+    }
+    const bucket = '203.0.113.5';
+    expect(await gate.register(id(100), deviceCheckProof('Z'), bucket)).toEqual({ ok: false, error: 'unavailable' });
+    hold.release();
+    await Promise.all(queued);
+    expect(await gate.register(id(100), deviceCheckProof('Z'), bucket)).toMatchObject({ ok: true, fresh: true });
   });
 });
 
@@ -622,30 +707,31 @@ describe('GateDesk: rejestracja przez próbny push APNs', () => {
   it('kwota per skrót tokenu w 30 dniach, wielkość liter tokenu bez znaczenia; skrót, nie token, w kluczu', async () => {
     const { clock, store, apple, gate } = desk({ gate: 'apns' });
     const proof = apnsProof('ab');
-    expect(await gate.register(id(1), proof)).toMatchObject({ ok: true, fresh: true });
-    expect(await gate.register(id(2), { ...proof, token: proof.token.toUpperCase() })).toMatchObject({ ok: true });
-    expect(await gate.register(id(3), proof)).toMatchObject({ ok: true });
-    expect(await gate.register(id(4), proof)).toEqual({ ok: false, error: 'quota-exceeded' });
+    expect(await gate.register(id(1), proof, ADDRESS)).toMatchObject({ ok: true, fresh: true });
+    expect(await gate.register(id(2), { ...proof, token: proof.token.toUpperCase() }, ADDRESS))
+      .toMatchObject({ ok: true });
+    expect(await gate.register(id(3), proof, ADDRESS)).toMatchObject({ ok: true });
+    expect(await gate.register(id(4), proof, ADDRESS)).toEqual({ ok: false, error: 'quota-exceeded' });
     expect(apple.calls.map((call) => [call.call, call.token])).toEqual(Array(3).fill(['probe', proof.token]));
     const keys = [...store.data.keys()];
     expect(keys).toContain(`apns:${await sha256Hex(proof.token)}`);
     expect(keys.join()).not.toContain(proof.token);
     clock.advance(QUOTA_WINDOW_SECONDS);
-    expect(await gate.register(id(4), proof)).toMatchObject({ ok: true });
+    expect(await gate.register(id(4), proof, ADDRESS)).toMatchObject({ ok: true });
   });
 
   it('martwy token = proof-rejected i bez jednostki kwoty', async () => {
     const { store, apple, gate } = desk({ gate: 'apns' });
     apple.failNext.set('probe', { kind: 'rejected', status: 410, reason: 'Unregistered' });
-    expect(await gate.register(id(1), apnsProof('cd'))).toMatchObject({ ok: false, error: 'proof-rejected' });
+    expect(await gate.register(id(1), apnsProof('cd'), ADDRESS)).toMatchObject({ ok: false, error: 'proof-rejected' });
     expect([...store.data.keys()]).toEqual([]);
   });
 
   it('alarm porządków: liczniki starsze niż okno znikają, żywe zostają', async () => {
     const { clock, store, gate } = desk({ gate: 'apns' });
-    await gate.register(id(1), apnsProof('ab'));
+    await gate.register(id(1), apnsProof('ab'), ADDRESS);
     clock.advance(QUOTA_WINDOW_SECONDS - DAY);
-    await gate.register(id(2), apnsProof('cd'));
+    await gate.register(id(2), apnsProof('cd'), ADDRESS);
     clock.advance(DAY + 1);
     expect(await fire(store, clock, () => gate.alarm())).toBe(true);
     expect([...store.data.keys()].filter((key) => key.startsWith('apns:'))).toEqual([

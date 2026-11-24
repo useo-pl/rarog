@@ -1,5 +1,5 @@
 /**
- * Protocol contract, project notes area: `/api/notes`.
+ * Protocol contract, project notes area: `/api/notes` and the `notes` SSE frame (`NotesEvent`).
  *
  * Re-exported unchanged by `shared/src/protocol.ts`; code imports the names from there.
  */
@@ -126,4 +126,33 @@ export const notesConflictBodySchema = z.object({
   message: z.string(),
   messageRef: sentenceRefSchema.optional(),
   current: notesDocSchema,
+});
+
+/**
+ * Notatki PROJEKTU się zmieniły — ktoś dodał, poprawił albo skasował notatkę (`ServerEvent` member).
+ *
+ * Event ULOTNY i GLOBALNY, dokładnie jak `herdr-status`: `seq: null`, poza ring bufferem
+ * którejkolwiek sesji. Notatka nie należy do żadnej sesji, więc nie ma tu czego replayować,
+ * a stan startowy widok bierze z `GET /api/notes` przy wejściu.
+ *
+ * TREŚCI W RAMCE NIE MA i to jest decyzja, nie oszczędność: ramka jedzie do KAŻDEGO
+ * otwartego klienta, także takiego, który stoi w zupełnie innym projekcie. Jedyne, co niesie,
+ * to „w tym katalogu coś się zmieniło" — kto ma ten katalog na ekranie, dociąga dokument sam.
+ *
+ * `empty` mówi, czy PO zapisie dokument jest pusty (sam biały znak liczy
+ * się jako pustka). To jeden bit, nie treść: pigułka ✎ w pasku projektu podświetla się, gdy
+ * projekt MA notatkę, a bez tego bitu każdy klient musiałby po każdym autosave robić `GET`
+ * całego dokumentu tylko po to, żeby zapalić albo zgasić kolor ikony.
+ */
+export interface NotesEvent {
+  type: 'notes';
+  cwd: string;
+  empty: boolean;
+}
+
+/** Project notes changed: the directory and the "empty after the write" bit, no content ({@link NotesEvent}). */
+export const notesEventSchema = z.object({
+  type: z.literal('notes'),
+  cwd: z.string().min(1),
+  empty: z.boolean(),
 });

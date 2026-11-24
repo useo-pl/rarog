@@ -420,7 +420,7 @@ final class TerminalPopupTests: XCTestCase {
     h.popup.makeHistoryPage = { _, _ in UIViewController() }
     _ = try await connect(h)
     let children = h.popup.screen.headerMenu().children.compactMap { $0 as? UIAction }
-    XCTAssertEqual(children.map(\.title), [UICopy.terminalCopy, UICopy.terminalPaste, UICopy.terminalHistory])
+    XCTAssertEqual(children.map(\.title), [UICopy.terminalCopy, UICopy.terminalPaste, UICopy.terminalSelectOutput])
     XCTAssertFalse(children[2].attributes.contains(.disabled))
     XCTAssertEqual(h.popup.menuItem.menu?.children.count, 1, "menu budowane przy otwarciu (stan Historii)")
   }

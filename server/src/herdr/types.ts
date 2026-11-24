@@ -748,7 +748,7 @@ export interface HerdrPaneMetadataParams {
  *
  * Świadomie osobny interfejs, a nie pola `HerdrClient`: implementuje go
  * `createHerdrLaunchClient`, a każdy zapis tej fasady stoi w `MUTATING_METHODS`, więc
- * `RAROG_HERDR_SEND=0` i bramka nieznanego protokołu je obejmują. Rozdzielenie jest po to,
+ * `RAROG_HERDR_SEND=0` covers them. Rozdzielenie jest po to,
  * żeby bramka kontraktu nie wymusiła wystawienia kanału tworzenia PRZED allow-listą metod —
  * fasada, która umie zakładać panele, nie ma prawa powstać wcześniej niż jej ograniczenia.
  */

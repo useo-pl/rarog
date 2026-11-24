@@ -29,7 +29,8 @@ registry know what the CLI looks like; the fixtures show after a Claude Code upd
   channel state"), `PreToolUse` for `AskUserQuestion`. A subagent request carries `agentId` (`agent_id` from the
   payload); Rarog uses it only for the refusal log. The dump also carries the call's `cwd` from the payload (absolute
   path; a bad shape drops only the field): the match of an `Edit` dump with the dialog header rests on it ("Permission
-  dialog operation"). A jsonl entry carries no `cwd`. The hook is installed by hand ("Permission hook"). A dump is a
+  dialog operation"); the transcript entry of a jsonl card carries its own `cwd` field ("Flow: from a blocked pane to
+  a digit", item 4). The hook is installed by hand ("Permission hook"). A dump is a
   hint, not proof. With a QUEUE of dialogs ("1 of 2": several calls at once, such as two background subagents) the
   hook fires when a request enters the queue, not when its dialog reaches the screen: the second request's dump
   overwrites the first one's while the screen shows the first (CLI 2.1.302; the "k of N" marker stands in the dialog
@@ -92,7 +93,9 @@ registry know what the CLI looks like; the fixtures show after a Claude Code upd
    source, otherwise `mismatch` with reason `operation`; a frame cut at the top is enough only with double proof.
    A `Write` or `Edit` card from a jsonl entry or a hook dump needs the screen to prove the call
    (`ExpectedDecision.fileCall`, `fileCallShown` in `screen/edit-frame.ts`): the header path resolved against the
-   directory (the dump's `cwd`, for a jsonl entry the session directory the driver passes as `DecideInput.cwd`) gives
+   directory (the dump's `cwd`; for a jsonl entry the absolute `cwd` field of its transcript entry, which follows a
+   Bash `cd`, else the session directory the driver passes as `DecideInput.cwd`; `expectedFor` in
+   `decide/sources.ts`, in every mode) gives
    `file_path`, and the frame shows that content or that edit literally ("Create file" only; "Overwrite file" never
    proves; a wrapped line only under the measured geometry, "Permission dialog operation"), otherwise `mismatch`
    with reason `operation`.
@@ -351,8 +354,10 @@ and a "Read file" in a description must not rename it to `Read`. Code: `dialogBl
   gives no permission form (a card with the screen excerpt and Esc), and the check before the digit refuses
   `file-question`.
 - **MCP**: the header server equals the server from `mcp__<server>__<tool>` AND the title equals the tool name after
-  normalization (`mcpTitleMatches`: no `<server>_` prefix, lower case, words joined by a space). A title that does not
-  repeat the name gives `mismatch`. A one-word server must equal the identifier server literally (`catalog`). A server
+  normalization (`mcpTitleMatches`: lower case, words joined by a space), either without the `<server>_` prefix
+  (`catalog_get_task`, "Get Task") or with it, when the title repeats the prefix ("Catalog get task", a header shape
+  seen on CLI 2.1.331). A title that repeats neither gives `mismatch`, also when it holds the same words and more
+  ("Catalog get any task"). A one-word server must equal the identifier server literally (`catalog`). A server
   of several words with single spaces is a claude.ai connector name (CLI 2.1.322: "Claude Docs — Guide Tool: (MCP)"
   for `mcp__claude_ai_Claude_Docs__guide`): the identifier server must be `claude_ai_` followed by the name with
   every space written as `_` (`mcpServerMatches` in `screen/resolve.ts`).
@@ -801,16 +806,17 @@ the screen tail has a fingerprint without a title.
   only by a key on the screen. The hook returns two things: the human's answer to `AskUserQuestion` (as `allow` with
   `updatedInput.answers`; that tool executes nothing, so this `allow` approves no operation), and the FORM refusal of
   a too-tall `Bash` dialog ("Tall dialog guard"), its only decision without a human.
-- With the effective mode `main`, and with a mode the server cannot read, the classes `permission` and `sandbox`
-  get no digit and no approve key on any path: both decision endpoints, a live dump, a stale dump with a frame, no
-  dump, main thread and subagents (`consentDigitBlocked` in `dialogs/router.ts`, checked at the digit step of the
-  driver). A main thread tool permission is approved only by the signed answer file of a channel card ("Channel
-  cycle"); everything else waits in the terminal. A digit passes only for a known dialog card (trust, model) and
-  for an answer to a question form, and an answer on a card from the screen only with the registry class `input` or
-  `dialog`. A screen or jsonl tool card at `main` has no approve button and no always button. The mode does not gate
-  `escape` (deny); a dialog a channel card holds gets no key (below). An error, missing data or an unclear card state
-  means no approve button, never a digit.
-- One exception to the rule above: the digit of option "Yes" of a measured consent dialog (invariant N4,
+- With the effective mode `main` or `all`, and with a mode the server cannot read, the classes `permission` and
+  `sandbox` get no digit and no approve key on any path, except the two exceptions below: both decision endpoints, a
+  live dump, a stale dump with a frame, no dump, main thread and subagents (`consentDigitBlocked` in
+  `dialogs/router.ts`, checked at the digit step of the driver; the exceptions are `consentDigitException`). A tool
+  permission is approved by the signed answer file of a channel card ("Channel cycle") or by the "Yes" digit of one
+  of the exceptions; everything else waits in the terminal. A digit passes only for a known dialog card (trust,
+  model) and for an answer to a question form, and an answer on a card from the screen only with the registry class
+  `input` or `dialog`. Outside the exceptions a screen or jsonl tool card in these modes has no approve button, and
+  it never has the always button. The mode does not gate `escape` (deny); a dialog a channel card holds gets no key
+  (below). An error, missing data or an unclear card state means no approve button, never a digit.
+- First exception: the digit of option "Yes" of a measured consent dialog (invariant N4,
   `dialogs/policy/measured-consent.ts`). Two shapes are measured, both without a working hook answer: the sandbox
   network dialog (class `sandbox`, no `PermissionRequest`) and the dialog of an MCP tool with
   `requiresUserInteraction` (class `permission`, a plain `allow` does not close it), CLI 2.1.322, fixtures
@@ -829,6 +835,48 @@ the screen tail has a fingerprint without a title.
   in the same pane), has no channel card, however long ago it was accepted (`PromptQueue.keyHookWaits`, port
   `consentRegistrationWaits`; the card-wait ceiling is only for messages); a port error counts as waiting. Anything
   else, including another dialog on top, means no digit.
+- Second exception: the emergency Allow button of a tool permission dialog (class `permission`) to which Rarog's
+  `PermissionRequest` hook left no trace. The card is the one the `off` path would show, with its screen proof, and
+  one rule decides whether it carries the button (`screenFallbackGuard` in `dialogs/screen-fallback.ts`; the facts
+  and the key checks in `server/src/drivers/herdr/screen-fallback.ts`, the episode and its judgement in
+  `server/src/drivers/herdr/consent-no-hook.ts`). All of these must hold, and the first that fails names the refusal
+  (`SCREEN_FALLBACK_GUARDS`): the effective mode is `main` or `all`; the registry class is `permission`; the `off`
+  path card has the approve button by its own rules (frame proof, no ambiguity, the whole text, no hidden character)
+  and is built from a `tool_use` entry of the transcript, so a card from the screen alone, which is tied to no call,
+  never gets it; the dialog title on screen can be read, and a title with the subagent suffix gets the button only
+  in `all` (the card cannot tell such a dialog from an identical main-thread call; on Claude Code 2.1.331 the card of
+  a foreground subagent's dialog without a hook is compared with the `Agent` entry of the main thread, has no
+  approve button, and so gets no emergency button in any mode); the dialog episode was judged
+  without a hook trace past the 3 s grace ("A consent without a hook" in "Refusal diagnostics"); no hook trace and
+  no hook consent request of the session stand at that moment (`PromptQueue.keyHookWaits`); `ps` shows no hook
+  process of the session, and for a subagent's dialog `ps` must answer; the current content of the session's
+  settings layers holds no foreign `PermissionRequest` hook (a settings file changed after the session start does
+  not refuse by itself); the server is past its restart grace (`RAROG_CONSENT_RESTART_GRACE`). A card with a
+  measured mark, a pane outside the work area and a server without the detector get no emergency button. The card
+  carries the facts it was marked on (`ActiveReq.screenFallback`), and the card gate asks the same rule under the
+  live mode and registry class. The card has no always button, and its "Yes" goes only through `respondPermission`
+  `allow`: `allow-always`, or a digit other than "Yes", is refused with `terminal-only`.
+  A card that may get the button does not go out during the grace; when the judgement ends, or 2 s past the grace
+  (`NO_HOOK_JUDGE_WAIT_MS`) when its facts read hangs, it goes out with or without the button. While `ps` shows the
+  hook process or gives no answer, or the current settings hold a foreign hook or are in doubt, the episode is judged
+  again at registry signals (at most once per second, `NO_HOOK_REJUDGE_MS`, up to 40 times, `NO_HOOK_REJUDGE_MAX`).
+  Whenever the button the facts give differs from the card's, the card goes out again under the same `reqId`, with
+  or without it.
+  Right before the key the driver checks, in this order: the send shield (`PromptQueue.keyShield` with the class
+  `permission`); a fresh screen read with the same block print and the usual label and identity checks; the rule
+  once more on fresh facts (the thread from the fresh screen, the live mode and class, the hook trace, the hook
+  requests, the restart grace, the episode the card was judged in); no channel card holds the dialog; no hook
+  consent request waits; then the consent cycle notes the key ("Hook after the emergency key" in "Channel cycle")
+  and the key goes, with no wait between the last checks and the key. The check on fresh facts starts with the
+  call: the call the transcript holds as pending must be the call of the card (the `tool_use` of the mark), or the
+  refusal is `card`. A card with the emergency mark goes through these checks also when the effective mode falls to
+  `off` or `shadow` after the card went out: the tap is then refused with `mode` before any other check. A tap that
+  sends no key writes the `screen fallback refused` line ("Refusal
+  diagnostics"). When the rule, the shield, a hook request or the pending call refuses (the call the card stands for
+  is no longer the pending one, also for an identical call), the answer is 410, the card is cleared and the
+  evaluation shows it again under the current facts and mode (a new call gets its own grace); a changed screen gives
+  the usual answer of a card; a channel card that holds the dialog gives 410 and takes the dialog over. A sent key
+  writes the `screen fallback key` line.
 - A screen or jsonl permission card the user cannot read in full has no approve button and no always button in any
   consent mode (`canAllow: false`, `allow` gets 409; `cardShowsAll` in `server/src/drivers/tool-text.ts`, checked by
   the manager when it builds `permission-pending`): its text was cut by the server (`truncation`, over
@@ -836,8 +884,8 @@ the screen tail has a fingerprint without a title.
   `server/src/hidden-chars.ts`: control characters except tab and newline, text direction marks, zero-width characters
   except the emoji joiner U+200D, line and paragraph separators, BOM, tag characters U+E0000–U+E007F, the variation
   selectors U+E0100–U+E01EF, which show as nothing, and the Hangul fillers U+115F, U+1160, U+3164 and U+FFA0, which
-  show as blank space). The text stays on the card and Deny works. A multi-line command or JSON input keeps the button. Such a card has no `text` in the
-  list row's `waitingFor`, like any card without the approve button.
+  show as blank space). The text stays on the card and Deny works. A multi-line command or JSON input keeps the
+  button. Such a card has no `text` in the list row's `waitingFor`, like any card without the approve button.
 - A decision on a channel card goes only through the session card that handles the conversation (a live pane of the
   engine session); through another card of the same conversation (a pane the conversation moved away from, a `done`
   card) `allow`, `deny` and `release` are 410 with no file. A channel card passes the same gates as a screen card,
@@ -908,8 +956,9 @@ map, the public API for the driver facade, the import rules and the dependency d
   (`records.ts`), binding to the call (`bind.ts`), proof and effect (`proof.ts`), the version gate of the proof rule
   with the canary file (`version-gate.ts`), the match of a dump to the top of the screen (`top.ts`), the key state
   machine with the session pool (`cycle.ts`), the desk fallback with its clock (`desk.ts`), the reason code of a desk
-  release (`desk-reason.ts`), the session hook list and the session facts without a hook dump (`hook-list/`) and the
-  observation of one session (`observe.ts`): "Channel cycle". The registry and the socket exist only in a
+  release (`desk-reason.ts`), the session hook list and the session facts without a hook dump (`hook-list/`), the
+  emergency key notes that tie a late hook to the key (`screen-key.ts`) and the observation of one session
+  (`observe.ts`): "Channel cycle". The registry and the socket exist only in a
   channel mode that needs registration (`consentRegistrationWanted`), not with `off` and `shadow`; the power boundary
   of both sockets: `docs/security-model.md`, "Pairing and device keys". `layer1/` imports neither the transcript
   nor herdr driver modules, and `shadow/` does not import `layer1/` (`server/test/layer1-granica.test.ts`);
@@ -925,7 +974,10 @@ Outside the directory:
 - `server/src/drivers/herdr/consent-no-hook.ts`: a consent dialog without a hook and a card without the approve
   button, as `server.log` lines ("Refusal diagnostics"); the cause and the lines are `dialogs/no-hook.ts`, the `ps`
   and `statusLine` reads `drivers/herdr/consent-no-hook-io.ts`, the sources `consentNoHookSources` in
-  `server/src/bootstrap/consent.ts`;
+  `server/src/bootstrap/consent.ts`; it also keeps the episode judgement the emergency Allow button stands on;
+- `server/src/drivers/herdr/screen-fallback.ts`: the facts of the emergency Allow button, the mark on the card, the
+  card held through the grace, the checks right before the key and the `screen fallback` lines; the rule itself is
+  `dialogs/screen-fallback.ts` ("Rules: what must not be relaxed");
 - `server/src/herdr/jsonl-follow.ts`, `jsonl-pending.ts`: the transcript and the pending tool, with the `cwd` of its
   transcript entry;
 - `server/src/herdr/consent-evidence.ts`: the consent channel's transcript check from the checkpoint, outside the
@@ -1476,10 +1528,12 @@ phone key and the orphan release; effective `off`, `main` and `all` get neither.
   starting server's writes carry `phase: "starting"` until the first list with a session; the transition log carries
   neither ("Restart break" above). A process killed
   without a stop leaves the last `ts`, and hooks stop waiting within 30 s. The first write after start can have an
-  empty session list, because the supervisor does not know the panes yet. When the supervisor adds an agent while
-  the written list is empty and the current one is not, the file is written at once, not at the next 10 s tick
-  (`AliveWriter.sessionsChanged`, wired by `server/src/bootstrap/alive-sessions.ts`), so a hook started during a
-  server restart sees its session soon after the new server reads the herdr pane list. The demo writes no file.
+  empty session list, because the supervisor does not know the panes yet. When the supervisor learns of a session
+  the last written list lacks (a new or launched pane, `/clear` or `/resume` in the same pane, a `cd` into
+  `RAROG_HERDR_ROOTS`), the file is written at once, not at the next 10 s tick (`AliveWriter.sessionsChanged`, wired
+  by `server/src/bootstrap/alive-sessions.ts`), so a new session is on the list as soon as the supervisor knows it,
+  and a hook started during a server restart sees its session soon after the new server reads the herdr pane list.
+  A session that only left stays on the list until the next tick. The demo writes no file.
 - **Transition log `<dataDir>/alive.jsonl`** (`shadow/alive-log.ts`; only the server writes it, the hook does not read
   it). `alive.json` is overwritten, so the state a hook saw while waiting remains only here. A line
   `{at, ev, bootId, mode, send, sessions}` follows a successful `alive.json` write, with its `ts` as `at`, only on a
@@ -1648,7 +1702,8 @@ request from its file ("Dialog signals") and the desk fallback below.
   too, as `permission-resolved` with `expired` and `by: "hook"`, then `retire`: no device answered the card (the
   record's `decision` is `null`), so it has no button and nothing left to show, and the record stays `unknown` for the
   audit. Such a card first seen without `retired` (e.g. a record `recover` published before the manager) goes nowhere
-  and gets `retire` from the first snapshot. `claimed` → `unknown` without `running` (the end of the turn without a result, or the dialog still
+  and gets `retire` from the first snapshot. `claimed` → `unknown` without `running` (the end of the turn without a
+  result, or the dialog still
   standing after the claim) keeps the card, without buttons, because the phone did answer it. The manager keeps a
   removal in memory until `retire` writes the `retired` field (a failed write keeps it to the end of the process and
   goes to the log). A subagent card at effective `all` follows the same rule: a record reaches `running` only from
@@ -1800,7 +1855,7 @@ Below is what the module code does.
     live entry, several live processes, a registry not read yet) counts `screen` for both. For a known release and
     each request kind the first matching row wins: (1) the canary file has `fail` for that release and kind:
     `screen`; (2) the release is in the package base of `CONSENT_CHANNEL_MEASURED_CLI` in `hook/contract.ts`: not
-    above its `cli`, the release on which the package measured that contract (2.1.330), and not in its `excluded`,
+    above its `cli`, the release on which the package measured that contract (2.1.331), and not in its `excluded`,
     the closed list of releases under `cli` that did not pass that measurement for both request kinds (2.1.327):
     `channel`; (3) the canary file has `pass` for that release and kind: `channel`, also on an excluded release;
     (4) anything else (no entry, `unmeasured`, no file, an ignored file): `screen`. Only exact releases count, so a
@@ -1924,7 +1979,8 @@ Below is what the module code does.
   title suffix, so both match and neither gets the button.
   `pending`: a dead hook = `revoked` (`hook-dead`), a negative signal = `revoked` (`dialog-gone`) and the hook
   release, except a subagent card with a live registration, which stays `pending` (its hook does not read
-  `.revoked`; the desk fallback below ends it). `sent`: a dead hook = the file is revoked. `claimed` with a live
+  `.revoked`; the desk fallback below ends it), unless the emergency key answered its dialog ("Hook after the
+  emergency key" below). `sent`: a dead hook = the file is revoked. `claimed` with a live
   hook: the dialog disappeared = `running`. `claimed` whose hook left (the
   dump vanished) or died (`claimedDialogSignal`): another live main-thread dump in the session, or a registry read at or
   after the claim that is no older than 5 s and says something other than `waiting` with the `permission` class =
@@ -2108,8 +2164,9 @@ Below is what the module code does.
     `true`.
   - The call `cwd` is the `cwd` field of the transcript entry that carries the pending `tool_use`, absolute only.
     After a Bash `cd` it names the directory the call runs in, while the CLI registry and the herdr agent stay on the
-    session start directory (CLI 2.1.330). Without it the call `cwd` is unknown, never the session `cwd`. The card
-    decision does not read it.
+    session start directory (CLI 2.1.330). Without it the call `cwd` is unknown, never the session `cwd`. The file
+    proof of an `Edit` or `Write` card resolves a relative header path against the same field ("Flow: from a blocked
+    pane to a digit", item 4).
   - Facts hold while the session process, its registry `cwd` (read on every call) and the caller's episode stay the
     same; a negative read is read again in the same episode after its kind's time (2 s transient, 30 s otherwise). A
     read whose process or registry `cwd` changed by its end gives no facts. Both reads scan the `cwd` read at the
@@ -2401,7 +2458,8 @@ Below is what the module code does.
   transcript shows before any negative signal (`pending` → `settled-at-desk`) and a release from a device whose file
   failed to write (`write-failed`). A subagent card with a live registration gets none on a negative signal or when
   its run ends without a result from `pending` (it stays `pending` for the desk fallback, whose failed writes count in
-  `releaseFailed`), nor from `sent` with a `release` file. The record, its cause and the card stay as the transition
+  `releaseFailed`), nor from `sent` with a `release` file; a hook tied to the emergency key is the exception (next
+  item). The record, its cause and the card stay as the transition
   left them; the file sends no card event. A `release` never runs the tool, so after a false negative signal the
   dialog stays at the desk, as after a release from a device. Without a live, unblocked registration nothing is
   written. A failed write logs `consent: release file <key> (<cause>) not written, retried at the next observation:
@@ -2414,6 +2472,20 @@ Below is what the module code does.
   (`revokeSession`: the CLI stops its hooks at `/exit`, CLI 2.1.319, and `hook-dead` forgets the registrations), the
   claim deadline (the hook did not take a signed file for 60 s) and a file the hook set aside (a second file with the
   same signature inputs would fail the same check).
+- **Hook after the emergency key** (`lateHook` in `layer1/screen-key.ts`, called by `layer1/cycle.ts`). The
+  registration of a
+  hook can still be read on the socket when the emergency Allow button sends its digit, so the key shields do not see
+  it. Right before the key the driver notes it in the cycle: the session, the tool, the canonical sha256 of the call
+  input, the key time and the episode start. A note lives 60 s (`SCREEN_KEY_TTL_MS`). The first observation of a
+  dump without a record ties it to a note with the same session, tool and input digest whose hook started within
+  the episode (2 s of slack before its start, `SCREEN_KEY_START_SLACK_MS`) and not after the key; the start and
+  the digest come from the registration when there is one. A tied request, main thread and subagent alike, gets
+  its `pending` record written without publishing, settled at once as `revoked` (`dialog-gone`), also when that
+  observation sees the dialog gone, and its hook released with a signed `release`; the devices never get its card
+  with the approve button, and the cycle logs `consent: screen fallback late hook`. A tie never approves anything.
+  A note is not used up: the hook start cannot tell which of two identical calls the key answered, and an extra tie
+  only sends a dialog back to the terminal. An MCP request with empty suggestions keeps its own return to the desk.
+  A late main-thread `allow` after a key runs nothing ("Desk decision while the hook waits").
 - **Kill switch** (`off`): `pending` = `revoked` (`off`), `sent` = the file is revoked; claimed answers do not change.
 - **Recovery after start** (`recover`, before the first card), in this order: `.claimed` of the current answer =
   `claimed` (`released` for a release); `.rejected` without `.json` = `revoked` (`signature`); `.json` = `sent`, and
@@ -2470,7 +2542,10 @@ Below is what the module code does.
   button needs a live, unblocked registration, for a subagent card also effective `all`. A final state (`applied`,
   `settled-at-desk`, `revoked`, `released`) goes to `onCard` with the full view; right after that the cycle drops the
   dump, the verdict and the screen read of the key from memory, and the store keeps the view without the presentation
-  (`presentation: null`, the reason and `createdAt` stay). The record stays in memory until a restart. `endPool`
+  (`presentation: null`, the reason and `createdAt` stay). The record stays in memory until a restart
+  or until the manager forgets the last card of the session (`ConsentCycle.forgetSession`): then the session's
+  records, passed keys, reattach boundary and newest registry read without `waiting` leave memory, together with the
+  store cards of the dropped records, except a record whose turn the transcript review still reads. `endPool`
   removes the session's final cards from the store; a non-final card stays, a subagent card whose hook waits for its
   file included.
 - **Proof log** (`layer1/cycle.ts`). A main thread card in `pending` that goes out without the approve button for
@@ -2640,8 +2715,9 @@ Below is what the module code does.
 
 ### What stays in the terminal in `main`
 
-With the effective mode `main` the phone approves only main-thread tool permissions with a channel card. These are
-answered in the terminal; the card says why or has no approve button:
+With the effective mode `main` the phone approves main-thread tool permissions with a channel card, and a
+main-thread permission without a hook trace with the emergency Allow button ("Rules: what must not be relaxed").
+These are answered in the terminal; the card says why or has no approve button:
 
 - **"Always" options.** A channel card offers "always" only for the closed list of updates ("Always option" in
   "Per-call dump and shadow mode"); any other suggestion (`replaceRules`, `removeRules`, `bypassPermissions`,
@@ -2656,7 +2732,11 @@ answered in the terminal; the card says why or has no approve button:
 - **Subagent permissions.** At `main` the hook of a request with `agent_id` does not wait for the channel; its card
   has the reason `terminal-only`.
 - **A request without the channel.** A main-thread card without an accepted registration, or one the server cannot
-  sign, has the reason `no-channel`.
+  sign, has the reason `no-channel`, unless it gets the emergency Allow button. A hook that left a trace (a dump, a
+  request marker, a registration) and no channel card keeps the card at `no-channel`. Without any trace a card
+  stays at the desk when its screen does not prove the operation or a condition of the emergency button fails, for
+  example a dialog without digits, a card from the screen alone or a session with a foreign `PermissionRequest`
+  hook in its settings.
 - **Requests standing during a server restart.** Without the restart grace the record is revoked (`restart`) and
   the waiting hook exits without a result at the stop write, so its dialog stays at the desk. A recovered card
   without a verdict has the reason `server-restart`. With the restart grace the waiting hook pauses and registers
@@ -2695,8 +2775,9 @@ appears at the desk. A subagent request also ends at the desk, or waits without 
   above) does not wait.
 
 A screen card of a tool permission has no approve button in `main` and `all`, because both modes (and a mode the
-server cannot read) block its screen digit, except on a measured consent dialog ("Rules: what must not be relaxed").
-Its `unavailable` names the reason, first match wins (`server/src/herdr/dialogs/screen-unavailable.ts`):
+server cannot read) block its screen digit, except on a measured consent dialog and with the emergency Allow button
+("Rules: what must not be relaxed"). Its `unavailable` names the reason, first match wins
+(`server/src/herdr/dialogs/screen-unavailable.ts`):
 
 - **`settings-changed`.** The card's call key (`callKey` of the per-session dump) names a record the desk fallback
   released with the reason `other-hooks`, and the session hook list failed with `changed:<file>`: a file changed
@@ -2707,8 +2788,9 @@ Its `unavailable` names the reason, first match wins (`server/src/herdr/dialogs/
   after the start).
 - **`terminal-only`.** A desk release for any other reason, or a subagent request in `main`.
 - **`no-channel`.** Any other blocked card: a main-thread card without a channel card, a finished channel card whose
-  dialog still stands, a sandbox or MCP dialog without its measured mark, an unknown mode, a card without a call
-  key, a release the server no longer remembers.
+  dialog still stands, a sandbox or MCP dialog without its measured mark, a dialog without a hook trace whose card
+  the emergency Allow button rule refuses, an unknown mode, a card without a call key, a release the server no
+  longer remembers. A card with the emergency button has no reason.
 - **`truncated`, `hidden-chars`.** A card whose digit is not blocked but whose input the card does not show in full.
 
 A degraded card (no input to show) carries no reason and keeps the "deny only" sentence. The cycle remembers the
@@ -2919,9 +3001,11 @@ single key `script`, about 40 ms after `PreToolUse` of the same call; the input 
   from the dump when the dialog footer shows its plan file name ("Flow", item 4); without that name the card has no
   buttons.
 - The plan dialog footer carries the plan file name, `ctrl+g to edit in Nvim · ~/.claude/plans/<name>.md`, on one
-  line (CLI 2.1.278 and 2.1.314) or broken after `·` into two lines in a 63-column pane (CLI 2.1.258 and 2.1.293).
-  The layout is the same on all of them: the last option, the hint `shift+tab to approve with this feedback` indented
-  deeper than the option digit, an empty line, the footer indented at the level of the `❯` marker.
+  line (CLI 2.1.278 and 2.1.314), broken after `·` into two lines in a 63-column pane (CLI 2.1.258 and 2.1.293), or
+  broken after `~/.claude/plans/` in a 50-column pane, where the question above the options wraps too (CLI 2.1.331,
+  `dialog-exitplanmode-50kol-2.1.331.txt`). The layout is the same on all of them: the last option, the hint
+  `shift+tab to approve with this feedback` indented deeper than the option digit, an empty line, the footer indented
+  at the level of the `❯` marker.
 - A plain deny: the tool does not run, `message` reaches the model as a tool error, and the turn goes on. With a
   message that the user denied from the phone and the model should stop and wait, the model ended the turn in every
   attempt without another tool call (opus, fable and haiku, main thread and foreground subagent; CLI 2.1.314). A deny
@@ -3630,13 +3714,25 @@ The same step for other areas: `docs/background-tasks.md`, `docs/artifacts.md` a
   layer of the session holds Rarog's entry), `unexplained`. An unknown fact (`ps` unavailable, an unreadable layer)
   never makes a cause hold. `mode` is Rarog's mode name (`manual`, `plan`, `auto`, `bypass`), `hooks` the code of the
   session hook list verdict (`?` without a read), `statusline` the age of the session's `statusLine` dump,
-  `screen-button` whether the `off` path card would carry the approve button. The detector only observes: a failure
-  inside it never stops the card, the poll or a key, costs at most the episode's line and logs `consent: no hook
+  `screen-button` whether the `off` path card would carry the approve button. The detector sends no key and
+  publishes no card; its judgement (cause, `ps`, foreign hook) is what the emergency Allow button stands on ("Rules:
+  what must not be relaxed"), and a card that may get that button waits for it. A failure inside the detector never
+  stops the poll or a key, costs at most the episode's line and the emergency button, and logs `consent: no hook
   detector failed (<error name>)`.
 - `consent: no approve button — session <id>, reason <reason|?>, tool <name>, channel <mode|?>, rule
   <channel|screen|?>, cli <version|?>`: once per card identity (`reqId`) whose approve button the channel gate took
   while the `off` path card would have it; `reason` is the card's `unavailable`, `rule` the proof rule of the card's
   thread. Neither line carries a command, a path or input content: a value that is not a plain name prints `?`.
+- **The emergency Allow button** writes three lines, at every event, without a command, a path or input content:
+  `consent: screen fallback key — session <id>, tool <name>, cause <cause>, card <reqId>, tool_use <id|?>` after
+  each digit it sent (`cause` from the episode's latest judgement, which a judgement after the first can change
+  without a new `no hook` line; `tool_use` the transcript entry of the card);
+  `consent: screen fallback refused — session <id>, tool <name>, guard <guard>, card <reqId>` at each tap that sent
+  no key, with the guard that refused it (`SCREEN_FALLBACK_GUARDS` in `dialogs/screen-fallback.ts`: a guard of the
+  rule, `registry` and `hook` from the send shield, `screen` for a changed screen, `channel-card`, `always` for
+  `allow-always` or another digit); `consent: screen fallback late hook — session <id>, key <key>, thread
+  <main|subagent>, release <cause>` when a hook registers after the key ("Hook after the emergency key" in "Channel
+  cycle"). In the first two lines a value that is not a plain name prints `?`.
 - The consent channel cycle (`layer1/cycle.ts`) writes `<time>-top-<member>-<key tail>.txt` for a main-thread card
   without proof whose proof log line names an unknown top element: `top-bash-zone`, `top-edit-zone`, `top-bottom`
   ("Proof log"; a subagent card has no proof log line, so no dump). One dump per card, not per read; the key tail

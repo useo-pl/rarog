@@ -7,20 +7,19 @@ import RarogCore
 //
 // Only a tap on the current tab opens the window; it has no keyboard shortcut. Its rows are the tabs of the current
 // project in the order of the bar (`ProjectTabRef`: a session or a terminal), kept live by the host
-// (`tabsChanged`). It opens with the selection on the current tab and STAYS until a human picks a row (Return, a digit, a tap), closes it (Esc,
-// Cmd+., a tap outside, a menu shortcut) or something takes the screen away (a screen change, a presentation, the
-// scene going inactive, logout, another responder taking the keyboard). With a hardware keyboard, connected at the
-// opening or while the window stands, the window takes it (`SwitcherKeyResponder`): the arrows, the digits, Return
-// and Esc belong to the window, with or without Cmd held, and nothing reaches the screen underneath.
+// (`tabsChanged`). It opens with the selection on the current tab and STAYS until a human picks a row (Return, a
+// tap), closes it (Esc, Cmd+., a tap outside, a menu shortcut) or something takes the screen away (a screen change, a
+// presentation, the scene going inactive, logout, another responder taking the keyboard). With a hardware keyboard,
+// connected at the opening or while the window stands, the window takes it (`SwitcherKeyResponder`): the arrows,
+// Return and Esc belong to the window, with or without Cmd held, and nothing reaches the screen underneath. The
+// digits are no keys of the window: Cmd+1–9 stay the menu's tab shortcuts, which close the window like the other menu
+// shortcuts (text size aside) and switch the tab.
 
 /// Timing of the window.
 public enum SwitcherTiming {
   /// The smallest gap between two moves of the selection. The system repeats a held key every 31 ms (32 times a
   /// second); the fastest presses by hand were 159 ms apart (measured on the iPad).
   public static let moveInterval: TimeInterval = 0.1
-  /// After a digit closes the window, the same Cmd+digit coming through the menu this close to it is the same press
-  /// (or its repeat), not a new tab shortcut.
-  public static let repeatQuiet: TimeInterval = 0.3
 }
 
 /// A key of the window that holds the keyboard (`SwitcherKeyResponder`).
@@ -33,12 +32,6 @@ public enum SwitcherKey: Sendable, Equatable {
   case confirm
   /// Esc, Cmd+period.
   case close
-  /// 1–9 with or without Cmd: the row whose tab carries that digit on the bar; 9 is the last row
-  /// (`SwitcherRows.tab(forDigit:in:)`).
-  case digit(Int)
-
-  /// The inputs of the digit keys, "1" to "9". No 0: Cmd+0 is the app's text size reset.
-  public static let digits = (1...9).map(String.init)
 }
 
 public struct SwitcherMachine: Sendable, Equatable {
@@ -90,11 +83,6 @@ public struct SwitcherMachine: Sendable, Equatable {
   /// for every change.
   public private(set) var selectionSerial = 0
   private var lastMoveAt: TimeInterval = 0
-  /// Until then Cmd+digit from the menu is swallowed: a digit has just closed the window, and the same press may come
-  /// a second time through the other route (the window's key command and the tab shortcut of the menu).
-  private var digitQuietUntil: TimeInterval = 0
-  /// The digit that closed the window: only its second delivery is swallowed, never another tab shortcut.
-  private var digitQuietNumber = -1
 
   public init() {}
 
@@ -151,25 +139,7 @@ public struct SwitcherMachine: Sendable, Equatable {
       return finish(restore: false, at: now) + [.open(target)]
     case .close:
       return cancel(.escapeKey, at: now)
-    case let .digit(number):
-      // A digit without a row does nothing; the window stays.
-      guard let target = SwitcherRows.tab(forDigit: number, in: order) else { return [] }
-      digitQuietUntil = now + SwitcherTiming.repeatQuiet
-      digitQuietNumber = number
-      return go(target, at: now)
     }
-  }
-
-  /// Cmd+1 to Cmd+9 from the app menu (the tab shortcuts). `nil`: not the window's — the tab shortcut does
-  /// its own thing. With the window open the digit belongs to the window; right after a digit closed it, the same
-  /// press of THAT digit coming through the menu as well is swallowed (and so are its repeats); another digit is a new
-  /// tab shortcut, so it does not switch the tab under
-  /// the jump.
-  public mutating func menuDigit(_ number: Int, at now: TimeInterval) -> [Effect]? {
-    if isOpen { return key(.digit(number), at: now) }
-    guard number == digitQuietNumber, now < digitQuietUntil else { return nil }
-    digitQuietUntil = now + SwitcherTiming.repeatQuiet
-    return []
   }
 
   /// The selection one row down or up, wrapping, at most once per `moveInterval`.
@@ -282,13 +252,6 @@ public final class SessionSwitcher {
   /// A hardware keyboard connected while the window stands (`SwitcherWatch`).
   public func keyboardConnected() { run(machine.keyboardConnected()) }
 
-  /// Cmd+1 to Cmd+9 from the app menu; `true`: the window took the digit and the tab shortcut stays silent.
-  @discardableResult
-  public func menuDigit(_ number: Int) -> Bool {
-    guard let effects = machine.menuDigit(number, at: now()) else { return false }
-    run(effects)
-    return true
-  }
   public func tapRow(_ tab: ProjectTabRef) { run(machine.tapRow(tab, at: now())) }
   public func cancel(_ reason: SwitcherMachine.Cancel) { run(machine.cancel(reason, at: now())) }
   public func tabsChanged(_ tabs: [ProjectTabRef]) { machine.tabsChanged(tabs) }

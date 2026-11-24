@@ -1,8 +1,8 @@
 /**
  * Server start: the herdr supervisor's agent set signal, wired to the `alive.json` writer. The supervisor is built
- * before the writer, so the signal exists first and gets the writer later (`connect`). The writer publishes the first
- * sessions after the start at once instead of with its 10 s tick (`AliveWriter.sessionsChanged`). It does not decide
- * anything about the hook or the consent channel.
+ * before the writer, so the signal exists first and gets the writer later (`connect`). The writer publishes a new
+ * session at once instead of with its 10 s tick (`AliveWriter.sessionsChanged`). It does not decide anything about the
+ * hook or the consent channel.
  */
 import type { AliveWriter } from '../herdr/dialogs/shadow/alive.ts';
 

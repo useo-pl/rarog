@@ -816,7 +816,7 @@ public final class TerminalScreenViewController: UIViewController {
   /// paska nie ma (klawiatura sprzętowa). Na trasie te same pozycje składa pasek nawigacji (`TerminalChrome`).
   public func headerMenu() -> UIMenu {
     let history = UIAction(
-      title: UICopy.terminalHistory, image: UIImage(systemName: TerminalBarKey.history.symbol),
+      title: UICopy.terminalSelectOutput, image: UIImage(systemName: TerminalBarKey.history.symbol),
       attributes: canShowHistory ? [] : .disabled
     ) { [weak self] _ in self?.handleHistory() }
     return UIMenu(children: [

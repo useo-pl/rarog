@@ -22,6 +22,8 @@ import Synchronization
 // - Pairing and revoking runtimes share one limit of iroh failure reports to the lease (`IrohReportThrottle`, one
 //   per `irohRetryDelay`): each builds a new runtime, and their failures must not rebind the shared endpoint.
 // - Linie do `client.log` idą przez ``TunnelTrace`` (podbudżety, alarm porażki iroh, linia stanu przy wyjściu z tła).
+//   A runtime's line carries the key of the server the runtime was built for (`ServerKey`), so it never reaches
+//   another server; lines of the shared endpoint, the lease and the state line carry none.
 // - The iroh relay registry client (`RelayAccessWiring.swift`) gets the current credential's iroh pair as the server
 //   list (every new transport, a pair changed in place) and the triggers seen here: entering the active scene,
 //   protected data available, a failed iroh attempt in the lease (its observer closure). Every call goes in a task:
@@ -100,11 +102,12 @@ final class TunnelCoordinator: ServerWorkObserver {
   ///   - identities: tożsamość iroh urządzenia (wpis Keychaina).
   ///   - proxyCounters: liczniki nasłuchów i par wszystkich proxy (testy: liczniki atrapy transportu).
   ///   - relayAccess: the iroh relay registry client of the process (`RelayAccessWiring.live` in the app).
-  ///   - log: linia do `client.log` (bez sekretów).
+  ///   - log: linia do `client.log` (bez sekretów) and the server it concerns: a runtime's lines carry the key of the
+  ///     credential (or pairing target) the runtime was built for, the shared endpoint's lines none.
   init(
     label: String, build: Int, transport: any TunnelTransport, identities: IrohIdentityStore,
     timing: TunnelRuntime.Timing = .system, proxyCounters: TunnelProxyCounters = TunnelProxyCounters(),
-    relayAccess: (any RelayAccessControl)? = nil, log: @escaping @Sendable (String) -> Void
+    relayAccess: (any RelayAccessControl)? = nil, log: @escaping @Sendable (String, ServerKey?) -> Void
   ) {
     self.relayAccess = relayAccess
     self.label = label
@@ -114,6 +117,7 @@ final class TunnelCoordinator: ServerWorkObserver {
     self.proxyCounters = proxyCounters
     let trace = TunnelTrace(sink: log, now: timing.now)
     self.trace = trace
+    // The shared endpoint, its lease and the watchdog serve every runtime: their lines have no single server.
     let log: @Sendable (String) -> Void = { line in trace.send(line) }
     self.log = log
     let registry = TunnelRegistry()
@@ -171,7 +175,10 @@ final class TunnelCoordinator: ServerWorkObserver {
       iroh = config
     }
     let config = loopConfig(origin: IrohWire.origin)
-    let runtime = makeRuntime(target: Self.target(iroh), https: nil, failureReports: oneOffReports) { url in
+    let runtime = makeRuntime(
+      target: Self.target(iroh), https: nil, server: ServerKey(serverURL: nil, iroh: iroh),
+      failureReports: oneOffReports
+    ) { url in
       RarogClient(config: config(url))
     }
     let entry = Entry(deviceId: "", runtime: runtime, https: nil)
@@ -395,7 +402,8 @@ final class TunnelCoordinator: ServerWorkObserver {
     }
     let config = loopConfig(origin: IrohWire.origin)
     let runtime = makeRuntime(
-      target: credential.iroh.map(Self.target), https: https, failureReports: failureReports
+      target: credential.iroh.map(Self.target), https: https, server: ServerKey(credential),
+      failureReports: failureReports
     ) { url in
       RarogClient(config: config(url), policy: rules, device: credential, rejections: latch)
     }
@@ -406,17 +414,22 @@ final class TunnelCoordinator: ServerWorkObserver {
   /// Runtime nowej tożsamości: w rejestrze dzierżawy, z bieżącą sceną, pracami w tle i gotowością dzierżawy od
   /// konstrukcji. Budowa i rejestracja idą synchronicznie, więc każde późniejsze zdarzenie sceny, pracy i dzierżawy
   /// trafia do niego przez rejestr, po stanie początkowym.
+  ///
+  /// Every line of the runtime carries `server`, the key it was built for, taken here and not when the line arrives: a
+  /// retired runtime still writes after the store moved to another server, and those lines must not reach it. A key
+  /// changed in place (``credentialChanged(_:)``) does not reach the runtime's lines, so they are lost until the next
+  /// transport rather than sent to the new key.
   private func makeRuntime(
-    target: TunnelTarget?, https: RarogClient?, failureReports: IrohReportThrottle? = nil,
+    target: TunnelTarget?, https: RarogClient?, server: ServerKey?, failureReports: IrohReportThrottle? = nil,
     makeClient: @escaping TunnelRuntime.ClientFactory
   ) -> TunnelRuntime {
     if let target, current == nil || registry.homeRelay == nil { registry.homeRelay = target.relay }
-    let (lease, timing, proxyCounters, log, scene, works) = (lease, timing, proxyCounters, log, scene, works)
+    let (lease, timing, proxyCounters, trace, scene, works) = (lease, timing, proxyCounters, trace, scene, works)
     return registry.add { readiness in
       TunnelRuntime(
         target: target, httpsClient: https, lease: lease, makeClient: makeClient, timing: timing,
         proxyCounters: proxyCounters, scene: scene, works: works, readiness: readiness, failureReports: failureReports,
-        log: log)
+        log: { line in trace.send(line, server: server) })
     }
   }
 
@@ -461,25 +474,28 @@ nonisolated final class RetireOnce: Sendable {
 }
 
 /// Linie tunelu do `client.log`: koordynator powstaje przed magazynem, więc linie sprzed podpięcia czekają w buforze.
+/// Each line keeps the server it concerns (`nil` = no single server) from its producer to the sink, also through the
+/// buffer: the sink hops to the main actor later, when the store may serve another server.
 nonisolated final class TunnelLogRelay: Sendable {
+  typealias Sink = @Sendable (String, ServerKey?) -> Void
   static let bufferLimit = 32
-  private let state = Mutex<(sink: (@Sendable (String) -> Void)?, buffer: [String])>((nil, []))
+  private let state = Mutex<(sink: Sink?, buffer: [(line: String, server: ServerKey?)])>((nil, []))
 
-  func send(_ line: String) {
-    let sink = state.withLock { state -> (@Sendable (String) -> Void)? in
-      if state.sink == nil, state.buffer.count < Self.bufferLimit { state.buffer.append(line) }
+  func send(_ line: String, server: ServerKey?) {
+    let sink = state.withLock { state -> Sink? in
+      if state.sink == nil, state.buffer.count < Self.bufferLimit { state.buffer.append((line, server)) }
       return state.sink
     }
-    sink?(line)
+    sink?(line, server)
   }
 
-  func attach(_ sink: @escaping @Sendable (String) -> Void) {
-    let buffered = state.withLock { state -> [String] in
+  func attach(_ sink: @escaping Sink) {
+    let buffered = state.withLock { state -> [(line: String, server: ServerKey?)] in
       state.sink = sink
       defer { state.buffer = [] }
       return state.buffer
     }
-    for line in buffered { sink(line) }
+    for entry in buffered { sink(entry.line, entry.server) }
   }
 }
 

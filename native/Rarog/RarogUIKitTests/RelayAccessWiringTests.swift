@@ -234,7 +234,7 @@ actor RecordingRelayAccess: RelayAccessControl {
   private let prepareResult: RelayPrepareResult
   private let forgetStatus: RelayAccessStatus
 
-  init(prepareResult: RelayPrepareResult = .ready, forgetStatus: RelayAccessStatus = .inactive) {
+  init(prepareResult: RelayPrepareResult = .ready(sponsoredAt: nil), forgetStatus: RelayAccessStatus = .inactive) {
     (statuses, feed) = AsyncStream.makeStream()
     self.prepareResult = prepareResult
     self.forgetStatus = forgetStatus

@@ -158,7 +158,8 @@ depends on it.
   variant of each socket allow-list method (`methods`), the response variants Rarog parses (`responses`, including
   `pong` with `capabilities`), the `event`, `subscription_event` and `error_response` schemas (`events`), and the
   transitive `$ref` closure of all of them (`defs`, key `<schema>/<name>`). The protocol number is the evidence for
-  `KNOWN_PROTOCOLS` in `socket.ts`. Read the file before a client:
+  the tested set `KNOWN_PROTOCOLS` in `socket.ts`; only the set's minimum gates, so a newer number gets full
+  integration before it is in the set. Read the file before a client:
   `AgentReadParams` requires `source`, and Rarog never sends the optional `lines` (0.2 ms vs 380 ms); `wait` in
   `AgentPromptParams` is optional, and Rarog sends it only with ordinary prompts, because slash commands start no
   turn and would give a false stall (`client.ts`, `prompt`); `SubscriptionEventKind` has three dotted variants
@@ -235,6 +236,14 @@ depends on it.
 - **`dialog-exitplanmode.txt`** (transcribed from a live measurement, with a `⏺ Read(…)` scrollback added on
   purpose): the parser must take `ExitPlanMode` from the closed signature, which matches only the header sentence,
   not `Read` from the `⏺` line. The byte-for-byte capture is `measured/exitplanmode-<version>.txt`.
+- **`dialog-exitplanmode-50kol-2.1.331.txt`** (reconstruction from a screenshot of a live failure in a 50-column
+  pane, Claude Code 2.1.331; neutral plan text and plan file name): the question wraps after "ready to", so the
+  signature sentence "Claude has written up a plan and is ready to execute" spans two lines, and the footer breaks
+  after `~/.claude/plans/`. The lines from the dialog's top rule to the footer follow the screenshot; the status rule
+  and the "Ready to code?" block with the plan frame above them follow `measured/exitplanmode-2.1.258.txt` at the
+  narrower width. The plan signatures read the dialog region with its lines joined by a space, so the dialog keeps
+  the name `ExitPlanMode`, the options of a wide pane and the plan file name from the footer
+  (`server/test/parse-plan-dialog.test.ts`).
 - **`dialog-askuserquestion-linia-nazwy{,-luka}-2.1.281.txt`** (captures, CLI 2.1.281): the session name line
   `──── pomiar-nazwy ─` (after `/rename pomiar-nazwy`) under the form footer. herdr detection rules below 2026.10.11.1
   take it for the last rule (`done` or `idle` instead of `blocked`), so Rarog falls back to `#formFallbackVerdict`;

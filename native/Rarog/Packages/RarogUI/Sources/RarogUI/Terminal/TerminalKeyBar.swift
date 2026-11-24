@@ -38,7 +38,7 @@ public enum TerminalBarKey: String, CaseIterable, Sendable {
     case .pad: UICopy.terminalKeyPad
     case .copy: UICopy.terminalCopy
     case .paste: UICopy.terminalPaste
-    case .history: UICopy.terminalHistory
+    case .history: UICopy.terminalSelectOutput
     }
   }
 
@@ -64,7 +64,7 @@ public enum TerminalBarKey: String, CaseIterable, Sendable {
     case .pad: "dpad"
     case .copy: "doc.on.doc"
     case .paste: "doc.on.clipboard"
-    case .history: "clock.arrow.circlepath"
+    case .history: "selection.pin.in.out"
     }
   }
 }
@@ -236,7 +236,7 @@ final class TerminalKeyBar: UIView {
         let button = makeButton(key)
         buttons[key] = button
         if key == .history {
-          historyTip = ShortcutTipTracker(view: button, line: ShortcutTipLine(UICopy.terminalHistory, .terminalHistory))
+          historyTip = ShortcutTipTracker(view: button, line: ShortcutTipLine(UICopy.terminalSelectOutput, .terminalHistory))
         }
         item = button
       }

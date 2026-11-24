@@ -78,10 +78,6 @@ export const HERDR_SENTENCES = {
     en: 'herdr protocol {protocol} is older than the tested {oldest}. Integration is turned off.',
     args: ['protocol:text', 'oldest:text'],
   },
-  'herdr.protocol-unknown': {
-    en: 'herdr protocol {protocol} is unknown (tested: {tested}), read-only',
-    args: ['protocol:text', 'tested:text'],
-  },
   'herdr.response-bad-shape': { en: 'The `{method}` response has an unknown shape.', args: ['method:text'] },
   'herdr.response-foreign-id': {
     en: 'A herdr response with an unexpected ID (expected {expected}). Protocol error.',

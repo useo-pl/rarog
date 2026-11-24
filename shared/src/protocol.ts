@@ -22,9 +22,13 @@ import {
 import {
   type GitCommit, type GitFileDetail, type GitFileKinds, gitCommitSchema, gitFileDetailSchema, gitFileKindsSchema,
 } from './protocol/git.ts';
-import { type HerdrMode, type HerdrStatus, herdrModeSchema, herdrStatusSchema } from './protocol/herdr.ts';
+import {
+  type HerdrMode, type HerdrStatus, type HerdrStatusEvent, herdrModeSchema, herdrStatusEventSchema, herdrStatusSchema,
+} from './protocol/herdr.ts';
 import { type InboxEventOf, inboxEventSchemas } from './protocol/inbox.ts';
 import { type EffortLevel, effortLevelSchema, modelIdSchema } from './protocol/model.ts';
+import { type NotesEvent, notesEventSchema } from './protocol/notes.ts';
+import { type FolderAccessEvent, folderAccessEventSchema } from './protocol/folders.ts';
 
 export type { SentenceRef };
 
@@ -37,6 +41,7 @@ export * from './protocol/dictation.ts';
 export * from './protocol/diff.ts';
 export * from './protocol/directories.ts';
 export * from './protocol/files.ts';
+export * from './protocol/folders.ts';
 export * from './protocol/git.ts';
 export * from './protocol/herdr.ts';
 export * from './protocol/inbox.ts';
@@ -968,29 +973,7 @@ export type ServerEvent =
       fileDetails?: GitFileDetail[];
     }
   | { type: 'usage'; sessionId: string; contextTokens: number; contextLimit: number }
-  /**
-   * Zmiana dostępności herdr NA ŻYWO. Event ULOTNY i GLOBALNY: `seq: null`, poza ring bufferem
-   * którejkolwiek sesji. Stan startowy odtwarza `sessions-snapshot.herdrStatus`, a nie replay.
-   */
-  | { type: 'herdr-status'; available: boolean; agentCount: number; readOnly: boolean;
-      canLaunch?: boolean; detail?: string; detailRef?: SentenceRef }
-  /**
-   * Notatki PROJEKTU się zmieniły — ktoś dodał, poprawił albo skasował notatkę.
-   *
-   * Event ULOTNY i GLOBALNY, dokładnie jak `herdr-status`: `seq: null`, poza ring bufferem
-   * którejkolwiek sesji. Notatka nie należy do żadnej sesji, więc nie ma tu czego replayować,
-   * a stan startowy widok bierze z `GET /api/notes` przy wejściu.
-   *
-   * TREŚCI W RAMCE NIE MA i to jest decyzja, nie oszczędność: ramka jedzie do KAŻDEGO
-   * otwartego klienta, także takiego, który stoi w zupełnie innym projekcie. Jedyne, co niesie,
-   * to „w tym katalogu coś się zmieniło" — kto ma ten katalog na ekranie, dociąga dokument sam.
-   *
-   * `empty` mówi, czy PO zapisie dokument jest pusty (sam biały znak liczy
-   * się jako pustka). To jeden bit, nie treść: pigułka ✎ w pasku projektu podświetla się, gdy
-   * projekt MA notatkę, a bez tego bitu każdy klient musiałby po każdym autosave robić `GET`
-   * całego dokumentu tylko po to, żeby zapalić albo zgasić kolor ikony.
-   */
-  | { type: 'notes'; cwd: string; empty: boolean }
+  | HerdrStatusEvent | NotesEvent | FolderAccessEvent
   | InboxEventOf<SessionState>;
 
 export type ServerEventType = ServerEvent['type'];
@@ -1399,36 +1382,6 @@ export const usageEventSchema = z.object({
   contextLimit: z.number(),
 });
 
-/**
- * Świadomie WĘŻSZY niż `herdrStatusSchema`: `version`/`protocol` interesują tylko ramkę
- * startową (baner „protokół nowszy niż testowany"), a nie każdą zmianę dostępności.
- *
- * `canLaunch` is not cosmetic: with the answer to "may I start a session" only in the
- * `sessions-snapshot` frame, the phone would keep the last known value until the next reconnect,
- * so a panel closed by hand at the Mac would free a slot while the app still showed a dimmed "+"
- * and the limit sentence.
- *
- * OPCJONALNE, bo event jest współdzielony ze starszymi wydaniami frontu i backendu: brak pola
- * znaczy „nie wiem", a nie „nie wolno" — klient zostawia wtedy poprzednią wartość zamiast gasić
- * przycisk na podstawie ciszy.
- */
-export const herdrStatusEventSchema = z.object({
-  type: z.literal('herdr-status'),
-  available: z.boolean(),
-  agentCount: z.number(),
-  readOnly: z.boolean(),
-  canLaunch: z.boolean().optional(),
-  detail: z.string().optional(),
-  detailRef: sentenceRefSchema.optional(),
-});
-
-/** Project notes changed: the directory and the "empty after the write" bit, no content ({@link ServerEvent}). */
-export const notesEventSchema = z.object({
-  type: z.literal('notes'),
-  cwd: z.string().min(1),
-  empty: z.boolean(),
-});
-
 export const serverEventSchema = z.discriminatedUnion('type', [
   helloEventSchema,
   sessionsSnapshotEventSchema,
@@ -1445,8 +1398,7 @@ export const serverEventSchema = z.discriminatedUnion('type', [
   stateEventSchema,
   gitStatusEventSchema,
   usageEventSchema,
-  herdrStatusEventSchema,
-  notesEventSchema,
+  herdrStatusEventSchema, notesEventSchema, folderAccessEventSchema,
   ...inboxEventSchemas(sessionStateSchema),
 ]);
 

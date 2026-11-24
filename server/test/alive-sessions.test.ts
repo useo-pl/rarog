@@ -1,8 +1,9 @@
 /**
  * The supervisor's agent set signal wired to `alive.json` (`server/src/bootstrap/alive-sessions.ts`): when the
- * herdr supervisor reports the first Claude session after the start, `alive.json` carries it at once instead of
- * with the next 10 s tick. A hook that started during a server restart waits for its session on that list, so the
- * tick would stretch the restart window. Real supervisor and writer; only herdr is a fake.
+ * herdr supervisor learns of a Claude session the written list lacks (the first one after the start, a new pane,
+ * a launch, `/clear` in the same pane, a `cd` into the work area), `alive.json` carries it at once instead of with
+ * the next 10 s tick. A hook whose session is not on that list leaves without the consent channel. Real supervisor
+ * and writer; only herdr is a fake.
  */
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -18,10 +19,12 @@ import type { HookAliveFile } from '../src/herdr/dialogs/hook/contract.ts';
 import { createAliveWriter } from '../src/herdr/dialogs/shadow/alive.ts';
 import type { AliveWriter } from '../src/herdr/dialogs/shadow/alive.ts';
 import type { HerdrSocketStatus, HerdrStreamEvent, HerdrSubscription } from '../src/herdr/socket.ts';
-import { createHerdrSupervisor } from '../src/herdr/supervisor.ts';
+import { HERDR_RESYNC_MS, createHerdrSupervisor } from '../src/herdr/supervisor.ts';
 import type { HerdrSupervisorHandle, HerdrTransport } from '../src/herdr/supervisor.ts';
 import { HerdrGoneError } from '../src/herdr/types.ts';
-import type { HerdrAgentInfo, HerdrClient, HerdrScreen } from '../src/herdr/types.ts';
+import type {
+  HerdrAgentInfo, HerdrClient, HerdrLaunchResult, HerdrLauncher, HerdrScreen,
+} from '../src/herdr/types.ts';
 import { VirtualScheduler } from './helpers/supervisor-tab-label-harness.ts';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures', 'herdr');
@@ -43,7 +46,8 @@ class GatedClient implements HerdrClient {
   /** When `agent.list` answered (ms, `Date.now`). */
   answeredAt = 0;
 
-  constructor(private readonly agents: HerdrAgentInfo[]) {}
+  /** What `agent.list` answers; a test replaces it to change the panes before the next resync. */
+  constructor(public agents: HerdrAgentInfo[]) {}
 
   open(): void { this.#open?.(); }
 
@@ -114,19 +118,43 @@ function readAlive(dir: string): HookAliveFile {
   return JSON.parse(readFileSync(join(dir, HOOK_ALIVE_FILENAME), 'utf8')) as HookAliveFile;
 }
 
+/** A launcher stand-in that keeps the real launcher's contract: `ready` resolves with the id it registered. */
+function standInLauncher(paneId: string, agentSessionId: string): { launcher: HerdrLauncher; settle: () => void } {
+  let settle: () => void = () => {};
+  const launcher: HerdrLauncher = {
+    launch: () => {
+      const result: HerdrLaunchResult = {
+        key: paneId, paneId, tabId: `${paneId}:tab`, agentSessionId, createdWorkspace: false,
+        argv: ['--session-id', agentSessionId], status: 'idle', interactiveReady: true,
+      };
+      const ready = new Promise<HerdrLaunchResult>((resolve) => { settle = () => { resolve(result); }; });
+      return Promise.resolve({ key: paneId, paneId, tabId: result.tabId, agentSessionId, ready });
+    },
+  };
+  return { launcher, settle: () => { settle(); } };
+}
+
+/** Lets the resync, the signal's microtask and the write run to the end. */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 10; i += 1) await new Promise<void>((resolve) => { setImmediate(resolve); });
+}
+
 interface Wired {
   readonly dir: string;
   readonly client: GatedClient;
   readonly supervisor: HerdrSupervisorHandle;
   readonly writer: AliveWriter;
+  /** The supervisor's timers: `advance(HERDR_RESYNC_MS)` runs the next resync. */
+  readonly scheduler: VirtualScheduler;
 }
 
 /** The order of `main()`: the signal before the supervisor, the writer after it, then the hand-over. */
-function wire(agents: HerdrAgentInfo[]): Wired {
+function wire(agents: HerdrAgentInfo[], launcher?: HerdrLauncher): Wired {
   const dir = mkdtempSync(join(tmpdir(), 'rarog-alive-sessions-'));
   dirs.push(dir);
   const signal = createAliveSessionsSignal();
   const client = new GatedClient(agents);
+  const scheduler = new VirtualScheduler();
   const supervisor = createHerdrSupervisor(
     {
       socketPath: '/unused.sock', roots: ['/Users/u/Projects'], yoloRoots: [], sendEnabled: true,
@@ -136,7 +164,8 @@ function wire(agents: HerdrAgentInfo[]): Wired {
       createDriver: () => noopDriver(),
       client,
       transport: new SilentTransport(),
-      scheduler: new VirtualScheduler(),
+      scheduler,
+      ...(launcher === undefined ? {} : { launcher }),
       audit: { log: () => {}, flush: () => Promise.resolve() },
       hidden: {
         flush: () => Promise.resolve(),
@@ -158,7 +187,17 @@ function wire(agents: HerdrAgentInfo[]): Wired {
   writer.start();
   signal.connect(writer);
   cleanups.push(() => { writer.stop(); supervisor.dispose(); });
-  return { dir, client, supervisor, writer };
+  return { dir, client, supervisor, writer, scheduler };
+}
+
+/** Wired, the gate open and the first list written: `alive.json` carries `expected`. */
+async function started(agents: HerdrAgentInfo[], expected: string[], launcher?: HerdrLauncher): Promise<Wired> {
+  const wired = wire(agents, launcher);
+  wired.client.open();
+  await wired.supervisor.ready;
+  await settle();
+  expect(readAlive(wired.dir).sessions).toEqual(expected);
+  return wired;
 }
 
 describe('alive.json follows the first session the supervisor reports', { timeout: 5_000 }, () => {
@@ -177,5 +216,76 @@ describe('alive.json follows the first session the supervisor reports', { timeou
     const elapsed = Date.now() - client.answeredAt;
     expect(sessions).toEqual([agent.agentSessionId]);
     expect(elapsed).toBeLessThan(100);
+  });
+});
+
+const CLEARED = '99999999-1111-5222-8333-444444444444';
+const LAUNCHED = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+/*
+ * The supervisor changes the observed set in place, not only by adding an entry: the hook of the new id must find it
+ * on the list at its first request, while the 10 s writer rhythm never fires inside the test window.
+ */
+describe('alive.json follows a session id the supervisor learns in place', { timeout: 5_000 }, () => {
+  it('`/clear` in the same pane → alive.json carries the new session id without the tick', async () => {
+    const agent = claudeAgent();
+    const { dir, client, scheduler } = await started([agent], [agent.agentSessionId]);
+    client.agents = [{ ...agent, agentSessionId: CLEARED }];
+    scheduler.advance(HERDR_RESYNC_MS);
+    await settle();
+    expect(readAlive(dir).sessions).toEqual([CLEARED]);
+  });
+
+  it('`cd` into the work area → alive.json carries the session without the tick', async () => {
+    const agent: HerdrAgentInfo = { ...claudeAgent(), cwd: '/Users/u/elsewhere' };
+    const { dir, client, scheduler } = await started([agent], []);
+    client.agents = [{ ...agent, cwd: '/Users/u/Projects/demo' }];
+    scheduler.advance(HERDR_RESYNC_MS);
+    await settle();
+    expect(readAlive(dir).sessions).toEqual([agent.agentSessionId]);
+  });
+
+  it('a launch while another session is listed → alive.json carries it from the registration on', async () => {
+    const agent = claudeAgent();
+    const launch = standInLauncher('w9:pNEW', LAUNCHED);
+    const { dir, supervisor } = await started([agent], [agent.agentSessionId], launch.launcher);
+    const both = [agent.agentSessionId, LAUNCHED].sort();
+    await supervisor.launch({ cwd: '/Users/u/Projects/demo' });
+    await settle();
+    expect(readAlive(dir).sessions).toEqual(both);
+    launch.settle();
+    await settle();
+    expect(supervisor.observedEngineSessions?.().slice().sort()).toEqual(both);
+    expect(readAlive(dir).sessions).toEqual(both);
+  });
+});
+
+const BURST = [
+  'aaaaaaaa-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000002',
+  'aaaaaaaa-0000-4000-8000-000000000003', 'aaaaaaaa-0000-4000-8000-000000000004',
+];
+
+describe('a burst of agent set changes', { timeout: 5_000 }, () => {
+  it('three sessions join a written list in one turn → one write with all of them', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rarog-alive-burst-'));
+    dirs.push(dir);
+    let sessions = BURST.slice(0, 1);
+    let writes = 0;
+    const writer = createAliveWriter({
+      dataDir: dir, mode: 'all', send: () => true, bootId: 'boot-b', sessions: () => sessions,
+      now: () => { writes += 1; return writes; },
+    });
+    writer.start();
+    cleanups.push(() => { writer.stop(); });
+    const signal = createAliveSessionsSignal();
+    signal.connect(writer);
+    for (const id of BURST.slice(1)) {
+      sessions = [...sessions, id];
+      signal.onAgentsChanged();
+    }
+    expect(writes).toBe(1);
+    await settle();
+    expect(writes).toBe(2);
+    expect(readAlive(dir).sessions).toEqual(BURST);
   });
 });

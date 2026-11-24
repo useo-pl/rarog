@@ -56,19 +56,19 @@
       }
     },
     "core.updateServer" : {
-      "comment" : "Odmowy bramek rdzenia. Apka jest nowsza niż serwer (serwer ma niższy protokół): zdanie odmowy mutacji i baner niezgodności. Parametr: %@ pełna komenda aktualizacji serwera z instalacją (bez tłumaczenia: npm i -g @rarog/server@latest && rarog update). Komenda kończy zdanie, bez kropki za nią.",
+      "comment" : "Core gate refusals. The app is newer than the server (the server has a lower protocol): the refusal of a change and the incompatibility banner. Parameters: the first %@ is the server update command (not translated: rarog update), the second %@ the full chain with the install for a server without that command (not translated: npm i -g @rarog/server@latest && rarog update). The parenthesis ends the sentence, no period after it.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The app is newer than the server. Update the server: %@"
+            "value" : "The app is newer than the server. Update the server: %@ (a server without this command: %@)"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apka jest nowsza niż serwer — zaktualizuj serwer: %@"
+            "value" : "Apka jest nowsza niż serwer — zaktualizuj serwer: %@ (serwer bez tej komendy: %@)"
           }
         }
       }

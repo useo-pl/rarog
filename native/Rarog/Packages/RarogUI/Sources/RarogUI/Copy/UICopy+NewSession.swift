@@ -88,7 +88,7 @@ extension UICopy {
 
   static func dirNothingMatches(_ filter: String) -> String { L("newSession.dirNothingMatches", filter) }
   static func dirTruncated(_ shown: Int) -> String { L("newSession.dirTruncated", shown) }
-  /// "Choose rarog-site": the button in the footer while the browser is open.
+  /// "Choose atlas-docs": the button in the footer while the browser is open.
   static func choose(_ name: String) -> String { L("newSession.choose", name) }
 
   /// Warning before choosing a directory without `git` and without history; `known == false` = the server says

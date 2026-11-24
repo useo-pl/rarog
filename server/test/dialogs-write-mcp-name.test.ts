@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { sameDialogIdentity } from '../src/herdr/dialogs/screen/identity.ts';
 import { parseOptions } from '../src/herdr/dialogs/screen/parse.ts';
 import type { ScreenDialog } from '../src/herdr/dialogs/screen/parse.ts';
-import { mcpServerMatches, resolveOptions } from '../src/herdr/dialogs/screen/resolve.ts';
+import { mcpServerMatches, mcpTitleMatches, resolveOptions } from '../src/herdr/dialogs/screen/resolve.ts';
 
 const DIR = join(import.meta.dirname, 'fixtures', 'herdr');
 const screen = (name: string): string => readFileSync(join(DIR, name), 'utf8');
@@ -183,5 +183,31 @@ describe('nagłówek MCP z nazwą serwera ze spacją (łącznik claude.ai)', () 
   it('nagłówek z podwójną spacją w nazwie serwera nie jest nagłówkiem MCP', () => {
     const doubled = replaced(MCP_DOCS, ' Claude Docs — Guide Tool: (MCP)', ' Claude  Docs — Guide Tool: (MCP)');
     expect(dialogOf(doubled)).toMatchObject({ mcpServer: null, identity: { kind: 'form' } });
+  });
+});
+
+describe('MCP title: the words of the tool name without the server prefix or of the full tool name', () => {
+  it.each([
+    ['mcp__firecrawl__firecrawl_scrape', 'Firecrawl scrape', true],
+    ['mcp__firecrawl__firecrawl_scrape', 'Scrape', true],
+    ['mcp__firecrawl__firecrawl_search', 'Firecrawl web search', false],
+    ['mcp__firecrawl__firecrawl_scrape', 'Firecrawl search', false],
+    ['mcp__catalog__catalog_get_task', 'Get Task', true],
+    ['mcp__catalog__catalog_get_task', 'Catalog get task', true],
+  ] as const)('`%s` with the title "%s" → %s', (toolName, title, expected) => {
+    expect(mcpTitleMatches(toolName, title)).toBe(expected);
+  });
+
+  it('a header whose title repeats the server prefix gets its buttons; the header server still has to match', () => {
+    // Header shape from Claude Code 2.1.331: `firecrawl — Firecrawl scrape Tool: (MCP)` for `firecrawl_scrape`.
+    const scrape = replaced(
+      replaced(MCP_CATALOG, 'catalog — Get Project Tree Layout Tool: (MCP)', 'firecrawl — Firecrawl scrape Tool: (MCP)'),
+      'About the catalog — Get Project Tree Layout Tool:', 'About the firecrawl — Firecrawl scrape Tool:',
+    );
+    expect(dialogOf(scrape)).toMatchObject({ mcpServer: 'firecrawl', mcpTool: 'Firecrawl scrape' });
+    expect(resolveOptions(scrape, { toolName: 'mcp__firecrawl__firecrawl_scrape' }).status).toBe('ok');
+    for (const toolName of ['mcp__atlas__firecrawl_scrape', 'mcp__firecrawl__firecrawl_search']) {
+      expect(resolveOptions(scrape, { toolName }), toolName).toMatchObject({ status: 'mismatch', reason: 'tool-name' });
+    }
   });
 });

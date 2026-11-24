@@ -427,7 +427,8 @@ struct StorePairingTests {
     locked.update { $0.locked = false }
     waiting.protectedDataBecameAvailable()
     await until("linia po odblokowaniu") { self.logLines(other.current).contains { $0.contains("pole iroh pominięte") } }
-    let live = RarogStore.live(connector: other.connector, preferences: other.preferences, spaces: other.spaces)
+    let live = RarogStore.live(
+      connector: other.connector, preferences: other.preferences, spaces: other.spaces, temporaryDirectory: temporaryOutbox())
     let liveTransport = other.current
     await live.start()
     await until("linia z `live`", timeout: .seconds(10)) {
@@ -1136,9 +1137,11 @@ struct StorePairingTests {
       $0.sharedWrites = 0
     }
     let server = FakeServer(keychain: keychain)
-    _ = RarogStore.live(connector: server.connector, preferences: server.preferences, spaces: server.spaces)
+    _ = RarogStore.live(
+      connector: server.connector, preferences: server.preferences, spaces: server.spaces, temporaryDirectory: temporaryOutbox())
     #expect(keychain.snapshot.shared == ["f849d673": "BQUF"] && keychain.snapshot.sharedWrites == 1)
-    _ = RarogStore.live(connector: server.connector, preferences: server.preferences, spaces: server.spaces)
+    _ = RarogStore.live(
+      connector: server.connector, preferences: server.preferences, spaces: server.spaces, temporaryDirectory: temporaryOutbox())
     #expect(keychain.snapshot.sharedWrites == 1, "drugi start: wpis już jest — bez zapisu")
 
     let refusing = MemoryKeychain(.init(credential: PairingFixtures.credential(), pushKey: "BQUF"))
@@ -1147,7 +1150,8 @@ struct StorePairingTests {
       $0.sharedFailure = true
     }
     let other = FakeServer(keychain: refusing)
-    let store = RarogStore.live(connector: other.connector, preferences: other.preferences, spaces: other.spaces)
+    let store = RarogStore.live(
+      connector: other.connector, preferences: other.preferences, spaces: other.spaces, temporaryDirectory: temporaryOutbox())
     #expect(refusing.snapshot.shared.isEmpty)
     #expect(store.serverEndpoint.credential?.deviceId == "03030303030303030303030303030303", "klucz urządzenia zostaje")
   }

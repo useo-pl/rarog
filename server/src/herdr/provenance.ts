@@ -30,10 +30,10 @@
  * rarog" jest ślad ({@link labelTrace}) w etykiecie PANELU Claude.
  */
 import { createHash, randomBytes } from 'node:crypto';
-import { realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { TERM_ID_RE } from '@rarog/shared';
 import type { TermRole } from '@rarog/shared';
+import { DIRECT_DISK, type WorkAreaDisk } from '../folder-gate/disk.ts';
 import { normalizeSessionLabel } from '../session-label.ts';
 
 /** Przedrostek nazw Raroga w herdr: nazwa agenta, etykiety paneli i etykieta taba terminala. */
@@ -91,9 +91,9 @@ export function projectKey(realCwd: string): string {
  * znormalizowana zamiast rzucać. Launcher liczy klucz PO starcie agenta i jego etykieta jest
  * best effort — brak katalogu na dysku nie ma prawa wywrócić startu sesji.
  */
-export async function realProjectPath(cwd: string): Promise<string> {
+export async function realProjectPath(cwd: string, disk: WorkAreaDisk = DIRECT_DISK): Promise<string> {
   try {
-    return await realpath(cwd);
+    return await disk.call('realpathNative', { path: cwd });
   } catch {
     return path.resolve(cwd);
   }

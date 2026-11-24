@@ -271,7 +271,7 @@ describe('klasy Durable Objects', () => {
     const b = await bindings({ GATE_KIND: '' });
     const apple = stubApple();
     const gate = new Gate(state(new MemoryStore()), b.env);
-    expect(await gate.register(APP, deviceCheckProof('A'))).toEqual({ ok: false, error: 'unavailable' });
+    expect(await gate.register(APP, deviceCheckProof('A'), '198.51.100.7')).toEqual({ ok: false, error: 'unavailable' });
     expect(apple).toEqual([]);
 
     const store = new MemoryStore();

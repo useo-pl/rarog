@@ -61,6 +61,20 @@ export function subagentDialogOnScreen(text: string): boolean {
   return found !== null && blockFromSubagent(lines, dialogBlock(lines, found.firstOption));
 }
 
+/**
+ * The thread of the dialog standing on screen, read from the title line of its block: `subagent` with the subagent
+ * suffix, `main` without it, `null` when no title line can be read (no complete option list, an ambiguous block, the
+ * title above the pane edge), so that a missing suffix is never taken for the main thread.
+ */
+export function dialogThreadOnScreen(text: string): 'main' | 'subagent' | null {
+  const lines = trimmedLines(text);
+  const found = optionRegion(lines);
+  if (found === null) return null;
+  const block = dialogBlock(lines, found.firstOption);
+  if (block.ambiguous || block.titleLine < 0) return null;
+  return blockFromSubagent(lines, block) ? 'subagent' : 'main';
+}
+
 export interface ScreenDialog {
   /**
    * `'tool'` = zgoda na narzędzie, `'question'` = AskUserQuestion, `'confirm'` = dialog
@@ -304,9 +318,15 @@ export function parseOptions(
    * line of its own. The call trace in the region (`regionCallTrace`) guards the reverse mistake:
    * a signature sentence above a real consent dialog may not rename it to `ExitPlanMode`. The
    * sandbox network dialog is recognised by the block TITLE, under the same condition.
+   *
+   * The signature sentence is matched on the region lines joined by a space: a pane narrower than the sentence
+   * wraps it ("…is ready to" / "execute. Would you like to proceed?" at 50 columns, CLI 2.1.331), and a match
+   * within one line would leave the dialog `other`. A question form keeps its kind: the author of the question may
+   * quote the sentence, and the joined region would then rename the form to `ExitPlanMode`.
    */
-  const regionText = region.join('\n');
-  const planDialog = (PLAN_DIALOG_PATTERN.test(regionText) || PLAN_EXIT_CONFIRM_PATTERN.test(regionText))
+  const regionText = region.join(' ');
+  const planDialog = kind !== 'question'
+    && (PLAN_DIALOG_PATTERN.test(regionText) || PLAN_EXIT_CONFIRM_PATTERN.test(regionText))
     && !trace && (block.title === null || block.title.kind === 'plan');
   const networkDialog = !planDialog && block.title?.kind === 'network' && !trace;
   // A file dialog whose key footer a narrow pane cut or wrapped has lost its only kind marker (`screen/file-dialog.ts`).

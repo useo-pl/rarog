@@ -42,6 +42,8 @@ enum SupervisorSignal: Sendable {
   /// Ramka po dekoderze: wynik, surowe bajty (do raportu odrzucenia) i kursor `id:` tego bloku.
   /// Ramka przyjęta ma już teksty serwera w języku apki (``ServerEvent/translated(_:)``).
   case frame(Result<DecodedEvent, EventRejection>, data: Data, cursor: String?)
+  /// The parser cut the stream at its ceiling; `dropped` follows, then the next attempt with the cursor.
+  case oversized(SSEParser.Oversized)
   case dropped
   case unauthorized
   /// 404 strumienia sesji — sesji już nie ma; pętla kończy się bez ponawiania.
@@ -163,6 +165,9 @@ struct StreamSupervisor: Sendable {
           attempt.retry = .milliseconds(milliseconds)
         case .comment:
           continue
+        case let .oversized(part):
+          // The transport ends the stream right after this output.
+          await deliver(.oversized(part))
         case let .event(event):
           // Nazwane `ping` to heartbeat, nie protokół.
           guard event.type == "message" else { continue }

@@ -8,6 +8,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { foreign } from '@rarog/shared/sentences';
+import { routeWorkAreaDisk } from '../src/folder-gate/disk.ts';
+import { gatedFolderOf } from '../src/folder-gate/folders.ts';
+import type { FolderClient, FolderGate } from '../src/folder-gate/types.ts';
 import { backdateState, stampState } from '../src/sessions/activity-clocks.ts';
 import {
   ConversationListeners, companionEntryOf, companionTargetOf, inCommandScope, sessionCwdInArea,
@@ -110,6 +113,36 @@ describe('companion-scope: the work area on disk', () => {
     expect(companionTargetOf(desktop, config)).toBeNull();
     const inne = session({ herdrKey: 'k1', cwd: join(dom, 'inne', 'x') });
     expect(companionTargetOf(inne, config)).toEqual({ cwd: join(dom, 'inne', 'x'), agentSessionId: undefined });
+  });
+
+  it('a macOS folder the gate holds closed keeps the session for the voice agent and the Inbox, not for the diff', () => {
+    const documents = join(home, 'Documents');
+    mkdirSync(join(documents, 'p'), { recursive: true });
+    const gate: FolderGate = {
+      enabled: true,
+      stateOf: (candidate) => {
+        const folder = gatedFolderOf(candidate, home);
+        return folder === null ? null : { folder, state: 'waiting' };
+      },
+      report: () => {},
+      check: () => Promise.resolve('waiting'),
+      blocked: () => [],
+      onChange: () => () => {},
+      dispose: () => {},
+    };
+    const client = new Proxy({}, {
+      get: () => () => { throw new Error('scope reads metadata only'); },
+    }) as unknown as FolderClient;
+    const unroute = routeWorkAreaDisk({ gate, client, home });
+    try {
+      const config = { demo: false, herdrRoots: [home, documents], home };
+      const one = session({ herdrKey: 'k1', cwd: join(documents, 'p'), engineSessionId: 'c1' });
+      expect(sessionCwdInArea(one, config)).toBe(false);
+      expect(inCommandScope(one, config)).toBe(false);
+      expect(companionTargetOf(one, config)).toEqual({ cwd: join(documents, 'p'), agentSessionId: 'c1' });
+    } finally {
+      unroute();
+    }
   });
 });
 

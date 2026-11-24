@@ -99,6 +99,8 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
   let readingChrome = ReadingChrome()
   /// The pointer selection across transcript rows. Owner: `+PointerSelection`, `+PointerAutoscroll`.
   let pointerChrome = TranscriptPointerChrome()
+  /// A path in inline code opens the session file. Owner: `+FileOpen`.
+  let fileChrome = TranscriptFileChrome()
   /// Dyktowanie w polu wiadomości. Właściciel: `+Voice` (`Session/Voice/`).
   let dictation = ComposerDictation()
   /// The voice conversation of this screen. Owner: `+VoiceAgent` (`Session/Voice/Realtime/`).
@@ -163,6 +165,7 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
     installDecisionDock()
     buildReading()
     buildPointerSelection()
+    buildFileOpen()
     buildToast()
     buildCommandSuggestions()
     buildVoice()

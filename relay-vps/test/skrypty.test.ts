@@ -180,48 +180,51 @@ describe('relay-certs-backup.sh', () => {
   });
 });
 
-describe('install.sh: SSH tylko z tailnetu wymaga działającego Tailscale', () => {
-  /**
-   * Atrapy roota i x86_64; `tailscale` (stan z `status --json`, kod `ip -4`) i `ip` według przypadku; `apt-get` pada,
-   * więc przebieg kończy się na kroku 1. PATH to tylko katalog atrap z dowiązaniami do `dirname` i `grep`, więc
-   * prawdziwy `tailscale` hosta nie zastąpi atrapy.
-   */
-  function installRun(tools: { state?: string; ip4?: number; ip?: number }): { r: SpawnSyncReturns<string>; log: string } {
-    const base = mkdtempSync(path.join(tmpdir(), 'rarog-relay-install-'));
-    made.push(base);
-    const bin = path.join(base, 'bin');
-    mkdirSync(bin);
-    const calls = path.join(base, 'calls.log');
-    const fake = (name: string, body: string): void => {
-      writeFileSync(path.join(bin, name), `#!/bin/sh\necho "${name} $*" >>"${calls}"\n${body}\n`, { mode: 0o755 });
-    };
-    fake('id', 'echo 0');
-    fake('uname', 'echo x86_64');
-    fake('dpkg-query', 'exit 1');
-    fake('apt-get', 'exit 1');
-    if (tools.state !== undefined) {
-      fake('tailscale', [
-        'case "$1" in',
-        `  status) printf '{\n  "Version": "1.104.7",\n  "BackendState": "${tools.state}",\n}\n' ;;`,
-        `  ip) exit ${String(tools.ip4 ?? 0)} ;;`,
-        'esac',
-      ].join('\n'));
-    }
-    if (tools.ip !== undefined) fake('ip', `exit ${String(tools.ip)}`);
-    for (const tool of ['dirname', 'grep']) {
-      const real = spawnSync('/bin/sh', ['-c', `command -v ${tool}`], { encoding: 'utf8' }).stdout.trim();
-      symlinkSync(real, path.join(bin, tool));
-    }
-    const r = spawnSync('/bin/bash', [path.join(DIR, 'install.sh')], { encoding: 'utf8', env: { PATH: bin } });
-    let log = '';
-    try {
-      log = readFileSync(calls, 'utf8');
-    } catch {
-      // brak wywołań
-    }
-    return { r, log };
+/**
+ * `install.sh` on fakes: root and x86_64, `tailscale` (state from `status --json`, `ip -4` exit code) and `ip` per
+ * case, plus `extra` fakes (`@BASE@` in a body is the run's temporary directory). `apt-get` fails unless step 1 finds
+ * every package installed. PATH is only the fakes directory with links to the real `dirname`, `grep` and `awk`, so no
+ * real tool of the host (`tailscale`, `install`, `systemd-run`) replaces a fake; every fake logs its call.
+ */
+function installRun(tools: { state?: string; ip4?: number; ip?: number }, extra: Record<string, string> = {},
+  env: Record<string, string> = {}): { r: SpawnSyncReturns<string>; log: string } {
+  const base = mkdtempSync(path.join(tmpdir(), 'rarog-relay-install-'));
+  made.push(base);
+  const bin = path.join(base, 'bin');
+  mkdirSync(bin);
+  const calls = path.join(base, 'calls.log');
+  const fake = (name: string, body: string): void => {
+    writeFileSync(path.join(bin, name), `#!/bin/sh\necho "${name} $*" >>"${calls}"\n${body}\n`, { mode: 0o755 });
+  };
+  fake('id', 'echo 0');
+  fake('uname', 'echo x86_64');
+  fake('dpkg-query', 'exit 1');
+  fake('apt-get', 'exit 1');
+  if (tools.state !== undefined) {
+    fake('tailscale', [
+      'case "$1" in',
+      `  status) printf '{\n  "Version": "1.104.7",\n  "BackendState": "${tools.state}",\n}\n' ;;`,
+      `  ip) exit ${String(tools.ip4 ?? 0)} ;;`,
+      'esac',
+    ].join('\n'));
   }
+  if (tools.ip !== undefined) fake('ip', `exit ${String(tools.ip)}`);
+  for (const [name, body] of Object.entries(extra)) fake(name, body.replaceAll('@BASE@', base));
+  for (const tool of ['dirname', 'grep', 'awk']) {
+    const real = spawnSync('/bin/sh', ['-c', `command -v ${tool}`], { encoding: 'utf8' }).stdout.trim();
+    symlinkSync(real, path.join(bin, tool));
+  }
+  const r = spawnSync('/bin/bash', [path.join(DIR, 'install.sh')], { encoding: 'utf8', env: { PATH: bin, ...env } });
+  let log = '';
+  try {
+    log = readFileSync(calls, 'utf8');
+  } catch {
+    // no calls
+  }
+  return { r, log };
+}
 
+describe('install.sh: SSH tylko z tailnetu wymaga działającego Tailscale', () => {
   it.each([
     ['brak programu tailscale', { ip: 0 }],
     ['Tailscale zatrzymany', { state: 'Stopped', ip: 0 }],
@@ -244,5 +247,68 @@ describe('install.sh: SSH tylko z tailnetu wymaga działającego Tailscale', () 
     expect(log).toContain('tailscale ip -4');
     expect(log).toContain('ip link show tailscale0');
     expect(log).toContain('apt-get update');
+  });
+});
+
+const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Every package installed and Node 22: the run passes step 1 without apt-get. */
+const STEP1_OK = { 'dpkg-query': "printf 'install ok installed'", node: 'echo 22' };
+
+describe('install.sh: firewall rules and the relay binary', () => {
+  it('rules that nft -c rejects: exit 2 after the packages, before any file is written and before the timer', () => {
+    const fakes = { ...STEP1_OK, nft: 'echo "syntax error" >&2; exit 1', 'systemd-run': 'exit 0', systemctl: 'exit 0' };
+    const { r, log } = installRun({ state: 'Running', ip: 0 }, fakes);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('nftables.conf does not pass nft -c');
+    expect(log).toContain(`nft -c -f ${DIR}/nftables.conf`);
+    expect(r.stdout).toContain('== 1. packages');
+    expect(r.stdout).not.toContain('== 2.');
+    expect(log).not.toMatch(/^(install|curl|systemd-run|systemctl|touch|cp) /m);
+  });
+
+  it('rules that nft -c accepts: the run goes on to the relay binary', () => {
+    const { r, log } = installRun({ state: 'Running', ip: 0 }, { ...STEP1_OK, nft: 'exit 0' });
+    expect(log).toContain(`nft -c -f ${DIR}/nftables.conf`);
+    expect(r.stdout).toContain('== 2. iroh-relay');
+  });
+
+  /**
+   * Step 2 on fakes up to the end of step 3, where the fake `ip` gives no default route (exit 2). Only `cp` is real,
+   * and the relay binary path points into a temporary directory, so the copy happens there.
+   */
+  function binaryRun(old: string | null) {
+    const target = mkdtempSync(path.join(tmpdir(), 'rarog-relay-bin-'));
+    made.push(target);
+    const relayBin = path.join(target, 'iroh-relay');
+    if (old !== null) writeFileSync(relayBin, old, { mode: 0o755 });
+    const fakes = {
+      ...STEP1_OK, nft: 'exit 0',
+      // the pinned sums pass, the installed binary has another one
+      sha256sum: 'case "$1" in -c) exit 0 ;; *) echo "0000  $1" ;; esac',
+      mktemp: '/bin/mkdir -p "@BASE@/dl" && echo "@BASE@/dl"',
+      curl: 'exit 0',
+      tar: 'echo new >"$2/iroh-relay"',
+      cp: 'exec /bin/cp "$@"',
+      install: 'exit 0', touch: 'exit 0', rm: 'exit 0', ln: 'exit 0',
+    };
+    return { ...installRun({ state: 'Running', ip: 0 }, fakes, { RELAY_BIN: relayBin }), relayBin };
+  }
+
+  it('a new relay binary keeps the replaced one as iroh-relay.prev, copied before the replacement', () => {
+    const { r, log, relayBin } = binaryRun('old');
+    expect(r.stderr).toContain('no default route');
+    expect(readFileSync(`${relayBin}.prev`, 'utf8')).toBe('old');
+    expect(log).toMatch(new RegExp(`^install -m 0755 \\S+/iroh-relay ${escape(relayBin)}$`, 'm'));
+    expect(log.indexOf(`cp -p ${relayBin} ${relayBin}.prev`)).toBeGreaterThan(-1);
+    expect(log.indexOf(`cp -p ${relayBin}`)).toBeLessThan(log.indexOf('install -m 0755 '));
+  });
+
+  it('first install: no old binary, no .prev', () => {
+    const { r, log, relayBin } = binaryRun(null);
+    expect(r.stderr).toContain('no default route');
+    expect(log).toMatch(new RegExp(`^install -m 0755 \\S+/iroh-relay ${escape(relayBin)}$`, 'm'));
+    expect(readdirSync(path.dirname(relayBin))).toEqual([]);
+    expect(log).not.toContain('cp -p');
   });
 });

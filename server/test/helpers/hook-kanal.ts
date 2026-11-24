@@ -62,16 +62,21 @@ export function hookDataDir(): { readonly dir: string; readonly project: string 
 
 /**
  * A data directory with roots, `alive.json` in mode `main` and the registration socket with `/claim`. `always`: the
- * cycle offers the "always" option (`RAROG_CONSENT_ALWAYS=on`).
+ * cycle offers the "always" option (`RAROG_CONSENT_ALWAYS=on`). `mode: 'all'` opens the channel for subagents in the
+ * registry, the cycle and `alive.json`; `log` takes the cycle's log lines.
  */
-export async function hookScene(options: { always?: boolean } = {}): Promise<HookScene> {
+export async function hookScene(
+  options: { always?: boolean; mode?: 'main' | 'all'; log?: (line: string) => void } = {},
+): Promise<HookScene> {
   const { dir, project } = hookDataDir();
+  const mode = options.mode ?? 'main';
   const registry = createConsentRegistry({
     bootId: HOOK_BOOT, send: () => true, sessions: () => [HOOK_SESSION], log: () => {},
   });
-  registry.setScope('main');
+  registry.setScope(mode);
   const cycle = standingWithRead(createConsentCycle({
-    dataDir: dir, bootId: HOOK_BOOT, registry, mode: () => 'main', always: options.always === true,
+    dataDir: dir, bootId: HOOK_BOOT, registry, mode: () => mode, always: options.always === true,
+    ...(options.log === undefined ? {} : { log: options.log }),
   }));
   const claims = createConsentClaims({
     registry, confirm: (sessionId, key, at, inputSha256) => cycle.confirmReceipt(sessionId, key, at, inputSha256),
@@ -79,7 +84,7 @@ export async function hookScene(options: { always?: boolean } = {}): Promise<Hoo
   const socket = await startConsentSocket(dir, createConsentHandler(registry, claims), () => {});
   if (socket === null) throw new Error('registration socket did not start');
   sockets.push(socket);
-  writeHookAlive(dir);
+  writeHookAlive(dir, { mode });
   return { dir, project, registry, cycle };
 }
 

@@ -544,14 +544,6 @@ struct PaletteContrastTests {
     }
   }
 
-  @Test("switcher window: the row's digit key in `muted` holds 4.5:1 on the selection and on surface")
-  func switcherDigitKey() {
-    for plate in [PaletteTokens.switcherSelection, PaletteTokens.surface] {
-      let ratio = contrast(PaletteTokens.muted, on: plate)
-      #expect(ratio.dark >= 4.5 && ratio.light >= 4.5, "\(plate): \(ratio)")
-    }
-  }
-
   /// The shortcut sheet: every ink on the ground it stands on — the panel on `surface`, the "You're here"
   /// section and the key caps outside it on `surface2`, the caps inside it on `surface`, the pill on `new`.
   @Test(

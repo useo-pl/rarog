@@ -4,7 +4,7 @@ import RarogCore
 import Testing
 
 // The session switcher window opened by a tap on the current tab: the window machine. Its rows are the tabs of the
-// project (`ProjectTabRef`), kept live by the host. The window stays until Return, a digit, a tap or a close; with a
+// project (`ProjectTabRef`), kept live by the host. The window stays until Return, a tap or a close; with a
 // hardware keyboard it takes it. The selection starts on the current tab. Times are counted from the constants in
 // `SwitcherTiming`, not from numbers. Owner: shortcuts.
 
@@ -210,81 +210,6 @@ struct SessionSwitcherMachineTests {
     #expect(there.0 == s("a") && back.0 == s("cur"))
     #expect(Set([start, there.1, back.1]).count == 3)
   }
-
-  // MARK: - Digits
-
-  /// Five tabs, the current one first.
-  private let five = [s("cur"), s("a"), s("b"), s("c"), s("d")]
-
-  @Test("digit 3 at five tabs: the jump to the third tab and the close, like Return on it")
-  func digitJumps() {
-    var machine = opened(tabs: five)
-    #expect(machine.key(.digit(3), at: 0) == [.releaseKeyboard(restore: false), .watch(false), .open(s("b"))])
-    #expect(machine.phase == .idle)
-    var touch = opened(keyboard: false, tabs: five)
-    #expect(touch.key(.digit(2), at: 0) == [.watch(false), .open(s("a"))], "a window without the keyboard")
-    var current = opened(tabs: five)
-    #expect(current.key(.digit(1), at: 0) == [.releaseKeyboard(restore: true), .watch(false)],
-            "the current tab's digit closes like Return on it")
-  }
-
-  @Test("9 at five tabs: the last tab, like Cmd+9 on the bar")
-  func digitNine() {
-    var machine = opened(tabs: five)
-    #expect(machine.key(.digit(9), at: 0) == [.releaseKeyboard(restore: false), .watch(false), .open(s("d"))])
-  }
-
-  @Test("digit 7 at five tabs and 0: nothing, the window stays open with the same selection")
-  func digitWithoutRow() {
-    for digit in [7, 0] {
-      var machine = opened(tabs: five)
-      #expect(machine.key(.digit(digit), at: 0) == [], "\(digit)")
-      #expect(machine.isOpen && machine.holdsKeyboard && machine.selected == s("cur") && machine.selectionSerial == 0)
-    }
-    #expect(SwitcherKey.digits == (1...9).map(String.init), "0 is no key of the window")
-  }
-
-  @Test("a digit works right after the opening and after a move: no move throttle, the tab by its digit")
-  func digitIgnoresSelection() {
-    var machine = opened(tabs: five)
-    _ = machine.key(.down, at: gap)
-    _ = machine.key(.down, at: 2 * gap)
-    #expect(machine.selected == s("b"))
-    #expect(machine.key(.digit(5), at: 2 * gap + 0.01) == [.releaseKeyboard(restore: false), .watch(false),
-                                                           .open(s("d"))])
-  }
-
-  @Test("Cmd+digit from the menu: the open window takes it, a digit close swallows the same press, else the tab runs")
-  func menuDigit() {
-    var idle = SwitcherMachine()
-    #expect(idle.menuDigit(3, at: 0) == nil, "no window: the tab shortcut does its own thing")
-
-    var open = opened(tabs: five)
-    #expect(open.menuDigit(3, at: 0) == [.releaseKeyboard(restore: false), .watch(false), .open(s("b"))])
-    #expect(open.menuDigit(3, at: 0.01) == [], "the window's own key command for the same press")
-    #expect(open.menuDigit(3, at: 0.01 + SwitcherTiming.repeatQuiet + 0.01) == nil, "a fresh press after silence")
-
-    var keyFirst = opened(tabs: five)
-    _ = keyFirst.key(.digit(2), at: 0)
-    #expect(keyFirst.menuDigit(2, at: 0.01) == [], "the window's key command closed it first; the menu is swallowed")
-
-    var stays = opened(tabs: five)
-    #expect(stays.menuDigit(8, at: 0) == [] && stays.isOpen, "no tab 8: nothing, and no tab switch")
-    var last = opened(tabs: five)
-    #expect(last.menuDigit(9, at: 0) == [.releaseKeyboard(restore: false), .watch(false), .open(s("d"))],
-            "Cmd+9 at five tabs: the last row")
-
-    var escaped = opened(tabs: five)
-    _ = escaped.cancel(.escapeKey, at: 0)
-    #expect(escaped.menuDigit(1, at: 0.01) == nil, "only a digit close swallows the next Cmd+digit")
-    // Only the closing digit's second delivery is swallowed: another Cmd+digit right after is a tab shortcut, and it
-    // does not stretch the quiet window either.
-    var jumped = opened(tabs: five)
-    _ = jumped.key(.digit(1), at: 1)
-    #expect(jumped.menuDigit(2, at: 1.2) == nil, "Cmd+2 after a 1 close switches the tab")
-    #expect(jumped.menuDigit(1, at: 1.25) == [], "the 1 itself through the second route is still swallowed")
-    #expect(jumped.menuDigit(1, at: 1.25 + SwitcherTiming.repeatQuiet + 0.01) == nil)
-  }
 }
 
 @MainActor
@@ -341,21 +266,6 @@ struct SessionSwitcherTests {
     #expect(refused.switcher.windowShown && !refused.switcher.holdsKeyboard)
     refused.switcher.cancel(.outside)
     #expect(refused.keyboard == ["take"], "nothing to give up")
-  }
-
-  @Test("a digit and Cmd+digit from the menu go through the machine: the jump once, the tab shortcut swallowed")
-  func digits() {
-    let bench = Bench()
-    bench.switcher.openByTap(keyboard: true, tabs: [s("tu"), s("a"), s("b"), s("c"), s("d")], current: s("tu"))
-    #expect(bench.switcher.menuDigit(3) == true)
-    #expect(bench.opened == [s("b")] && !bench.switcher.windowShown && bench.keyboard == ["take", "release"])
-    bench.switcher.key(.digit(3))
-    #expect(bench.switcher.menuDigit(3) == true && bench.opened == [s("b")], "the second route of the same press")
-    bench.time += 1
-    #expect(bench.switcher.menuDigit(3) == false, "later the tab shortcut works again")
-    bench.switcher.openByTap(keyboard: true, tabs: [s("tu"), s("a")], current: s("tu"))
-    bench.switcher.key(.digit(1))
-    #expect(bench.opened == [s("b")] && bench.keyboard.last == "release+restore", "1, the current tab: caret back")
   }
 
   @Test("a tap on a row and a change of the bar go through the machine")

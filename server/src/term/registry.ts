@@ -18,11 +18,11 @@
  * **Zero logowania treści.** Do `server.log` idzie WYŁĄCZNIE cykl życia (id, cwd, spawn,
  * kill, exit, liczba gniazd). Ani jeden bajt wejścia ani wyjścia powłoki.
  */
-import { realpathSync } from 'node:fs';
 import { isPopupRole, TERM_SLOTS_MAX } from '@rarog/shared';
 import type { TermRole } from '@rarog/shared';
 import type { RarogConfig } from '../config.ts';
 import { redact } from '../auth/index.ts';
+import { DIRECT_DISK } from '../folder-gate/disk.ts';
 import type { Logger } from '../router.ts';
 import { serverSystem } from '../version.ts';
 import { type OwnText, say } from '@rarog/shared/sentences';
@@ -317,8 +317,9 @@ export class TermRegistry {
   constructor(options: TermRegistryOptions) {
     this.config = options.config;
     this.log = options.logger;
-    this.realPath = options.realPath ?? realpathSync.native;
-    this.legacyRealPath = options.legacyRealPath ?? options.realPath ?? realpathSync;
+    this.realPath = options.realPath ?? ((candidate) => DIRECT_DISK.sync('realpathNative', { path: candidate }));
+    this.legacyRealPath = options.legacyRealPath ?? options.realPath
+      ?? ((candidate) => DIRECT_DISK.sync('realpath', { path: candidate }));
     this.setTimer = options.setTimer ?? ((cb, ms) => setTimeout(cb, ms));
     this.clearTimer = options.clearTimer ?? ((timer) => { clearTimeout(timer); });
     this.backend = options.backend;

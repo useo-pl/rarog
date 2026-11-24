@@ -100,7 +100,9 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   JSON with the credential, its iroh pair and a copy of the push key) and the
   push key for the notification service extension (service `ai.rarog.app.push`, account = `kid`, shared group). The
   extension reads only the second item through `SharedPushKeychain` (`PushKeyReader`, no side effects), never through
-  `DeviceKeychain`, because `load()` deletes an unreadable item and `delete` also deletes the shared item. The app
+  `DeviceKeychain`, because `load()` deletes an unreadable item and `delete` also deletes the shared item. An item
+  whose `version` is above 1 (written by a newer build) is not unreadable: `load()` gives `.failed(errSecDecode)` and
+  leaves it as it is, so going back to an older build does not cost the pairing. The app
   reads the push key through the same protocol (`SystemKeychain.pushKey(kid:)`) and at a start with a key restores the
   shared item from the copy (`restoreSharedPushKey`; the same value means no write). Service names follow the app's
   bundle id. The new item is written first, then the items of other accounts are deleted (the app knows one server). A
@@ -131,9 +133,10 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   (`PairingControls`): Scan QR Code (VisionKit `DataScannerViewController` in place of the controls, not in a sheet;
   without a camera there is no button), I Have a Link (a field, the system `PasteButton`) and the "Pair with <host>?"
   card; for a link with only `k` and `r` it reads "Pair with iroh · <8 characters>?" with the full EndpointId below,
-  to compare with `rarog pair`. While the relay has not admitted a freshly sponsored server yet (`waitingForRelay`,
-  from the first pairing request on), the card says "Waiting for the relay to admit the server…" beside Cancel,
-  which ends pairing; while the registry client prepares, and during a pairing request without a fresh sponsorship
+  to compare with `rarog pair`. While the relay may not have admitted the server yet (`waitingForRelay`, from the
+  first pairing request on: after a fresh or recent sponsorship, or when the registry did not finish preparing), the
+  card says "Waiting for the relay to admit the server…" beside Cancel,
+  which ends pairing; while the registry client prepares, and during a pairing request without a recent sponsorship
   (`pairing`), it has no Cancel. Under the controls of every pairing variant stand three product links
   (`ProductLinksRow` in `RarogUI/Views/About/`): Privacy Policy, Set Up a Server and Support, opened by the system in
   the default browser; the addresses are `ProductLinks` in RarogCore. The Soniox console and OpenAI API keys pages,

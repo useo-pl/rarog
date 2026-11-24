@@ -1,15 +1,16 @@
 /**
  * Registry configuration from Worker variables and secrets. Non-secret variables stand in `[vars]` of `wrangler.toml`,
- * the owner sets the secrets. A configuration defect disables the app routes (503 `unavailable`, `ok: false` in
- * `/v1/health`) and gives a log line with the problem code (a name, never a value). The `/v1/access` hook and the
- * admin routes keep working: they need only their own secret.
+ * the owner sets the secrets. A bad quota, term or clock value ({@link settingsOf}) disables every app route
+ * (503 `unavailable`); a bad Team ID or Key ID, or a missing or bad gate key ({@link prepare}), disables only
+ * `register`. Both give `ok: false` in `/v1/health` and a log line with the problem code (a name, never a value). The `/v1/access`
+ * hook and the admin routes keep working: they need only their own secret.
  */
 import { RELAY_AUTH_GATES } from '../../shared/src/relay-auth.ts';
 import type { RelayAuthGate } from '../../shared/src/relay-auth.ts';
 import { ProviderTokens, apnsKeyScalar } from './wspolne.ts';
 
 /** Worker code version (`version` in `/v1/health`); equal to `version` in `relay-auth/package.json` (test). */
-export const RELAY_AUTH_VERSION = '1.1.0-beta.1';
+export const RELAY_AUTH_VERSION = '1.1.0';
 
 /**
  * Non-secret variables (`[vars]` in `wrangler.toml`):

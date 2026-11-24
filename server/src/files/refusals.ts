@@ -8,6 +8,7 @@ import {
 } from '@rarog/shared';
 import type { FileTooLargeBody } from '@rarog/shared';
 import { type ServerSentence, say } from '@rarog/shared/sentences';
+import type { FolderGateError } from '../folder-gate/types.ts';
 
 /** A refusal of a request before any byte of a listing or a file. */
 export interface FilesRefusal {
@@ -25,6 +26,23 @@ export const BAD_PATH: FilesRefusal = { status: 400, code: FILES_BAD_PATH_ERROR,
 export const NOT_FOUND: FilesRefusal = {
   status: 404, code: FILES_NOT_FOUND_ERROR, sentence: say('rest.files-not-found'),
 };
+
+/**
+ * A guarded folder of home the folder gate holds closed: the status and code of a path that cannot be read, with the
+ * sentence of the folder's state, so the app says why instead of "not found".
+ */
+export function closedFolder(error: Pick<FolderGateError, 'sentence'>): FilesRefusal {
+  const refusal: FilesRefusal = { status: 404, code: FILES_NOT_FOUND_ERROR, sentence: error.sentence };
+  CLOSED.add(refusal);
+  return refusal;
+}
+
+const CLOSED = new WeakSet<FilesRefusal>();
+
+/** Whether `refusal` is the one of a closed folder ({@link closedFolder}), not a path that is simply not there. */
+export function isClosedFolder(refusal: FilesRefusal): boolean {
+  return CLOSED.has(refusal);
+}
 
 /** A Codex entry: Rarog only observes it. */
 export const CODEX: FilesRefusal = { status: 400, code: FILES_CODEX_ERROR, sentence: say('rest.files-codex') };

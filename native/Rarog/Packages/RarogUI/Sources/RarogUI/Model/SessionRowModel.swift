@@ -206,9 +206,10 @@ public struct SessionRowModel: Sendable, Equatable, Identifiable {
 
   /// Wiersz jednym zdaniem dla VoiceOver: tytuł, silnik, stan, czas, na co czeka.
   /// `scheduleNow` is the wall clock for the scheduled-task part: a frozen row's status clock stops, but a cron's
-  /// expiry and next run keep their real time. `nil` = `now`.
-  public func spoken(now: Date, scheduleNow: Date? = nil) -> String {
-    var parts = label.isEmpty ? [project] : [project, label]
+  /// expiry and next run keep their real time. `nil` = `now`. `withProject: false`: the sentence opens with the
+  /// session's name instead of the project (a window whose heading names the project once).
+  public func spoken(now: Date, scheduleNow: Date? = nil, withProject: Bool = true) -> String {
+    var parts = withProject ? (label.isEmpty ? [project] : [project, label]) : [sessionName]
     if let ordinal { parts.append(UICopy.ordinalSpoken(ordinal)) }
     if isCodex { parts.append(UICopy.codexSpoken) }
     parts.append(status.text)

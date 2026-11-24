@@ -499,18 +499,44 @@ struct PendingRowsTests {
   @Test("removeAll: półka pusta, otwarty pasek dostaje zmianę, spóźnione wczytanie nie ląduje na półce")
   func removeAllForgetsShelf() async throws {
     let shelf = AttachmentShelf()
-    let url = URL(filePath: "/dev/null")
-    shelf.restore([ComposerAttachment(kind: .file, name: "stary.txt", mime: "text/plain", bytes: 1, file: url)], for: "s1")
+    let source = try scratch().appending(path: "stary.txt")
+    try Data("stary".utf8).write(to: source)
+    let old = ComposerAttachment(kind: .file, name: "stary.txt", mime: "text/plain", bytes: 5, file: try AttachmentStaging.copy(source))
+    shelf.restore([old], for: "s1")
     var redraws = 0
     shelf.watch("s1") { redraws += 1 }
     let (slow, gate) = try slowFile("w-trakcie.txt")
     #expect(shelf.ingest([slow], for: "s2"))
     shelf.removeAll()
     #expect(shelf.attachments(for: "s1").isEmpty && redraws == 1)
+    #expect(!FileManager.default.fileExists(atPath: old.file.path), "the staged file of a shelf item leaves the disk")
     #expect(!shelf.isLoading("s2"), "wczytywanie odwołane")
     await gate.release()
     try await Task.sleep(for: .milliseconds(50))
     #expect(shelf.attachments(for: "s2").isEmpty, "wynik sprzed removeAll przepada")
+  }
+
+  /// A load cancelled by `removeAll` still finishes: its staged file belongs to nobody and must not stay on disk.
+  @MainActor
+  @Test("removeAll during a load: the late file leaves the disk, the files of the next load stay")
+  func removeAllDeletesLateFile() async throws {
+    let shelf = AttachmentShelf()
+    let late = StagedFiles()
+    let (slow, gate) = try slowFile("late.txt", staged: late)
+    #expect(shelf.ingest([slow], for: "s1"))
+    shelf.removeAll()
+    let (fresh, freshGate) = try slowFile("fresh.txt")
+    #expect(shelf.ingest([fresh], for: "s1"), "the next load starts at once")
+    await freshGate.release()
+    await shelf.loaded("s1")
+    let kept = try #require(shelf.attachments(for: "s1").first)
+    await gate.release()
+    let gone = { !late.urls.isEmpty && late.urls.allSatisfy { !FileManager.default.fileExists(atPath: $0.path) } }
+    for _ in 0..<300 where !gone() { try await Task.sleep(for: .milliseconds(5)) }
+    let lateFile = try #require(late.urls.first, "the late load produced its file")
+    #expect(!FileManager.default.fileExists(atPath: lateFile.path), "the late file leaves the disk")
+    #expect(shelf.attachments(for: "s1").map(\.name) == ["fresh.txt"], "the late result does not land on the shelf")
+    #expect(FileManager.default.fileExists(atPath: kept.file.path), "the file of the next load stays")
   }
 
   @MainActor
@@ -537,13 +563,15 @@ struct PendingRowsTests {
   }
 
   /// Plik, którego wczytanie stoi, dopóki test nie otworzy zaworu.
-  private func slowFile(_ name: String) throws -> (AttachmentCandidate, LoadGate) {
+  private func slowFile(_ name: String, staged: StagedFiles? = nil) throws -> (AttachmentCandidate, LoadGate) {
     let source = try scratch().appending(path: name)
     try Data("treść \(name)".utf8).write(to: source)
     let gate = LoadGate()
     let candidate = AttachmentCandidate(kind: .file, name: name, type: UTType(filenameExtension: source.pathExtension)) {
       await gate.wait()
-      return try AttachmentStaging.copy(source)
+      let file = try AttachmentStaging.copy(source)
+      staged?.append(file)
+      return file
     }
     return (candidate, gate)
   }
@@ -577,4 +605,12 @@ private final class LoadCounter: @unchecked Sendable {
   private var hits = 0
   func hit() { lock.withLock { hits += 1 } }
   var count: Int { lock.withLock { hits } }
+}
+
+/// Staged files a slow load produced, for a test that checks they left the disk.
+private final class StagedFiles: @unchecked Sendable {
+  private let lock = NSLock()
+  private var files: [URL] = []
+  func append(_ url: URL) { lock.withLock { files.append(url) } }
+  var urls: [URL] { lock.withLock { files } }
 }

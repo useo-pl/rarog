@@ -21,6 +21,26 @@
     ]
   },
   "delta.max.json": { "expect": "ok" },
+  "folder-access.max.json": { "expect": "ok" },
+  "folder-access.empty.json": { "expect": "ok" },
+  "folder-access.missing-path.json": {
+    "expect": "ignored",
+    "base": "folder-access.max.json",
+    "patch": [
+      { "path": "/blocked/0/path", "remove": true }
+    ]
+  },
+  "folder-access.unknown-state.json": {
+    "expect": "degraded",
+    "base": "folder-access.max.json",
+    "patch": [
+      { "path": "/blocked/1/state", "value": "paused" }
+    ],
+    "result": [
+      { "path": "/blocked/1", "remove": true }
+    ],
+    "degrades": ["folder-access.block"]
+  },
   "git-status.file-detail-without-path.json": {
     "expect": "ignored",
     "base": "git-status.max.json",

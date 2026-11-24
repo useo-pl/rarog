@@ -48,6 +48,7 @@ import { demoContentPl } from '../src/demo/content/pl.ts';
 import { AtrapaDrivera, AtrapaNadzorcy } from './helpers/atrapa-sesji.ts';
 import { consentBash, consentView, produceConsent, screenConsentEvents } from './sse-fixtures-producenci-zgody.ts';
 import { produceInbox } from './sse-fixtures-producenci-inbox.ts';
+import { produceFolders } from './sse-fixtures-producenci-folders.ts';
 
 const FIXTURES_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)), '../../shared/fixtures/sse',
@@ -1437,7 +1438,7 @@ describe('złote ramki SSE: producenci → pliki', () => {
   const dirs: string[] = [];
 
   beforeAll(async () => {
-    for (const run of [produceHerdr, produceDemo, produceBare, produceSeenMarks, produceInbox]) {
+    for (const run of [produceHerdr, produceDemo, produceBare, produceSeenMarks, produceInbox, produceFolders]) {
       const dir = await mkdtemp(path.join(tmpdir(), 'rarog-fixtures-'));
       dirs.push(dir);
       await run(produced, dir);

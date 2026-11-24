@@ -1,8 +1,8 @@
 # Distribution: device pairing and the `rarog` command
 
-> On Linux, `rarog restart`, `rarog service`, `rarog doctor` and `rarog setup` are tested against fakes shaped like
-> systemd 255 from Ubuntu 24.04, and `tailscale serve` against a fake `tailscale`; neither is verified on a live
-> system.
+> On Linux, `rarog restart`, `rarog service`, `rarog doctor` and `rarog setup` are checked on Ubuntu 26.04 with
+> systemd 259, and the tests run them against fakes shaped like systemd 255 from Ubuntu 24.04. `tailscale serve` is
+> tested only against a fake `tailscale`.
 
 ## Overview
 
@@ -92,11 +92,14 @@ offers Try Again.
 The build number (`CFBundleVersion`, the `User-Agent: RarogApp/<build>` header, the value the server compares with
 `RAROG_MIN_CLIENT_BUILD`) is the commit count of `HEAD`. One function computes it for every script that builds the
 app: `ios_build_number` in `scripts/ios-lib.sh`, from `git -C <repo root> rev-list --count HEAD`. A build from Xcode
-alone has number 1. The function refuses before `xcodebuild` (exit 1) in a directory without git, in a shallow clone
+alone has number 1. Without `RAROG_BUILD_NUMBER` the function refuses before `xcodebuild` (exit 1) in a directory
+without git. In such a directory (an unpacked archive) there is no commit count, so `RAROG_BUILD_NUMBER` is the
+number as given, with a warning on stderr when it is below the minimum app build of a package install
+(`DEFAULT_MIN_CLIENT_BUILD` in `server/src/config/clients.ts`). In a checkout the function refuses in a shallow clone
 (`git rev-parse --is-shallow-repository` prints `true`, the count would be too low; `git fetch --unshallow` fixes
-it) and on a `RAROG_BUILD_NUMBER` that is not a number greater than the commit count. So `RAROG_BUILD_NUMBER` only
-raises the number, for example to install a build of a tagged commit over a newer build. The same code in a clone
-with other history gets another number; set `RAROG_MIN_CLIENT_BUILD` from builds of the same repo.
+it) and on a `RAROG_BUILD_NUMBER` that is not a number greater than the commit count. So there
+`RAROG_BUILD_NUMBER` only raises the number, for example to install a build of a tagged commit over a newer build.
+The same code in a clone with other history gets another number; set `RAROG_MIN_CLIENT_BUILD` from builds of the same repo.
 
 ## App release: TestFlight
 
@@ -559,15 +562,27 @@ Module map (paths under `server/src/`):
 - `install/sdk.ts` with `sdk-probe.ts`, `sdk-package.json` and `sdk-lock.json`: the Claude SDK;
 - `install/evidence.ts`: facts about npm, pnpm and install layouts (section "After an npm or pnpm update");
 - `cli/main.ts` routes commands, `cli/io.ts` carries streams, environment and exit codes, `cli/lock.ts` locks the
-  commands that change server state or the secrets file, and each command has a module: `devices.ts`, `dialogs.ts`,
-  `hooks.ts`, `serve.ts`, `restart.ts`, `service.ts` (with `systemd-unit.ts` and `templates/`), `doctor.ts`, `setup.ts`
-  (with the plan screen `setup-plan.ts`, the step modules `setup-config.ts`, `setup-secrets.ts`, `setup-transport.ts`
-  with its port check `setup-tailscale-port.ts`, the Tailscale only choice `setup-tailscale-only.ts`,
-  `setup-settings.ts`, `setup-herdr-unit.ts`, `setup-herdr-agent.ts`, the voice questions `setup-voice.ts` and their
-  shared `setup-context.ts`), `names.ts`, `dictation.ts` and
+  commands that change server state or the secrets file, `cli/child-output.ts` runs child processes (`restart.sh`)
+  and decides the exit on Ctrl-C, SIGTERM and SIGHUP, and `cli/screen/` draws what commands print: the step screen
+  (`steps.ts`), its style and width rules (`style.ts`), the question forms (`ask.ts`), the run log (`log.ts`) and
+  usage text and refusals (`prose.ts`). Each command has a module: `devices.ts`, `dialogs.ts`,
+  `hooks.ts`, `serve.ts`, `restart.ts`, `service.ts` (with `systemd-unit.ts`, the server log mode `service-log.ts`,
+  the definition launchd has loaded `launchd-loaded.ts` and `templates/`), `doctor.ts` (with its lines for consents
+  without a hook `doctor-no-hook.ts`, the PR status `doctor-pr-status.ts` and the state write block
+  `doctor-write-block.ts`), `setup.ts`
+  (with the plan screen `setup-plan.ts`, the screen and run log `setup-screen.ts`, the step modules
+  `setup-config.ts`, `setup-secrets.ts`, `setup-transport.ts`
+  with its port check `setup-tailscale-port.ts`, the Tailscale only choice `setup-tailscale-only.ts`, the Tailscale
+  address for an existing `config.json` `setup-tailscale-add.ts`,
+  `setup-settings.ts`, `setup-herdr-unit.ts`, `setup-herdr-agent.ts`, the voice questions `setup-voice.ts`, the
+  closing `Check` step `setup-check.ts` and their
+  shared `setup-context.ts`; `claude-settings.ts` writes Rarog's entries in `~/.claude/settings.json`), `update.ts`
+  (with the Download step `update-registry.ts`, the channel rules `update-channel.ts`, the update lock
+  `update-lock.ts` and the provenance check `update-provenance.ts`), `dictation.ts` and
   `voice-agent.ts` (both with `secrets-file.ts`: one secret written into the secrets file under that lock, also the iroh
   server key of `rarog setup`, and `secret-input.ts`: the question without echo and the whole of standard input;
-  `voice-agent.ts` rewrites `config.json` through `config-rewrite.ts`).
+  `voice-keys.ts` checks and reads the voice keys; `voice-agent.ts` rewrites `config.json` through
+  `config-rewrite.ts`).
 
 `scripts/restart.sh` gets its hook repair sentence from `rarog restart` in `RAROG_RESTART_HOOK_REPAIR` and prints it
 when `/health` reports `hook: stale`, that is, when the hook copy in `~/.claude/hooks/rarog/` differs from the
@@ -645,13 +660,13 @@ step 9, both items of its plan screen. An update is `rarog update`: it installs 
 with npm and finishes it (`docs/server-config.md`, "`rarog update`"). `rarog update --beta` installs the higher of the
 newest beta and the newest release (the npm dist-tags `beta` and `latest`); without the flag a beta is never
 installed, and an installed beta stays until a release above it appears. A rollback is the manager command with a
-version number (`npm i -g @rarog/server@0.1.0`), then `rarog update --finish`; an uninstall starts with
+version number (`npm i -g @rarog/server@<version>`), then `rarog update --finish`; an uninstall starts with
 `rarog service uninstall`. `rarog update` updates only the package `@rarog/server`, and only with npm. In an
 installation of another package with the `rarog` command it refuses without asking npm and names the uninstall of
 that package, then the install of `@rarog/server`, then `rarog service install` and `rarog update --finish`: npm
 refuses a new package whose command another package of the prefix owns, and only `rarog service install` points the
-service at a package installed by hand. With pnpm the update is `pnpm add -g @rarog/server@latest`, and because the pnpm package path holds
-the version, the service still points at the old path after every pnpm update or rollback:
+service at a package installed by hand. With pnpm the update is `pnpm add -g @rarog/server@latest`, and because
+the pnpm package path holds the version, the service still points at the old path after every pnpm update or rollback:
 `rarog update --finish` and `rarog restart` refuse and name `rarog service install`, which points the service at the
 new version. Without write access to the global prefix (Node
 from a system installer) `npm i -g` fails with `EACCES`, and npm recommends a Node version manager or a prefix in
@@ -685,10 +700,11 @@ it follows the channel of the app's own `ServerRelease.version`:
   threshold npm installs the beta, because the older `rarog update` does not know `--beta`; the new package's
   `rarog update --finish` then does the setup and the restart.
 
-The refusal for an older protocol (`CoreCopy.updateServer`) does not know the server version, so it always shows the
-full chain of the app's channel (`ServerRelease.unknownServerCommand`):
-`npm i -g @rarog/server@latest && rarog update` in a stable app,
-`npm i -g @rarog/server@beta && rarog update --finish` in a beta app. An equal or newer server, a missing field or
+The refusal for an older protocol (`CoreCopy.updateServer`) does not know the server version, so it names the update
+of the app's channel first (`ServerRelease.unknownServerUpdateCommand`), which checks the package's provenance, and
+the full chain only for a server without that command (`ServerRelease.unknownServerCommand`): `rarog update`, else
+`npm i -g @rarog/server@latest && rarog update`, in a stable app; `rarog update --beta`, else
+`npm i -g @rarog/server@beta && rarog update --finish`, in a beta app. An equal or newer server, a missing field or
 an unreadable value (a `v` prefix, a leading zero in a number of the core or the pre-release, such as `1.01.0` or
 `1.0.0-rc.01`) show nothing. The app makes no request for this beyond the version probe it already sends, so a new
 server release shows up only after an app update. The next probe after `rarog restart` removes the row; a server

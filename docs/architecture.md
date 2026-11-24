@@ -195,9 +195,9 @@ Consequences that recur throughout the code:
   labelled `basename(cwd)` or `1` → first `pane.rename('<tab label> · rarog-claude <key> <trace of the current tab
   label>')`, then the normal path, on the first sync of a session. It is a heuristic, because the pane may have been
   moved: the worst case of a wrong guess is a renamed tab that holds a Rarog agent. A bare `rarog-claude` label gets
-  its description on the same first sync. A closed write channel (`RAROG_HERDR_SEND=0`, an unknown herdr protocol)
-  means zero calls and one log line per process. `RAROG_HERDR_TAB_LABELS=0` turns off sync and label adoption; tab
-  and pane labels set at creation stay. A tip that Rarog does not apply, because herdr
+  its description on the same first sync. A closed write channel (`RAROG_HERDR_SEND=0`) means zero calls and one
+  log line per process. `RAROG_HERDR_TAB_LABELS=0` turns off sync and label adoption; tab and pane labels set at
+  creation stay. A tip that Rarog does not apply, because herdr
   configuration belongs to the user: when the herdr sidebar shows `[state_icon, workspace, tab],
   [terminal_title_stripped]`, the second row repeats the Claude tab label; removing `terminal_title_stripped` from the
   second row of `[ui.sidebar.agents]` in `~/.config/herdr/config.toml` is enough.
@@ -313,6 +313,14 @@ A heartbeat comment with a `ping` event every 10 s goes to every stream and keep
 `hello` announces the interval as `heartbeatMs`. The app ends a stream that got no byte for 1.5 × that interval
 (60 s without the field) and reconnects.
 
+A stream whose unsent bytes (the socket buffer plus, with gzip, the compressor input) pass `SSE_WRITE_BUFFER_MAX`
+plus twice the largest frame the stream was sent is cut: the server destroys the connection and writes one log line
+`sse: write buffer over ceiling <MiB> MiB, stream closed (global|session <id>[, device <id>])`. The ceiling is twice
+a full ring (`RING_MAX_BYTES`, 4 MiB) plus the snapshot image budget (1.5 MiB). The allowance on top grows with the
+largest frame, because a snapshot with many pending consent cards has no fixed size and one valid frame must not cut
+the stream, so a client that reads slowly keeps its stream and only one that stopped reading loses it. It
+reconnects like after any break and gets a snapshot or the tail.
+
 The two scopes are SEPARATE connections with no mutual order, so the client keeps one rule: **the session stream
 updates a known card but never creates one** (in the app the reducer `RarogCore/Reducer.swift`). Without it a late
 `session-changed(done)` from the transcript would revive a card that `sessions-snapshot` had just removed after a
@@ -370,9 +378,24 @@ sentences".
 
 Every degradation and every rejected frame leaves ONE line in `client.log` (in the app
 `RarogCore/ContractReporter.swift`): `kontrakt: /sessions/state=zzz` (path without array indices, value cut to 40
-characters) or `kontrakt: odrzucona <type>`. Dedup works on the line text for the life of the process, and the cap
-is 50 lines. Dedup remembers only a line that WENT OUT: a line from before login waits in a buffer and goes out after
-login.
+characters) or `kontrakt: odrzucona <type>`. A stream the app's SSE parser cuts at its ceiling (a line or the `data`
+of one event over 256 MiB, `SSEParser.maxEventBytes`, above the largest snapshot the server builds) leaves
+`kontrakt: sse line over 256 MiB` or `kontrakt: sse event over 256 MiB`; the stream loop then connects again with
+`Last-Event-ID`, as after a drop. The cap is 50 lines for the life of the process. Dedup remembers only a line that
+WENT OUT: a line from before login waits in a buffer and goes out after login.
+
+A line about one server never reaches another. A server's key follows the "another server" rule of pairing: the full
+iroh EndpointId when the key has one, else the address origin, so the same address with another iroh key is another
+server. Every line gets a stamp when it is recorded, named by its producer, never read from the app's state at that
+moment: a line of the running login takes that login's key; the unpairing line and lines about a known key outside a
+login (data space, push key at start) take that key; a tunnel runtime's line takes the key of the server the runtime
+was built for, carried with the line to the store; a pairing line waits under its pairing offer and takes the new key
+only when that pairing succeeds. A send goes only to the login's key and carries only lines stamped with it; other
+lines wait for a login to their server and are dropped at a login to another one. A key that changes in place (a
+version probe with another iroh key) starts a new recipient the same way. A line with no single server (the shared
+iroh endpoint, the relay registry, the tunnel state line) goes only to the first login of the process and is dropped
+after it. Dedup works on the stamp and the line, within one recipient. A send still in flight to the old server
+neither carries nor removes lines recorded after a logout or a server switch.
 
 ### HTTP endpoints
 
@@ -589,8 +612,8 @@ What these routes do beyond the contract:
   returnedPrompt?}`, where `delivered` says whether `escape` reached the pane and `returnedPrompt` is the prompt
   Claude Code handed back to its field after a delivered key
   (`implementation-spec.md`, "`returnedPrompt`: the prompt back in the field"). The wait has a deadline
-  (`INTERRUPT_WAIT_MS`; after it `'pending'`), because the client retries after 10 s. The manager swallows repeats (one in-flight promise per session
-  plus a one-second debounce), because requests also come from a second device and from network retries.
+  (`INTERRUPT_WAIT_MS`; after it `'pending'`), because the client retries after 10 s. The manager swallows repeats
+  (one in-flight promise per session plus a one-second debounce), because requests also come from a second device and from network retries.
 
 ### The `seen` flag
 
@@ -1259,13 +1282,16 @@ the start. Devices get card heads on the global stream and card text through rou
    Nothing else assigns `state` by hand (the one exception: demo seeds).
 3. **Ring buffer in RAM** per session, the source of tail replay after `Last-Event-ID`. `seq` lives within one
    `serverStartId` and rides with it in the frame `id:`, so a cursor from another process ends in a snapshot. A new
-   card under the same id (restart, `resume()`) numbers on after the old card, so a cursor of the old card ends in a
-   snapshot too, and the open streams of that id get one before the new card's first frame. The cap
+   card under the same id (restart, `resume()`) numbers from 1 again. The cap
    is **twofold, items AND bytes**: 500 ring events and 500 transcript messages, plus `RING_MAX_BYTES` (4 MB)
    separately for the ring and for the message array that `transcript-snapshot` is built from; a single message over
    `MAX_MESSAGE_BYTES` (256 kB) is cut with an explicit marker, because one message can carry megabytes of base64.
    Both caps push out the oldest entries. `MAX_TRANSCRIPT_MESSAGES` lives in `shared`, and the app cuts its
-   transcript with the same cap (`CoreLimits.maxTranscriptMessages` = 500).
+   transcript with the same cap (`CoreLimits.maxTranscriptMessages` = 500). A closed card (`done`) keeps its ring
+   and transcript so the phone can resume it; at most `DONE_CARDS_MAX` (100, `sessions/done-retention.ts`) closed
+   cards stay, and the 101st makes the one with the oldest `lastActivityAt` leave as on Hide, with one
+   `sessions-snapshot` to all phones. A card with a driver or a live pane, a `resumable` card and a card whose
+   restart is in progress neither count nor leave.
 4. **Pending decisions in RAM**, first wins: the first decision that reaches the server, from any device, is the one
    sent; every next tap on the same card gets 409, and the session stream broadcasts the outcome to every client that
    watches the session (`permission-resolved`, `question-resolved`). After a restart a pending entry is gone → an explicit
@@ -1541,8 +1567,9 @@ and the UI are described in `native/Rarog/README.md`.
   source guard (`SourceGuardTests`: Swift code does not know tool names or CLI texts and does not decide by the
   answer channel) and the golden frame test, which reads `shared/fixtures/sse/` straight from the repo. It also runs
   in `pnpm run check` (the `swift-contract` step).
-- `Packages/RarogTransport`: the SSE parser on bytes, the REST client with the device key (`Authorization:
-  Rarog-Device …`, `User-Agent: RarogApp/<build>`) and one mutation gate (`MutationGate`).
+- `Packages/RarogTransport`: the SSE parser on bytes (a line or an event over 256 MiB cuts the stream), the REST
+  client with the device key (`Authorization: Rarog-Device …`, `User-Agent: RarogApp/<build>`) and one mutation gate
+  (`MutationGate`).
 - `Packages/RarogCore` (the `@Observable` store, a pure reducer, stream loops, the durable send queue, presence, the
   `kontrakt:` report to `client.log`) and `Packages/RarogUI` (views, zero domain logic); `Packages/RarogTerminal` is
   the only package that imports SwiftTerm.
