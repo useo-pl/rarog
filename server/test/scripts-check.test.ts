@@ -313,7 +313,7 @@ describe('Inwentarz pominięć testów (lista zamknięta)', () => {
     'server/test/rarog-service-linux.test.ts': 1,
     'server/test/rarog-setup.test.ts': 13,
     'server/test/rarog-update-finish.test.ts': 1,
-    'server/test/rarog-update.test.ts': 1,
+    'server/test/rarog-update.test.ts': 2,
     'server/test/repo-files.test.ts': 4,
     'server/test/safe-read.test.ts': 2,
     'server/test/scripts-check.test.ts': 1,

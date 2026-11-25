@@ -2,12 +2,12 @@
 import UIKit
 
 // The pointer over inline code that names a session file: a dotted underline in the inline code ink under the run, and
-// a request for a rounded rect pointer around the line of the run under it. The overlay is a view inside the message
-// field, above its text: under the field the inline code background, which the layout fragment draws, would cover it.
-// Over the run it is the deepest view under the pointer, and its own pointer interaction asks for the rounded rect;
-// the field keeps its own interaction for the text beam. Touches pass through it to the field and the list. The text
-// and its layout stay as they are, so the selection and the render cache do not change. What to underline the screen
-// decides (`SessionViewController+FileHover`). Owner: transcript.
+// the system pointer over it instead of the text beam. The overlay is a view inside the message field, above its text:
+// under the field the inline code background, which the layout fragment draws, would cover it. Over the run it is the
+// deepest view under the pointer, and its own pointer interaction asks for the system pointer; elsewhere the field
+// keeps its own interaction for the text beam. Touches pass through it to the field and the list.
+// The text and its layout stay as they are, so the selection and the render cache do not change. What to underline the
+// screen decides (`SessionViewController+FileHover`). Owner: transcript.
 extension MessageContentView {
   /// The underlined run; `nil` = none.
   var fileHoverRange: NSRange? {
@@ -57,14 +57,12 @@ extension MessageContentView {
   }
 }
 
-/// The dotted underline of a hovered inline code run and the pointer shape over it. It takes no touches: its hit test
-/// answers only for events other than touches (the pointer's hover), so a click, a tap or a press reaches the field
-/// under it and the list's recognizers as before.
+/// The dotted underline of a hovered inline code run and the system pointer over it. It takes no touches: its hit
+/// test answers only for events other than touches (the pointer's hover), so a click, a tap or a press reaches the
+/// field under it and the list's recognizers as before.
 final class FileHoverView: UIView, UIPointerInteractionDelegate {
   /// The dots: 1 pt long, 2 pt apart, 1 pt thick.
   private static let dash: [NSNumber] = [1, 2]
-  /// How far the pointer's rounded rect reaches past the run's glyphs on each side.
-  private static let pointerOutset: CGFloat = 2
 
   private let dots = CAShapeLayer()
   private(set) var range: NSRange?
@@ -131,9 +129,10 @@ final class FileHoverView: UIView, UIPointerInteractionDelegate {
     return UIPointerRegion(rect: rects[line], identifier: "\(range.location).\(range.length).\(line)")
   }
 
+  /// Over the run the pointer stays the system pointer, with no effect: an effect would draw a glass shape over the
+  /// path. Answering at all keeps the field's text beam off the run, so the pointer reads as over something to click.
   func pointerInteraction(_ interaction: UIPointerInteraction, styleFor region: UIPointerRegion) -> UIPointerStyle? {
-    let shape = region.rect.insetBy(dx: -Self.pointerOutset, dy: 0)
-    return UIPointerStyle(shape: .roundedRect(shape, radius: UIPointerShape.defaultCornerRadius))
+    .system()
   }
 }
 #endif

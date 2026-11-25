@@ -112,7 +112,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   nothing. A miss shows nothing and
   `client.log` gets one line per reason per screen, without the path (`transcript file: not opened, <reason>`).
   Inline code looks as before at rest. Under the pointer, a run that resolves to a session file gets a dotted underline
-  in the inline code ink, and a pointer interaction on that underline asks for a rounded rect around the run's line
+  in the inline code ink, and a pointer interaction on that underline keeps the system pointer over the run instead
+  of the text beam, with no pointer effect, since an effect draws a glass shape over the path
   (`SessionViewController+FileHover`, `MessageContentView+FileHover`); elsewhere nothing is added and the text beam
   stays. The hover takes the click's decision (the same run,
   the same rules for links, controls, tables, cards, queued bubbles and Inbox cards) and asks the same opener, which

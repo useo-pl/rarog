@@ -3,7 +3,7 @@ import RarogCore
 import UIKit
 
 // The pointer's hover shows which inline code opens a file: over a run whose path resolves to a session file, the run
-// gets a dotted underline and a view whose pointer interaction asks for a rounded rect around it
+// gets a dotted underline and a view whose pointer interaction keeps the system pointer there instead of the text beam
 // (`MessageContentView+FileHover`); elsewhere nothing is added and the field's text beam stays. The decision is the
 // click's (`+FileOpen`): the same run, the same "not over" rules (a link, a control, a table, a card, a queued bubble,
 // an Inbox card) and the same opener, which answers from the index it keeps. Without

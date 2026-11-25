@@ -2,6 +2,8 @@
  * `rarog update`: the newest version of the npm package from the registry (the Download step, `update-registry.ts`),
  * then `rarog update --finish` of the version installed: a new version finishes in its own process (this one only
  * started it, so a fault in the old version's finish cannot block the new one), the same version finishes here.
+ * Started on another node than the service's, when that node is the one of this prefix, it first runs again on the
+ * service's node, so the finish never moves the service to the terminal's node.
  *
  * `rarog update --finish` finishes the installed version without the registry. In order: the Claude SDK it pins
  * (downloaded without a question), the service pointed at this installation when the run that has just installed it
@@ -16,11 +18,11 @@
  * launchctl does not tell is refused before any step.
  */
 import { spawn } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { accessSync, constants, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { INSTALL_MODE, INSTALL_ROOT } from '../install/mode.ts';
-import { rarogCli, repairCommands, shellQuote } from '../install/repair.ts';
-import { transientInstall } from '../install/service-target.ts';
+import { installationCli, rarogCli, repairCommands, shellQuote } from '../install/repair.ts';
+import { serviceArgvNode, transientInstall } from '../install/service-target.ts';
 import { readPackageVersion } from '../version.ts';
 import { trackChild } from './child-output.ts';
 import type { ChildSink } from './child-output.ts';
@@ -41,7 +43,7 @@ import { SCREEN_TITLE, SERVICE_UNDETERMINED, entry, serviceStateFix } from './se
 import type { SetupDeps, Step } from './setup-context.ts';
 import { SetupView } from './setup-screen.ts';
 import { unitFilePath } from './systemd-unit.ts';
-import { downloadStep } from './update-registry.ts';
+import { downloadStep, nodeInstallsHere } from './update-registry.ts';
 import { UPDATE_LOCK_TOKEN, markInstalled, takeUpdateLock, updateLockOf } from './update-lock.ts';
 import type { InstalledPackage, UpdateLock } from './update-lock.ts';
 import { sentenceFor, usageFor } from './screen/prose.ts';
@@ -62,6 +64,12 @@ export const UPDATE_USAGE = `  rarog update [--beta] [--data-dir <dir>] [--verbo
       --data-dir: the installation's data directory from rarog serve --data-dir.
       --verbose: every detail line on the screen.`;
 
+/**
+ * Set in the environment of `rarog update` run again on the service's node: that run never switches again, so a
+ * node that still differs ends in a refusal, not in a loop.
+ */
+export const UPDATE_NODE_GUARD = 'RAROG_UPDATE_ON_SERVICE_NODE';
+
 /** Command name of the run log (`<dataDir>/logs/update-….log`). */
 export const UPDATE_LOG_COMMAND = 'update';
 
@@ -76,7 +84,12 @@ export interface UpdateDeps extends SetupDeps {
   readonly npmCli?: string;
   /** The certificate authority of a release's provenance, DER (default: Sigstore's, `update-provenance.ts`). */
   readonly provenanceAuthority?: Buffer;
+  /** Replaces this process with the run on the service's node (default `process.execve`, which never returns). */
+  readonly replaceProcess?: ReplaceProcess;
 }
+
+/** `process.execve`: `file`, the whole argv (`args[0]` is the program name) and the environment. */
+export type ReplaceProcess = (file: string, args: string[], env: NodeJS.ProcessEnv) => number;
 
 const DEFAULT_DEPS: UpdateDeps = {
   serviceInstall: (io, precheck, output, dataDir) => serviceInstallIfAbsent(io, precheck, undefined, {
@@ -202,6 +215,102 @@ function serviceAgainst(io: CliIo, platform: NodeJS.Platform, root: string): Ser
     : HERE;
 }
 
+/**
+ * The node the service starts when it starts this installation on another node than this process's: every source
+ * names the same executable node (macOS: the definition launchd has loaded and the plist; Linux: the unit file).
+ * `null` otherwise: no service, an unreadable one, sources that disagree, another installation, this process's node,
+ * or a load state launchctl does not tell. The Download step offers it only when it is the node of this prefix.
+ */
+function otherServiceNode(io: CliIo, platform: NodeJS.Platform, root: string): string | null {
+  const current = { node: process.execPath, bin: path.join(root, 'bin', 'rarog.mjs') };
+  const home = homeOf(io.env);
+  const sources: (readonly string[])[] = [];
+  if (platform === 'linux') {
+    if (entry(unitFilePath(home)) !== 'present') return null;
+    const found = unitArgv(io);
+    if ('issue' in found) return null;
+    sources.push(found.argv);
+  } else {
+    const loaded = loadedDefinition(SERVICE_LABEL, io, platform);
+    if (loaded.kind === 'unknown') return null;
+    if (loaded.kind === 'loaded') sources.push(loaded.argv);
+    if (entry(servicePlistPath(home)) === 'present') {
+      const found = servicePlistArgv(io);
+      if ('issue' in found) return null;
+      sources.push(found.argv);
+    }
+  }
+  const nodes = new Set<string>();
+  for (const argv of sources) {
+    if (serviceInstallationMismatch(argv, 'package', current)?.kind !== 'node') return null;
+    nodes.add(serviceArgvNode(argv) ?? '');
+  }
+  const [node] = nodes;
+  if (nodes.size !== 1 || node === undefined || node === '') return null;
+  try {
+    accessSync(node, constants.X_OK);
+  } catch {
+    return null;
+  }
+  return node;
+}
+
+/**
+ * The service's node when this installation's update has to run on it: the service starts this installation on
+ * another node ({@link otherServiceNode}), that node is the one of this installation's npm prefix, and its npm installs
+ * there (`nodeInstallsHere`). `null` otherwise; `line` gets the reason.
+ */
+async function updateNodeOfService(
+  io: CliIo, platform: NodeJS.Platform, root: string, line: (text: string) => void,
+): Promise<string | null> {
+  const node = otherServiceNode(io, platform, root);
+  if (node === null) return null;
+  return await nodeInstallsHere({ node, root, env: io.env, cwd: homeOf(io.env), line }) ? node : null;
+}
+
+/** The arguments of a command as the user types them: the words bare, the value of `--data-dir` quoted. */
+function typed(args: readonly string[]): string {
+  return args.map((arg, i) => (args[i - 1] === '--data-dir' ? shellQuote(arg) : arg)).join(' ');
+}
+
+/**
+ * `rarog update` (`argv` starts with `update`) on another node than the service's, when the update has to run on the
+ * service's node ({@link updateNodeOfService}): this process becomes the same command with the same arguments on that
+ * node (`process.execve`, the same PID), so its npm installs and the new version's finish runs on the node the service
+ * starts (a finish on this node would move the service here). One line says so; that run takes the update lock
+ * itself and gets {@link UPDATE_NODE_GUARD}. A run with the guard that still sees another node refuses instead of
+ * switching again. `null` = this run goes on.
+ */
+async function onServiceNode(
+  argv: readonly string[], io: CliIo, platform: NodeJS.Platform, root: string, replaceWith?: ReplaceProcess,
+): Promise<number | null> {
+  let node: string | null;
+  try {
+    node = await updateNodeOfService(io, platform, root, () => {});
+  } catch (failure) {
+    if (failure instanceof SetupInterrupted) return EXIT_INTERRUPTED;
+    throw failure;
+  }
+  if (node === null) return null;
+  const bin = path.join(root, 'bin', 'rarog.mjs');
+  const command = installationCli({ node, bin }, typed(argv));
+  if (io.env[UPDATE_NODE_GUARD] !== undefined) {
+    throw new Refusal(`the service starts ${node}, but this run on it runs on ${process.execPath}; nothing was`
+      + ` changed; run ${command}.`);
+  }
+  const replace = replaceWith ?? (typeof process.execve === 'function' ? process.execve : null);
+  if (replace === null) {
+    // `bin/rarog.mjs` lets only a Node with `process.execve` in; a second process would not stop with this one.
+    throw new Refusal(`the service starts ${node}, and this Node (v${process.versions.node}) has no process.execve`
+      + ` to run the update on it; nothing was changed; run ${command}.`);
+  }
+  out(io, `rarog update: the service starts ${node}, so this update runs on it.`);
+  // The same process becomes the run on the service's node: every signal reaches it as it would reach `rarog update`
+  // started there, and no process is left behind that could exit while the update goes on.
+  const code = replace(node, [node, bin, ...argv], { ...withoutToken(io.env), [UPDATE_NODE_GUARD]: '1' });
+  return typeof code === 'number' ? code : EXIT_REFUSED;
+}
+
 /** `rarog update` and `rarog update --finish` — `argv` starts with `update`; tests give `deps`. */
 export async function updateCommand(
   argv: readonly string[], io: CliIo, deps: UpdateDeps = DEFAULT_DEPS,
@@ -237,6 +346,11 @@ export async function updateCommand(
     if (config === null) {
       throw new Refusal(`${what}: no ${path.join(rarogConfigDir(io.env), 'config.json')}, so there is no installation`
         + ` to ${flags.finish ? 'finish' : 'update'}; run ${rarogCli('setup', mode)} first.`);
+    }
+    // Before the lock: the run on the service's node takes it itself.
+    if (!flags.finish) {
+      const code = await onServiceNode(argv, io, platform, root, deps.replaceProcess);
+      if (code !== null) return code;
     }
     // `rarog update` installs, so it always takes the lock itself; a finish inherits the lock of a run that installed.
     const dir = rarogConfigDir(io.env);
@@ -410,8 +524,16 @@ async function runSteps(
     // The update lock does not name this installation as the one just installed: the refusal of rarog restart.
     start('service', 'Service', false);
     view.detail(`  ${service.what}`);
-    // The command of this installation (the absolute form outside `PATH`, `screenFix`); the step line says why.
-    show(view, 'fail', `starts another ${service.other}; nothing was changed`, rarogCli('service install', 'package'));
+    // A service on the node of this prefix whose npm installs here: this command again on that node, which the service
+    // already starts (`rarog service install` here would move the service to this process's node).
+    const node = service.other === 'node'
+      ? await updateNodeOfService(io, run.platform, run.root, (text) => { view.detail(text); }) : null;
+    const again = [...(run.flags.finish ? ['update', '--finish'] : ['update']),
+      ...(run.flags.dataDir === null ? [] : ['--data-dir', run.flags.dataDir])];
+    // Otherwise the command of this installation (the absolute form outside `PATH`, `screenFix`); the step line says why.
+    show(view, 'fail', `starts another ${service.other}; nothing was changed`, node === null
+      ? rarogCli('service install', 'package')
+      : installationCli({ node, bin: path.join(run.root, 'bin', 'rarog.mjs') }, typed(again)));
     return EXIT_REFUSED;
   }
   const results: Step[] = [];

@@ -12,7 +12,7 @@ import { KID_RE, importPassKeyring } from './pass.ts';
 import type { PassKeyring } from './pass.ts';
 
 /** Relay code version (`version` in `/v1/health`); equal to `version` in `relay/package.json` (test). */
-export const RELAY_VERSION = '1.1.0';
+export const RELAY_VERSION = '1.1.1';
 
 /** Non-secret variables (`[vars]` in `wrangler.toml`, in EACH environment separately: `vars` are not inherited). */
 export const ENV_VARS = ['APNS_TEAM_ID', 'APNS_ENVIRONMENTS', 'ALERT_POLICY', 'PASS_KID', 'DEPLOY_SHA'] as const;

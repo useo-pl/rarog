@@ -220,7 +220,8 @@ Some tests check code that takes another branch elsewhere (launchd instead of sy
 - `rarog-service.test.ts`: `rarog service install` and `uninstall` under launchd;
 - `rarog-setup.test.ts`: `rarog setup` on the macOS path;
 - `rarog-update-finish.test.ts`: `rarog update --finish` on launchd fakes (its Linux case runs everywhere);
-- `rarog-update.test.ts`: the finish part of `rarog update` on launchd fakes (its registry cases run everywhere);
+- `rarog-update.test.ts`: the finish part of `rarog update` and its switch to the service's Node, on launchd fakes (its
+  registry cases run everywhere);
 - `safe-read.test.ts`: the directory read by identity on the macOS disk (its Linux case runs only on Linux, the
   rest everywhere);
 - `scripts-ios-check-demo.test.ts`: the iOS gate;

@@ -3,12 +3,13 @@
  * the Download step from a state file and logs every call, the installation it updates, the fake new version that
  * records how it was started, and `runUpdate`, which runs the command in the test process on a 60-column terminal.
  */
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { CliIo, CliTerminal } from '../../src/cli/io.ts';
 import { UPDATE_LOCK_FILENAME, UPDATE_LOCK_TOKEN } from '../../src/cli/update-lock.ts';
-import { updateCommand } from '../../src/cli/update.ts';
+import { UPDATE_NODE_GUARD, updateCommand } from '../../src/cli/update.ts';
 import type { UpdateDeps } from '../../src/cli/update.ts';
 import { installSdk } from '../../src/install/sdk.ts';
 import {
@@ -51,7 +52,10 @@ export const npmRoot = (): string => path.join(prefix(), 'lib', 'node_modules', 
 export const startRecord = (): string => path.join(t.home, 'new-version-started.json');
 export const oldRecord = (): string => path.join(t.home, 'old-version-started.json');
 
-/** A `bin/rarog.mjs` that records its start (argv, node, token, the update lock at that moment) and exits `code`. */
+/**
+ * A `bin/rarog.mjs` that records its start (argv, node, token, the guard of a run on the service's node, the update
+ * lock at that moment) and exits `code`.
+ */
 export function recordingBin(record: string, code = 0): string {
   return [
     "import { existsSync, readFileSync, writeFileSync } from 'node:fs';",
@@ -59,7 +63,7 @@ export function recordingBin(record: string, code = 0): string {
     "const lock = path.join(process.env.HOME ?? '', '.config', 'rarog', 'update.lock');",
     `writeFileSync(${JSON.stringify(record)}, JSON.stringify({`,
     '  argv: process.argv.slice(1), node: process.execPath, cwd: process.cwd(),',
-    `  token: process.env.${UPDATE_LOCK_TOKEN} ?? null,`,
+    `  token: process.env.${UPDATE_LOCK_TOKEN} ?? null, guard: process.env.${UPDATE_NODE_GUARD} ?? null,`,
     "  lock: existsSync(lock) ? readFileSync(lock, 'utf8') : null,",
     '}));',
     `process.exit(${String(code)});`,
@@ -69,11 +73,13 @@ export function recordingBin(record: string, code = 0): string {
 
 /**
  * An npm installation of version `version` (its own directory, not this repository); `name` = `null` leaves the name
- * out of its `package.json`.
+ * out of its `package.json`. Its `bin/rarog.mjs` records its start in {@link oldRecord} and exits `code`.
  */
-export function npmInstallation(version = '0.1.0', root = npmRoot(), name: string | null = '@rarog/server'): string {
+export function npmInstallation(
+  version = '0.1.0', root = npmRoot(), name: string | null = '@rarog/server', code = 0,
+): string {
   write(path.join(root, 'package.json'), JSON.stringify(name === null ? { version } : { name, version }));
-  write(path.join(root, 'bin', 'rarog.mjs'), recordingBin(oldRecord()));
+  write(path.join(root, 'bin', 'rarog.mjs'), recordingBin(oldRecord(), code));
   return root;
 }
 
@@ -452,6 +458,7 @@ export interface Started {
   readonly argv: string[];
   readonly node: string;
   readonly token: string | null;
+  readonly guard: string | null;
   readonly lock: string | null;
 }
 
@@ -480,6 +487,8 @@ export interface UpdateOptions {
   readonly env?: NodeJS.ProcessEnv;
   readonly npmCli?: string;
   readonly deps?: Partial<UpdateDeps>;
+  /** The platform the command sees (default: this machine's). */
+  readonly platform?: NodeJS.Platform;
 }
 
 /** `rarog update …` in the test process on a 60-column terminal; the answer to every question is "y". */
@@ -496,6 +505,7 @@ export async function runUpdate(options: UpdateOptions): Promise<UpdateRun> {
     env: options.env ?? env(home, { PATH: `${bin}:${path.join(prefix(), 'bin')}:/usr/bin:/bin` }),
     cwd: t.home,
     terminal: TTY_60,
+    ...(options.platform === undefined ? {} : { platform: options.platform }),
     ...(answer === null ? {} : {
       ask: (prompt: string) => {
         const question = questionOf(prompt);
@@ -527,6 +537,10 @@ export async function runUpdate(options: UpdateOptions): Promise<UpdateRun> {
     sdkProbe: () => Promise.resolve({ ok: true }),
     checkPort: port,
     checkTimeoutMs: CHECK_TIMEOUT_MS,
+    // `process.execve` would replace the test process: the run on the service's node runs to its end, its code returned.
+    replaceProcess: (file, args, childEnv) => spawnSync(file, args.slice(1), {
+      argv0: args[0] ?? file, env: childEnv, cwd: t.home, stdio: 'inherit',
+    }).status ?? 1,
     ...options.deps,
   };
   const code = await updateCommand(['update', ...(options.argv ?? [])], io, deps);

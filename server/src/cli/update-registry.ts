@@ -10,7 +10,8 @@
  * `update-provenance.ts` checks that one file, and npm installs exactly that file with `--ignore-scripts`. It finishes
  * nothing: `update.ts` hands a new version to that version's own `rarog update --finish`. After npm has replaced the
  * package files this process only reads one file and starts a child, so it never loads a module from the new files
- * (no dynamic import).
+ * (no dynamic import). `nodeInstallsHere` tells `update.ts` whether the npm of another node (the service's) installs
+ * into this installation.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
@@ -358,6 +359,37 @@ function sameDir(a: string, b: string): boolean {
 function npmPrefixOf(root: string): string | null {
   const binDir = npmBinDir(root);
   return binDir === null ? null : path.dirname(binDir);
+}
+
+/**
+ * `node` is the node of the npm prefix of the installation at `root` (`<prefix>/bin`), and `npm prefix -g` of the npm
+ * next to it, in the environment `env`, is that prefix: a user `prefix=` in `.npmrc` can move it away from the node's
+ * own directory. Only then a whole `rarog update` on `node` installs into this installation and finishes on that node.
+ * Each reason for `false` is a line to `line`; Ctrl-C during npm = {@link SetupInterrupted}.
+ */
+export async function nodeInstallsHere(input: {
+  readonly node: string; readonly root: string; readonly env: NodeJS.ProcessEnv; readonly cwd: string;
+  readonly line: (text: string) => void;
+}): Promise<boolean> {
+  const { node, root, line } = input;
+  const prefix = packageManagerOf(root) === 'npm' ? npmPrefixOf(root) : null;
+  if (prefix === null || !sameDir(path.dirname(node), path.join(prefix, 'bin'))) {
+    line(`  ${node} is not the node of the npm prefix of ${root}`);
+    return false;
+  }
+  const found = npmCliOf(node);
+  if ('failure' in found) {
+    line(`  ${found.failure}`);
+    return false;
+  }
+  const run = await runNpm({
+    execPath: node, npmCli: found.file, env: npmEnv(input.env, NPM_AGE_GATE_CONFIG), cwd: input.cwd,
+  }, PREFIX_ARGS, line);
+  if (run.interrupted) throw new SetupInterrupted('npm prefix was interrupted (Ctrl-C)');
+  const said = run.stdout.trim();
+  if (run.code === 0 && said !== '' && sameDir(said, prefix)) return true;
+  line(`  npm prefix -g of ${node}: ${run.code === 0 ? said : `exit ${String(run.code)}`}`);
+  return false;
 }
 
 /** The version a run installs, the Node it needs (`engines`) and the `--beta` note of its step line. */

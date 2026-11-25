@@ -8,19 +8,24 @@
  * NEW version in its own process with the update lock's token and `installed`. An installation that already has the
  * newest version is only finished, in this process, with the hook copy question. The hook copy goes without its
  * question only when the update lock names this installation as just installed (rule 4 of
- * `hook-granica-guard.test.ts`).
+ * `hook-granica-guard.test.ts`). Started on another node than the service's, when that node is the one of this
+ * prefix and its npm installs there, the command runs again on that node with the same arguments, once.
  *
  * npm is a fake `npm-cli.js` (no network, no real global prefix); the new version it "installs" is a fake
  * `bin/rarog.mjs` that records how it was started. `launchctl` and `rarog restart` are fakes; `/health` is the
  * harness server on its own port.
  */
+import { spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { interruptOrExit } from '../src/cli/child-output.ts';
 import { renderServicePlist } from '../src/cli/service.ts';
+import { renderServiceUnit, unitFilePath } from '../src/cli/systemd-unit.ts';
 import { UPDATE_LOCK_TOKEN, updateLockBody } from '../src/cli/update-lock.ts';
+import { UPDATE_NODE_GUARD } from '../src/cli/update.ts';
 import {
   ageGateText, ageGateWait, compareVersions, gateDaysOf, nodeSatisfies,
 } from '../src/cli/update-registry.ts';
@@ -770,6 +775,364 @@ describe('rarog update: the provenance npm verified', () => {
     expect(sha512OfIntegrity(`sha1-AAAA ${sriOf('x')}`)).toBe(sha512Hex('x'));
     for (const value of ['sha256-AAAA', 'sha512-short', '', null, 5]) expect(sha512OfIntegrity(value)).toBeNull();
   });
+});
+
+/** An executable node at `file` that runs this test's node, so `--version` and scripts work through it. */
+function nodeAt(file: string): string {
+  write(file, `#!/bin/sh\nexec '${process.execPath}' "$@"\n`, 0o755);
+  return file;
+}
+
+/** The service plist starting `node` with this installation's entry, loaded as `loaded` (default: the plist's). */
+function serviceWith(node: string, root: string, loaded?: readonly string[]): void {
+  write(plist(), renderServicePlist({
+    programArguments: [node, path.join(root, 'bin', 'rarog.mjs'), 'serve'], workingDirectory: home,
+    log: path.join(dataDirOf(), 'server.log'),
+  }));
+  markLoaded(loaded);
+}
+
+/**
+ * npm next to `<prefix>/bin/node` as npm lays it out (`bin/npm` → `lib/node_modules/npm/bin/npm-cli.js`): `npm prefix
+ * -g` prints `printed` (a user `.npmrc` with `prefix=` moves it), and every call is a line in its log.
+ */
+function serviceNpm(printed: string): void {
+  const cli = path.join(prefix(), 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  write(cli, [
+    "const fs = require('node:fs');",
+    'const args = process.argv.slice(2);',
+    `fs.appendFileSync(${JSON.stringify(serviceNpmLog())}, args.join(' ') + '\\n');`,
+    `if (args[0] === 'prefix') { process.stdout.write(${JSON.stringify(`${printed}\n`)}); process.exit(0); }`,
+    'process.exit(2);',
+    '',
+  ].join('\n'));
+  mkdirSync(path.join(prefix(), 'bin'), { recursive: true });
+  symlinkSync(cli, path.join(prefix(), 'bin', 'npm'));
+}
+
+const serviceNpmLog = (): string => path.join(t.home, 'service-npm-calls');
+const serviceNpmCalls = (): string[] => (existsSync(serviceNpmLog())
+  ? readFileSync(serviceNpmLog(), 'utf8').split('\n').filter((line) => line !== '') : []);
+
+/** The screen with a wrapped `Fix:` back on one line (a path breaks after a slash). */
+const unwrapped = (screen: string): string => flat(screen.replace(/\/\n +/gu, '/'));
+
+/** A node at `file` that runs this test's node and logs every start (its arguments on one line). */
+function loggingNodeAt(file: string): string {
+  write(file, `#!/bin/sh\nprintf '%s\\n' "$*" >> '${serviceNodeLog()}'\nexec '${process.execPath}' "$@"\n`, 0o755);
+  return file;
+}
+
+const serviceNodeLog = (): string => path.join(t.home, 'service-node-starts');
+/** The starts of the service's node other than its npm: the runs of `rarog.mjs`. */
+const serviceNodeRuns = (): string[] => (existsSync(serviceNodeLog())
+  ? readFileSync(serviceNodeLog(), 'utf8').split('\n').filter((line) => line.includes('rarog.mjs')) : []);
+
+const switchLine = (node: string): string => `rarog update: the service starts ${node}, so this update runs on it.\n`;
+
+/** The guard a run on the service's node gets, in this test's environment. */
+const guarded = (): NodeJS.ProcessEnv => env(home, {
+  PATH: `${bin}:${path.join(prefix(), 'bin')}:/usr/bin:/bin`, [UPDATE_NODE_GUARD]: '1',
+});
+
+describe.skipIf(!IS_MAC)(macOnly('rarog update: started by another node than the service\'s', 'launchd'), () => {
+  const otherPrefix = (): string => path.join(t.home, 'other-prefix');
+
+  it.each([
+    ['npm of this node installs elsewhere', [], 'other-prefix'],
+    ['npm of this node installs elsewhere, --beta', ['--beta'], 'other-prefix'],
+    ['npm of this node installs elsewhere, --data-dir and --verbose', ['--data-dir', '/srv/rarog data', '--verbose'],
+      'other-prefix'],
+    // Without the switch this run installs with this node, and the finish moves the service to this node.
+    ['npm of this node installs into this prefix', [], null],
+    // Without the switch this run stops with a fix on this node.
+    ['npm prefix -g of this node prints nothing', [], ''],
+  ])('the service starts the node of this installation\'s prefix and its npm installs there, %s: the update runs'
+    + ' again on that node with the same arguments, one line says so, its exit code is the command\'s',
+  async (_what, argv, terminalPrefix) => {
+    const root = npmInstallation('0.1.0', npmRoot(), '@rarog/server', 3);
+    configured();
+    const serviceNode = loggingNodeAt(path.join(prefix(), 'bin', 'node'));
+    serviceNpm(prefix());
+    serviceWith(serviceNode, root);
+    const npmCli = fakeRegistryNpm({
+      ...(terminalPrefix === null ? {} : { prefix: terminalPrefix === '' ? '' : path.join(t.home, terminalPrefix) }),
+      install: newVersion(),
+    });
+    const run = await runUpdate({ root, npmCli, argv });
+    expect(run.code, run.screen).toBe(3);
+    expect(run.stdout).toBe(switchLine(serviceNode));
+    expect(run.stderr).toBe('');
+    // This process asked only the service's npm: this node's npm never ran, nothing was installed or moved.
+    expect(npmArgs()).toEqual([]);
+    expect(serviceNpmCalls()).toEqual(['prefix -g']);
+    expect(serviceNodeRuns()).toEqual([[path.join(root, 'bin', 'rarog.mjs'), 'update', ...argv].join(' ')]);
+    const child = started(oldRecord());
+    expect(child?.argv).toEqual([path.join(root, 'bin', 'rarog.mjs'), 'update', ...argv]);
+    expect(child?.guard).toBe('1');
+    // The run on the service's node takes the update lock itself: this process holds none and passes no token.
+    expect(child?.token).toBeNull();
+    expect(child?.lock).toBeNull();
+    expect(started()).toBeNull();
+    expect(run.order).toEqual([]);
+    expect(existsSync(lockFile())).toBe(false);
+    expect(updateLogs()).toEqual([]);
+  });
+
+  it.each([
+    ['npm of this node installs elsewhere', 'other-prefix'],
+    ['npm of this node installs into this prefix', null],
+  ])('the run on the service\'s node still runs on another node than the service\'s (%s): a refusal with the update'
+    + ' on the service\'s node, no switch again, nothing installed', async (_what, terminalPrefix) => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    const serviceNode = loggingNodeAt(path.join(prefix(), 'bin', 'node'));
+    serviceNpm(prefix());
+    serviceWith(serviceNode, root);
+    const npmCli = fakeRegistryNpm({
+      ...(terminalPrefix === null ? {} : { prefix: path.join(t.home, terminalPrefix) }), install: newVersion(),
+    });
+    const run = await runUpdate({ root, npmCli, argv: ['--beta', '--data-dir', '/srv/rarog data'], env: guarded() });
+    expect(run.code, run.screen).toBe(1);
+    expect(run.stdout).toBe('');
+    const said = oneSentence(run.stderr);
+    expect(said).toContain(`the service starts ${serviceNode}`);
+    expect(said).toContain(`'${serviceNode}' '${path.join(root, 'bin', 'rarog.mjs')}' update --beta --data-dir`
+      + ' \'/srv/rarog data\'');
+    expect(said).not.toContain('npm i -g');
+    expect(serviceNodeRuns()).toEqual([]);
+    expect(started(oldRecord())).toBeNull();
+    expect(npmArgs()).toEqual([]);
+    expect(started()).toBeNull();
+    expect(run.order).toEqual([]);
+    expect(existsSync(lockFile())).toBe(false);
+  });
+
+  it('rarog update --finish by hand on another node than the service\'s, whose node is the one of this prefix: the'
+    + ' refusal names the finish on the service\'s node, not rarog service install', async () => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    const serviceNode = loggingNodeAt(path.join(prefix(), 'bin', 'node'));
+    serviceNpm(prefix());
+    serviceWith(serviceNode, root);
+    const custom = path.join(home, 'data');
+    const run = await runUpdate({ root, argv: ['--finish', '--data-dir', custom] });
+    expect(run.code, run.screen).toBe(1);
+    expect(stepLines(run.screen)).toEqual([expect.stringMatching(/^ ✗ Service {8}starts another node; nothing was/u)]);
+    const screen = unwrapped(run.screen);
+    const fix = screen.slice(screen.indexOf('Fix: '));
+    expect(fix).toContain(`Fix: '${serviceNode}' '${path.join(root, 'bin', 'rarog.mjs')}' update --finish --data-dir`
+      + ` '${custom}'`);
+    expect(fix).not.toContain('service install');
+    expect(serviceNodeRuns()).toEqual([]);
+    expect(run.order).toEqual([]);
+  });
+
+  it('rarog update --finish by hand, the service starts a node outside this prefix: rarog service install as today',
+    async () => {
+      const root = npmInstallation('0.1.0');
+      configured();
+      serviceWith(nodeAt(path.join(t.home, 'elsewhere', 'bin', 'node')), root);
+      const run = await runUpdate({ root, argv: ['--finish'] });
+      expect(run.code, run.screen).toBe(1);
+      const screen = unwrapped(run.screen);
+      expect(screen.slice(screen.indexOf('Fix: '))).toMatch(/^Fix: \S*rarog\S* service install/u);
+    });
+
+  it('the service\'s node of this prefix is gone: no switch, the fix of today', async () => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    serviceNpm(prefix());
+    serviceWith(path.join(prefix(), 'bin', 'node'), root);
+    const run = await runUpdate({ root, npmCli: fakeRegistryNpm({ prefix: otherPrefix(), install: newVersion() }) });
+    expect(run.code, run.screen).toBe(1);
+    expect(serviceNpmCalls()).toEqual([]);
+    expect(run.stdout).not.toContain('so this update runs on it');
+    expect(unwrapped(run.screen)).toContain(manual());
+  });
+
+  const manual = (): string => `Fix: npm i -g --prefix '${prefix()}' @rarog/server@latest, then rarog update --finish`;
+
+  it('no service: the fix of today, the install by hand and the finish', async () => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    const run = await runUpdate({ root, npmCli: fakeRegistryNpm({ prefix: otherPrefix(), install: newVersion() }) });
+    expect(run.code, run.screen).toBe(1);
+    expect(unwrapped(run.screen)).toContain(manual());
+  });
+
+  it('the service starts the node of this prefix, but its npm installs elsewhere too (a user prefix= in .npmrc):'
+    + ' no switch, the fix of today', async () => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    serviceNpm(otherPrefix());
+    serviceWith(loggingNodeAt(path.join(prefix(), 'bin', 'node')), root);
+    const run = await runUpdate({ root, npmCli: fakeRegistryNpm({ prefix: otherPrefix(), install: newVersion() }) });
+    expect(run.code, run.screen).toBe(1);
+    expect(serviceNpmCalls()).toEqual(['prefix -g']);
+    expect(serviceNodeRuns()).toEqual([]);
+    expect(run.stdout).not.toContain('so this update runs on it');
+    expect(unwrapped(run.screen)).toContain(manual());
+  });
+
+  it.each([
+    ['a node outside this installation\'s prefix', (root: string) => {
+      serviceWith(nodeAt(path.join(t.home, 'elsewhere', 'bin', 'node')), root);
+    }],
+    ['this process\'s node', (root: string) => { serviceWith(process.execPath, root); }],
+    ['launchd has loaded another node than the plist\'s', (root: string) => {
+      serviceWith(nodeAt(path.join(prefix(), 'bin', 'node')), root,
+        [process.execPath, path.join(root, 'bin', 'rarog.mjs'), 'serve']);
+    }],
+    ['another installation', (_root: string) => {
+      write(plist(), renderServicePlist({
+        programArguments: [nodeAt(path.join(prefix(), 'bin', 'node')), path.join(t.home, 'old', 'bin', 'rarog.mjs'),
+          'serve'],
+        workingDirectory: home, log: path.join(dataDirOf(), 'server.log'),
+      }));
+      markLoaded();
+    }],
+  ])('the service starts %s: the fix of today', async (_what, service) => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    service(root);
+    const run = await runUpdate({ root, npmCli: fakeRegistryNpm({ prefix: otherPrefix(), install: newVersion() }) });
+    expect(run.code, run.screen).toBe(1);
+    expect(npmArgs()).toEqual(['prefix -g']);
+    expect(unwrapped(run.screen)).toContain(manual());
+  });
+});
+
+describe('rarog update on Linux: started by another node than the unit\'s', () => {
+  /** The unit starting `node` with this installation's entry. */
+  const unitWith = (node: string, root: string): void => {
+    write(unitFilePath(home), renderServiceUnit({
+      execStart: [node, path.join(root, 'bin', 'rarog.mjs'), 'serve'], workingDirectory: home,
+      log: path.join(dataDirOf(), 'server.log'),
+    }));
+  };
+
+  it('the unit starts the node of this installation\'s prefix: the update runs again on that node', async () => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    const serviceNode = loggingNodeAt(path.join(prefix(), 'bin', 'node'));
+    serviceNpm(prefix());
+    unitWith(serviceNode, root);
+    const run = await runUpdate({
+      root, platform: 'linux', npmCli: fakeRegistryNpm({ prefix: path.join(t.home, 'other-prefix') }),
+    });
+    expect(run.code, run.screen).toBe(0);
+    expect(run.stdout).toBe(switchLine(serviceNode));
+    expect(npmArgs()).toEqual([]);
+    expect(serviceNodeRuns()).toEqual([`${path.join(root, 'bin', 'rarog.mjs')} update`]);
+    expect(started(oldRecord())?.guard).toBe('1');
+  });
+
+  it('the unit starts the node of this prefix, the run on it still sees another node: a refusal', async () => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    const serviceNode = loggingNodeAt(path.join(prefix(), 'bin', 'node'));
+    serviceNpm(prefix());
+    unitWith(serviceNode, root);
+    const run = await runUpdate({ root, platform: 'linux', npmCli: fakeRegistryNpm({}), env: guarded() });
+    expect(run.code, run.screen).toBe(1);
+    expect(oneSentence(run.stderr)).toContain(`'${serviceNode}' '${path.join(root, 'bin', 'rarog.mjs')}' update`);
+    expect(serviceNodeRuns()).toEqual([]);
+    expect(npmArgs()).toEqual([]);
+  });
+
+  it('the unit starts a node outside the prefix: no switch, the fix of today', async () => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    serviceNpm(prefix());
+    unitWith(nodeAt(path.join(t.home, 'elsewhere', 'bin', 'node')), root);
+    const run = await runUpdate({
+      root, platform: 'linux', npmCli: fakeRegistryNpm({ prefix: path.join(t.home, 'other-prefix') }),
+    });
+    expect(run.code, run.screen).toBe(1);
+    expect(npmArgs()).toEqual(['prefix -g']);
+    expect(serviceNpmCalls()).toEqual([]);
+    expect(unwrapped(run.screen))
+      .toContain(`Fix: npm i -g --prefix '${prefix()}' @rarog/server@latest, then rarog update --finish`);
+  });
+
+  it('a Node without process.execve: a refusal with the update on the service\'s node, no second process',
+    async () => {
+      const root = npmInstallation('0.1.0');
+      configured();
+      const serviceNode = loggingNodeAt(path.join(prefix(), 'bin', 'node'));
+      serviceNpm(prefix());
+      unitWith(serviceNode, root);
+      const saved = Object.getOwnPropertyDescriptor(process, 'execve');
+      Object.defineProperty(process, 'execve', { value: undefined, configurable: true, writable: true });
+      let run: UpdateRun;
+      try {
+        run = await runUpdate({ root, platform: 'linux', npmCli: fakeRegistryNpm({}),
+          deps: { replaceProcess: undefined } });
+      } finally {
+        if (saved !== undefined) Object.defineProperty(process, 'execve', saved);
+      }
+      expect(run.code, run.screen).toBe(1);
+      expect(run.stdout).toBe('');
+      expect(oneSentence(run.stderr)).toContain(`'${serviceNode}' '${path.join(root, 'bin', 'rarog.mjs')}' update`);
+      expect(serviceNodeRuns()).toEqual([]);
+      expect(npmArgs()).toEqual([]);
+    });
+
+  /**
+   * `rarog update` in its own process with the real `process.execve`: the installation's `bin/rarog.mjs` on the
+   * service's node writes its PID to `pidFile` and waits for a signal.
+   */
+  const switchedProcess = (root: string, pidFile: string): ChildProcess => {
+    write(path.join(root, 'bin', 'rarog.mjs'), [
+      "import { writeFileSync } from 'node:fs';",
+      `writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));`,
+      'setInterval(() => {}, 1000);',
+      '',
+    ].join('\n'));
+    const script = path.join(t.home, 'update-process.mts');
+    write(script, [
+      `import { updateCommand } from ${JSON.stringify(path.join(REPO, 'server', 'src', 'cli', 'update.ts'))};`,
+      'const io = {',
+      '  stdout: (text: string) => { process.stdout.write(text); },',
+      '  stderr: (text: string) => { process.stderr.write(text); },',
+      "  env: process.env, cwd: process.cwd(), platform: 'linux' as const,",
+      '  terminal: { tty: true, columns: 60, color: false }, ask: () => Promise.resolve(\'y\'),',
+      '};',
+      `process.exitCode = await updateCommand(['update'], io, { mode: 'package', installRoot: ${JSON.stringify(root)} });`,
+      '',
+    ].join('\n'));
+    return spawn(process.execPath, ['--import', 'tsx', script], {
+      cwd: REPO, env: env(home, { PATH: `${bin}:${path.join(prefix(), 'bin')}:/usr/bin:/bin` }),
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+  };
+
+  it.each(['SIGINT', 'SIGTERM', 'SIGHUP'] as const)('after the switch the run on the service\'s node is this'
+    + ' process (the same PID): %s to that PID alone stops the update, and no process is left', async (signal) => {
+    const root = npmInstallation('0.1.0');
+    configured();
+    serviceNpm(prefix());
+    unitWith(loggingNodeAt(path.join(prefix(), 'bin', 'node')), root);
+    const pidFile = path.join(t.home, 'switched-pid');
+    const child = switchedProcess(root, pidFile);
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString('utf8'); });
+    const ended = new Promise<NodeJS.Signals | null>((resolve) => {
+      child.on('exit', (_code, how) => { resolve(how); });
+    });
+    try {
+      await vi.waitFor(() => { expect(existsSync(pidFile), stderr).toBe(true); }, { timeout: 20_000, interval: 50 });
+      const pid = Number(readFileSync(pidFile, 'utf8'));
+      expect(pid).toBe(child.pid);
+      child.kill(signal);
+      expect(await ended).toBe(signal);
+      expect(() => process.kill(pid, 0)).toThrow(/ESRCH/u);
+      expect(serviceNodeRuns()).toEqual([`${path.join(root, 'bin', 'rarog.mjs')} update`]);
+    } finally {
+      child.kill('SIGKILL');
+    }
+  }, 30_000);
 });
 
 /**

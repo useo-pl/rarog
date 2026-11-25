@@ -766,7 +766,8 @@ first step, **Download** (`server/src/cli/update-registry.ts`), runs the `npm-cl
 2. `npm prefix -g` must be this installation's prefix (the package lies in
    `<prefix>/lib/node_modules/@rarog/server`); another prefix ends the step at `✗ Download` with `Fix: npm i -g
    --prefix '<prefix>' @rarog/server@latest, then rarog update --finish`. An installation pnpm or another tool put
-   there gets the same refusal with that manager's command; `rarog update` installs only with npm.
+   there gets the same refusal with that manager's command; `rarog update` installs only with npm. A service on the
+   node of this prefix whose npm installs there never gets here: the run switches to that node first (below).
 3. `npm view @rarog/server@latest version engines --json`. A failure (offline, no registry) is `✗ Download` with
    `Fix: check the network, then rarog update`. A newest version equal to or lower than this one is a skipped
    Download (`– Download rarog 0.1.0 is the latest`), and this process goes on with the finish below, under the same
@@ -845,6 +846,23 @@ runs the update again names `rarog update --beta`:
 
 `--beta` with `--finish` is a usage error: the finish downloads nothing.
 
+**The service's node.** When the service starts this installation with another node than the one running
+`rarog update`, and that node is `<prefix>/bin/node` (the terminal starts Homebrew's node, the service a Node version
+manager's), the run does not use its own node: before the update lock and before any npm call of its own node, it
+prints `rarog update: the service starts <node>, so this update runs on it.` and replaces itself with
+`<node> <root>/bin/rarog.mjs update` with the same arguments (`--beta`, `--data-dir`, `--verbose`) through
+`process.execve`: the same process in this terminal, so a signal to it (Ctrl-C, SIGTERM, SIGHUP) reaches the update
+itself and no process stays behind. A Node without `process.execve` (`bin/rarog.mjs` lets none in) refuses instead,
+with that command. That run takes the update lock itself, its npm installs into this prefix, and
+the new version's finish runs on the node the service starts, so the service is not moved to the terminal's node.
+This holds also when the npm of the terminal's node installs into this prefix. The service's node counts only when
+every source names it (macOS: the definition launchd has loaded and the plist; Linux: the unit file), the file is
+executable, and `npm prefix -g` of the npm next to it is this prefix (a user `prefix=` in `.npmrc` moves it).
+Otherwise (no service, a node outside the prefix or gone, sources that disagree, another installation) the run goes
+on with its own node as above. The run on the service's node gets `RAROG_UPDATE_ON_SERVICE_NODE=1` and never
+switches again: when it still sees a service on another node of this prefix, it refuses in one sentence before any
+write, with the command on the service's node (`'<prefix>/bin/node' '<root>/bin/rarog.mjs' update …`).
+
 After a new version is installed, the run writes `installed` into the update lock and starts that version's own
 `rarog update --finish` (with `--data-dir` and `--verbose` when given) with this node, the lock token in
 `RAROG_UPDATE_LOCK_TOKEN` and this terminal, waits for it and exits with its code. The old process loads no module
@@ -902,7 +920,10 @@ and Linux, a package started from the `npx` cache or by `pnpm dlx`, no `config.j
 another live update, a wrong token. A service
 file that starts another installation (on macOS also a loaded definition, and another node), without
 `installed.root` naming this one, ends the run at `✗ Service` with `Fix: rarog service install` (the command of this
-installation, in the absolute form when a new terminal may not find `rarog`), before the SDK step. On macOS, a
+installation, in the absolute form when a new terminal may not find `rarog`), before the SDK step. When that
+service starts this installation on the node of this prefix whose npm installs there (the service's node above), the
+fix is the same command on that node instead (`'<prefix>/bin/node' '<root>/bin/rarog.mjs' update --finish`, with
+`--data-dir` as given), because `rarog service install` from this node would move the service to it. On macOS, a
 `launchctl print` of the service that says neither loaded nor absent, or a loaded definition without its arguments,
 ends the run at `✗ Service` (`state undetermined; nothing was changed`, with `Fix: check launchctl print
 gui/<uid>/ai.rarog.server in a regular terminal, then rarog update`) before the SDK step too.

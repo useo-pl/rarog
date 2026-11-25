@@ -8,7 +8,7 @@ import Foundation
 public enum ServerRelease {
   /// Pole `version` z `package.json` korzenia repo w chwili wydania. Podbicie wersji serwera podbija tę stałą w tym
   /// samym commicie: strażnik `server/test/wersja-apki-i-serwera.test.ts` porównuje oba zapisy.
-  public static let version = "1.1.0"
+  public static let version = "1.1.1"
 
   /// First package version with `rarog update`: the first version after `0.1.0`. Only the triple counts: a local
   /// build `0.1.1-local.…` from the clone already has `rarog update`.
