@@ -5,6 +5,20 @@ import RarogCore
 // operation (`SessionViewController.sendField`, `SessionViewController+Send.swift`); ↑ ignores the result, the voice
 // conversation tells the model (`VoiceAgentToolText.send`). Owner: send.
 
+/// The login and the interface (the space of the server) a send of the field keeps: once either changed, the send
+/// sends nothing.
+struct ComposerSendLogin: Sendable, Equatable {
+  let epoch: Int
+  let interface: Int
+
+  /// The store's login and interface now.
+  @MainActor
+  init(_ store: RarogStore) {
+    epoch = store.loginEpoch
+    interface = store.interfaceEpoch
+  }
+}
+
 /// How one send of the message field ended.
 enum ComposerSendResult: Sendable, Equatable {
   /// The server took the message; `queued` = it waits in the CLI queue for the end of the running turn.

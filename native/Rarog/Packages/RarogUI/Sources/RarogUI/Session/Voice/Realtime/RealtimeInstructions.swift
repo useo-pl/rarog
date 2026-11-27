@@ -5,15 +5,17 @@ import Foundation
 // session: `RealtimeInstructions+SessionHost.swift`.
 //
 // Event, field and value names measured on the live API (`gpt-realtime-2.1`): GA events
-// (`session.update` with `type: realtime`), input `audio/pcm` 24 kHz, `server_vad` with 500 ms of silence. The
-// session answers with text only; Soniox reads the answers aloud.
+// (`session.update` with `type: realtime`), input `audio/pcm` 24 kHz, `server_vad`; its end of speech comes after
+// 800 ms of silence (`silenceMs`). The session answers with text only; Soniox reads the answers aloud.
 
 enum RealtimeInstructions {
   /// Wykrywanie końca mowy po stronie serwera. `create_response: false`: odpowiedź zamawia apka po
   /// `input_audio_buffer.committed`, bo przed nią wstawia nowe tury sesji (`conversation.item.create`).
   /// `interrupt_response: false`: speech during an answer does not cancel it at OpenAI; the app decides the cut and
   /// sends `response.cancel` itself (`RealtimeConversation+Noise.swift`).
-  static let silenceMs = 500
+  /// 800 ms: a short pause mid-sentence does not end the utterance, so no answer is ordered and then cancelled while
+  /// the user goes on; every answer starts that much later.
+  static let silenceMs = 800
   /// Audio the VAD keeps before the detected start of speech; `speech_started` reports its time with it
   /// (`RealtimeBargeIn.speechLength`).
   static let prefixPaddingMs = 300

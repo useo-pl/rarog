@@ -300,6 +300,10 @@ public struct AppState: Sendable, Equatable {
   /// `macFolderSessions`.
   public internal(set) var macFolders: [MacFolderBlock] = []
 
+  /// The Check messages of long waits, by wait key: the guard against a second message for one wait
+  /// (`WaitCheck.swift`). Changed only by `Reducer+WaitCheck` and, with the outbox, by `Reducer+Pairing`.
+  public internal(set) var waitChecks = WaitCheckState()
+
   public init(clientBuild: Int) {
     self.clientBuild = clientBuild
   }

@@ -20,6 +20,7 @@
  * 6. `agent.start`, etykieta pochodzenia panelu (`pane.rename`) i sygnał „etykieta gotowa"
  *    dla nadzorcy (`paneLabelled` — od niego rusza synchronizacja etykiety taba z kartą), tytuł
  *    (`pane.report_metadata`), poll `agent.get` — w TLE, rozstrzygają `ready`.
+ *    A start dialog herdr reads as ready ends the poll as `blocked` (`start-dialog-wait.ts`).
  *
  * Launcher nie emituje żadnych zdarzeń cyklu życia i nie zna managera.
  */
@@ -34,9 +35,11 @@ import { assertAllowedArgs, buildClaudeArgs } from './argv.ts';
 import { decideProjectWorkspace, sharedProjectPlacement } from './project-workspace.ts';
 import type { ProjectPlacement } from './project-workspace.ts';
 import {
-  claudePaneLabel, labelTrace, newRarogAgentName, projectKey, realProjectPath, sanitizePaneTitle,
+  claudePaneLabelFrom, newClaudeProvenance, newRarogAgentName, realProjectPath, sanitizePaneTitle,
 } from './provenance.ts';
 import { snippet } from './dialogs/screen/snippet.ts';
+import type { StartDialog } from './dialogs/index.ts';
+import { createStartDialogWatch, startDialogSample, watchStartDialogSession } from './start-dialog-wait.ts';
 import type { TrustCheck } from './trust.ts';
 // `HerdrUntrustedCwdError` NIE jest tu importowany: brak zaufania katalogu jest
 // ostrzeżeniem (`trustPrompt`), a nie odmową startu. Klasa zostaje w `types.ts` razem
@@ -180,8 +183,18 @@ export interface HerdrLauncherDeps {
    * nadałaby panelowi etykietę równolegle z launcherem. Nieobecne = nikt nie czeka (testy).
    */
   paneLabelled?(key: string): void;
-  /** Powód, dla którego `claude` zniknął (np. `--resume <nieistniejący uuid>`). */
+  /**
+   * Screen of the pane: why `claude` vanished (e.g. `--resume <a missing uuid>`), and what stands on a pane herdr
+   * reads as ready without a session id (a start dialog). Absent = no screen is read.
+   */
   readScreen?(paneId: string): Promise<string>;
+  /**
+   * After a `blocked` start without a session id: the session id appeared, so the supervisor refreshes the pane now
+   * instead of at the next resync. Absent = no session watch.
+   */
+  sessionAppeared?(paneId: string): void;
+  /** The supervisor still holds the launch `key` without having seen its agent; absent = always. */
+  launchHeld?(key: string): boolean;
   /** `RAROG_CLAUDE_ENV_CLEAR`; pusta lista jest błędem konfiguracji, nie „brakiem opcji". */
   envClear?: readonly string[];
   now?: () => number;
@@ -420,8 +433,11 @@ export function createHerdrLauncher(deps: HerdrLauncherDeps): HerdrLauncher {
     paneId: string,
     sessionId: string,
     start: StartKind,
-  ): Promise<{ status: HerdrAgentStatus; interactiveReady: boolean }> => {
+  ): Promise<{
+    status: HerdrAgentStatus; interactiveReady: boolean; startDialog?: StartDialog; sessionPending?: true;
+  }> => {
     const deadline = now() + readyTimeoutMs;
+    const startDialogs = createStartDialogWatch();
     /** Rozjazd `--session-id` znaczy, że ścieżka jsonl byłaby zgadywaniem — to porażka startu. */
     const assertSameSession = async (probe: HerdrLaunchProbe): Promise<void> => {
       if (probe.agentSessionId === sessionId) return;
@@ -491,7 +507,20 @@ export function createHerdrLauncher(deps: HerdrLauncherDeps): HerdrLauncher {
         log(`herdr launcher: pane ${paneId} starts with a dialog (status blocked).`);
         // `agent_session` przy dialogu bywa jeszcze puste — sprawdzamy tylko ROZJAZD.
         if (probe.agentSessionId !== '') await assertSameSession(probe);
-        return { status: 'blocked', interactiveReady: false };
+        // Without the session id herdr may never push the answer (trust, then a start dialog herdr reads as ready).
+        const pending = probe.agentSessionId === '' ? { sessionPending: true as const } : {};
+        return { status: 'blocked', interactiveReady: false, ...pending };
+      }
+      // A start dialog herdr reads as ready: the same `blocked` as above, so the card and the waiting start prompt
+      // take the trust dialog's path. A failed read proves nothing and leaves the poll as it was.
+      if (deps.readScreen !== undefined && startDialogSample(probe)) {
+        const screen = await deps.readScreen(paneId).catch((): null => null);
+        const startDialog = startDialogs.observe(screen, now());
+        if (startDialog !== null) {
+          log(`herdr launcher: pane ${paneId} stands on a start dialog herdr reads as ready `
+            + `(${startDialog.id ?? 'unknown'}).`);
+          return { status: 'blocked', interactiveReady: false, startDialog, sessionPending: true };
+        }
       }
       if (now() >= deadline) {
         // Panel ZOSTAJE (patrz `finish`), więc karta musi mówić, że jest na czym pracować —
@@ -638,10 +667,10 @@ export function createHerdrLauncher(deps: HerdrLauncherDeps): HerdrLauncher {
         /*
          * Krok 6: pochodzenie i tytuł panelu — oba BEST EFFORT, żaden nie przerywa startu.
          *
-         * The pane label leads with the tab label set above (`<title> · rarog-claude …`), so
+         * The pane label leads with the tab label set above (`<title> · rc:…`), so
          * herdr's Go-to window names the pane like its tab.
          *
-         * Etykieta PANELU `rarog-claude <klucz projektu> <ślad etykiety taba>` jest jedyną rzeczą
+         * Etykieta PANELU `rc:<kod klucza projektu><kod śladu etykiety taba>` jest jedyną rzeczą
          * Raroga, którą herdr trzyma w snapshotcie (przeżywa jego restart) — dowód „ten panel
          * założył Rarog dla tego projektu". Idzie PO `agent.start`, na panelu, który launcher
          * sam przed chwilą stworzył; herdr zostawia ją przy wykryciu agenta, przy jego wyjściu
@@ -649,7 +678,8 @@ export function createHerdrLauncher(deps: HerdrLauncherDeps): HerdrLauncher {
          * nazwa agenta `rarog-<6 hex>` i klucz zarezerwowany w nadzorcy (`registerLaunch`).
          */
         try {
-          await client.renamePane(paneId, claudePaneLabel(projectKey(realCwd), labelTrace(title), title));
+          const label = claudePaneLabelFrom(newClaudeProvenance(realCwd, title), title, 'keep');
+          await client.renamePane(paneId, label);
         } catch (err) {
           log(`herdr launcher: failed to set the provenance label on pane ${paneId} `
             + `(${(err as Error).message}) — the session starts anyway.`);
@@ -667,11 +697,19 @@ export function createHerdrLauncher(deps: HerdrLauncherDeps): HerdrLauncher {
         // Kroki 7–8. Timeout NIE sprząta: panel może stać na dialogu i za chwilę ruszyć,
         // a zabicie go byłoby gorsze niż wisząca karta.
         const settled = await waitReady(paneId, sessionId, startKind);
+        const { sessionAppeared, launchHeld } = deps;
+        if (settled.sessionPending === true && sessionAppeared !== undefined) {
+          void watchStartDialogSession({
+            key, paneId, probe: probeAgent, held: (k) => launchHeld?.(k) ?? true,
+            appeared: sessionAppeared, sleep, now, log,
+          });
+        }
 
         return {
           key, paneId, tabId, agentSessionId: sessionId, createdWorkspace, argv,
           status: settled.status,
           interactiveReady: settled.interactiveReady,
+          ...(settled.startDialog === undefined ? {} : { startDialog: settled.startDialog }),
         };
       };
 

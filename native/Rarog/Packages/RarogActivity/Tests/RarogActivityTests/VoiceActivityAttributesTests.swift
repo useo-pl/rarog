@@ -3,27 +3,28 @@ import Foundation
 import Testing
 
 // The voice Live Activity stands on the Lock Screen for anyone who holds the phone, so its state carries what
-// records, what it does, since when, and of text only the session's project and name, each cut to a ceiling
-// (`docs/security-model.md`, "Push notifications").
-@Suite("voice Live Activity state: kind, phase, scope, the session's project and name, start time")
+// records, what it does, since when (and until when, after a send from the tile), and of text only the session's
+// project and name, each cut to a ceiling (`docs/security-model.md`, "Push notifications").
+@Suite("voice Live Activity state: kind, phase, scope, the session's project and name, start and stop time")
 struct VoiceActivityAttributesTests {
   typealias State = VoiceActivityAttributes.ContentState
 
   /// Catches a field added to the state or the attributes that could carry a prompt, dictated text, a question or
   /// an end sentence, and names kept for all sessions: the encoded JSON has exactly these keys, and the attributes
   /// have none.
-  @Test("the encoded state has only kind, phase, scope, startedAt and the session's project and name")
+  @Test("the encoded state has only kind, phase, scope, startedAt, stoppedAt and the session's project and name")
   func encodedKeys() throws {
     for kind in State.Kind.allCases {
       for phase in State.Phase.allCases {
         for scope in State.Scope.allCases {
           let state = State(
             kind: kind, phase: phase, scope: scope, project: "atlas", name: "demo",
-            startedAt: Date(timeIntervalSince1970: 0))
+            startedAt: Date(timeIntervalSince1970: 0), stoppedAt: Date(timeIntervalSince1970: 42))
           let object = try #require(
             try JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
           let names: Set<String> = scope == .session ? ["project", "name"] : []
-          #expect(Set(object.keys) == Set(["kind", "phase", "scope", "startedAt"]).union(names), "\(kind) \(phase)")
+          let keys = Set(["kind", "phase", "scope", "startedAt", "stoppedAt"]).union(names)
+          #expect(Set(object.keys) == keys, "\(kind) \(phase)")
         }
       }
     }

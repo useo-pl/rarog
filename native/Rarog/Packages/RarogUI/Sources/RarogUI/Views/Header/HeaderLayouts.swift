@@ -45,51 +45,31 @@ struct StatusLineLayout: Layout {
   }
 }
 
-/// Pigułki wyboru w arkuszu zawijane w rzędach — cały wybór widać naraz, bez przewijania.
+/// Choice chips in a sheet (the model and effort rows of `ModelSheet`): left to right, and a chip that does not fit
+/// the width starts the next line (`ChipFlow`), so the whole choice is in view without scrolling. A row that fits
+/// stands like `HStack(spacing:)`. One view tree at every text size: a larger text only adds lines.
 struct FlowLayout: Layout {
   var spacing: CGFloat = 8
+  /// Space between lines. `RecentChip` draws 32 pt inside a 44 pt touch frame, so 0 still leaves a visible gap and
+  /// the touch frames of two lines meet without overlapping.
+  var lineSpacing: CGFloat = 0
 
   func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-    let rows = arrange(subviews, width: proposal.width ?? .infinity)
-    let width = rows.map(\.width).max() ?? 0
-    let height = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(0, rows.count - 1))
-    return CGSize(width: proposal.width ?? width, height: height)
+    placement(width: proposal.width, subviews: subviews).size
   }
 
   func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-    var y = bounds.minY
-    for row in arrange(subviews, width: bounds.width) {
-      var x = bounds.minX
-      for index in row.indices {
-        let size = subviews[index].sizeThatFits(.unspecified)
-        subviews[index].place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(size))
-        x += size.width + spacing
-      }
-      y += row.height + spacing
+    let frames = placement(width: bounds.width, subviews: subviews).frames
+    for (subview, frame) in zip(subviews, frames) {
+      subview.place(
+        at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), anchor: .topLeading,
+        proposal: ProposedViewSize(frame.size))
     }
   }
 
-  private struct Row {
-    var indices: [Int] = []
-    var width: CGFloat = 0
-    var height: CGFloat = 0
-  }
-
-  private func arrange(_ subviews: Subviews, width: CGFloat) -> [Row] {
-    var rows: [Row] = []
-    var row = Row()
-    for (index, subview) in subviews.enumerated() {
-      let size = subview.sizeThatFits(.unspecified)
-      if !row.indices.isEmpty, row.width + spacing + size.width > width {
-        rows.append(row)
-        row = Row()
-      }
-      row.width += (row.indices.isEmpty ? 0 : spacing) + size.width
-      row.height = max(row.height, size.height)
-      row.indices.append(index)
-    }
-    if !row.indices.isEmpty { rows.append(row) }
-    return rows
+  private func placement(width: CGFloat?, subviews: Subviews) -> ChipFlow.Placement {
+    ChipFlow.place(
+      sizes: subviews.map { $0.sizeThatFits(.unspecified) }, width: width, spacing: spacing, lineSpacing: lineSpacing)
   }
 }
 #endif

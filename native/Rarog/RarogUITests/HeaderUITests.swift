@@ -117,7 +117,7 @@ final class HeaderUITests: XCTestCase {
       }
     }
     XCTAssertTrue(ready, "sesja wyszła ze startu")
-    // Model and effort are chips in scrolling rows, ultracode a segmented control Yes / No.
+    // Model and effort are chips in rows, ultracode a segmented control Yes / No.
     let chips = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'model.chip.'"))
     XCTAssertTrue(chips.firstMatch.waitForAppearance(timeout: 10), "model chips from the server's list")
     let efforts = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'model.effort.'"))
@@ -173,17 +173,17 @@ final class HeaderUITests: XCTestCase {
     close.tap()
   }
 
-  /// Wariant zablokowany: sesja, która pracuje albo czeka na decyzję. Świeże demo ma ich kilka
-  /// (`demo-rarog` strumieniuje, dwie karty zgody), ale testy przepływu wcześniej w tym samym
-  /// przebiegu odpowiadają na karty i piszą do `demo-rarog` — wtedy nie ma czego sprawdzić i test
-  /// mówi to wprost (logikę blokady pokrywają `ReducerSessionTests` w `RarogCore`).
+  /// The blocked variant, on a session that works. A session that waits for a decision is blocked too, but its
+  /// message field, and the model pill with it, gives way to the card, so there is no pill to tap there. A fresh demo
+  /// has working sessions (`demo-rarog` streams), but flow tests earlier in the same run write to `demo-rarog`; then
+  /// there is nothing to check and the test says so (`ReducerSessionTests` in `RarogCore` cover the block rule).
   @MainActor
   func testModelSheetBlockedWhileWorking() throws {
     let app = try launchLoggedIn()
     let busy = app.descendants(matching: .any).matching(NSPredicate(
-      format: "identifier BEGINSWITH 'session.' AND (label CONTAINS ', pracuje' OR label CONTAINS ', czeka na')"))
+      format: "identifier BEGINSWITH 'session.' AND label CONTAINS ', pracuje'"))
     guard busy.firstMatch.exists else {
-      throw XCTSkip("żadna sesja demo nie pracuje ani nie czeka — wcześniejsze testy odebrały im turę")
+      throw XCTSkip("no demo session works: earlier tests took their turn")
     }
     busy.firstMatch.tap()
     let pill = element(app, "composer.model")

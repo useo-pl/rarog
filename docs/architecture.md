@@ -156,14 +156,29 @@ Consequences that recur throughout the code:
   rules apply to such a card only: `gone` REMOVES it from the list, and a token change on a live pane comes as the
   supervisor event `term-changed` and rewrites `termId` without reattaching the driver.
 - **Pane provenance and ownership.** After `agent.start` the launcher (`herdr/launcher.ts`) gives the pane the label
-  `<tab label> · rarog-claude <key> <trace>` (`pane.rename`; key = 16 hex of `sha256(realpath(cwd))`, trace = 8 hex
-  of `sha256` of the tab label set at creation) and a title (`pane.report_metadata`). Label formats and parser:
-  `herdr/provenance.ts`. The description in front is the pane's tab label after `normalizeSessionLabel`, cut to 40
-  code points, so herdr's "Go to" window and the pane frame name the pane like its tab; an empty description leaves
-  the bare `rarog-claude <key> <trace>`. The readers know only the `rarog` prefix (`rarog-claude`, `rarog-term`,
-  `rarog-<6 hex>`); any other pane belongs to someone else. They accept a label with or without a description: the
-  parser anchors on the suffix at the end, and the supervisor confirms a pane against the label it read, not a
-  rebuilt one. The pane label is the only Rarog thing in the herdr snapshot, so it survives a herdr restart.
+  `<tab label> · rc:<key code><trace code>` (`pane.rename`) and a title (`pane.report_metadata`). The key is the
+  first 16 hex of `sha256(realpath(cwd))`, and the label carries its first 35 bits in 7 characters: readers only
+  compare it with the key of a candidate directory. The trace is the first 8 hex of `sha256` of the tab label set at
+  creation, carried whole in 7 characters. The code is Crockford base32 in lowercase, most significant bit first,
+  the last character padded with zero bits (`herdr/label-code.ts`); a code with other padding bits is foreign.
+  Provenance and its operations: `herdr/provenance.ts`. The description in front is the pane's tab label after
+  `normalizeSessionLabel`, cut to 40 code points, so herdr's "Go to" window and the pane frame name the pane like its
+  tab; an empty description leaves the bare `rc:<key code><trace code>`. The readers know only the `rc:` and `rt:`
+  suffixes and the agent name `rarog-<6 hex>`; any other pane belongs to someone else. They accept a label with or
+  without a description: the parser anchors on the suffix at the end, and the supervisor confirms a pane against the
+  label it read, not a rebuilt one. The pane label is the only Rarog thing in the herdr snapshot, so it survives a
+  herdr restart.
+- **Old-format pane labels.** A label `<description> · rarog-claude <16 hex key> <8 hex trace>` or
+  `<description> · rarog-term <16 hex id>` reads like the same provenance in the current format: every reader goes
+  through `legacyToCurrent` (`herdr/label-migration.ts`, the only code that knows that format). The supervisor runs
+  the label migration pass after a successful `agent.list` whenever a pass is due: at start, after herdr comes back,
+  and after a pass that could not finish (herdr unreadable, a `pane.rename` timeout, the write gate). The pass reads
+  the whole `pane.list`, whatever agent or engine stands in the pane, however the tab is split and whatever
+  `RAROG_HERDR_TAB_LABELS` says, and rewrites each old label with `pane.rename` after a fresh read finds the same old
+  label on the same pane; a changed label is left alone. A rename herdr refuses is not retried in the same process.
+  One log line per pass gives the count. A closed write channel (`RAROG_HERDR_SEND=0`) means no pass and one log
+  line. The tab label sync leaves a pane with an old label to the pass and comes back after the next successful
+  resync, so only one writer ever confirms an old label.
   OWNERSHIP (`launchedByRarog`: the chip on the card and the `RAROG_MAX_PANES` cap) comes from the herdr agent name,
   which is not the pane label: the launcher passes `rarog-<6 hex>` (`newRarogAgentName`, 3 random bytes) as the
   `name` of `agent.start`. The name can disappear when the herdr start record expires, so the supervisor adds the
@@ -176,7 +191,7 @@ Consequences that recur throughout the code:
   characters become a space, whitespace collapses; `labelFromPrompt` keeps 28 characters; an empty result becomes the
   directory name). On a change the manager calls `supervisor.syncTabLabel(key, session.label)`, and the tab gets
   EXACTLY the card text, delayed by 2 s per key (a series of changes = one rename). The tab gets `tab.rename` only when
-  the occupant is a `claude` agent, the pane carries a `rarog-claude` label, the tab has ONE pane, and its
+  the occupant is a `claude` agent, the pane carries an `rc:` label, the tab has ONE pane, and its
   current label is Rarog's (its `sha256[0:8]` equals the trace, or this process left it there). Any other label was
   set by hand and stays untouched. Before EVERY write a fresh `pane.list` confirms the pane address and label; after
   a successful `tab.rename` the pane label gets the card label in front and a NEW trace. With a tab named by hand
@@ -192,9 +207,9 @@ Consequences that recur throughout the code:
   label until the pane writes another conversation (`init` with another engine session ID); `agent-name` does not
   count. Details: `slash-commands.md`, "Session name after `/rename`".
   **Tabs without a provenance label:** a pane with NO label at all, an agent named `rarog-*`, and a single-pane tab
-  labelled `basename(cwd)` or `1` → first `pane.rename('<tab label> · rarog-claude <key> <trace of the current tab
-  label>')`, then the normal path, on the first sync of a session. It is a heuristic, because the pane may have been
-  moved: the worst case of a wrong guess is a renamed tab that holds a Rarog agent. A bare `rarog-claude` label gets
+  labelled `basename(cwd)` or `1` → first `pane.rename('<tab label> · rc:<key code><code of the current tab label
+  trace>')`, then the normal path, on the first sync of a session. It is a heuristic, because the pane may have been
+  moved: the worst case of a wrong guess is a renamed tab that holds a Rarog agent. A bare `rc:` label gets
   its description on the same first sync. A closed write channel (`RAROG_HERDR_SEND=0`) means zero calls and one
   log line per process. `RAROG_HERDR_TAB_LABELS=0` turns off sync and label adoption; tab and pane labels set at
   creation stay. A tip that Rarog does not apply, because herdr
@@ -337,8 +352,8 @@ the snapshot carries the full pending lists.
 
 Card metadata without a frame of its own rides in the session summary (`session-changed`, `sessions-snapshot`), for
 example background tasks (`backgroundTasks`, `background-tasks.md`), the artifacts of the current conversation
-(`artifacts`, `artifacts.md`) and its pull requests (`pullRequests`, `pull-requests.md`, read from the main file and
-all subagent and workflow agent files) and scheduled tasks (`scheduledTasks`, `scheduled-tasks.md`, read from the
+(`artifacts`, `artifacts.md`) and its pull requests (`pullRequests`, `pull-requests.md`, linked in the main file and
+confirmed as the user's by GitHub) and scheduled tasks (`scheduledTasks`, `scheduled-tasks.md`, read from the
 main file). The driver sends these fields as events (`background-tasks`, `artifacts`, `pull-requests`,
 `scheduled-tasks`); an empty list removes the field, and a change touches neither the session state nor pushes.
 
@@ -737,12 +752,13 @@ backend answers only "how to create", "how to attach", "how to kill". What follo
 - **Where the shell lives.** A PANE in the tab `rarog <slot> · <directory>` (popup roles: `rarog lazygit ·
   <directory>`, `rarog popup · <directory>`), visible on the Mac like any other. The pane carries TWO Rarog marks: the
   token `rarog-term = <id>` (`pane.report_metadata` without TTL; the only gate of power: lookup, `--takeover`,
-  `pane.close`, `pane.read`) and the PANE label `<tab label> · rarog-term <id>` (`pane.rename`; proof of origin that
-  herdr keeps in its snapshot, so it survives a herdr restart; the token does not; the tab label in front names the
-  pane in herdr's "Go to" window). A new pane comes from `tab.create` in the project
-  workspace ("Project workspace" above) or from `workspace.create` when there is none, and gets both marks at once; a
-  failure of either CLOSES the fresh tab, because a pane without marks is invisible to Rarog and every next `POST`
-  would open another one. The token is stamped again at lookup, on every stream attach and on a 4 h tick.
+  `pane.close`, `pane.read`) and the PANE label `<tab label> · rt:<id code>` (`pane.rename`; the whole id in 13
+  base32 characters, so recovery reads it back exactly; proof of origin that herdr keeps in its snapshot, so it
+  survives a herdr restart; the token does not; the tab label in front names the pane in herdr's "Go to" window). A
+  new pane comes from `tab.create` in the project workspace ("Project workspace" above) or from `workspace.create`
+  when there is none, and gets both marks at once; a failure of either CLOSES the fresh tab, because a pane without
+  marks is invisible to Rarog and every next `POST` would open another one. The token is stamped again at lookup,
+  on every stream attach and on a 4 h tick.
 - **Recovery by label (`reconcile`).** One backend operation, one pass at a time, under a mutex shared with pane
   creation: a label without a token → the token comes back; a token without a label → the label; an identity on more
   than one pane, or a label next to another token → a conflict (nothing happens, a log line). A pane that herdr did
@@ -753,7 +769,7 @@ backend answers only "how to create", "how to attach", "how to kill". What follo
   the backend refuses (`RAROG_HERDR_LAUNCH=0` or `RAROG_HERDR_SEND=0`). A pane with THIS terminal's label but
   without its token is a refusal with a sentence in an `err` frame (`term.recovering`), never a second tab. Recovery
   closes and creates nothing; its last step renames single-pane tabs with a short Rarog label to the format above
-  and puts the tab label in front of a bare `rarog-term <id>` pane label, both only when the terminal identity
+  and puts the tab label in front of a bare `rt:<id code>` pane label, both only when the terminal identity
   matches the directory from the state file or the pane's `cwd` (`RAROG_HERDR_TAB_LABELS=0` turns this step off).
 - **What carries the stream.** The process `herdr terminal session control <pane> --takeover --cols N --rows N` (the
   herdr binary from `RAROG_HERDR_BIN`) and NDJSON: `terminal.frame` (base64 ANSI, full or differential) up,
@@ -920,6 +936,9 @@ server restart, on a broken tailnet, with a client that does not send the beacon
   unchanged or a failed one. `GET /api/usage` gets the winner only.
 - `weekly-limit.ts`: the weekly-limit signal ("Weekly plan limit" below): it evaluates the weekly windows after every
   read of the limits poller and sends through the sink; it lives only with the APNs channel.
+- `stalled-wait.ts`: the stalled wait alarm (`subagent-long-wait.md`, "The alarm cycle"): one `stalled` push per wait
+  of a subagent on its own command that crossed into `stuck`, with tries, sent through the sink next to the banner
+  scheduler; it lives only with the APNs channel.
 - `server/src/mac-stats.ts`: the Mac load sampler (CPU every 10 s, RAM every 30 s, disk every 60 s; used percentages,
   step 5), one per process, read by `GET /api/mac` and the Live Activity driver; it runs also without an APNs channel.
 - `live-activity.ts`: the Live Activity driver. It listens to the manager's global events and the limit poller,
@@ -933,7 +952,9 @@ server restart, on a broken tailnet, with a client that does not send the beacon
   aggregate Live Activity" below). **`done` chime:** `chime()` orders a sound for every activity of a device with
   `alerts: true`, outside the 20 s gap (`LIVE_ACTIVITY_CHIME_MIN_GAP_MS`), as an update of the current content with
   priority 10 and a deadline (`LIVE_ACTIVITY_CHIME_TTL_MS`). A late or failed order drops without a retry, and a
-  return to Rarog cancels orders that have not gone out (`cancelChimes()`). Logs carry event kinds and numbers, never
+  return to Rarog cancels orders that have not gone out (`cancelChimes()`). The `live-activity: done chime → …` line
+  ends with the `updatedEpoch` of the content it carried (`→ delivered, updatedEpoch <s>`), the number the app's
+  `live-activity: content` line in `client.log` gives on arrival. Logs carry event kinds and numbers, never
   a token, `activityId` or label. New work after the end does NOT resume an activity: the app starts a new one at the
   next open (push-to-start is not used).
 - `index.ts`: the scheduler, the only place with state and a clock. Before a send it asks about the session again
@@ -1030,6 +1051,19 @@ That covers a pane found in `unknown`, a session from Rarog before the pane is r
 without a prompt (`#settleEmptyStart`). The scheduler gets it as `afterStart`: `classify()` returns silence for `done`
 (`push: quiet for X (done, session start)`), and `leavesResult()` lights no debt. A dialog, a permission, a question,
 an error and a plan limit go as any other.
+
+### Test session
+
+Agents that run tests and measurements start helper sessions in a temporary directory. A session whose working
+directory is the Claude Code scratchpad root of the server user (`/tmp/claude-<uid>/`, `/private/tmp/claude-<uid>/`),
+the server's `os.tmpdir()` (`$TMPDIR`, on macOS also its on-disk form under `/private`) or lies below one of them is a
+test session (`inTemporaryDirectory` in `server/src/sessions/test-session.ts`). The path counts as written and after
+`realpath`, when it resolves; a prefix matches on a directory boundary only. The manager passes the fact as
+`testSession`: `classify()` returns silence for `done` (`push: quiet for X (done, test session in a temporary
+directory)`) and `leavesResult()` lights no debt, so neither the badge nor the Live Activity chime goes out. A
+permission, a question, a dialog, an error and a plan limit go as any other. The tile counters still count such
+sessions. When the server runs without `TMPDIR`, `os.tmpdir()` is `/tmp`, and every session under `/tmp` is a test
+session.
 
 ### New version of Claude Code or herdr
 
@@ -1452,9 +1486,10 @@ the start. Devices get card heads on the global stream and card text through rou
    - **No avalanche.** `#inFlight` in `GitStatusWatcher` joins parallel requests for one directory, and there is one
      watcher per REPO. Rarog's own read does not wake the watcher, because reads run with `GIT_OPTIONAL_LOCKS=0`. No
      `git fetch` in the background (a poller knocking on GitHub ends in an IP block): `↑3 ↓1` comes from the local
-     remote-tracking ref and tells the truth about the state after the last fetch. The PR state is the one call to
-     GitHub, and it is not this poller: it goes through `gh` only while an app is connected, asks about each PR at
-     most every 5 min and never touches git (`pull-requests.md`, "State on GitHub").
+     remote-tracking ref and tells the truth about the state after the last fetch. The PR status is the one call to
+     GitHub, and it is not this poller: it goes through `gh` only while an app is connected, asks about each linked
+     PR's author once and about each shown PR at most every 5 min, and never touches git (`pull-requests.md`,
+     "State on GitHub").
 
 ## App auth
 

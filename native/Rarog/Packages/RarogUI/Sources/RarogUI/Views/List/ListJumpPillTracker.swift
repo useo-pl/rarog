@@ -12,16 +12,20 @@ import UIKit
 /// Triggers: every layout pass of the collection (a scroll lays it out; a change of the content size, of the bounds
 /// or of the safe area marks a helper view in the collection, whose `layoutSubviews` runs after the collection's),
 /// a new list body (a row changing state or name with the same ids: running → waiting under a still list), the rows
-/// the collection applied (`didApply`) and a new measured pill height. The rule gets the ids the collection really
-/// holds; when the collection holds another tree the previous result stays until the next trigger.
+/// the collection applied (`didApply`), a new measured pill height and a new size or safe area of the list
+/// (`visibleListChanged`). The rule gets the ids the collection really holds; when the collection holds another tree
+/// the previous result stays until the next trigger.
 ///
-/// Only `result` is observed, and it is written only when it changes, so scrolling redraws neither the list nor the
-/// pill on every frame. The class lives in the list's `@State`.
+/// Only `result` and `fits` are observed, and they are written only when they change, so scrolling redraws neither
+/// the list nor the pill on every frame. The class lives in the list's `@State`.
 @MainActor
 @Observable
 final class ListJumpPillTracker {
   /// Both pills; `none` on the skeleton, on an empty list and with the list column hidden.
   private(set) var result = ListJumpPill.Result.none
+  /// The pills of `result` leave the list room to scroll (`ListJumpPill.fits`); when not, the view keeps them in its
+  /// layout without drawing them, so their heights stay measured.
+  private(set) var fits = true
 
   /// The pills' last frames in window coordinates (tests read where the pill stands).
   @ObservationIgnored private(set) var abovePillFrame: CGRect?
@@ -36,6 +40,8 @@ final class ListJumpPillTracker {
   @ObservationIgnored private var hidden = false
   @ObservationIgnored private var filter = ListFilter.all
   @ObservationIgnored private var heights = ListJumpPill.PillHeights(above: estimatedHeight, below: estimatedHeight)
+  /// The visible list's height from SwiftUI (`visibleListChanged`); `nil` until the first report.
+  @ObservationIgnored private var visibleHeight: CGFloat?
   /// A jump in flight: after the scroll ends, one correction when the target is not on screen.
   @ObservationIgnored private var pending: String?
   @ObservationIgnored private var pendingToken = 0
@@ -79,6 +85,15 @@ final class ListJumpPillTracker {
     }
     guard next != heights, frame.height > 0 else { return }
     heights = next
+    schedule()
+  }
+
+  /// The height of the list's visible part, where the pills float (the list without its safe area: under the bar,
+  /// the filter row and banners, above the footer card). It decides whether the pills leave room to drag; until the
+  /// first report the collection's insets stand in for it.
+  func visibleListChanged(_ height: CGFloat) {
+    guard height != visibleHeight else { return }
+    visibleHeight = height
     schedule()
   }
 
@@ -149,15 +164,20 @@ final class ListJumpPillTracker {
     guard !rows.isEmpty, !hidden else { return publish(.none) }
     guard let list, list.window != nil, list.numberOfSections > 0 else { return }
     if pending != nil, list.isTracking || list.isDragging { pending = nil }
+    let viewport = Self.viewport(list)
     let next = ListJumpPill.evaluate(
       rows: rows, applied: applied, items: list.numberOfItems(inSection: 0), frame: Self.span(list),
-      viewport: Self.viewport(list), pillHeights: heights)
-    if let next { publish(next) }
+      viewport: viewport, pillHeights: heights)
+    let counted = next ?? result
+    let room = ListJumpPill.fits(
+      counted, pillHeights: heights, visibleHeight: visibleHeight ?? viewport.visibleBottom - viewport.visibleTop)
+    publish(counted, fits: room)
     if pending != nil { settle() }
   }
 
-  private func publish(_ next: ListJumpPill.Result) {
+  private func publish(_ next: ListJumpPill.Result, fits room: Bool = true) {
     if next != result { result = next }
+    if room != fits { fits = room }
   }
 
   // MARK: - Jump

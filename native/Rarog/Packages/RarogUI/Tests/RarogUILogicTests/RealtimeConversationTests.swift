@@ -203,6 +203,16 @@ enum SpeechSample {
   }
 
   static func terminated(_ stream: String) -> String { encoded(["stream_id": stream, "terminated": true]) }
+
+  /// Soniox error frames that end one stream and leave the conversation going: the stream limit and a backend call
+  /// past its deadline.
+  static let streamOnlyErrors: [(code: Int, type: String)] = [
+    (403, "temp_api_key_session_expired"), (408, "request_timeout"),
+  ]
+
+  static func error(_ stream: String, code: Int, type: String) -> String {
+    encoded(["stream_id": stream, "error_code": code, "error_type": type])
+  }
 }
 
 /// The Soniox speech key provider of the conversation (in the app: the server route): the results in turn, the last
@@ -473,7 +483,7 @@ struct RealtimeConversationTests {
     let input = try #require(audio["input"] as? [String: Any])
     let vad = try #require(input["turn_detection"] as? [String: Any])
     #expect(vad["type"] as? String == "server_vad")
-    #expect(vad["silence_duration_ms"] as? Int == 500)
+    #expect(vad["silence_duration_ms"] as? Int == 800)
     #expect(vad["create_response"] as? Bool == false)
     #expect(vad["interrupt_response"] as? Bool == false)
     #expect((input["format"] as? [String: Any])?["rate"] as? Int == 24000)

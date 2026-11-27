@@ -1,9 +1,10 @@
 /**
  * Which numbered run of a region is the option list: the one that stands directly above the key footer.
  *
- * A dialog body can carry its own numbered list above the options (a plan's phases, a summary). Two rules keep that
- * list off the buttons. Pure functions over region lines; they know no dialog titles or tool names, the CLI look
- * comes from `SCREEN_SIGNATURES`. `optionRegion` (`parse.ts`) calls them; nothing else does.
+ * A dialog body can carry its own numbered list above the options (a plan's phases, a summary), and a wrapped
+ * question can start a line with a digit and a dot. Three rules keep those lines off the buttons. Pure functions over
+ * region lines; they know no dialog titles or tool names, the CLI look comes from `SCREEN_SIGNATURES`. `optionRegion`
+ * (`parse.ts`) calls them; `questionFrom` (`form.ts`) calls `gutterText` for the card text.
  */
 import { OPTION_LINE_PATTERN, inOptionDescription, optionsCloseRegion, unbox, unframe } from './options.ts';
 import { SCREEN_SIGNATURES } from './signatures.ts';
@@ -11,6 +12,28 @@ import { SCREEN_SIGNATURES } from './signatures.ts';
 const KEY_FOOTER_PATTERN = SCREEN_SIGNATURES.dialogKeyFooter.pattern;
 const DIGITLESS_FOCUS_PATTERN = SCREEN_SIGNATURES.digitlessFocusLine.pattern;
 const OPTION_NUMBER_PATTERN = SCREEN_SIGNATURES.optionNumber.pattern;
+const LEFT_EDGE_PATTERN = SCREEN_SIGNATURES.boxEdgeStart.pattern;
+const RIGHT_EDGE_PATTERN = SCREEN_SIGNATURES.boxEdgeEnd.pattern;
+
+/**
+ * A region line for shape recognition: `unbox`, except that a numbered line behind a left edge with no right edge
+ * keeps that edge and so is not an option line. The CLI draws a wrapped question behind such a gutter (fixture
+ * `dialog-askuserquestion-multiq-pytanie-w-ramce.txt`), and the wrap can start a line with a digit and a dot
+ * ("…restores" / "1. The banner…"); read as an option it would repeat a digit and void the form, or add a button the
+ * form does not have. Options inside a dialog frame carry both edges.
+ */
+export function regionLine(line: string): string {
+  const text = unbox(line);
+  const trimmed = line.trim();
+  if (!OPTION_LINE_PATTERN.test(text)) return text;
+  return LEFT_EDGE_PATTERN.test(trimmed) && !RIGHT_EDGE_PATTERN.test(trimmed) ? trimmed : text;
+}
+
+/** The text of a region line for the card: a numbered line that kept its gutter ({@link regionLine}) loses it here. */
+export function gutterText(line: string): string {
+  const text = line.replace(LEFT_EDGE_PATTERN, '').trim();
+  return text !== line && OPTION_LINE_PATTERN.test(text) ? text : line;
+}
 
 /**
  * Start (index in the region) of the last numbered run, when that run ends the dialog; `-1` otherwise.

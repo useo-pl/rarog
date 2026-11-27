@@ -5,96 +5,25 @@ import SwiftUI
 import UIKit
 
 // Keyboard shortcuts in Settings. The Dictation and Voice Agent pages each have a "Keyboard Shortcut" section
-// (`ShortcutPageSection`): one row named after the action, with the glyphs of the shortcut in force as its value.
-// A tap on a row opens a page in the Settings stack that records the next key press with modifiers from a hardware keyboard, shows its glyphs and
-// saves it on Save Shortcut (`AppShortcutSettings` checks and stores it). Esc without modifiers leaves the page. The
-// rows and the page read the shared settings, so they draw again after a save. Owner: shortcuts.
+// (`ShortcutPageSection`): one row named after the action, with the shortcut in force in a capsule. A tap on the
+// capsule makes the row listen: the capsule says "Press shortcut…" and an invisible capture view over it takes the
+// hardware keyboard (`ShortcutCaptureView`). The first combination the rules accept is saved at once; a refusal shows
+// one sentence under the row and the row keeps listening. The rules of the row live in `ShortcutRowEditor`, the checks
+// and the store in `AppShortcutSettings`. Owner: shortcuts.
 
 /// The "Keyboard Shortcut" section of the Dictation and Voice Agent pages: the page's shortcut row and a footer that
-/// says how to change it.
+/// says how to change it (or that a hardware keyboard is needed).
 struct ShortcutPageSection: View {
   let shortcut: AppShortcut
-
-  var body: some View {
-    Section {
-      ShortcutSettingsRow(shortcut: shortcut)
-    } header: {
-      Text(UICopy.shortcutSettingsHeader())
-    } footer: {
-      Text(UICopy.shortcutSettingsFooter())
-    }
-  }
-}
-
-/// One shortcut on its page: the action as the label, the glyphs in muted ink as the value; a tap opens
-/// `ShortcutRecorderPage`, titled with the shortcut's name.
-struct ShortcutSettingsRow: View {
-  let shortcut: AppShortcut
-  var settings = AppShortcutSettings.shared
-
-  var body: some View {
-    let name = UICopy.shortcutSettingsName(shortcut)
-    NavigationLink {
-      ShortcutRecorderPage(shortcut: shortcut, settings: settings)
-        .navigationTitle(name)
-        .navigationBarTitleDisplayMode(.inline)
-    } label: {
-      LabeledContent {
-        Text(verbatim: settings.combination(for: shortcut).glyphs)
-          .appFont(.callout)
-          .foregroundStyle(Color(uiColor: Palette.muted))
-      } label: {
-        Text(UICopy.shortcutSettingsAction(shortcut)).foregroundStyle(Color(uiColor: Palette.text))
-      }
-    }
-    .accessibilityIdentifier("settings.shortcut.\(shortcut.rawValue)")
-  }
-}
-
-/// The page of one shortcut: the current combination, the one just pressed, a refusal under them, Save Shortcut and
-/// Restore Default.
-struct ShortcutRecorderPage: View {
-  let shortcut: AppShortcut
-  let settings: AppShortcutSettings
-  @Environment(\.dismiss) private var dismiss
-  @State private var pending: AppShortcut.Combination?
-  @State private var refusal: AppShortcutSettings.Refusal?
   @State private var keyboard = TerminalKeyboard.isConnected()
 
   var body: some View {
-    let current = settings.combination(for: shortcut)
-    Form {
-      Section {
-        Text(keyboard ? UICopy.shortcutSettingsLead : UICopy.shortcutSettingsNoKeyboard)
-          .foregroundStyle(Color(uiColor: Palette.muted))
-          .fixedSize(horizontal: false, vertical: true)
-          .accessibilityIdentifier("shortcut.lead")
-        glyphRow(UICopy.shortcutSettingsCurrent, current, identifier: "shortcut.current")
-        if let pending {
-          glyphRow(UICopy.shortcutSettingsNew, pending, identifier: "shortcut.new")
-        }
-      } footer: {
-        if let refusal {
-          Text(UICopy.shortcutSettingsRefusal(refusal))
-            .foregroundStyle(Color(uiColor: Palette.err))
-            .accessibilityIdentifier("shortcut.refusal")
-        }
-      }
-      Section {
-        Button(UICopy.shortcutSettingsSave) { save() }
-          .disabled(pending == nil || refusal != nil || pending == current)
-          .accessibilityIdentifier("shortcut.save")
-        Button(UICopy.shortcutSettingsRestoreDefault) { restoreDefault() }
-          .disabled(current == shortcut.defaultCombination)
-          .accessibilityIdentifier("shortcut.restoreDefault")
-      }
-    }
-    .scrollContentBackground(.hidden)
-    .background(Color(uiColor: Palette.background))
-    .background(alignment: .topLeading) {
-      ShortcutCaptureField(onCapture: capture, onCancel: { dismiss() })
-        .frame(width: 1, height: 1)
-        .accessibilityHidden(true)
+    Section {
+      ShortcutSettingsRow(shortcut: shortcut, keyboard: keyboard)
+    } header: {
+      Text(UICopy.shortcutSettingsHeader())
+    } footer: {
+      Text(keyboard ? UICopy.shortcutSettingsHint() : UICopy.shortcutSettingsNoKeyboard)
     }
     .onReceive(NotificationCenter.default.publisher(for: .GCKeyboardDidConnect)) { _ in
       keyboard = TerminalKeyboard.isConnected()
@@ -102,98 +31,118 @@ struct ShortcutRecorderPage: View {
     .onReceive(NotificationCenter.default.publisher(for: .GCKeyboardDidDisconnect)) { _ in
       keyboard = TerminalKeyboard.isConnected()
     }
-    .accessibilityIdentifier("shortcut.page")
-  }
-
-  private func glyphRow(_ label: String, _ combination: AppShortcut.Combination, identifier: String) -> some View {
-    LabeledContent(label) {
-      Text(verbatim: combination.glyphs)
-        .appFont(.title3.monospaced())
-        .foregroundStyle(Color(uiColor: Palette.text))
-    }
-    .accessibilityElement(children: .combine)
-    .accessibilityIdentifier(identifier)
-  }
-
-  private func capture(_ combination: AppShortcut.Combination) {
-    pending = combination
-    refusal = combination == settings.combination(for: shortcut) ? nil : settings.check(combination, for: shortcut)
-  }
-
-  private func save() {
-    guard let pending else { return }
-    refusal = settings.save(pending, for: shortcut)
-    guard refusal == nil else { return }
-    UIMenuSystem.main.setNeedsRebuild()
-    dismiss()
-  }
-
-  private func restoreDefault() {
-    refusal = settings.restoreDefault(shortcut)
-    guard refusal == nil else { return }
-    pending = nil
-    UIMenuSystem.main.setNeedsRebuild()
   }
 }
 
-/// An invisible responder that takes the page's key presses: a key with its modifiers becomes a combination, Esc
-/// without modifiers cancels, a modifier pressed alone waits for the key.
+/// One shortcut on its page: the action as the label, the shortcut in a capsule that listens on a tap, Restore
+/// Default (an arrow in a circle) while the shortcut differs from its default, and a refusal under the row.
+struct ShortcutSettingsRow: View {
+  let shortcut: AppShortcut
+  let keyboard: Bool
+  @State private var editor: ShortcutRowEditor
+
+  init(shortcut: AppShortcut, keyboard: Bool, settings: AppShortcutSettings = .shared) {
+    self.shortcut = shortcut
+    self.keyboard = keyboard
+    _editor = State(initialValue: ShortcutRowEditor(shortcut: shortcut, settings: settings))
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      LabeledContent {
+        HStack(spacing: 10) {
+          if editor.differsFromDefault {
+            Button {
+              editor.restoreDefault()
+            } label: {
+              Image(systemName: "arrow.counterclockwise.circle")
+                .foregroundStyle(Color(uiColor: Palette.muted))
+                .hitTarget(horizontal: 12, vertical: 12)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(UICopy.shortcutSettingsRestoreDefault)
+            .accessibilityIdentifier("settings.shortcut.\(shortcut.rawValue).restore")
+          }
+          capsule
+        }
+      } label: {
+        Text(UICopy.shortcutSettingsAction(shortcut)).foregroundStyle(Color(uiColor: Palette.text))
+      }
+      if let refusal = editor.refusal {
+        Text(UICopy.shortcutSettingsRefusal(refusal))
+          .appFont(.footnote)
+          .foregroundStyle(Color(uiColor: Palette.err))
+          .fixedSize(horizontal: false, vertical: true)
+          .accessibilityIdentifier("settings.shortcut.\(shortcut.rawValue).refusal")
+      }
+    }
+    .onChange(of: keyboard) { _, connected in
+      if !connected { editor.stop() }
+    }
+    .onDisappear { editor.stop() }
+  }
+
+  @ViewBuilder private var capsule: some View {
+    let listening = editor.listening
+    let label = Text(verbatim: listening ? UICopy.shortcutSettingsListening : editor.combination.glyphs)
+      .appFont(.callout)
+      .foregroundStyle(Color(uiColor: listening ? Palette.text : Palette.muted))
+      .padding(.horizontal, 10)
+      .padding(.vertical, 4)
+      .background(Capsule().fill(Color(uiColor: Palette.surface2)))
+      .overlay(Capsule().strokeBorder(Color(uiColor: Palette.text), lineWidth: listening ? 1.5 : 0))
+      .hitTarget(horizontal: 0, vertical: 8)
+    if keyboard {
+      Button {
+        editor.tap(keyboard: keyboard)
+      } label: {
+        label
+      }
+      .buttonStyle(.plain)
+      .accessibilityHint(UICopy.shortcutSettingsChangeHint)
+      .overlay { ShortcutCaptureField(editor: editor).allowsHitTesting(false).accessibilityHidden(true) }
+      .accessibilityIdentifier("settings.shortcut.\(shortcut.rawValue)")
+    } else {
+      label.accessibilityIdentifier("settings.shortcut.\(shortcut.rawValue)")
+    }
+  }
+}
+
+/// Places the capture view over the capsule and wires it to the row's editor.
 struct ShortcutCaptureField: UIViewRepresentable {
-  let onCapture: (AppShortcut.Combination) -> Void
-  let onCancel: () -> Void
+  let editor: ShortcutRowEditor
 
   func makeUIView(context: Context) -> ShortcutCaptureView {
     let view = ShortcutCaptureView()
-    view.isAccessibilityElement = false
+    Self.wire(view, to: editor)
     return view
   }
 
   func updateUIView(_ view: ShortcutCaptureView, context: Context) {
-    view.onCapture = onCapture
-    view.onCancel = onCancel
+    Self.wire(view, to: editor)
+  }
+
+  /// The key presses and the loss of the keyboard go to the editor; the editor takes and releases the keyboard
+  /// through the view.
+  static func wire(_ view: ShortcutCaptureView, to editor: ShortcutRowEditor) {
+    view.onPress = { [weak editor] in editor?.press($0) }
+    view.onLost = { [weak editor] in editor?.keyboardLost() }
+    view.onEnd = { [weak editor] in editor?.stop() }
+    editor.takeKeyboard = { [weak view] in view?.take() ?? false }
+    editor.releaseKeyboard = { [weak view] in view?.release(restore: true) }
+    editor.rebuildMenus = { UIMenuSystem.main.setNeedsRebuild() }
   }
 }
 
-final class ShortcutCaptureView: UIView {
-  var onCapture: ((AppShortcut.Combination) -> Void)?
-  var onCancel: (() -> Void)?
-
-  override var canBecomeFirstResponder: Bool { true }
-
-  override func didMoveToWindow() {
-    super.didMoveToWindow()
-    guard window != nil else { return }
-    // After the push animation: a responder taken during the transition does not stay first.
-    DispatchQueue.main.async { [weak self] in _ = self?.becomeFirstResponder() }
-  }
-
-  override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-    guard let key = presses.first?.key, let combination = Self.combination(key) else {
-      super.pressesBegan(presses, with: event)
-      return
-    }
-    if combination == AppShortcut.Combination(key: .escape, modifiers: []) {
-      onCancel?()
-    } else {
-      onCapture?(combination)
-    }
-  }
-
-  /// `nil` = a modifier alone or a key without a combination form (arrows, function keys).
-  static func combination(_ key: UIKey) -> AppShortcut.Combination? {
-    var modifiers: AppShortcut.Modifiers = []
-    if key.modifierFlags.contains(.control) { modifiers.insert(.control) }
-    if key.modifierFlags.contains(.alternate) { modifiers.insert(.option) }
-    if key.modifierFlags.contains(.shift) { modifiers.insert(.shift) }
-    if key.modifierFlags.contains(.command) { modifiers.insert(.command) }
-    switch key.keyCode {
-    case .keyboardEscape: return AppShortcut.Combination(key: .escape, modifiers: modifiers)
-    case .keyboardReturnOrEnter, .keypadEnter: return AppShortcut.Combination(key: .returnKey, modifiers: modifiers)
-    default: break
-    }
-    let characters = key.charactersIgnoringModifiers
-    guard characters.count == 1, let character = characters.first else { return nil }
-    return AppShortcut.Combination(key: .character(character), modifiers: modifiers)
+private extension View {
+  /// Grows the tap area by the given insets without moving anything: touch targets stay at least 44 pt while the
+  /// glyph and the capsule keep their drawn size and place.
+  func hitTarget(horizontal: CGFloat, vertical: CGFloat) -> some View {
+    padding(.horizontal, horizontal)
+      .padding(.vertical, vertical)
+      .contentShape(Rectangle())
+      .padding(.horizontal, -horizontal)
+      .padding(.vertical, -vertical)
   }
 }
 #endif

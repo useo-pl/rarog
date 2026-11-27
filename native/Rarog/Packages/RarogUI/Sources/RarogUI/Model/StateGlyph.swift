@@ -14,6 +14,7 @@ public enum StateGlyph {
     case .unread: "checkmark"
     case .quiet: nil
     case .backgroundWait: "hourglass"
+    case .backgroundWaitLong: "timer"
     }
   }
 }

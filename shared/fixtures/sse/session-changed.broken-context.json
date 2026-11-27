@@ -98,7 +98,8 @@
           {
             "id": "bash_8a15"
           }
-        ]
+        ],
+        "ownCommandWait": "short"
       },
       {
         "id": "monitor_1d",

@@ -125,6 +125,17 @@ export function isTerminal(state: SessionState): boolean {
 }
 
 /**
+ * The zero turn of a session started without a prompt: `init` and a successful `result`, so the card waits for the
+ * first message. A card that already stands on a decision (a start dialog whose card came before the launch result)
+ * keeps it: the synthetic `result` would take it to a sendable `waiting-input` while the dialog stands in the terminal.
+ * The pane's `idle` after the answer ends that dialog like any other.
+ */
+export function zeroTurnEvents(state: SessionState): readonly SmEvent[] {
+  if (state === 'waiting-permission' || state === 'waiting-question') return [];
+  return [{ type: 'driver-init' }, { type: 'result', subtype: 'success' }];
+}
+
+/**
  * Czysta funkcja przejścia.
  *
  * @param state stan bieżący

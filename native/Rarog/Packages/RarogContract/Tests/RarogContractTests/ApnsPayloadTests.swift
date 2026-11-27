@@ -62,7 +62,7 @@ struct ApnsPayloadTests {
   func kinds() throws {
     #expect(ApnsPushKind.allCases.map(\.rawValue)
       == ["permission", "question", "blocked", "done", "error", "limit", "test", "device-paired", "version-changed",
-        "weekly-limit"])
+        "weekly-limit", "stalled"])
     let rarog = try #require(try decode(#"""
       {"aps":{"alert":{"title":"⏳ Czeka na zgodę · rarog","body":"Bash — testy"},"badge":2,"thread-id":"s-1"},
        "rarog":{"v":1,"sessionId":"s-1","kind":"question"}}

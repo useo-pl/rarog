@@ -178,6 +178,7 @@ extension RealtimeConversation.End {
     case .speechOff: "speech-off"
     case .speechUnavailable: "speech-unavailable"
     case .speechFailed: "speech-failed"
+    case .sessionLimit: "session-limit"
     }
   }
 }

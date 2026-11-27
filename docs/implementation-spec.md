@@ -224,6 +224,7 @@ export interface BackgroundTask {
   runId?: string; run?: WorkflowRun;          // workflow only: run directory and its layout
   waitingSince?: string;                      // agent only, ISO: since when it waits for its own task
   ownTasks?: AgentOwnTask[];                  // agent only: its open background commands
+  ownCommandWait?: 'short' | 'long' | 'stuck'; // agent only: stage of the standby on its own commands
 }
 export interface AgentOwnTask { id: string; command?: string; startedAt?: string }
 ```
@@ -234,9 +235,12 @@ export interface AgentOwnTask { id: string; command?: string; startedAt?: string
 - **`ownTasks`:** the background commands the subagent started (from its own file) whose end the server does not
   know; at most 20, the newest, in start order. A command started before the moment from which the server knows the
   main file is left out, so a missing field does not mean the agent waits for nothing.
-- `RAROG_AGENT_FILES=0` switches the subagent file reads off: only a resume clears `waitingSince`, and `ownTasks` is
-  absent. Neither field is an enum, so `null` or a wrong type rejects the frame. The app does not count a subagent with
-  `waitingSince` as work (`background-tasks.md`, "What counts as work"), and its disk cache drops
+- **`ownCommandWait`:** set exactly with `waitingSince` and a non-empty `ownTasks` (not in demo mode); the age of the
+  standby on the server clock, `short` under 30 minutes, `long` under 60, then `stuck` (`subagent-long-wait.md`). An
+  enum: an unknown string drops the field (`backgroundTasks.ownCommandWait`).
+- `RAROG_AGENT_FILES=0` switches the subagent file reads off: only a resume clears `waitingSince`, and `ownTasks` and
+  `ownCommandWait` are absent. `null` or a wrong type in any of the three fields rejects the frame. The app does not
+  count a subagent with `waitingSince` as work (`background-tasks.md`, "What counts as work"), and its disk cache drops
   `ownTasks[].command`.
 
 **Session artifacts (`SessionSummary.artifacts`).** Optional: the claude.ai pages the Claude session published in the
@@ -247,16 +251,17 @@ no reading (Codex, a pane outside `RAROG_HERDR_ROOTS`). `artifacts: null`, an it
 in the server's grammar. A list change sends `session-changed` without a
 state transition or a push. Rules: `artifacts.md`; the inspector section: `artifacts.md`, "What the app shows".
 
-**Session pull requests (`SessionSummary.pullRequests`).** Optional: the GitHub PRs that `gh pr create` created in
-the current conversation (main agent, subagents, workflow agents), newest first, at most 20; never an empty list.
+**Session pull requests (`SessionSummary.pullRequests`).** Optional: the GitHub PRs that Claude Code linked to the
+current conversation with a `pr-link` entry, whose author is the `gh` login and which were created after the
+conversation's first entry, newest first, at most 20; never an empty list.
 Item: `{url, repo, number, createdAt, title?, state?}` (`url` exactly
 `https://github.com/<owner>/<repo>/pull/<number>`, `repo` is `<owner>/<repo>`, `title` ≤ 120 UTF-16 units, `state`
-one of `'open' | 'draft' | 'merged' | 'closed'`). A missing list means no PRs or no reading (Codex, a pane outside
-`RAROG_HERDR_ROOTS`); a missing `state` means the state is unknown. `pullRequests: null`, an item without a required
-field, and `state: null` or a non-string `state` reject the frame. An unknown `state` string drops only that field on
-the client (`DEGRADATIONS['pullRequests.state']`); the strict schema rejects it. The schema checks the address type,
-not its grammar. A list change sends `session-changed` without a state transition or a push. Rules:
-`pull-requests.md`.
+one of `'open' | 'draft' | 'merged' | 'closed'`). A missing list means no shown PRs or no reading (Codex, a pane
+outside `RAROG_HERDR_ROOTS`, no answer from GitHub); a missing `state` means the state is unknown.
+`pullRequests: null`, an item without a required field, and `state: null` or a non-string `state` reject the frame.
+An unknown `state` string drops only that field on the client (`DEGRADATIONS['pullRequests.state']`); the strict
+schema rejects it. The schema checks the address type, not its grammar. A list change sends `session-changed`
+without a state transition or a push. Rules: `pull-requests.md`.
 
 **Session scheduled tasks (`SessionSummary.scheduledTasks`).** Optional: the crons the current conversation has armed
 now, newest `createdAt` first, at most 50; never an empty list. Item: `{id, cron, recurring, prompt, createdAt?,
@@ -718,24 +723,25 @@ request wrapped in `POST <RAROG_PUSH_RELAY_URL>/v1/push {v: 1, pass, token, envi
 **APNs banner** (`server/src/notify/apns-payload.ts`, `apns-sink.ts`).
 
 - `POST /3/device/<token>`, `apns-push-type: alert`, `apns-topic` = the entry's topic, `apns-priority` 10 (blocking,
-  failures, pushes without a session) or 5 (`done`), `apns-collapse-id` = a hash of the session id (without a
-  session: of `rarog:<kind>`; `weekly-limit`: of `rarog:weekly-limit:<resetsAt>`; the consent canary result: of
+  failures, `stalled`, pushes without a session) or 5 (`done`), `apns-collapse-id` = a hash of the session id
+  (`stalled`: of `rarog:stalled:<sessionId>`, `stalledTopicFor`; without a session: of `rarog:<kind>`;
+  `weekly-limit`: of `rarog:weekly-limit:<resetsAt>`; the consent canary result: of
   `rarog:consent-canary:<release>`), `apns-expiration` = now + the TTL
-  (600 / 600 / 3600, test push 120, `device-paired` and `version-changed` 24 h, `weekly-limit` the time left to the
-  window's reset, at most 24 h), and `authorization: bearer <JWT ES256 {alg, kid}.{iss, iat}>`.
+  (600 / 600 / 3600, `stalled` 3600, test push 120, `device-paired` and `version-changed` 24 h, `weekly-limit` the
+  time left to the window's reset, at most 24 h), and `authorization: bearer <JWT ES256 {alg, kid}.{iss, iat}>`.
 - The banner is always encrypted, format 3. An entry gets it only when `RAROG_PUSH_E2E` is on (the default), its last
   registration declared 3, and its `deviceId` is an active device; otherwise it is skipped with a log line, and there
   is no plain fallback. Live Activity needs no declaration.
 - Body ≤ 4096 B: `aps` with the placeholder `RELAY_ALERT_PLACEHOLDER` (for an entry with the `locKeys` declaration
   its keys `ALERT_PLACEHOLDER_KEYS`: `title-loc-key` `push.placeholder.title`, `loc-key` `push.placeholder.body`),
-  `mutable-content: 1`, sound, badge and
-  `thread-id` (= `apns-collapse-id`, only for session kinds), plus `rarog: {v: 3, kid, n, c}`; a `done` carries the
-  badge alone, without `alert`, `sound` and `thread-id`, and without a badge number it is not sent.
+  `mutable-content: 1`, sound, badge and `thread-id` (a hash of the session id, only for session kinds; equal to
+  `apns-collapse-id` except for `stalled`), plus `rarog: {v: 3, kid, n, c}`; a `done` carries the badge alone,
+  without `alert`, `sound` and `thread-id`, and without a badge number it is not sent.
 - Cipher (`server/src/notify/push-crypto.ts`): the key is HKDF-SHA256 of the 32 raw bytes of the device's `pushKey`
   from `devices.json` (empty salt, info `rarog-push-banner-v1`, 32 B), ChaCha20-Poly1305 with a random 12 B nonce per
   message and AAD `rarog-push/3|<kid>`; `n` = the base64url nonce (16 characters), `c` = base64url(ciphertext‖tag)
   without `=`. The plain text is `{kind, title?, titleRef?, body?, bodyRef?, sessionId?, termId?, exp}`: `kind` is
-  `permission`, `question`, `blocked`, `done`, `error`, `limit`, or `test`, `device-paired`, `version-changed` and
+  `permission`, `question`, `blocked`, `done`, `error`, `limit`, `stalled`, or `test`, `device-paired`, `version-changed` and
   `weekly-limit` (all four without `sessionId`); `termId` = an agent in a Rarog terminal; `exp` = `apns-expiration`.
   Over 2048 B it first drops both `*Ref`, then is clipped by scalars (`body` first, then `title`), and it is padded
   with spaces to a multiple of 256 B. A payload over 4096 B after encryption is skipped, never sent plain. Log line:
@@ -745,7 +751,9 @@ request wrapped in `POST <RAROG_PUSH_RELAY_URL>/v1/push {v: 1, pass, token, envi
   `push.body.detail-and-session-number`), of a question or a result `push.body.detail` (the agent's text), of an
   error or a plan limit the state sentence itself (`state.driver-error`, `state.limit-reached` with the reset
   instant), whose `ref` becomes `bodyRef`; without a detail the session label (`push.body.label`, a fallback label
-  `session.fallback-label`) or `push.body.fallback.<kind>`. The test push is `push.test-title`/`push.test-body`, the
+  `session.fallback-label`) or `push.body.fallback.<kind>`. The `stalled` push (`buildStalledContent`) has the body
+  `push.detail.stalled` with the subagent's description, without one the session label or
+  `push.body.fallback.stalled`, never the command. The test push is `push.test-title`/`push.test-body`, the
   device-paired push `push.paired-title` with `push.paired-body.mac` or `.vps` by the server's system, the
   version-changed push `push.version-title` with `push.version-body.claude-code`, `.herdr` or `.both` (version
   numbers only, each up to 20 characters, `VERSION_RE` in `server/src/version-watch.ts`), the consent canary result
@@ -766,8 +774,9 @@ request wrapped in `POST <RAROG_PUSH_RELAY_URL>/v1/push {v: 1, pass, token, envi
   (`architecture.md`, "Weekly plan limit", `shared/fixtures/apns-v3/alert.weekly-limit.v3.json`) also shows in the
   foreground, and a tap opens the session list (`PushNote.opensList`), the same path as the Live Activity background
   (`AppLink.list`): it waits for login and a fresh list. An app that does not know a kind decodes it without an
-  error as no kind (`ApnsPushKind.wire` → `nil`): it shows the title and body in the background, a tap opens the app
-  without a target, and in the foreground there is no banner.
+  error as no kind (`ApnsPushKind.wire` → `nil`): it shows the title and body in the background, a tap opens the
+  session of a kind with a session (`stalled`) and the app without a target otherwise, and in the foreground there is
+  no banner.
 
 **App side of push.** Every token registration carries `pushFormats: [3]` and `locKeys: true`. The notification
 extension
@@ -1257,6 +1266,10 @@ progress, no driver) is an HTTP 4xx with a sentence, never a 202 body; the app k
 (`server/src/sessions/interrupt-windows.ts`): `#interruptsInFlight` (a second request joins the same promise) and
 `#lastInterruptAtMs` with a 1000 ms window (`INTERRUPT_DEBOUNCE_MS`). An accepted send clears both and restores them when a gate rejects it
 (`suspendInterruptWindows`), so a refused send does not leave a fresh interrupt without its grace period.
+The manager moves a card from `waiting-permission` to `waiting-input` when it takes the interrupt, before the driver
+answers. An `escape` the driver refused or could not send puts the card back on its decision while herdr still
+reports the pane `blocked` and the session has not moved since; a dialog answered at the desk in the meantime leaves
+it in `waiting-input`.
 
 ### `returnedPrompt`: the prompt back in the field
 
@@ -2043,16 +2056,22 @@ The full variable list: `docs/server-config.md`. What the herdr contract depends
   30 s cache, fail-closed.
 - `herdr/launcher.ts`: argv → trust → project lock → resolver → `tab.create` or `workspace.create` → registration in
   the supervisor (the 202 returns here) → `agent.start` → provenance label
-  `<tab label> · rarog-claude <key> <trace>` → title → poll `agent.get`. It retries only `agent_name_taken` and
+  `<tab label> · rc:<key code><trace code>` → title → poll `agent.get`. It retries only `agent_name_taken` and
   `agent_pane_busy`. **Readiness (measured on herdr 0.9.0):**
   `timeout_ms` (`HERDR_START_WAIT_MS`, 60 s) is the life of the start record; when the record expires before the
   prompt, `waitReady` accepts `idle` or `working` with a matching session and logs `launch record expired`.
   herdr can report `interactive_ready: true` before `agent_session` (herdr 0.9.5): an empty id keeps the poll going
   until the same deadline, and only a different non-empty id fails the start as a session id mismatch.
 - `herdr/provenance.ts`: agent names (`RAROG_AGENT_NAME_RE`, the source of `launchedByRarog`) and pane labels
-  (`<description> · rarog-claude <key> <trace>`, `<description> · rarog-term <id>`, the description being the tab
+  (`<description> · rc:<key code><trace code>`, `<description> · rt:<id code>`, the description being the tab
   label cut to 40 code points; `parsePaneLabel` reads them with or without the description and returns `null`
-  outside the pattern).
+  outside the pattern). `herdr/label-code.ts`: the suffix code, Crockford base32 in lowercase: `rt:` + 13
+  characters (the whole 16-hex terminal id), `rc:` + 7 characters (the first 35 bits of the 16-hex project key) + 7
+  characters (the whole 8-hex trace); the last character of a code is padded with zero bits and any other padding
+  is foreign. `herdr/label-migration.ts`: `legacyToCurrent` turns an old-format label
+  (`<description> · rarog-claude <key> <trace>`, `<description> · rarog-term <id>`) into the current one for every
+  reader, and the supervisor's label migration pass rewrites such labels in herdr (`docs/architecture.md`,
+  "What Rarog is and is not").
 - `herdr/jsonl-usage.ts`, `herdr/jsonl-pending.ts`, `herdr/transcript-path.ts`: the context window, the waiting tool,
   and finding the file by uuid. `herdr/jsonl-queue.ts`: the human prompts waiting in the CLI queue, unknown after
   a part of the file the follower did not read or a truncation, until the next turn end. `demo/mock-herdr.ts`:
@@ -2268,7 +2287,7 @@ and no log (`logSecrets(config)`), and `SENSITIVE_KEY_PARTS` in `auth/redact.ts`
 Soniox's response. Tests: `server/test/voice.test.ts`.
 
 **Client** (`RarogUI/Sources/RarogUI/Session/Voice/`): `MicrophoneCapture` (PCM s16le 16 kHz mono, 100 ms frames),
-`VoiceRecorder` (auto-stop after 60 s of silence, a countdown from the 13th minute) and one stream per route under it.
+`VoiceRecorder` (auto-stop after 60 s of silence, a countdown in the last two minutes) and one stream per route under it.
 `SonioxStream` with `URLSessionVoiceSocket` (a separate URL session without Rarog's credentials) sends the key only in
 the WebSocket protocol list and only with the `snx_temp_` prefix; the start frame has no `api_key`. It makes three
 attempts, each with a new key; the budget resets at the first result frame, an attempt waits at least 3 s after the

@@ -392,7 +392,7 @@ struct SonioxSpeechTests {
     h.speech.end("m2")
     h.socket.reply(audio(h.stream()))
     h.socket.reply(error(h.stream(), code, type))
-    #expect(h.failures == [.stream(utterance: "m1", code: code, type: type)])
+    #expect(h.failures == [.stream(utterance: "m1", code: code, type: type, text: .init(sinceText: 0, textEnd: false))])
     #expect(h.finished == ["m1"])
     #expect(h.starts().count == 1)
     h.socket.reply(terminated(h.stream()))

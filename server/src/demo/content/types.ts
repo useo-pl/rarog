@@ -24,14 +24,18 @@ export type DemoLang = 'en' | 'pl';
  */
 export type DemoSet = string;
 
-/** One `gh pr create` call of a demo conversation and the output it printed (input of {@link DemoSeedKit}). */
-export interface DemoPullRequestCall {
-  /** The `Bash` command, literal. */
-  readonly command: string;
-  /** The tool output; a line holding exactly the PR URL makes the PR. */
-  readonly output: string;
-  /** How long before "now" the result arrived. */
+/** One pull request linked to a demo conversation (input of {@link DemoSeedKit}). */
+export interface DemoPullRequestLink {
+  /** The GitHub PR URL. */
+  readonly url: string;
+  /** How long before "now" the conversation linked it. */
   readonly agoMs: number;
+}
+
+/** The payload of a driver `pull-requests` event of a demo scene: the linked set and the conversation window. */
+export interface DemoPullRequests {
+  readonly pullRequests: SessionPullRequest[];
+  readonly windowStart?: string;
 }
 
 /** One publication of an artifact in a demo conversation (input of {@link DemoSeedKit}). */
@@ -89,10 +93,10 @@ export interface DemoSeedKit {
   /** Obrazek wykresu w treści odpowiedzi agenta. */
   chartImage(alt: string): Block;
   /**
-   * The PR list of a conversation built from its `gh pr create` calls by the production reader
-   * (`sessionPullRequests`), newest first; for a driver `pull-requests` event of a scene.
+   * The linked PRs of a conversation built from link entries by the production rule (`pullRequestLinks`), newest
+   * first, with the titles given here; for a driver `pull-requests` event of a scene.
    */
-  pullRequests(calls: readonly DemoPullRequestCall[]): SessionPullRequest[];
+  pullRequests(links: readonly DemoPullRequestLink[]): DemoPullRequests;
   /**
    * The artifact list of a conversation built from its publications by the production tracker
    * (`createArtifactsTracker`), newest first; for a driver `artifacts` event of a scene.
@@ -188,4 +192,6 @@ export interface DemoContent {
   readonly extraUploads?: readonly DemoExtraUpload[];
   /** GitHub states of the set's own PRs, added to the fixed state map of the demo (`demoPullRequestStates`). */
   readonly pullRequestStates?: readonly (readonly [string, PullRequestState])[];
+  /** GitHub titles of the set's own PRs, added to the fixed GitHub of the demo (`demoGitHub`). */
+  readonly pullRequestTitles?: readonly (readonly [string, string])[];
 }

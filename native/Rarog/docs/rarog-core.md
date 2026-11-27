@@ -178,7 +178,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     the interface opens that Settings page and calls `consumeSettingsScreenRequest()`. Tests: `PairingLinkTests`,
     `StorePairingTests`, `PairingLinkWireTests`.
 - **UI inputs:** store methods, one area per file (`RarogStore+<Area>`): `Send`, `Catalog`, `Session`, `Answers`,
-  `Decisions`, `SessionControl`, `NewSession`, `Uploads`, `Voice`, `Companion`, `CompanionSend`, `Pairing`. Results are
+  `Decisions`, `SessionControl`, `NewSession`, `Uploads`, `Voice`, `Companion`, `CompanionSend`, `WaitCheck`,
+  `Pairing`. Results are
   typed (`SendOutcome`,
   `DecisionOutcome`, `DiffFetchOutcome`…); RarogUI composes the sentences. Two inputs write to `client.log` through
   the `kontrakt:` buffer and login gate, never with conversation content: `reportUnhandled(_:)` (an unhandled error,
@@ -188,7 +189,11 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   "Conversation"), and so do connectivity lines, 60 per hour: the tunnel's lines and one `connection:` line when a
   stream comes online after a gap of at least 1 s or with a visible card, giving the gap, how it started (start or
   return, dropped in use, a quick failed attempt, after a failed attempt) and which card stood (`Model/DiagnosticsTrace+Connection.swift`,
-  sent from `Views/RarogRootView.swift`).
+  sent from `Views/RarogRootView.swift`). Lines of leaving the background (the session screen's return line and the
+  Live Activity foreground line) have their own 240 per hour, and Live Activity content lines another 240, so
+  navigation lines that spend the shared 20 do not silence returns for the rest of the hour. The queue goes out in
+  bodies of at most half the server's 64 kB per request (`ContractReporter.batchBytes`), oldest lines first, a line
+  cut to its first 2000 characters; a failed body keeps itself and the lines after it for the next flush.
   `sessionDiff(_:)` for the whole diff exists in the store, but the app does not call it.
 - **Session controls (`SessionControls`, `RarogStore+Session`):** model, mode and restart send a request and change
   NOTHING in the session summary; the new state arrives through the list stream. A model change is sent as a
@@ -314,7 +319,9 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   system task: the voice hold of the app's tunnel coordinator (`TunnelCoordinator.holdForVoice(_:)`,
   `native/Rarog/Rarog/TunnelCoordinator+VoiceHold.swift`), a work under the reserved identifier `UInt64.max` that
   only its release ends. It keeps the generation as a background work does; after the release the generation
-  follows the grace of that background stay (`docs/companion.md`, "Locked phone (trial)").
+  follows the grace of that background stay (`docs/companion.md`, "Locked phone"). The rule that keeps a running
+  recording in the background, `BackgroundRecording` (`VoiceAgent/BackgroundRecording.swift`), has no setting: its
+  inputs are the tile, the screen lock and the device class (same section).
   - **Registration:** after a login the core asks for a token and reads the permission. `POST /api/push/apns` goes
     out after the full list state of the current connection (`AppState.listLive`, not from the cache), once per
     cycle (login, return from the background, new token, permission change); a failure retries at the next
@@ -386,6 +393,13 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     and the app writes since the last such line (ordered, accepted, rejected, rolled back). An age above about 15 min
     means the system stopped the Live Activity (the server sends a heartbeat at least every 10 min). At most once per
     15 min (`LiveActivityRuntime.ageTraceGap`), never the token or the activity id.
+  - **Arrival traces** (`RarogStore+LiveActivityTrace`): when the scene leaves the background (the moment presence
+    goes out), `live-activity: foreground at <device time> (scene …), tile updatedEpoch <s>` (or `no tile`); for
+    every content of this process's activity from `contentUpdates`, `live-activity: content updatedEpoch <s> at
+    <device time>, scene active|inactive|background, <ms> ms after foreground`. The device time (UTC, milliseconds)
+    stands in the line because the entry's `at` is the time its batch was sent, which after a return waits for the
+    stream. The server's `live-activity: done chime → …, updatedEpoch <s>` joins on the same number, so the two logs
+    say whether a chime landed while the app was already in the foreground. The app sees the content, not the sound.
 - **Dictation key (`RarogStore+Voice`):** `POST /api/voice/token` at EVERY Soniox stream opening, never in
   advance. A 404 or a 503 `voice_unconfigured` makes `AppState.sonioxOnServer` unavailable until a new
   `serverStartId`, a login, a logout or another server; it does not hide the microphone, it changes the route: with
@@ -423,6 +437,15 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   written) answers `sent` when the echo of that id already came (`AppState.echoed`), so the model does not ask the
   user to send it again. A person's stop of the send (`cancelSend`) answers `cancelled`; once the request went out,
   the entry stays Not confirmed, because the prompt may have arrived.
+- **Check of a long wait (`RarogStore+WaitCheck`):** `checkWait(_:text:in:)` sends the message `RarogUI` composed for
+  one subagent wait (`docs/subagent-long-wait.md`, "Check") through `send(text:to:entryId:)`, once per wait key. The
+  guard `AppState.waitChecks` (`WaitCheck.swift`) holds the wait under the outbox entry's id, reserved before the
+  first `await`; `settleWaitChecks` (`Reducer+WaitCheck`) follows that entry after every event: accepted at the 202,
+  the `queued` answer, a replay or the echo, whichever came first; freed by a final refusal or a Discard before the
+  acceptance, and by a queue take-back at any time; emptied with the outbox by `.pairing(.dataWiped)`, kept through
+  a logout. `AppState.waitCheck(_:in:)` (`Selectors+WaitCheck`) answers the button: `nil` (no button, where
+  `sendBlock(for:)` refuses, a session out of contact included, or `sessionStale` holds), `ready`, `sending`,
+  `retry` (a tap sends the same entry again) or `sent` with the moment. Tests: `StoreWaitCheckTests`.
 - **Dictation route (`Dictation/`):** `DictationPolicy.route` takes the device's choice (`DictationChoiceStore`,
   `UserDefaults` key `rarog.dictation.choice`, kept through Forget Server), `sonioxOnServer` and the build flag
   `RAROG_VOICE_SONIOX` (`DictationServices.sonioxAllowed`) and gives `ask` (the Dictation screen), `system` or

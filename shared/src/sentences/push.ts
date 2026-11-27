@@ -21,6 +21,8 @@ export const PUSH_SENTENCES = {
   'push.body.fallback.limit': { en: 'Open to see when to try again.' },
   'push.body.fallback.permission': { en: 'Open to decide.' },
   'push.body.fallback.question': { en: 'The agent asked a question. Answer in Rarog.' },
+  'push.body.fallback.stalled': { en: 'A subagent is waiting on its own command.' },
+  'push.detail.stalled': { en: 'Subagent "{agent}" is waiting on its own command.', args: ['agent:text'] },
   'push.body.label': { en: '{label}', args: ['label:text'] },
   'push.paired-body.mac': {
     en: "{label}. If this wasn't you, revoke it on the Mac: rarog devices",
@@ -39,6 +41,7 @@ export const PUSH_SENTENCES = {
   'push.title.limit': { en: '✋ Plan limit · {project}', args: ['project:text'] },
   'push.title.permission': { en: '⏳ Waiting for permission · {project}', args: ['project:text'] },
   'push.title.question': { en: '❓ Question · {project}', args: ['project:text'] },
+  'push.title.stalled': { en: '⏰ Waiting over 1 h · {project}', args: ['project:text'] },
   'push.version-title': { en: '🔄 Version changed' },
   'push.version-body.claude-code': { en: 'Claude Code {from} → {to}', args: ['from:text', 'to:text'] },
   'push.version-body.herdr': { en: 'herdr {from} → {to}', args: ['from:text', 'to:text'] },

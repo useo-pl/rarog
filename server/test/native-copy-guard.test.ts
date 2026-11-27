@@ -120,6 +120,10 @@ const NOT_COPY: Allowed = {
   'Packages/RarogUI/Sources/RarogUI/Session/Voice/ScriptedVoice.swift': { polish: 1 },
   // Sonda testów UI (tylko DEBUG): etykiety dostępności przycisków sondy to identyfikatory dla XCUITest.
   'Rarog/UITestProbe.swift': { call: 2 },
+  // App Intents parameter title of the voice tile's buttons (`@Parameter(title:)` for the activity id the button
+  // carries): the intents are not discoverable, so the title is metadata no person sees.
+  'Packages/RarogActivity/Sources/RarogActivity/EndVoiceActivityIntent.swift': { call: 1 },
+  'Packages/RarogActivity/Sources/RarogActivity/SendDictationActivityIntent.swift': { call: 1 },
 };
 
 /**

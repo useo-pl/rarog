@@ -50,8 +50,6 @@ function tagPattern(open: string): RegExp {
 }
 
 const TASK_ID = tagPattern(MARKS.taskId);
-const TOOL_USE_ID = tagPattern(MARKS.toolUseId);
-const OUTPUT_FILE = tagPattern(MARKS.outputFile);
 const STATUS = tagPattern(MARKS.status);
 const SUMMARY = tagPattern(MARKS.summary);
 /**
@@ -142,13 +140,6 @@ export type NotificationNote = 'none' | 'standby' | 'ended' | 'other';
 export interface TaskNotification {
   /** Zawartość `<task-id>`; `''` = brak. */
   readonly id: string;
-  /** Content of `<tool-use-id>`: the call that started the task; `''` = none. */
-  readonly toolUseId: string;
-  /**
-   * Content of `<output-file>`: where the CLI writes the task output (measured on 2.1.296); `''` = none. Not checked
-   * here.
-   */
-  readonly outputFile: string;
   /** Zawartość `<status>`; `''` = meldunek bez statusu (zdarzenie monitora, nie koniec). */
   readonly status: string;
   /** Zawartość `<summary>`; `''` = brak. */
@@ -244,8 +235,6 @@ export function parseTaskNotification(text: string): TaskNotification {
   const exitCode = exitCodeOf(summary);
   return {
     id: tag(text, TASK_ID),
-    toolUseId: tag(text, TOOL_USE_ID),
-    outputFile: tag(text, OUTPUT_FILE),
     status: tag(text, STATUS),
     summary,
     name: quotedName(summary),

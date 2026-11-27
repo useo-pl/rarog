@@ -10,6 +10,7 @@ import { say } from '@rarog/shared/sentences';
 import type { ServerEvent } from '@rarog/shared';
 import { phaseCounts } from '@rarog/shared/workflow-phases';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createPrStatus } from '../src/bootstrap/pr-status.ts';
 import { loadConfig } from '../src/config.ts';
 import { createRouter } from '../src/router.ts';
 import { createManager } from '../src/sessions/manager.ts';
@@ -18,7 +19,9 @@ import { createMockHerdr } from '../src/demo/mock-herdr.ts';
 import { createDemoControl } from '../src/demo/control.ts';
 import { SCENARIO_BLOCKED_PROMPT, SCENARIO_BLOCKED_REASON } from '../src/demo/scenarios.ts';
 import { DEMO_NOTE_CWD, DEMO_NOTE_UPDATED_AT, createDemoNotes } from '../src/demo/notes.ts';
-import { onlyWaitingAgents, tasksBlockRestart, tasksHoldingDonePush } from '../src/herdr/background/work.ts';
+import {
+  onlyWaitingAgents, ownCommandWaitOf, tasksBlockRestart, tasksHoldingDonePush,
+} from '../src/herdr/background/work.ts';
 import { DEMO_ARTIFACT_TITLES, DEMO_PULL_REQUESTS, DEMO_SCHEDULED_TASKS } from '../src/demo/seeds.ts';
 import { createTestDevice } from './helpers/urzadzenie.ts';
 import { demoContentPl } from '../src/demo/content/pl.ts';
@@ -47,8 +50,11 @@ async function harness() {
   const config = loadConfig({ RAROG_DEMO: '1', RAROG_DATA_DIR: dataDir, RAROG_ORIGINS: ORIGIN });
   const device = createTestDevice(dataDir, { epoch: config.epoch });
   const mock = createMockHerdr(demoContentPl);
+  // The PR list needs facts from the demo's fixed GitHub, as `index.ts` wires it.
+  const prStatus = await createPrStatus(config, logger, demoContentPl);
   const manager = await createManager({
     ...config, demoContent: demoContentPl, herdrSupervisor: mock.supervisor, herdrDeps: mock.deps,
+    ...(prStatus === null ? {} : { prStatus: prStatus.port }),
   });
   await manager.ready;
   // Notatki demo jak w `index.ts`: jeden magazyn w pamięci dla huba, routera i kontroli testów.
@@ -107,6 +113,7 @@ async function harness() {
       server.closeAllConnections();
       await new Promise<void>((resolve) => { server.close(() => { resolve(); }); });
       await manager.dispose();
+      prStatus?.tracker.close();
       mock.dispose();
       await rm(dataDir, { force: true, recursive: true });
     },
@@ -625,6 +632,31 @@ describe('kontrolowany odbiór demo, wyłącznie w trybie demo', () => {
   });
 
   /*
+   * The warning of a long wait in the app: the `standby` variants stand 47 min (`long`) and 75 min (`stuck`) on a wait
+   * loop of their own, and every list carries the stage `ownCommandWaitOf` gives for the same clock.
+   */
+  it('standby wait variants: the stage on the task is ownCommandWaitOf of the same clock', async () => {
+    const stageOf = (id: string) => {
+      const task = h.manager.get(id)?.backgroundTasks?.[0];
+      if (task === undefined) throw new Error('missing standby task');
+      const { ownCommandWait, ...bare } = task;
+      return { stage: ownCommandWait, expected: ownCommandWaitOf(bare, Date.now()), task };
+    };
+    const plain = stageOf(await h.create('standby'));
+    expect(plain.stage).toBe('short');
+    expect(plain.stage).toBe(plain.expected);
+    for (const [wait, minutes] of [['long', 47], ['stuck', 75]] as const) {
+      const created = await h.command({ action: 'create', scenario: 'standby', wait });
+      const { stage, expected, task } = stageOf(created.sessionId ?? '');
+      expect(stage).toBe(wait);
+      expect(stage).toBe(expected);
+      expect(Math.round((Date.now() - Date.parse(task.waitingSince ?? '')) / 60_000)).toBe(minutes);
+      expect(task.ownTasks?.map((own) => own.command)).toEqual(["pgrep -f 'demo-build'", 'sleep 30']);
+    }
+    expect((await h.request({ action: 'create', scenario: 'standby', wait: 'short' })).status).toBe(400);
+  });
+
+  /*
    * Sekcja ARTEFAKTY prawego panelu: scenariusz `artifacts` stawia sesję z dwoma artefaktami — raport
    * poprawiony 2 h temu i szkic sprzed doby, usunięty na claude.ai — oraz notką o końcu obserwacji szkicu.
    * Listę liczy z wpisów pliku rozmowy ta sama maszyna co follower, notkę ta sama funkcja co import.
@@ -655,9 +687,9 @@ describe('kontrolowany odbiór demo, wyłącznie w trybie demo', () => {
   });
 
   /*
-   * Sekcja PULL REQUESTY prawego panelu: scenariusz `pull-requests` stawia sesję z dwoma PR-ami z wpisów pliku
-   * rozmowy (`gh pr create` i jego wynik) — z tytułem sprzed 2 h i bez tytułu sprzed doby. Listę liczy ta sama
-   * funkcja co czytnik na produkcji.
+   * The PULL REQUESTS section of the right panel: the `pull-requests` scenario sets up a session with PRs from link
+   * entries of the conversation file, one titled from 2 h ago and one without a title from a day ago. The same rule
+   * as the production reader builds the set; the demo's fixed GitHub gives the author, creation time and titles.
    */
   it('pull-requests: trzy PR-y (jeden bez tytułu, jeden draft) w karcie, najnowszy pierwszy, ramka listy', async () => {
     const id = await h.create('pull-requests');

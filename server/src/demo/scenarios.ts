@@ -6,6 +6,7 @@ import { MAX_DIRTY, demoGitStatus } from '../drivers/mock-driver.ts';
 import { AsyncEventQueue } from '../drivers/runtime.ts';
 import { APPLIED, STALE } from '../drivers/types.ts';
 import type { DecisionOutcome, DriverEvent, SessionDriver } from '../drivers/types.ts';
+import { ownCommandWaitOf } from '../herdr/background/work.ts';
 import { echoKey } from '../herdr/jsonl-follow.ts';
 import { demoArtifacts, demoBlocks, demoPullRequests, demoScheduledTasks, demoStandbyNotice } from './seeds.ts';
 
@@ -39,6 +40,13 @@ export const SCENARIO_BLOCKED_REASON = 'this session must be restarted before it
 /** Subagent w postoju scenariusza `standby` (sekcja „w tle” apki: trzy stany subagenta). */
 export const SCENARIO_STANDBY_TASK_ID = 'm1-standby';
 export const SCENARIO_STANDBY_NAME = 'Przegląd pokrycia testami';
+
+/**
+ * Variant of the `standby` scenario: the subagent has stood long on a wait loop of its own (`pgrep`, `sleep`), 47 min
+ * (`long`) or 75 min (`stuck`), so the app shows the warning line, the pill's mark and the row's warning tone.
+ */
+export type StandbyWait = 'long' | 'stuck';
+const STANDBY_WAIT_AGO_MS: Record<StandbyWait, number> = { long: 47 * 60_000, stuck: 75 * 60_000 };
 
 /** Stan scenariusza `standby`: subagent, od kiedy stoi, i jego otwarte własne komendy. */
 interface StandbyAgent {
@@ -74,7 +82,7 @@ export class ScenarioDriver implements SessionDriver {
   decisions = 0;
   answers: string[][][] = [];
 
-  constructor(scenario: ScenarioName, label: string) {
+  constructor(scenario: ScenarioName, label: string, wait?: StandbyWait) {
     this.#blocksPrompts = scenario === 'prompt-blocked';
     this.events.push({ type: 'init', engineSessionId: randomUUID(), model: 'claude-fable-5-1' });
     this.events.push({ type: 'title', title: label });
@@ -92,11 +100,14 @@ export class ScenarioDriver implements SessionDriver {
       // „Skończone ostatnio".
       const now = Date.now();
       const at = (agoMs: number): string => new Date(now - agoMs).toISOString();
-      const notice = demoStandbyNotice(18 * 60_000, SCENARIO_STANDBY_NAME);
+      const standingMs = wait === undefined ? 18 * 60_000 : STANDBY_WAIT_AGO_MS[wait];
+      // The start of the turn, 7 min before the standby, as in the plain scenario.
+      const startedMs = standingMs + 7 * 60_000;
+      const notice = demoStandbyNotice(standingMs, SCENARIO_STANDBY_NAME);
       this.events.push({ type: 'history', messages: [
-        { role: 'user', at: at(26 * 60_000),
+        { role: 'user', at: at(startedMs + 60_000),
           blocks: [{ type: 'text', text: foreign('Policz pokrycie testami modułu transkryptu.') }] },
-        { role: 'assistant', at: at(25 * 60_000), blocks: [{ type: 'text', text: foreign('Puszczam subagenta w tle.') }] },
+        { role: 'assistant', at: at(startedMs), blocks: [{ type: 'text', text: foreign('Puszczam subagenta w tle.') }] },
         { role: 'user', at: at(notice.agoMs), blocks: demoBlocks(notice.blocks), notice: notice.notice },
         { role: 'assistant', at: at(notice.agoMs - 2000),
           blocks: [{
@@ -104,13 +115,17 @@ export class ScenarioDriver implements SessionDriver {
           }] },
       ] });
       // Stoi od 18 min i czeka na dwie własne komendy; druga bez treści (serwer bywa, że jej nie zna).
-      this.#standby = {
-        startedAt: at(25 * 60_000), waitingSince: at(18 * 60_000), waiting: true,
-        commands: [
+      // The variant stands on a wait loop of its own: a `pgrep` that matches its own shell and a `sleep`.
+      const commands: AgentOwnTask[] = wait === undefined
+        ? [
           { id: `${SCENARIO_STANDBY_TASK_ID}-cmd-1`, command: 'pnpm test -- --coverage', startedAt: at(21 * 60_000) },
           { id: `${SCENARIO_STANDBY_TASK_ID}-cmd-2`, startedAt: at(19 * 60_000) },
-        ],
-      };
+        ]
+        : [
+          { id: `${SCENARIO_STANDBY_TASK_ID}-cmd-1`, command: "pgrep -f 'demo-build'", startedAt: at(standingMs + 3 * 60_000) },
+          { id: `${SCENARIO_STANDBY_TASK_ID}-cmd-2`, command: 'sleep 30', startedAt: at(standingMs + 60_000) },
+        ];
+      this.#standby = { startedAt: at(startedMs), waitingSince: at(standingMs), waiting: true, commands };
     }
     if (scenario === 'artifacts') this.#pushArtifacts();
     if (scenario === 'pull-requests') this.#pushPullRequests();
@@ -190,7 +205,7 @@ export class ScenarioDriver implements SessionDriver {
       say('user', 2 * hour + 60_000, 'Dodaj eksport notatek do CSV i otwórz PR.'),
       say('assistant', 2 * hour - 5000, 'PR z eksportem otwarty.'),
     ] });
-    this.events.push({ type: 'pull-requests', pullRequests: demoPullRequests(now) });
+    this.events.push({ type: 'pull-requests', ...demoPullRequests(now) });
   }
 
   /**
@@ -211,16 +226,21 @@ export class ScenarioDriver implements SessionDriver {
     this.events.push({ type: 'scheduled-tasks', scheduledTasks: demoScheduledTasks(now) });
   }
 
-  /** Lista zadań scenariusza `standby`: jeden subagent, w postoju albo (po `agent-wake`) pracujący. */
+  /**
+   * Lista zadań scenariusza `standby`: jeden subagent, w postoju albo (po `agent-wake`) pracujący. The wait stage comes
+   * from `ownCommandWaitOf` with the clock of this emission, as `merge.ts` sets it on production lists.
+   */
   #pushStandby(): void {
     const agent = this.#standby;
     if (agent === null) return;
-    this.events.push({ type: 'background-tasks', tasks: [{
+    const task: BackgroundTask = {
       id: SCENARIO_STANDBY_TASK_ID, kind: 'agent', description: SCENARIO_STANDBY_NAME, agentType: 'general-purpose',
       model: 'claude-opus-5-5', startedAt: agent.startedAt,
       ...(agent.waiting ? { waitingSince: agent.waitingSince } : {}),
       ...(agent.commands.length > 0 ? { ownTasks: agent.commands.map((command) => ({ ...command })) } : {}),
-    }] });
+    };
+    const stage = ownCommandWaitOf(task, Date.now());
+    this.events.push({ type: 'background-tasks', tasks: [stage === undefined ? task : { ...task, ownCommandWait: stage }] });
   }
 
   /**
@@ -357,5 +377,7 @@ export class ScenarioDriver implements SessionDriver {
 }
 
 export interface ScenarioPanels {
-  create(scenario: ScenarioName, label: string, cwd?: string): { sessionId: string; driver: ScenarioDriver };
+  create(
+    scenario: ScenarioName, label: string, cwd?: string, wait?: StandbyWait,
+  ): { sessionId: string; driver: ScenarioDriver };
 }

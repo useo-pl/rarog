@@ -9,8 +9,9 @@ import RarogContract
 /// the app always starts on ``all``.
 public enum ListFilter: String, Sendable, Hashable, CaseIterable {
   case all
-  /// Waiting for a decision (permission, question, interrupted turn) or failed. An unread result is not here: it
-  /// has its own segment, so the two never show the same rows.
+  /// Waiting for a decision (permission, question, interrupted turn), a subagent stuck on its own command after the
+  /// turn, or failed. An unread result is not here: it has its own segment, so the two never show the same rows; a
+  /// stuck session with an unread result is here and not in Unread (its tone is `.waiting`).
   case needsYou
   /// The agent works, also a background task that works.
   case working

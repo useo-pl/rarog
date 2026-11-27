@@ -582,13 +582,13 @@ final class DictationRouteTests: XCTestCase {
     try await rig.finish(composer)
   }
 
-  // MARK: - Locked-phone trial
+  // MARK: - Background
 
-  /// Catches a background that still interrupts the field's recording with the locked-phone trial on (the trial
-  /// would do nothing for dictation), and text that stops landing in the field after the lock.
-  func testTrialKeepsTheFieldRecordingInTheBackground() async throws {
+  /// Catches a background that interrupts the field's recording while its tile stands, and text that stops landing
+  /// in the field after the lock.
+  func testTileKeepsTheFieldRecordingInTheBackground() async throws {
     let rig = try Rig(choice: .system)
-    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    rig.store.voiceAgent.background.tile(shown: true)
     let composer = rig.composer()
     composer.tap()
     let task = try await rig.speechTask()
@@ -607,9 +607,9 @@ final class DictationRouteTests: XCTestCase {
     XCTAssertEqual(endLines(rig), ["dictation: ended stopped"])
   }
 
-  /// Catches a background that keeps the field's recording with the trial off (the microphone would run on in the
-  /// locked phone without the switch), and a missing end line.
-  func testBackgroundEndsTheFieldRecordingWithoutTheTrial() async throws {
+  /// Catches a background that keeps the field's recording on a phone without its tile (refused because Live
+  /// Activities are off, a limit or an error): the microphone would run on unseen. Also a missing end line.
+  func testBackgroundEndsTheFieldRecordingWithoutItsTile() async throws {
     let rig = try Rig(choice: .system)
     let composer = rig.composer()
     composer.tap()
@@ -624,11 +624,70 @@ final class DictationRouteTests: XCTestCase {
     XCTAssertEqual(endLines(rig), ["dictation: ended background"])
   }
 
-  /// Catches a trial that keeps a recording still preparing: its microphone would open with the app in the
-  /// background, without the user's tap in the foreground.
-  func testTrialDoesNotKeepARecordingWhoseMicrophoneHasNotOpened() async throws {
+  /// Catches a field recording that outlives its tile removed while the app is in the background: nothing else
+  /// changes then, so the field must follow the tile itself.
+  func testTileRemovedInTheBackgroundEndsTheFieldRecording() async throws {
     let rig = try Rig(choice: .system)
-    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    rig.store.voiceAgent.background.tile(shown: true)
+    let composer = rig.composer()
+    composer.tap()
+    let task = try await rig.speechTask()
+    task.partial("Z pola")
+    _ = await waitUntil { composer.text == "Z pola" }
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    await settle()
+    XCTAssertTrue(composer.recording, "kept while the tile stands")
+    rig.store.voiceAgent.background.tile(shown: false)
+    let ended = await waitUntil { !composer.recording }
+    XCTAssertTrue(ended, "the tile removed ends the recording")
+    XCTAssertEqual(rig.mics.open, [])
+    XCTAssertEqual(composer.text, "Z pola")
+    XCTAssertEqual(endLines(rig), ["dictation: ended background"])
+  }
+
+  /// Catches a device without tiles that ends the field's recording at an app switch, keeps it after the screen
+  /// lock (also a lock reported before the app left the foreground), or still remembers the lock after the app came
+  /// back, so the next app switch would end the recording.
+  func testWithoutTilesTheLockEndsTheFieldRecording() async throws {
+    let rig = try Rig(choice: .system)
+    let rule = BackgroundRecording(noTiles: true)
+    rig.store.attachVoiceAgent(VoiceAgentSettings(preferences: .memory(), background: rule))
+    let composer = rig.composer()
+    func background() async throws {
+      composer.tap()
+      let task = try await rig.speechTask()
+      task.partial("Z pola")
+      _ = await waitUntil { composer.text.hasSuffix("Z pola") }
+      NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+      await settle()
+    }
+    func foreground() {
+      NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
+      rule.scene(.active)
+    }
+    try await background()
+    XCTAssertTrue(composer.recording, "an app switch keeps it")
+    rule.screenLocked()
+    let ended = await waitUntil { !composer.recording }
+    XCTAssertTrue(ended, "the lock ends it")
+    XCTAssertEqual(endLines(rig), ["dictation: ended background"])
+    foreground()
+    try await background()
+    XCTAssertTrue(composer.recording, "back in front the lock is forgotten: the next app switch keeps it")
+    foreground()
+    rule.screenLocked()
+    XCTAssertTrue(composer.recording, "in the foreground the lock changes nothing")
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    let endedAtBackground = await waitUntil { !composer.recording }
+    XCTAssertTrue(endedAtBackground, "a lock reported first ends it at the background")
+    XCTAssertEqual(endLines(rig), ["dictation: ended background", "dictation: ended background"])
+  }
+
+  /// Catches a tile that keeps a recording still preparing: its microphone would open with the app in the
+  /// background, without the user's tap in the foreground.
+  func testTileDoesNotKeepARecordingWhoseMicrophoneHasNotOpened() async throws {
+    let rig = try Rig(choice: .system)
+    rig.store.voiceAgent.background.tile(shown: true)
     let composer = rig.composer()
     composer.tap()
     NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -638,11 +697,11 @@ final class DictationRouteTests: XCTestCase {
     XCTAssertEqual(endLines(rig), ["dictation: ended background"])
   }
 
-  /// Catches the trial reaching a project note's dictation: the trial covers the message field only, so the
+  /// Catches the background rule reaching a project note's dictation: it covers the message field only, so the
   /// background still ends a note's recording.
-  func testTrialLeavesNoteDictationEndingInTheBackground() async throws {
+  func testTileLeavesNoteDictationEndingInTheBackground() async throws {
     let rig = try Rig(choice: .system)
-    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    rig.store.voiceAgent.background.tile(shown: true)
     let note = try await rig.note()
     note.tap()
     let task = try await rig.speechTask()
@@ -652,6 +711,41 @@ final class DictationRouteTests: XCTestCase {
     let ended = await waitUntil { !note.recording }
     XCTAssertTrue(ended, "the note's recording ends")
     XCTAssertEqual(rig.mics.open, [])
+  }
+
+  /// Catches a message-field recording that runs to the default 15 minutes, and a note's recording that the field's
+  /// cap reaches: the field's ends at 10 minutes and the note's at 15, each with the countdown from two minutes
+  /// before and its own number in the end sentence. The system route has no key, so the cap alone sets the field's.
+  func testRecordingEndsAtItsHostsLimit() async throws {
+    for host in Host.allCases {
+      let rig = try Rig(choice: .system)
+      rig.clock = VoiceAgentRowScheduler()
+      let driver = try await rig.driver(host)
+      driver.tap()
+      _ = try await rig.speechTask()
+      let limit = host == .composer ? 600 : 900
+      speak(rig, host, seconds: limit - 121)
+      XCTAssertEqual(driver.status, UICopy.voiceStatus(VoiceView(phase: .recording)), "\(host)")
+      speak(rig, host, seconds: 1)
+      XCTAssertEqual(
+        driver.status, UICopy.voiceStatus(VoiceView(phase: .recording, secondsLeft: 120)), "\(host): the countdown")
+      speak(rig, host, seconds: 119)
+      XCTAssertTrue(driver.recording, "\(host): one second to go")
+      speak(rig, host, seconds: 1)
+      let ended = await waitUntil { !driver.recording }
+      XCTAssertTrue(ended, "\(host): the limit ends the recording")
+      XCTAssertEqual(driver.status, UICopy.voiceNotice(.sessionLimit(seconds: limit)), "\(host)")
+      XCTAssertTrue(driver.status?.contains(host == .composer ? "10" : "15") == true, "\(host): \(driver.status ?? "")")
+      if host == .composer { XCTAssertEqual(endLines(rig), ["dictation: ended session-limit"]) }
+    }
+  }
+
+  /// Speech on `host`'s microphone every second for `seconds` seconds of the rig's clock, so silence never ends it.
+  private func speak(_ rig: Rig, _ host: Host, seconds: Int) {
+    for _ in 0..<seconds {
+      rig.mics.speak(host.rawValue)
+      rig.clock?.advance(1)
+    }
   }
 
   /// Catches a recording kept in the background that ends there without writing the draft: the words said after the
@@ -751,13 +845,13 @@ final class DictationRouteTests: XCTestCase {
   }
 
   /// Catches a background entered while the field's recording finishes, its microphone already stopped, that holds
-  /// no background time with the trial on: the trial keeps that recording, and nothing keeps the app running for its
-  /// last words. With the trial off the background takes the time too.
+  /// no background time while its tile stands: the tile keeps that recording, and nothing keeps the app running for
+  /// its last words. Without the tile the background takes the time too.
   func testBackgroundDuringTheFinalizationHoldsBackgroundTime() async throws {
-    for trial in [false, true] {
+    for tile in [false, true] {
       let rig = try Rig(choice: .system)
       rig.clock = VoiceAgentRowScheduler()
-      rig.store.voiceAgent.lockedPhoneTrial.set(trial)
+      rig.store.voiceAgent.background.tile(shown: tile)
       let system = rig.attachBackgroundWork()
       let composer = rig.composer()
       composer.tap()
@@ -768,18 +862,18 @@ final class DictationRouteTests: XCTestCase {
       _ = await waitUntil { composer.text == "Finishing" }
       composer.tap()
       let finishing = await waitUntil { task.audioEnded }
-      XCTAssertTrue(finishing, "trial \(trial): the microphone stopped, the recognizer finishes")
+      XCTAssertTrue(finishing, "tile \(tile): the microphone stopped, the recognizer finishes")
       XCTAssertEqual(rig.mics.open, [])
       NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
       let held = await waitUntil { system.started == ["dyktowanie"] }
-      XCTAssertTrue(held, "trial \(trial): background time for the last words: \(system.started)")
+      XCTAssertTrue(held, "tile \(tile): background time for the last words: \(system.started)")
       task.answerEnd()
       let ended = await waitUntil { !composer.recording }
-      XCTAssertTrue(ended, "trial \(trial): the recording ends")
-      XCTAssertEqual(rig.draftWrites.last, Rig.DraftWrite(text: "Finishing words.", held: 1), "trial \(trial)")
+      XCTAssertTrue(ended, "tile \(tile): the recording ends")
+      XCTAssertEqual(rig.draftWrites.last, Rig.DraftWrite(text: "Finishing words.", held: 1), "tile \(tile)")
       let released = await waitUntil { !system.stopped.isEmpty }
-      XCTAssertTrue(released, "trial \(trial): the background time ends")
-      XCTAssertEqual(system.stopped, [1], "trial \(trial)")
+      XCTAssertTrue(released, "tile \(tile): the background time ends")
+      XCTAssertEqual(system.stopped, [1], "tile \(tile)")
     }
   }
 
@@ -807,12 +901,12 @@ final class DictationRouteTests: XCTestCase {
 
   private static let whole = "Before the lock and after it, to the end."
 
-  /// A message-field recording on the system route with the trial on, kept in the background on a clock the test
+  /// A message-field recording on the system route with its tile up, kept in the background on a clock the test
   /// moves: words before the lock, the screen's draft write at the lock, words after it, and last words that only the
   /// end of the audio gives.
   private func keptInTheBackground(_ rig: Rig, drafts: ComposerDrafts? = nil) async throws -> ComposerDriver {
     rig.clock = VoiceAgentRowScheduler()
-    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    rig.store.voiceAgent.background.tile(shown: true)
     let composer = rig.composer(drafts: drafts)
     composer.tap()
     let task = try await rig.speechTask()
@@ -824,7 +918,7 @@ final class DictationRouteTests: XCTestCase {
     task.partial("Before the lock and after it")
     let landed = await waitUntil { composer.text == "Before the lock and after it" }
     XCTAssertTrue(landed, "text after the lock lands in the field: \(composer.text)")
-    XCTAssertTrue(composer.recording, "the trial keeps the recording")
+    XCTAssertTrue(composer.recording, "the tile keeps the recording")
     return composer
   }
 
@@ -900,10 +994,12 @@ final class DictationRouteTests: XCTestCase {
   }
 
   /// Catches an end from outside the app's screens that loses the last words, sends the field, leaves the
-  /// microphone open, or writes another end line than `live-activity`; no line carries the text.
+  /// microphone open, or writes another end line than `live-activity`; no line carries the text. The tile goes away
+  /// right after the press (the voice activity controller ends it), while the last words still come: that must not
+  /// end the recording a second time as `background`.
   func testEndFromLockScreenKeepsTheTextInTheFieldWithoutSending() async throws {
     let rig = try Rig(choice: .soniox)
-    rig.store.voiceAgent.lockedPhoneTrial.set(true)
+    rig.store.voiceAgent.background.tile(shown: true)
     let composer = rig.composer()
     composer.tap()
     let socket = try await rig.socket()
@@ -913,9 +1009,10 @@ final class DictationRouteTests: XCTestCase {
     XCTAssertTrue(shown, "hypothesis in the field: \(composer.text)")
     NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
     await settle()
-    XCTAssertTrue(composer.recording, "the trial keeps the recording in the background")
+    XCTAssertTrue(composer.recording, "the tile keeps the recording in the background")
 
     XCTAssertEqual(DictationCenter.shared.endFromLockScreen(), .dictation)
+    rig.store.voiceAgent.background.tile(shown: false)
     let ended = await waitUntil { !composer.recording }
     XCTAssertTrue(ended, "the recording ends")
     XCTAssertEqual(composer.text, "Dictated on the lock screen.", "the last words land in the same field")
@@ -927,7 +1024,7 @@ final class DictationRouteTests: XCTestCase {
   }
 
   /// Catches a project note's recording reported as the microphone's use, or ended from outside the app's screens:
-  /// the locked-phone trial covers the message field only.
+  /// the background rule and the tile cover the message field only.
   func testNoteRecordingReportsNoUse() async throws {
     let rig = try Rig(choice: .system)
     let note = try await rig.note()
@@ -1256,222 +1353,6 @@ private final class NoteDriver: Driver {
   var microphoneShown: Bool { NoteDictation.offersMicrophone(editable: doc.editable, recording: dictation.active) }
   var editable: Bool { doc.editable }
   func dismissAsk() { dictation.choosing = false }
-}
-
-// MARK: - Atrapy
-
-/// Dziennik mikrofonów obu gospodarzy: otwarcia po znaczniku, kolejność, otwarte teraz.
-@MainActor
-private final class MicLog {
-  var denied = false
-  private(set) var starts: [String: Int] = [:]
-  private(set) var events: [String] = []
-  private(set) var open: [String] = []
-  private(set) var maxOpen = 0
-  /// Frame delivery of each open microphone.
-  var feeds: [String: @MainActor (VoiceFrame) -> Void] = [:]
-
-  /// 100 ms of speech from the open microphone with this tag.
-  func speak(_ tag: String) {
-    feeds[tag]?(VoiceFrame(pcm: Data(count: VoiceFrame.bytesPerSecond / 10), peak: 0.5))
-  }
-
-  func started(_ tag: String) { starts[tag, default: 0] += 1 }
-
-  func opened(_ tag: String) {
-    events.append("open \(tag)")
-    open.append(tag)
-    maxOpen = max(maxOpen, open.count)
-  }
-
-  func closed(_ tag: String) {
-    events.append("close \(tag)")
-    open.removeAll { $0 == tag }
-  }
-}
-
-@MainActor
-private final class RouteMicrophone: VoiceMicrophone {
-  private let tag: String
-  private let log: MicLog
-  private var isOpen = false
-
-  init(tag: String, log: MicLog) {
-    self.tag = tag
-    self.log = log
-  }
-
-  func start(
-    onFrame: @escaping @MainActor (VoiceFrame) -> Void, onInterrupt: @escaping @MainActor () -> Void
-  ) async throws(VoiceMicError) {
-    log.started(tag)
-    if log.denied { throw .denied }
-    isOpen = true
-    log.feeds[tag] = onFrame
-    log.opened(tag)
-  }
-
-  func flush() async {}
-
-  func stop() {
-    guard isOpen else { return }
-    isOpen = false
-    log.feeds[tag] = nil
-    log.closed(tag)
-  }
-}
-
-/// Gniazdo Soniox: otwiera się w następnym obrocie; pusta ramka (koniec strumienia) daje `finished`.
-@MainActor
-private final class RouteSocket: VoiceSocket {
-  private let events: VoiceSocketEvents
-  private(set) var isOpen = false
-  private var closed = false
-  /// Final words Soniox gives only after the end of the audio (the tail of a recording); `nil` = none.
-  var tail: String?
-
-  /// `opens: false` = the connection hangs and never opens.
-  init(events: VoiceSocketEvents, opens: Bool = true) {
-    self.events = events
-    guard opens else { return }
-    Task { @MainActor [weak self] in
-      guard let self, !self.closed else { return }
-      self.isOpen = true
-      events.opened()
-    }
-  }
-
-  /// What Soniox does after the end frame: the tail and `finished`, a drop, or a 429 error frame.
-  enum End { case finished, drop, limit }
-  var end = End.finished
-
-  func send(text: String) {
-    guard !closed, text.isEmpty else { return }
-    Task { @MainActor [weak self] in
-      guard let self, !self.closed else { return }
-      switch self.end {
-      case .finished:
-        if let tail = self.tail { self.events.message(#"{"tokens":[{"text":"\#(tail)","is_final":true}]}"#) }
-        self.events.message(#"{"finished":true}"#)
-      case .drop:
-        self.drop()
-      case .limit:
-        self.events.message(#"{"error_code":429,"error_type":"limit_exceeded","error_message":"Limit exceeded."}"#)
-      }
-    }
-  }
-
-  /// Opens a socket made with `opens: false`.
-  func open() {
-    guard !closed, !isOpen else { return }
-    isOpen = true
-    events.opened()
-  }
-
-  func send(data: Data) {}
-
-  func close() { closed = true }
-
-  var isClosed: Bool { closed }
-
-  func message(_ json: String) { events.message(json) }
-
-  /// Zerwanie z zewnątrz (sieć).
-  func drop() {
-    closed = true
-    events.closed()
-  }
-}
-
-/// Rozpoznawanie mowy Apple: zgoda, odpowiedź na pytanie, recognizer dla locale.
-@MainActor
-private final class RouteSpeech: SpeechRecognition {
-  var status: SpeechAuthorization = .authorized
-  var answer: SpeechAuthorization = .authorized
-  var facts: SpeechRecognizerFacts? = SpeechRecognizerFacts(
-    locale: "pl-PL", isAvailable: true, supportsOnDeviceRecognition: true)
-  private(set) var asked = 0
-  /// Ostatnie zadanie rozpoznawania.
-  private(set) var task: RouteSpeechTask?
-
-  func authorization() -> SpeechAuthorization { status }
-
-  func requestAuthorization() async -> SpeechAuthorization {
-    asked += 1
-    status = answer
-    return answer
-  }
-
-  func recognizer(locale: String) -> (any SpeechRecognizer)? {
-    guard let facts else { return nil }
-    return RouteRecognizer(facts: facts) { [weak self] in self?.task = $0 }
-  }
-}
-
-@MainActor
-private final class RouteRecognizer: SpeechRecognizer {
-  let facts: SpeechRecognizerFacts
-  private let made: @MainActor (RouteSpeechTask) -> Void
-
-  init(facts: SpeechRecognizerFacts, made: @escaping @MainActor (RouteSpeechTask) -> Void) {
-    self.facts = facts
-    self.made = made
-  }
-
-  func recognize(_ request: SpeechRequest, events: SpeechTaskEvents) -> any SpeechTask {
-    let task = RouteSpeechTask(request: request, events: events)
-    made(task)
-    return task
-  }
-}
-
-/// Zadanie: wyniki i błędy podaje test; koniec dźwięku oddaje ostatnią hipotezę jako wynik końcowy.
-@MainActor
-private final class RouteSpeechTask: SpeechTask {
-  let request: SpeechRequest
-  private let events: SpeechTaskEvents
-  private(set) var cancelled = false
-  private var last = ""
-  /// The final result only the end of the audio gives (a recording's last words); `nil` = the last hypothesis.
-  var tail: String?
-  /// `true`: the end of the audio waits for `answerEnd()`.
-  var holdsEnd = false
-  private(set) var audioEnded = false
-
-  init(request: SpeechRequest, events: SpeechTaskEvents) {
-    self.request = request
-    self.events = events
-  }
-
-  func append(_ pcm: Data) {}
-
-  func endAudio() {
-    audioEnded = true
-    if !holdsEnd { answerEnd() }
-  }
-
-  /// The recognizer's answer to the end of the audio: the tail, or else the last hypothesis, as the final result.
-  func answerEnd() {
-    Task { @MainActor [weak self] in
-      guard let self, !self.cancelled else { return }
-      self.events.result(self.tail ?? self.last, .final)
-    }
-  }
-
-  func cancel() { cancelled = true }
-
-  func partial(_ text: String) {
-    last = text
-    events.result(text, .partial)
-  }
-
-  /// Koniec fragmentu po pauzie: kolejne wyniki liczą się od zera.
-  func segmentEnd(_ text: String) {
-    last = ""
-    events.result(text, .segmentEnd)
-  }
-
-  func fail(_ error: SpeechTaskError) { events.failure(error) }
 }
 
 // MARK: - Pomocnicze

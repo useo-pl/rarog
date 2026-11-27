@@ -354,6 +354,13 @@
       "v2": {"kind":"none","why":"class-unknown"},
       "note": "folder trust (arrow keys). shown before the REPL starts: the CLI registry has no session entry, so no class"
     },
+    "dialog-trust-preapproved-2.1.332.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "buttons",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "folder trust (arrow keys) with the pre-approved permissions warning. shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
     "dialog-trust.txt": {
       "category": "layer2",
       "class": null,
@@ -831,6 +838,34 @@
       },
       "pairs": [{"line":49,"digit":1,"label":"Yes, switch to Sonnet 5.5"},{"line":50,"digit":2,"label":"No, go back"}],
       "note": "\"Switch model?\" under the status rule"
+    },
+    "kontrolny/importy-zewnetrzne-2.1.332.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "unreadable",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "external imports start dialog. shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/importy-zewnetrzne-dluga-lista-2.1.332.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "unreadable",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "external imports start dialog, 15 imports, top above the pane edge. shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/importy-zewnetrzne-po-down-2.1.332.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "unreadable",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "external imports start dialog after down. shown before the REPL starts: the CLI registry has no session entry, so no class"
+    },
+    "kontrolny/importy-zewnetrzne-po-zaufaniu-2.1.332.txt": {
+      "category": "layer2",
+      "class": null,
+      "today": "unreadable",
+      "v2": {"kind":"none","why":"class-unknown"},
+      "note": "external imports start dialog after the trust dialog. shown before the REPL starts: the CLI registry has no session entry, so no class"
     },
     "kontrolny/pytanie-2.1.314.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},
     "kontrolny/pytanie-2.1.316.txt": {"category":"form","class":"input","v2":{"kind":"none","why":"class-not-dialog"}},

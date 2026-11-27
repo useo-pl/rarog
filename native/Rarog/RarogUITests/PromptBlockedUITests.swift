@@ -26,7 +26,7 @@ final class PromptBlockedUITests: XCTestCase {
         "Uwaga: Prompt nie wysłany — zablokował go hook."))
       .firstMatch
     XCTAssertTrue(note.waitForAppearance(timeout: 15), "notka blokady")
-    XCTAssertTrue(note.label.contains("then re-send your prompt"), "powód od hooka w notce: \(note.label)")
+    XCTAssertTrue(note.label.contains("send the prompt once more"), "powód od hooka w notce: \(note.label)")
     XCTAssertFalse(note.label.contains("Prompt: "), "prompt z Raroga stoi dymkiem, notka go nie cytuje")
     let resend = app.buttons["promptBlocked.resend"]
     XCTAssertTrue(resend.waitForAppearance(timeout: 5), "przycisk pod notką")

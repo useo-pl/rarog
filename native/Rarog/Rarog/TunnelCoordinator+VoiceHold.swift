@@ -1,7 +1,7 @@
 import Foundation
 import RarogTransport
 
-// The server connection held for a voice conversation or a dictation that the locked-phone trial keeps running
+// The server connection held for a voice conversation or a dictation that the background rule keeps running
 // (`LockedPhoneMonitor` in RarogUI asks for it). Owner: connectivity.
 //
 // The hold is one background work with `needsServer` and a reserved identifier, outside the system's background

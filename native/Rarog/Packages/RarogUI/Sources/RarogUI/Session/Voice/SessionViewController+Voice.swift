@@ -14,7 +14,21 @@ extension SessionViewController {
     dictation.install(
       in: composer, store: store, sessionId: sessionId, persistDraft: { [weak self] in self?.persistDraftNow() },
       draftOnDisk: dictationEndWait())
+    dictation.onLockScreenSend = { [weak self] login in self?.lockScreenSend(login) }
     buildVoiceAgent()
+  }
+
+  /// The field's send for a Send from outside the screens (`ComposerDictation.sendFromLockScreen`): the one send of
+  /// the field with the login of the press, registered as the field's last send, which the end of the recording
+  /// waits for (`dictationEndWait`). A field with attachments does not go: their send may take minutes, more than the
+  /// background time behind the Lock Screen covers; the text and the attachments stay in the field. Neither does a
+  /// field whose whole text is an app command (`AppCommand`): on the screen Send opens its sheet, but a press from
+  /// outside the screens does not act on the app; the field stays as it is.
+  private func lockScreenSend(_ login: ComposerSendLogin) -> Task<ComposerSendResult, Never> {
+    let stays = composer.hasAttachmentEntry || AppCommand.recognize(composer.text) != nil
+    let send = stays ? Task { .notSent } : sendField(byVoice: true, login: login)
+    turnChrome.fieldSend = send
+    return send
   }
 
   /// What the background work of a recording's end waits for. A Send that end woke has its answer: the message is

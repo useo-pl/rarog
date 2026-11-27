@@ -170,7 +170,9 @@ Code: `server/src/iroh/` (listener) and `server/src/auth/` (rules of the iroh so
 - **Content.** The title has the kind's emoji, the event kind and the project (the emoji carries only the KIND,
   never a detail); the body has the tool and the session label. NEVER full commands, code or paths: the lock screen
   and the Notification Center history are readable by bystanders. The rule is about the SCREEN, not the transport,
-  so it holds on every channel.
+  so it holds on every channel. The `stalled` push (a subagent waits over an hour on its own command,
+  `subagent-long-wait.md`, "The `stalled` push") names the subagent by its description and never carries the command
+  it waits on: its builder does not take one.
 - **Channel: APNs of the native app, the only one.** The banner leaves the Mac over HTTP/2, straight to APNs with a
   key on the Mac or through the push relay (below), with content from `notify/content.ts` (kind, project, tool,
   question text, result sentence; never the command or `displayText`). The `done` push (end of a turn) reaches the
@@ -194,11 +196,13 @@ Code: `server/src/iroh/` (listener) and `server/src/auth/` (rules of the iroh so
   banners at all.
   - *In the clear (for Apple, the relay and Cloudflare):* the token, the `kid`, a length bucket of the plaintext
     (padded to a multiple of 256 B), send time, priority and TTL (together they reveal the event CLASS: urgent
-    10 / 600 s, done 5 / 3600 s, `device-paired` and `version-changed` 10 / 86400 s, `weekly-limit` 10 / up to
-    86400 s; in the last day before the weekly reset its TTL reveals the time left to the reset),
-    `apns-collapse-id` and `thread-id` as a hash of the session id (banners of one session can be linked;
-    `weekly-limit` has `apns-collapse-id` as a hash of the window's reset instant, so banners of one window can be
-    linked), the badge and whether there is an alert.
+    10 / 600 s, done 5 / 3600 s, `stalled` 10 / 3600 s, `device-paired` and `version-changed` 10 / 86400 s,
+    `weekly-limit` 10 / up to 86400 s; in the last day before the weekly reset its TTL reveals the time left to the
+    reset), `apns-collapse-id` and `thread-id` as a hash of the session id (banners of one session can be linked;
+    `stalled` has its own `apns-collapse-id`, a hash of the session id with a prefix, so alarms of one session can be
+    linked with each other and, through `thread-id`, with the session's banners; `weekly-limit` has
+    `apns-collapse-id` as a hash of the window's reset instant, so banners of one window can be linked), the badge
+    and whether there is an alert.
   - *Replay:* the AAD binds only the `kid`, so the relay, Cloudflare or Apple can replay a ciphertext and change clear
     `aps` fields (badge, `thread-id`, `apns-collapse-id`): a duplicated banner or a wrong badge, never foreign
     content. `exp` in the plaintext gives the receiver a freshness bound (the extension keeps the placeholder when
@@ -271,20 +275,35 @@ Code: `server/src/iroh/` (listener) and `server/src/auth/` (rules of the iroh so
   device token and never reaches a log. This Live Activity, the sessions board, has no actions. Signing out ends it
   locally; the server ends it 10 min before the system's 8 h limit and deletes the `liveActivity` block after `410`,
   and in any case 8 h after the start. Without updates the Live Activity marks its data as stale after 15 minutes.
-- **Voice Live Activity of the native app.** The second Live Activity stands only while the locked-phone trial is
-  on and a voice conversation or a message-field dictation records (`docs/companion.md`, "Locked phone (trial)").
-  The app starts, updates and ends it itself, without a push type, so nothing from the server reaches it. Its state
-  carries ONLY the kind (conversation or dictation), a phase from a closed set, the start time of the system timer,
-  the scope (all sessions or one session) and, for one session, its project and session name as the app's list
-  shows them, each through the voice agent's secret mask (`MicrophoneSubject.of`) and cut to 80 characters
+- **Voice Live Activity of the native app.** The second Live Activity stands only while a voice conversation or a
+  message-field dictation records, and while a dictation sent from it goes to its session (`docs/companion.md`,
+  "Locked phone"). On a phone it is also the condition of the microphone in the background: a recording the user
+  started with a tap in the app goes on after the app leaves the foreground only while its tile stands; refused
+  (Live Activities off, a limit, an error) or removed, the recording ends at the background, or at once when the
+  app is already there. A device without tiles (an iPad, the app on a Mac) keeps it until the screen locks, which
+  the app learns only with a passcode set; without one it records to the recording's limit. The limits hold in the
+  background too: 10 minutes for a message-field dictation, 20 for a conversation. Nothing opens the microphone in
+  the background: a start or a recording still preparing ends there. The app starts, updates and ends the Live
+  Activity itself, without a push type, so nothing from the server reaches it. Its state carries ONLY the kind
+  (conversation or dictation), a phase from a closed set, the start time of the system timer and the time it stops at,
+  the scope (all sessions or one session) and, for one session, its project and session name as the app's list shows
+  them, each through the voice agent's secret mask (`MicrophoneSubject.of`) and cut to 80 characters
   (`VoiceActivityAttributes.ContentState`; `VoiceActivityAttributesTests` checks the encoded keys): NEVER a prompt,
-  dictated text or a question. While the recording runs, the Lock Screen shows that project and session name to
-  anyone who holds the phone. Its one action, End (Stop for a dictation), is a `LiveActivityIntent` (`EndVoiceActivityIntent`) that declares
-  `IntentAuthenticationPolicy.alwaysAllowed`, which Apple's documentation describes as letting the intent run at
-  any time, including when the device is locked. The intent declares no unlock because it only stops the
-  microphone the way the user's own end does: it sends nothing, a dictation keeps its text in the field unsent,
-  and it opens no app. If the system runs it on a locked phone, whoever holds the phone can stop a recording and
-  nothing more. Its `client.log` lines name the kind and nothing else.
+  dictated text or a question. While it stands, the Lock Screen shows that project and session name to anyone who
+  holds the phone. It has two actions,
+  both `LiveActivityIntent`s that declare `IntentAuthenticationPolicy.alwaysAllowed`, which Apple's documentation
+  describes as letting the intent run at any time, including when the device is locked; each carries the id of the
+  activity it stands on, and the app acts only on its current activity. End (Stop for a dictation,
+  `EndVoiceActivityIntent`) only stops the microphone the way the user's own end does: it sends nothing, a
+  dictation keeps its text in the field unsent, and it opens no app. Send (`SendDictationActivityIntent`, a
+  recording dictation only) ends the dictation and sends the WHOLE message field to its session through the
+  screen's one send, text typed before the dictation included, with the login of the press: a field with
+  attachments and a field whose whole text is an app command do not go, and a pairing or server that changed since
+  the press sends nothing. Observed on an iPhone: the system asks for the unlock before it runs any button of a
+  Live Activity on the Lock Screen. The app does not ask for it, and Apple's documentation does not describe that
+  step. If the system ever ran Send on a locked phone, whoever holds the phone during a dictation could send the
+  field to the session's agent, the same class of access as the voice conversation on a locked phone, which takes a
+  spoken prompt and a spoken "yes". Its `client.log` lines name the kind and the outcome word and nothing else.
 
 ## iroh relay on a VPS (`relay-vps/`)
 
@@ -539,21 +558,27 @@ send a digit: "Starting sessions from the phone" below.
      origin and survives a herdr restart). `RAROG_HERDR_SEND=0` switches them off. The
      callers are the launcher (its fresh pane and tab), the console backend (fresh console panes and tabs, label
      migration onto a pane that already carries the token) and the supervisor (the Claude tab label follows the card
-     label, migration of Claude panes without an origin label). The facade rejects an empty string and control
+     label, migration of Claude panes without an origin label, and the rewrite of an old-format origin label
+     `rarog-claude …`/`rarog-term …` into the current one, the same provenance, after a fresh read finds that exact
+     label on that pane). The facade rejects an empty string and control
      characters (herdr does not normalize labels). A pane label leads with the pane's tab label (40 code points at
      most) and ends with the origin; the description repeats what the tab label already shows in the herdr snapshot
      (a card title, a name given by hand, a console tab's directory name), so it exposes nothing new. Only a pane
      alone in its tab gets one, and a bare origin label gets it by migration under the same gates.
    - **The right to `tab.rename` after a tab exists** applies ONLY to a single-pane tab (`tab.get`, a read, every
-     time) whose pane carries Rarog's origin label (`rarog-claude …` with the `claude` agent, or `rarog-term <id>`
+     time) whose pane carries Rarog's origin label (`rc:…` with the `claude` agent, or `rt:<id>`
      with that identity's token). A tab label that differs from the computed one, from the one Rarog set and from
      "1" given by `workspace.create` is MANUAL and stays untouched. Every write follows a fresh `pane.list`. Migrating
      unlabeled Claude tabs is a heuristic, not proof of authorship: a mistake renames a tab that holds a Rarog agent.
      A label gives recognition, not power: ownership of a Claude pane comes from the agent name `rarog-<6 hex>` ∪ the
-     agent keys of the current process, and anyone with socket access can set a label, as they can a token.
+     agent keys of the current process, and anyone with socket access can set a label, as they can a token. The
+     Claude label carries 35 bits of the project key, enough for recognition only (a false match among the
+     about 60 candidates of one path is about 2e-9); the console label carries the whole identity, because recovery stamps
+     that value. An old-format label (`… · rarog-term <id>`, `… · rarog-claude <key> <trace>`) reads the same
+     through one normalizer, so it gives no more than the current one.
    - **After a herdr restart nothing from Rarog's registry reaches a pane address without fresh proof.** A blind
      re-stamp would hit a positional address that may belong to another pane. The only stamp is the console token
-     `reconcile` restores, ONLY to a pane whose label ends in `rarog-term <id>` in a fresh `pane.list`, with the
+     `reconcile` restores, ONLY to a pane whose label ends in `rt:<id>` in a fresh `pane.list`, with the
      value from that label, re-read right before every write. Two panes with one identity, or the label next to
      another token, is a conflict: nothing happens. A false hit is possible (anyone with socket access can set such
      a label) but adds no exposure, because the same access can write the token, and adoption still requires the
@@ -661,19 +686,12 @@ send a digit: "Starting sessions from the phone" below.
    are parsed, and a publish result never gives the file path, `instructions` or the file list. A pane that falls
    out of scope loses both lists when its driver is swapped. Conversation content from before the window never
    reaches the transcript, the log or the disk; the log carries only counts.
-   For the session's pull request list (`docs/pull-requests.md`) Rarog reads the main file and ALL subagent and
-   workflow agent files of the conversation, also of finished agents. In a workflow agent file this is the content
-   (the `Bash` calls and their results), not only the tag of the first line that the run layout reader takes. Only
-   lines with `create`, `/pull/`, `backgroundTaskId` or `task-notification` are parsed, and only the PR URL,
-   repository, number, time and the literal `--title` value leave the server; the command body, paths and output
-   never do. Subagent and workflow agent files
-   are read only when `RAROG_AGENT_FILES` allows it. One file outside the conversation files is read too: the
-   output file of a recognized `gh pr create` that ran in the background, named by the CLI's end notification in
-   the same conversation file. The agent in the sandbox can write that directory, so the path must have the CLI's
-   shape (`…/<uuid>/tasks/<task id>.output`, absolute, without `..`) and the file is read through `safe-read.ts`:
-   no symlink, a regular file only, at most 64 KiB; anything else gives no PR. Only the PR URL leaves that file.
-   The app does not write the list to disk (`SnapshotCacheFile.scrub`), because the URL names the repository, also
-   a private one.
+   For the session's pull request list (`docs/pull-requests.md`) Rarog reads the main file again, whole and then
+   incrementally, never a subagent file. After the first timed entry only lines with `pr-link` are parsed, and only
+   the PR URL, repository, number and the entry time leave the reader. The list shows only the linked PRs whose
+   author GitHub confirms as the user's `gh` login ("PR status: the state of session PRs from GitHub"), with their
+   GitHub titles. The app does not write the list to disk (`SnapshotCacheFile.scrub`), because the URL names the
+   repository, also a private one.
    For the session's scheduled tasks (`docs/scheduled-tasks.md`) Rarog reads the main file again, whole and then
    incrementally, never a subagent file. Only lines with a cron tool, run or carry literal, or the id of a pending
    cron call, are parsed; the task id, pattern, times and the prompt (one line, at most 120 UTF-16 units) leave the
@@ -883,6 +901,14 @@ rules below keep the three powers, **start a process, close a pane, press a digi
    writes a warning into the transcript (an HTTP response is seen by one device for a moment, the transcript by
    every device). `HerdrUntrustedCwdError` in `herdr/types.ts` is a fail-closed reserve nothing throws; restoring the
    refusal takes throwing it, mapping it in the router and handling it in the app.
+   **A start dialog herdr reads as ready gets no key and no text from the phone.** The launcher recognizes the
+   external imports dialog by its signature, or an unknown start dialog by an unchanged screen without the prompt
+   field, and the driver's start dialog gate (`server/src/drivers/herdr/start-dialog-gate.ts`) refuses "Deny", the
+   interrupt, an approval, the trust step and every message or command while the dialog stands, also after a failed
+   read, until a screen proves it gone. Claude Code keeps the imports answer for the project with no documented way
+   back, and Esc or the Enter behind a prompt would answer "No". Only a dialog whose keys are measured gets one: the
+   trust dialog through the arrow path in item 3 of "herdr sessions: Rarog writes to a terminal it does not own"
+   (`docs/start-dialogs.md`).
 9. **The permission hook is PASSIVE, and only a CLI command in the user's terminal installs it.**
    `scripts/hooks/rarog-pending.mjs` dumps what the session waits on into `<dataDir>/pending/` (0700/0600, atomic
    write with a random temp suffix and `flag: 'wx'`, always exit 0, because a hook error must not break the
@@ -1162,8 +1188,9 @@ rules below keep the three powers, **start a process, close a pane, press a digi
       (`…/messages`, `…/model`, `…/answers/:qId` and the diff routes 400, `…/resume` and `…/close` with `closePanel:
       true` 409). The only mutation is `agent.focus` (`POST …/focus`), which the app does not call. A Codex started
       in RAROG'S CONSOLE is reached through that console, and its row only shortens the way to a power already open.
-    - `RAROG_PR_STATUS=0` is NOT a sixth killswitch: it turns off an outbound read channel (the state of session PRs
-      from GitHub, "PR status: the state of session PRs from GitHub") that approves and sends nothing.
+    - `RAROG_PR_STATUS=0` is NOT a sixth killswitch: it turns off an outbound read channel (the facts and state of
+      session PRs from GitHub, "PR status: the state of session PRs from GitHub") that approves and sends nothing;
+      without it the session PR lists stay empty.
     - `RAROG_CLI_WAITING=0` and `RAROG_AGENT_FILES=0` are preferences: the first turns off the fast read of the
       `~/.claude/sessions/` registry, the second the reading of subagent files ("Claude Code version of a session" and
       rule 6 of "herdr sessions"). Neither reader approves or sends anything.
@@ -1264,7 +1291,7 @@ describe where this power ends.
     - **Socket read-only mode has one source, and the 409 knows it.** The source is `RAROG_HERDR_SEND=0`: `refusal()`
       turns it into the 409 before a console starts, and the socket's write gate bounces the same writes again.
     - **Recovering panes after a herdr restart closes and creates nothing:** `reconcile` restores a token from a
-      label ending in `rarog-term <id>` and labels a pane that carries the token, behind `refusal()`, `dispose()`
+      label ending in `rt:<id>` and labels a pane that carries the token, behind `refusal()`, `dispose()`
       and the socket's write gate. The only close outside an explicit close and the reaper is an EXPLICIT open of the
       `lazygit` role (`POST`, never adoption) on a pane of this console whose foreground holds exactly one process, a
       shell, after a SECOND read right before `pane.close`; anything else in the foreground keeps the pane.
@@ -1404,19 +1431,26 @@ short; the full list stands in `docs/companion.md`, "Security":
 
 ## PR status: the state of session PRs from GitHub
 
-The server asks GitHub for the state (`open`, `draft`, `merged`, `closed`) of the PRs that sessions created
-(`docs/pull-requests.md`, "State on GitHub"). `RAROG_PR_STATUS` is on by default; `0` turns the channel off. It is not
-a killswitch: the channel approves nothing, sends nothing to a pane and gives a device no new power. It is an outbound
-channel, so this section says where it goes and what it carries.
+The server asks GitHub about the PRs that Claude Code linked to the sessions' conversations, also PRs a session did
+not create (one it only edited, commented on or pushed to): the author, creation time and title of each, the login of
+the `gh` account, and the state (`open`, `draft`, `merged`, `closed`) of the PRs a session shows
+(`docs/pull-requests.md`, "State on GitHub"). `RAROG_PR_STATUS` is on by default; `0` turns the channel off, and with
+it the session PR lists. It is not a killswitch: the channel approves nothing, sends nothing to a pane and gives a
+device no new power. It is an outbound channel, so this section says where it goes and what it carries.
 
 - **Where and whose account.** Only `github.com`, through the GitHub CLI (`gh`) with its active account for
   `github.com`: the login the user made with `gh auth login`. Rarog has no GitHub token of its own and never reads
   the one `gh` keeps; `GH_TOKEN` and Rarog's secrets do not pass into the process.
-- **What it sends.** Owner, repository name and PR number of each PR on a session list, as GraphQL variables on
-  stdin (never in argv), at most 50 per call. **What it gets:** the state and the draft flag of each PR and the rate limit counters.
+- **What it sends.** Owner, repository name and PR number of each PR a conversation linked (once, until GitHub
+  answers its author) and of each PR a session shows (on the rhythm), as GraphQL variables on stdin (never in argv),
+  at most 50 per call. **What it gets:** the state, draft flag, title, author login and creation time of each PR, the
+  login of the `gh` account (`viewer.login`) and the rate limit counters. Author, creation time and title stay in
+  process memory until restart; the login stays in memory only, and the server compares it with the authors and
+  never writes it to the log or sends it to the app. The app gets only the shown PRs with their title and state.
   Nothing else from the answer is kept, and none of it reaches the log.
-- **When.** Only while at least one app has the SSE stream open, and rarely: one call per 50 PRs, then every 5 min
-  for open, draft and closed PRs, every 30 min for PRs without a state, never again for a merged one. Failures pause every
+- **When.** Only while at least one app has the SSE stream open, and rarely: one call per 50 PRs; a linked PR once
+  for its author (again every 30 min only while no answer had it), then for a shown PR every 5 min when open, draft or
+  closed, every 30 min without a state, never again when merged. Failures pause every
   call for 30 min, GitHub's rate limit until its reset (at most 1 h). This channel does not touch git and does not
   run without a client, so the rule against polling GitHub in the background holds
   (`architecture.md`, "Data model: what does not exist", no `git fetch` in the background).
@@ -1426,8 +1460,8 @@ channel, so this section says where it goes and what it carries.
   of stderr. `rarog doctor` runs `gh auth status --active --no-refresh --hostname github.com` through the same
   module: read-only (`--no-refresh` keeps `gh` from refreshing and storing a token), and not in the demo.
 - **The log** gets one line per failure or pause: the kind of failure, the number of PRs and the pause, never
-  a repository name, a URL or anything `gh` printed.
-- **Demo and review mode** never start `gh`: the states come from a fixed map
+  a repository name, a URL, an author, a title, the login or anything `gh` printed.
+- **Demo and review mode** never start `gh`: the states, titles, authors and the demo login come from a fixed map
   (`server/test/demo-review-proces.test.ts`).
 
 ## Inbox: the last message of every session on request
@@ -2319,8 +2353,9 @@ Directory layout of the per-server spaces: `native/Rarog/docs/app-target.md`, "D
   removes both for the forgotten server), and the dictation choice `rarog.dictation.choice`.
 - **Dictation:** no Soniox secret on the device: the app gets only a TEMPORARY Soniox key per connection attempt.
   The dictation choice (`system` or `soniox`) belongs to the device, so another server, logout and Forget Server
-  leave it. The microphone works only between two taps (or ⌥⌘M) and stops on going to the background and on a
-  session change.
+  leave it. The microphone works only between two taps (or ⌥⌘M) and stops on a session change and on going to the
+  background, except a message-field recording the background rule keeps (its Live Activity tile on a phone, until
+  the screen lock on a device without tiles: "Voice Live Activity of the native app" above).
 - **List cache** (`<space>/list/sessions.json`): the last FRESH session list (project, directory, session label,
   state and its time, branch, counters and last commit, model). Before writing, these are removed: the standing
   decision summary (`waitingFor`), the recognized dialog with its screen excerpt, transient activity, state detail,

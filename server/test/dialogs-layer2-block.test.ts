@@ -63,6 +63,7 @@ interface ManifestEntry {
     readonly title: string;
     readonly options: readonly { readonly digit: string }[];
     readonly footer: string | null;
+    readonly complete: boolean;
   };
   readonly policy: { readonly verdict: 'buttons' | 'no-buttons'; readonly buttons: readonly string[] };
 }
@@ -156,6 +157,9 @@ describe('odcisk readBlock to dzisiejszy odcisk bloku', () => {
  */
 const KNOWN_MISREADS: Readonly<Record<string, readonly string[]>> = {};
 
+/** Measured blocks whose rule and title stand above the pane edge (`complete: false`): there is no block to read. */
+const TOP_ABOVE_EDGE: readonly string[] = ['kontrolny/importy-zewnetrzne-dluga-lista-2.1.332.txt'];
+
 /** Manifest captures read as a tool consent without an operation frame above the options: layer 2 reads the block. */
 const TOOL_WITHOUT_FRAME: readonly string[] = [
   'kontrolny/zatwierdzenie-workflow-2.1.322.txt',
@@ -175,6 +179,11 @@ describe('readBlock a manifest zestawu kontrolnego', () => {
 
   it.each(MANIFEST.shapes.map((entry) => [entry.id, entry] as const))('%s: góra, tytuł, cyfry i stopka', (_, entry) => {
     const block = readBlock(screenOf(entry.file));
+    if (TOP_ABOVE_EDGE.includes(entry.file)) {
+      expect(entry.block.complete).toBe(false);
+      expect(block).toBeNull();
+      return;
+    }
     const misread = KNOWN_MISREADS[entry.file];
     if (misread !== undefined) {
       expect(block).not.toBeNull();

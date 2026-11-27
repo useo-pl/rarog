@@ -9,7 +9,8 @@ import UIKit
 /// Prace z `needsServer` adapter zgłasza koordynatorowi tunelu (start z terminem, koniec, wygaśnięcie), więc
 /// generacja połączenia żyje w tle tak długo jak one; prace bez serwera (kończenie nagrania dyktowania) jej nie
 /// trzymają. Łaskę tła tunelu koordynator trzyma własnym zadaniem bez serwera, z obsługą wygaśnięcia
-/// (``begin(_:needsServer:expired:)``).
+/// (``begin(_:needsServer:expired:)``). That variant is a requirement of `BackgroundWork`, so the store's
+/// `beginBackgroundWork(_:needsServer:expired:)` reaches it too (the send from the dictation's Live Activity).
 @MainActor
 final class UIKitBackgroundWork: BackgroundWork {
   /// Zadania w tle systemu: wejście adaptera (testy podają atrapę).

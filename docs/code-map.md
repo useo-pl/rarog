@@ -103,15 +103,16 @@ Directories:
 - `server/src/notes/` — project notes store: one text document per directory.
 - `server/src/notify/` — push notifications and the Live Activity: scheduler (`index.ts`), pure policy, presence,
   sending through APNs or the relay, push encryption.
-- `server/src/pr-status/` — state of session PRs on GitHub: the `gh` source (batched query), the fixed-map source,
-  the URL → state tracker with its rhythm and pauses; `gh.ts` alone starts `gh`.
+- `server/src/pr-status/` — session PRs on GitHub: the `gh` source (batched query), the fixed-map source, the facts
+  memory (author, creation time, title, `gh` login) with its one-time verification, the URL → state tracker with its
+  rhythm and pauses; `gh.ts` alone starts `gh`.
 - `server/src/routes/` — REST route groups (sessions, devices, push, terminal, notes, limits, projects, system);
   `router.ts` calls them only after the Origin, credential and body checks.
 - `server/src/sessions/` — session manager, session, state machine, ring buffer, send registry, CLI registry,
   interrupt windows, attach slots, git row of cards, context window, herdr pane lifecycle events, driver events
   (`init`, `history`, `agent-state`), launch checks and launch slots, session restart, queued echo, consent
-  channel cards, PR state on cards, activity row clocks (turn start, activity age), project root scan, recent
-  projects, manager errors, manager API.
+  channel cards, the PR list and its state on cards, activity row clocks (turn start, activity age), project root
+  scan, recent projects, manager errors, manager API.
 - `server/src/term/` — emergency console: a persistent shell in a herdr pane, idle reaper, WebSocket transport.
 - `server/src/voice/` — Soniox: a temporary key in exchange for the permanent one, which never leaves the server.
 
@@ -129,10 +130,14 @@ Files:
 - `server/src/herdr/supervisor.ts` — which `claude` agents live in herdr, in what state and mode.
 - `server/src/herdr/answer-recheck.ts` — status recheck of a pane after a dialog answer, for a lost `idle` push.
 - `server/src/herdr/launcher.ts` — turning a directory into a live agent: the whole pane creation procedure.
+- `server/src/herdr/start-dialog-wait.ts` — a start dialog herdr reads as ready ends the launch wait as `blocked`;
+  the poll for the session id after it.
 - `server/src/herdr/argv.ts` — `claude` arguments for `agent.start`: builder and closed allow-list.
 - `server/src/herdr/trust.ts` — whether `claude` will ask for folder trust in a directory.
 - `server/src/herdr/identity.ts` — session identity across server restarts, and the hidden-session store.
 - `server/src/herdr/provenance.ts` — pane provenance: formats of Rarog agent names and pane titles.
+- `server/src/herdr/label-code.ts` — the `rt:` and `rc:` suffix of a pane label in Crockford base32, pure functions.
+- `server/src/herdr/label-migration.ts` — old-format pane labels: the normalizer for every reader and the rewrite pass.
 - `server/src/herdr/project-workspace.ts` — project workspace: the project lock and the read the resolver uses.
 - `server/src/herdr/workspace-resolver.ts` — pure decision which herdr workspace gets a new session or terminal.
 - `server/src/herdr/mode-cycle.ts` — switching a pane's permission mode; the only place that knows `shift+tab`.

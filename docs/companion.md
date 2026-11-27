@@ -767,10 +767,9 @@ and both flags stop that too.
   agent; to Soniox the text of the answers, session names and the text of prompts; and that the agent sends a prompt
   to a session only on the user's word. The consents and the reading speed live in `UserDefaults` (`rarog.voiceAgent.consent`,
   `rarog.voiceAgent.sessionsConsent`, `rarog.voiceAgent.speechSpeed`) and survive Forget Server; a voice an older
-  build stored under `rarog.voiceAgent.voice` stays unread. The last section of the page is the locked-phone trial
-  switch, "Keep Talking When Locked (Trial)" with a footnote that it is a trial for measuring (`LockedPhoneTrial`,
-  `VoiceAgentSettings.lockedPhoneTrial`, the one key `rarog.voiceAgent.lockedPhoneTrial`, off by default; "Locked
-  phone (trial)" below). Tests: `VoiceAgentSettingsTests`, `VoiceAgentSettingsModelTests`, `LockedPhoneTrialTests`.
+  build stored under `rarog.voiceAgent.voice` stays unread. Whether a recording goes on in the background has no
+  setting ("Locked phone" below).
+  Tests: `VoiceAgentSettingsTests`, `VoiceAgentSettingsModelTests`.
 
 ### Conversation
 
@@ -841,11 +840,14 @@ and both flags stop that too.
   (`VoiceAgentToolText.closedField`), never the server's message or the sentence under the field. A key
   or a 401 that returns after a new login or a server change neither starts the conversation nor logs out. The
   conversation ends when the user logs out or unpairs, logs in again, opens another session, turns the feature off,
-  the app goes to the background (with the locked-phone trial on, not once the conversation is ready:
-  "Locked phone (trial)"), dictation starts outside the composer (a note), the message field goes away
-  (a state card or the decision dock),
+  the app goes to the background (not a ready conversation while its Live Activity tile stands, or on a device
+  without tiles until the screen locks: "Locked phone"), dictation starts outside the composer (a note), the
+  message field goes away (a state card or the decision dock),
   the user leaves the screen, or the session starts a new engine conversation (`transcript.repoint-clear`, `-resume`)
-  (`VoiceAgentWatch`). `client.log` gets `voice-agent:` lines, never the conversation text: one ready line per
+  (`VoiceAgentWatch`). It also ends by itself 20 minutes after the tap, whatever happens in between (a mute, an
+  answer that plays), with the sentence "The conversation ended after 20 minutes." (`VoiceAgentSession.sessionLimit`:
+  one timer on the conversation's clock for every host, and a timer of an ended conversation does not reach the next
+  one). `client.log` gets `voice-agent:` lines, never the conversation text: one ready line per
   conversation that got ready, `ready after <total> ms (keys <a> ms, session <b> ms, audio <c> ms)` (keys and audio
   from the tap, session from both keys in hand to `session.updated`), the model
   `session.created` names (and a second line when it differs from the key's), the audio format at start (or, when the
@@ -855,7 +857,8 @@ and both flags stop that too.
   `response.done` with its status, text and
   audio tokens in (cached ones as a subset), text tokens out (the session has no output audio, so the table prices
   none), and its price, and one end line with the reason (a close by
-  `VoiceAgentWatch` adds its cause, e.g. `ended closed (field-hidden)`), the duration, the number of responses (and of
+  `VoiceAgentWatch` adds its cause, e.g. `ended closed (field-hidden)`; the length limit is `ended session-limit`),
+  the duration, the number of responses (and of
   those without `usage`), speech starts, the microphone peak (0–1), the `ask_session` and `send_prompt` calls and the
   total price. A repeated `response.done` counts once; the total is marked `partial` when a response came without
   `usage` or was still open at the end; `usage` with non-zero `input_tokens` or `output_tokens` but without their
@@ -875,10 +878,10 @@ and both flags stop that too.
   note stands in their place) and masks secret shapes with the rules of `shared/fixtures/companion/secret-shapes.json`
   (`RealtimeSecretMask`). After `input_audio_buffer.committed` new session turns go in as a system item, then
   `response.create`. Speech while a reply plays or waits to play (a Soniox item not over, or queued audio) does not
-  cut it at once (`RealtimeConversation+Noise.swift`): the playback volume drops to a quarter and a window of 0.9 s
-  starts (0.4 s of speech plus the 0.5 s of silence after which the VAD reports the end). At a `speech_stopped`
+  cut it at once (`RealtimeConversation+Noise.swift`): the playback volume drops to a quarter and a window of 1.2 s
+  starts (0.4 s of speech plus the 0.8 s of silence after which the VAD reports the end). At a `speech_stopped`
   within the window the VAD's own times decide: `audio_end_ms` minus `audio_start_ms`, less the 300 ms prefix padding
-  and the 0.5 s of silence that the OpenAI reference counts in them (`RealtimeBargeIn.speechLength`). At least 0.4 s
+  and the 0.8 s of silence that the OpenAI reference counts in them (`RealtimeBargeIn.speechLength`). At least 0.4 s
   of speech cuts at once, and the utterance gets its answer. Shorter speech, or an event without its time, is noise:
   the volume comes back, the reply goes on, the utterance orders no answer and its item is deleted, as after a mute.
   Speech that outlasts the window cuts, and so does speech while nothing plays, at once. Tool calls that come during
@@ -926,8 +929,12 @@ and both flags stop that too.
   drained after the synthesis); the state stays Answering until the last of them, so a queue that runs dry before the
   synthesis ends changes nothing. A response with a tool call only opens no stream. A key near its expiry is renewed
   through the same route; a Soniox failure during the conversation, or no key at a renewal, ends it with its reason,
-  without a retry. The one exception is the stream limit (403 `temp_api_key_session_expired`): that item's synthesis
-  ends, what Soniox said plays out, the rest of its text goes nowhere, and the conversation goes on.
+  without a retry. The exception is an error frame that ends one stream (`SonioxSpeech.Failure.endsStreamOnly`): the
+  stream limit (403 `temp_api_key_session_expired`) and a Soniox backend call past its deadline (408
+  `request_timeout`). That item's synthesis ends, what Soniox said plays out, the rest of its text goes nowhere (it is
+  not sent again), and the conversation goes on; the next item speaks on the same socket. Any other error on an
+  answer item's stream, an error frame for the whole connection and a dropped socket end the conversation (a tool's
+  reading: below).
   Speech over the answer (`RealtimeConversation+SpeechBargeIn.swift`) cancels every item not over yet: a running
   stream gets Soniox `cancel`, a waiting one never starts, and late deltas of the interrupted reply open no stream.
   OpenAI then keeps only what the user heard. `conversation.item.truncate` works on audio only, so a text item is
@@ -937,8 +944,8 @@ and both flags stop that too.
   still open gets its fixes at its `response.done`, and an utterance committed before that waits with its
   `response.create`, so the fixes always come first. It waits the same way while a reply ordered before the speech
   is not created yet (or refused with `conversation_already_has_active_response`). The items of a reply created
-  after the speech are deleted at its `response.done`. After the stream limit the item is fixed the same way to
-  what Soniox said.
+  after the speech are deleted at its `response.done`. After an error that ends one stream the item is fixed the
+  same way to what Soniox said.
   A host tool can have a text read aloud before its result (`RealtimeToolAction.workAndRead`,
   `RealtimeConversation+Reading.swift`): its work ends either in the result or in a text and a function that turns
   the reading's outcome into the result. Soniox reads exactly that text as a stream of its own, queued behind the
@@ -990,15 +997,18 @@ and both flags stop that too.
   The conversation tells its host about the answers (`RealtimeConversation+Answer.swift`, `VoiceAgentHost.answer`):
   `playedWhole` once per reply that spoke, called no tool and played out whole (every item's synthesis ended and the
   queue drained after it, and the reply's `response.done` came), and `cut` at every barge-in and every lost playback.
-  A reply that calls a tool is a preamble and never counts; an item cut by the stream limit or one with no audio
-  keeps its reply from counting; a tool's reading never counts; noise over the answer is no cut. The session
+  A reply that calls a tool is a preamble and never counts; an item cut by an error that ends one stream or one with
+  no audio keeps its reply from counting; a tool's reading never counts; noise over the answer is no cut. The session
   screen's host ignores both events.
   `client.log` gets `tts start` and `tts end` per item, `tts cancel` per cancelled item, `tts first pcm` (from the
-  end of the user's speech to the first Soniox PCM, apart from the time to the first audio), `tts error <code>`, a
-  line per response with the characters that went out to Soniox (not text that waited in the queue and was
-  cancelled or cut off by the end), the audio Soniox generated (played or not) and its estimated price
-  (`RealtimePricing.speechCost`), and the Soniox total at the end of the end line, its audio marked `~` when a
-  stream was cut. Never the text or the key.
+  end of the user's speech to the first Soniox PCM, apart from the time to the first audio), `tts error <code>`
+  (an error on a stream adds `(last text <s> s ago, text_end sent)` or `…, no text_end)`: the seconds since the last
+  text frame of that stream went out, `none` when none did, and whether its `text_end` went out;
+  `SonioxSpeech.StreamText`, because Soniox ends a stream that gets no text for a few seconds without `text_end` with
+  408 `request_timeout`), a line per response with the characters that went out to Soniox (not text that waited
+  in the queue and was cancelled or cut off by the end), the audio Soniox generated (played or not) and its
+  estimated price (`RealtimePricing.speechCost`), and the Soniox total at the end of the end line, its audio marked
+  `~` when a stream was cut. Never the text or the key.
   `VoiceChatAudio` (iOS): one `AVAudioEngine`, `.playAndRecord` with `.voiceChat`, the speaker, voice processing on
   input and output, 24 kHz in and out (from a multi-channel voice processing input, as on a Mac, channel 0 only: a
   downmix of its discrete channels gives silence), each microphone chunk with the capture time of its tap buffer
@@ -1301,8 +1311,8 @@ Tests: `VoiceAgentSessionsConversationTests`, `VoiceAgentSessionsHostTests`, `Vo
 - **End.** Each end shows an existing end sentence; a reason that a conversation at a session also has shows the
   same sentence there. The end action (`end()`) shows none; during the opening read it ends the start: no
   conversation is built, nothing of the list stays, and the host's catalog answer, when it arrives, logs
-  `start refused (ended)`. The app in the background (`scene(_:)`) ends it with the background sentence (with the
-  locked-phone trial on, only the start, the opening read and a conversation not yet ready), a logout as
+  `start refused (ended)`. The app in the background (`scene(_:)`) ends it with the background sentence (always the
+  start, the opening read and a conversation not yet ready; a ready one as "Locked phone" says), a logout as
   logged out, another login as a changed server; the mode not offered, the mode's consent removed and the voice
   agent turned off end it as turned off.
   The lost server connection (`AppState.global` offline) ends it with "The conversation ended: the connection to the
@@ -1390,7 +1400,7 @@ state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog
   `RealtimeInstructions+InboxHost.swift`); the session screen's edit rule does not apply.
 - **Decision card.** It has no reply field: the conversation answers by voice, `show_prompt` refuses and
   `send_prompt` refuses for lack of a prompt.
-- **End.** Besides the session screen's rules (logout, the feature off, background with its locked-phone trial
+- **End.** Besides the session screen's rules (logout, the feature off, background with its "Locked phone"
   exception, `/clear` or `/resume` in the
   card's session), the conversation ends when its card leaves the Inbox, when the Inbox closes and when another
   session opens (`VoiceAgentInboxWatch`). An end sentence of a card no longer on screen shows as a notice.
@@ -1398,30 +1408,46 @@ state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog
   block (`VoiceAgentInboxConversation+Prompt.swift`); the reply fields (`InboxReplyHost`) take the block's text back
   and the outcome of a send whose block is gone.
 
-### Locked phone (trial)
+### Locked phone
 
-- **Switch.** `LockedPhoneTrial` (`RarogCore/VoiceAgent/LockedPhoneTrial.swift`) is the one definition: one type,
-  one key (`rarog.voiceAgent.lockedPhoneTrial` in `UserDefaults`), off on a new device and in the UI test mode. It
-  belongs to the device like the consents. Off, every background rule of this document holds as written.
-- **Conversation in the background.** On, the background does not end a voice conversation that is ready (past its
+- **Rule.** `BackgroundRecording` (`RarogCore/VoiceAgent/BackgroundRecording.swift`) is the one definition, with no
+  setting: `keeps(running:)` keeps a voice conversation or a message-field dictation that runs (its microphone
+  already records) when the app leaves the foreground, by a lock or a switch to another app alike. On a phone it
+  keeps it while the recording's voice Live Activity tile stands. Without the tile (refused because Live Activities
+  are off, a limit or an error; ended; removed by the person) the background ends the recording, and a tile that
+  goes while the app is in the background ends it then. On a device that shows no tiles (an iPad, the app on a Mac:
+  the interface idiom and `isiOSAppOnMac`, read once at launch, `AppEnvironment.voiceAgent`) the tile does not
+  count: the recording goes on in the background until the screen locks, and the lock ends it then. The lock is
+  `UIApplication.protectedDataWillBecomeUnavailableNotification`, which comes only with a passcode set, so such a
+  device without a passcode records to the recording's own limit; the app back in the foreground (scene `active`)
+  forgets the lock. An iPhone with Live Activities off follows the phone's rule, as at a refused tile. The voice
+  activity controller sets the tile (below), the app sets the lock and the scene. Tests: `BackgroundRecordingTests`.
+- **Conversation in the background.** The background does not end a voice conversation that is ready (past its
   readiness gate: the audio engine runs and OpenAI took the session, `VoiceAgentSession.isReady`), at a session, at
-  an Inbox card or across sessions; every other end rule holds. The background still refuses a start and ends what
-  has no open microphone yet: a conversation that connects, the opening read across sessions, a card that waits for
-  its snapshot. The one rule is `LockedPhoneTrial.keeps(running:)`; the session screen and the Inbox pass it to
-  `VoiceAgentWatch` as `keepsInBackground`, whose start check refuses the background whatever it says, and the owner
-  across sessions applies it in its own reasons. Tests: `LockedPhoneTrialTests`, `VoiceAgentWatchTests` and the
-  trial cases of `VoiceAgentSessionTests`, `VoiceAgentInboxTests` and `VoiceAgentSessionsConversationTests`.
-- **Dictation in the background.** On, the background does not end a message-field recording whose microphone
-  opened (`VoiceRecorder.microphoneOpened`, the same `LockedPhoneTrial.keeps(running:)`): its text keeps landing in
-  the same field, which is the session's draft. A recording still preparing (permission, key, microphone opening)
-  ends as with the trial off, and so does a note's recording. Its own limits still end it: a minute of silence and
-  the session limit (15 minutes when the server gives none). A kept recording that finishes in the background (those
-  limits, `DictationCenter.endFromLockScreen()`, a field that locks) holds a background task without the server
-  (`ComposerDictation.holdFinalization`) from its first finalizing view, which comes before the microphone closes,
-  until its last words are in the field and the disk confirmed the draft: the open microphone keeps the app running,
-  and once it stops nothing else does. A background entered while a recording finishes takes the same task, and so
-  does an end in the background that has no finalizing view (a stream that failed for good), for the draft write
-  alone. Every end of a message-field recording, with the trial on or off, hands the field to the session's draft
+  an Inbox card or across sessions, while the rule keeps it; every other end rule holds, the 20-minute limit too. The
+  background still refuses a start and ends what has no open microphone yet: a conversation that connects, the
+  opening read across sessions, a card that waits for its snapshot. The session screen and the Inbox pass
+  `BackgroundRecording.keeps(running:)` to `VoiceAgentWatch` as `keepsInBackground`, whose start check refuses the
+  background whatever it says, and the owner across sessions applies it in its own reasons. A change of the rule's
+  inputs while the app is in the background (the tile gone, the lock) ends a kept conversation with the background
+  sentence: the Inbox and the owner across sessions watch the rule in their own checks, and the session screen
+  checks its end rules again at each render, which reads the rule while a conversation runs. Tests:
+  `BackgroundRecordingTests`, `VoiceAgentWatchTests` and the background cases of `VoiceAgentSessionTests`,
+  `VoiceAgentInboxTests` and `VoiceAgentSessionsConversationTests`.
+- **Dictation in the background.** The background does not end a message-field recording whose microphone opened
+  (`VoiceRecorder.microphoneOpened`) while `BackgroundRecording.keeps(running:)` keeps it: its text keeps landing in
+  the same field, which is the session's draft. A change of the rule while the app stays in the background (the tile
+  gone, the lock) ends it then, with the end line `background`. A recording still preparing (permission, key,
+  microphone opening) ends at the background, and so does a note's recording. A recording that already finishes
+  (its second tap, Send, an end from the Lock Screen, silence, the limit) keeps its own end and its own end line
+  when the app goes to the background or its tile goes. Its own limits still end a kept recording: a minute of
+  silence and the session limit (10 minutes in the message field). A kept recording that finishes in the background
+  (those limits, `DictationCenter.endFromLockScreen()`, a field that locks) holds a background task without the
+  server (`ComposerDictation.holdFinalization`) from its first finalizing view, which comes before the microphone
+  closes, until its last words are in the field and the disk confirmed the draft: the open microphone keeps the app
+  running, and once it stops nothing else does. A background entered while a recording finishes takes the same task,
+  and so does an end in the background that has no finalizing view (a stream that failed for good), for the draft
+  write alone. Every end of a message-field recording hands the field to the session's draft
   (the screen's `persistDraftNow`); a held background task ends once the disk ran that write
   (`ComposerDrafts.written`). An end that a waiting Send takes writes no draft: the send emptied the field, and
   the background task waits until that send has its answer (the message is stored in the queue, or its text is back
@@ -1432,16 +1458,36 @@ state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog
   a recording that ended by itself `silence`, `session-limit`, `interrupted`, `stream-failed`, `microphone`,
   `dictation-failed`, `refused` (`DictationEndTrace`), `live-activity` for an end through
   `DictationCenter.endFromLockScreen()` (the entry for an end button outside the app's screens, which no screen of
-  the app calls), and `ended` when none of these applies.
-  Tests: `DictationRouteTests` (the trial cases) and `DictationEndTraceTests`.
+  the app calls), `live-activity-send` for an end through `DictationCenter.sendFromLockScreen()` (below), and
+  `ended` when none of these applies.
+  Tests: `DictationRouteTests` (the background cases) and `DictationEndTraceTests`.
+- **Send from outside the screens.** `DictationCenter.sendFromLockScreen()`, which the app target reaches through
+  `AppMicrophone.sendFromLockScreen()`, is the entry for a Send button outside the app's screens; no screen of the
+  app calls it. It asks the host that holds the microphone. Only a message-field dictation whose microphone opened
+  answers (`ComposerDictation.sendFromLockScreen()`); a conversation, a note's recording and nothing recording give
+  `nil`, change nothing and write no line. The press ends the recording as Send during it does: the last words land
+  in the field, then the field goes through the session screen's one send (`sendField(byVoice: true, login:)`) with
+  the login and the interface of the press, registered as the field's last send, which the end of the recording
+  waits for (`dictationEndWait`). A pairing or a server that changed since the press sends nothing and takes
+  nothing from the field. A field with attachments in its bar does not go this way: the text and the attachments
+  stay in the field. Neither does a field whose whole text is an app command (`/model`, `/usage`, `AppCommand`): the
+  command does not run, no sheet opens, and the field stays as it is. One press is one operation: a second call
+  while it runs, also after the recording ended and while the request travels, gets the same task. The task gives
+  `LockScreenSend` once the field's draft is on disk: `sent` or `queued` (the server took the message; `queued` when
+  the server reports it as queued), `unconfirmed` (a timeout, or a send stopped in its progress ring: the entry waits in
+  the send queue for "Retry"), and `notSent` for every other result (a refusal, a closed or read-only field, an app
+  command, attachments, a field gone with its screen), with the text where the send recovery puts it. Besides the
+  end line it writes `dictation: live activity send sent|queued|not-sent|unconfirmed`, never the text. Tests:
+  `LockScreenSendTests` and `DictationCenterTests`.
 - **Monitor.** `LockedPhoneMonitor` (`Session/Voice/LockedPhoneMonitor.swift`, no UIKit; the app's instance from
   `LockedPhoneMonitor+Live.swift`) reads what records from the app's one microphone (`DictationCenter.use`: the kind,
   conversation or dictation, and what of it lives, as the host reports it) and gets each scene phase from the app's
   scene phase change. It starts no microphone, conversation or dictation. One rule, `evaluate()`, runs at
-  every change the microphone center reports (a claim, a start, an end, a host's deinit), at every scene change and
-  at every heartbeat: it holds the server connection while `LockedPhoneTrial.keeps(running:)` says yes for what
-  records, in the foreground too, and releases it when the answer turns no: the recording ended or its host went
-  away, or the trial is off. Only a changed answer reaches the tunnel. With the trial off it never holds.
+  every change the microphone center reports (a claim, a start, an end, a host's deinit), at every change of the
+  background rule's inputs, at every scene change and at every heartbeat: it holds the server connection while
+  `BackgroundRecording.keeps(running:)` says yes for what records, in the foreground too, and releases it when the
+  answer turns no: the recording ended or its host went away, its tile went, or the screen locked on a device
+  without tiles. Only a changed answer reaches the tunnel. On a phone without the tile it never holds.
 - **Heartbeat.** Every 30 s while the app is in the background and the hold stands, the monitor asks the server
   once, `GET /api/version` through the current login's transport (`RarogStore.serverAnswers()`, which changes no
   state and asks nothing while signed out), and writes a line when the answer comes, if the app is still in the same
@@ -1449,9 +1495,9 @@ state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog
   and asks nothing more. Tests: `LockedPhoneMonitorTests`, `StoreLockedPhoneTests`.
 - **`client.log` lines.** On the voice agent budget, never any content; the prefix is `voice-agent` for a
   conversation and `dictation` for a dictation. A scene change while something records writes
-  `<prefix>: background, trial on|off` or `<prefix>: foreground, trial on|off`, with the trial on or off; the
-  `inactive` step of a lock or an unlock writes nothing. With the trial off the screens end what records at the same
-  scene change, and nothing orders the monitor against them, so the background line may be missing. The heartbeat:
+  `<prefix>: background` or `<prefix>: foreground`; the `inactive` step of a lock or an unlock writes nothing. Where
+  the rule does not keep what records, the screens end it at the same scene change, and nothing orders the monitor
+  against them, so the background line may be missing. The heartbeat:
   `<prefix>: background <s> s: audio=running|stopped openai=open|closed soniox=open|closed server=online|offline|waiting`;
   `<s>` counts the seconds since the app left the foreground, at the moment of the line, on the clock of the system's
   awake time (`ProcessInfo.systemUptime`, which Apple's page describes as the time the system has been awake since
@@ -1460,32 +1506,55 @@ state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog
   dictation's stream on the Soniox route while it streams. `server=online` says the server answered that one
   request, which in the background may itself open a new generation; the tunnel's own lines say whether the
   generation stayed. Nothing records: no line.
-- **Voice Live Activity.** On, while something records, the app shows a second Live Activity beside the sessions
+- **Voice Live Activity.** While something records, the app shows a second Live Activity beside the sessions
   board: `VoiceActivityController` (`native/Rarog/Rarog/VoiceActivityController.swift`) reads the app's microphone
-  through `AppMicrophone` (RarogUI), and the views and the End button stand in `RarogActivity`. The Lock Screen
-  tile has three lines and End (Stop for a dictation): the kind ("Voice agent" or "Dictation") with a system timer,
-  a phase word and a subject line. The microphone center reports the phase (`MicrophonePhase`): a conversation is
-  "Working", "Listening", "Answering", "Reading the session", "Send the prompt?" while a prompt waits for a spoken
-  yes or no, or "Muted"; a dictation is "Dictating". It also reports the subject (`MicrophoneSubject`): "All
-  sessions" for a conversation across sessions that discusses no single session, else the session's project and
-  name joined by a dot, "One session" when the app cannot name it, and "Say yes or no" first while a prompt
-  waits. Names go through the voice agent's secret mask and are cut to 80 characters; no prompt, dictated text or
-  question reaches the state. One activity at most: requested once per recording, without a push type and with a
-  relevance score, which the board's content does not carry (Apple's documentation: the score orders an app's Live
-  Activities), updated when the kind, the phase or the subject changes and never for an equal state; a new phase or
-  subject keeps the timer, another kind starts it anew. It ends at once (`.immediate`) when nothing records or the
-  trial goes off; at launch every voice activity the system still shows ends (one a stopped process left). A refused
-  request writes one line, `voice-agent: live activity not started (<reason>)`, with the `voice-agent` prefix for
-  both kinds and the reason
+  through `AppMicrophone` (RarogUI), and the views and the button intents stand in `RarogActivity`. The Lock Screen
+  tile has three lines and its buttons: the kind ("Voice agent" or "Dictation") with a system timer, a phase word and
+  a subject line; End for a conversation, Stop and Send (two round icons) for a dictation. The microphone center
+  reports the phase (`MicrophonePhase`): a conversation is "Working", "Listening", "Answering", "Reading the session",
+  "Send the prompt?" while a prompt waits for a spoken yes or no, or "Muted"; a dictation is "Dictating". It also
+  reports the subject (`MicrophoneSubject`): "All sessions" for a conversation across sessions that discusses no
+  single session, else the session's project and name joined by a dot, "One session" when the app cannot name it,
+  and "Say yes or no" first while a prompt waits. Names go through the voice agent's secret mask and are cut to 80
+  characters; no prompt, dictated text or question reaches the state. One activity at most: requested once per
+  recording, without a push type and with a relevance score, which the board's content does not carry (Apple's
+  documentation: the score orders an app's Live Activities), updated when the kind, the phase or the subject changes
+  and never for an equal state; a new phase or subject keeps the timer, another kind starts it anew. It ends at once
+  (`.immediate`) when nothing records; at launch every voice activity the system still shows ends (one a stopped
+  process left). The controller tells `BackgroundRecording` whether the tile of what records stands: from a granted
+  request until the controller ends it, or until ActivityKit reports the activity's state `ended` or `dismissed`
+  (Apple's documentation: a person, the app or the system ended it, or a person or the system removed it); a
+  refused request gives no tile, and a recording whose tile went gets no new one. A refused request writes one line,
+  `voice-agent: live activity not started (<reason>)`, with the `voice-agent` prefix for both kinds and the reason
   `disabled` (Live Activities off for the app), `background` (the app not in the foreground), `limit` or `failed`,
   and the next request waits until nothing records; a request the limit refused while the end of the activity
-  before it is on its way is tried once more after that end. End runs `EndVoiceActivityIntent` in the app's process; its
-  handler, which the app installs at launch, calls `DictationCenter.endFromLockScreen()`, so a conversation ends as
-  with its end button and a dictation keeps its text in the field without sending. It writes
-  `voice-agent: ended from live activity` or `dictation: ended from live activity` (nothing when nothing records)
-  and ends every voice activity that stood when it was pressed, so a recording started meanwhile keeps its own; a
-  dictation that still finishes its text gets no new activity. Tests:
-  `VoiceActivityControllerTests`, `VoiceActivityViewTests`, `VoiceActivityAttributesTests`,
+  before it is on its way is tried once more after that end. Each button runs its intent in the app's process with
+  the id of the activity it stands on (`context.activityID`); a press on another activity than the current one
+  changes no recording and writes no line (End takes only that old activity off). End and Stop run
+  `EndVoiceActivityIntent`; its handler, which the app installs at launch, calls `DictationCenter.endFromLockScreen()`,
+  so a conversation ends as with its end button and a dictation keeps its text in the field without sending. It
+  writes `voice-agent: ended from live activity` or `dictation: ended from live activity` (nothing when nothing
+  records) and ends every voice activity that stood when it was pressed, so a recording started meanwhile keeps its
+  own; a dictation that still finishes its text gets no new activity. While a send from the tile runs, Stop does
+  nothing.
+- **Send from the tile.** Send runs `SendDictationActivityIntent`; its handler
+  (`VoiceActivityController.sendFromLiveActivity`) calls `AppMicrophone.sendFromLockScreen()` (above) and returns once
+  the send runs. From the press until the outcome is on the tile, the controller holds a background work that needs
+  the server (`RarogStore.beginBackgroundWork(_:needsServer:expired:)`); the recording's own finalization keeps its
+  `holdFinalization` task. The tile then says "Sending…" in the waiting tone, with a stale date 30 s after the press,
+  where its timer stops: past it the system shows the tile as "Not confirmed", also when the app's process no longer
+  runs. The recording's last reports and its end leave that tile alone; a second Send gets the same send. `sent` and
+  `queued` end the tile at once, and so does any outcome while the app is in the foreground. Otherwise `notSent` and
+  `unconfirmed` end it as "Not sent" or "Not confirmed" with "Check the app" under it, in the error tone and with the
+  timer stopped at the outcome, and leave it on the Lock Screen for 5 minutes (`.after`); the app coming to the
+  foreground and a new recording, before it asks for its own tile, take it off. A background work the system expires
+  before the outcome, also inside the call that starts it, ends the tile as "Not confirmed" and writes
+  `dictation: live activity send expired`; an outcome that still comes as `sent` or `queued` takes it off. A refused
+  background work writes `dictation: live activity send no background time`, and the send runs anyway. A new
+  recording takes the microphone and gets its own tile; the send goes on, and its outcome no longer changes a
+  tile. Unlocking: observed on an iPhone, the system asks for the
+  unlock before it runs a Live Activity button on the Lock Screen (`docs/security-model.md`, "Push notifications").
+  Tests: `VoiceActivityControllerTests`, `VoiceActivityViewTests`, `VoiceActivityAttributesTests`,
   `VoiceActivityPresentationTests`.
 - **Server connection hold.** `TunnelCoordinator.holdForVoice(_:)` (`TunnelCoordinator+VoiceHold.swift`), asked for
   by `LockedPhoneMonitor`, is one background work that needs the server, under a reserved identifier and without a
@@ -1494,8 +1563,8 @@ state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog
   Released in the background within the 8 s grace of that stay, the generation goes back to that grace; released
   after the grace deadline, or after the system expired the tunnel's grace task, it closes at once. Tests: the voice
   hold cases of `TunnelCoordinatorTests`.
-- **Background mode.** The app declares `UIBackgroundModes: audio` (`native/Rarog/Info.plist`), the only part of
-  the trial outside the switch. Apple's documentation says that with this background mode an app's audio continues
+- **Background mode.** The app declares `UIBackgroundModes: audio` (`native/Rarog/Info.plist`). Apple's
+  documentation says that with this background mode an app's audio continues
   when people switch to another app or lock the device (AVFoundation, "Configuring your app for media playback"),
   and that the `record` and `playAndRecord` audio session categories can record in the background (Human Interface
   Guidelines, "Playing audio"). Dictation records in `record` (`MicrophoneCapture`), the conversation in
@@ -1516,7 +1585,7 @@ state sentence, Mute and End (the card's view: the Inbox screen in `native/Rarog
 ### Source directories
 
 - `native/Rarog/Packages/RarogCore/Sources/RarogCore/VoiceAgent/` — voice agent settings: consent, voice choice,
-  the locked-phone trial switch.
+  and the rule that keeps a running recording in the background (`BackgroundRecording`).
 - `native/Rarog/Packages/RarogUI/Sources/RarogUI/Session/Voice/Realtime/` — voice agent: session projection, secret
   mask, OpenAI Realtime client, the voice chat audio engine, the tools wired to the store, the end-of-conversation
   rules, the composer button with its bars and the states of the status row.

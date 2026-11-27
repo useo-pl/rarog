@@ -3,7 +3,9 @@
  *
  * - `RAROG_PR_STATUS=0` → no tracker, the `gh` source is never created;
  * - demo and its review mode → the fixed map (the titled demo PR merged, the bare one without a state, plus the PR
- *   states of the active content set), read at once, the `gh` source never created;
+ *   states of the active content set), read at once and without a connected client, the `gh` source never created;
+ *   its facts give every demo PR the demo login as author, a creation time inside the conversation window and the
+ *   title of its card;
  * - real mode → the `gh` source with the server environment cut to the closed list;
  * - the flag: missing, empty or `1` = on, `0` = off, anything else stops the start.
  */
@@ -14,9 +16,10 @@ import type { RarogConfig } from '../src/config.ts';
 import { PR_STATUS_ENV_PASSTHROUGH } from '../src/config-env.ts';
 import { demoContentEn } from '../src/demo/content/en.ts';
 import type { DemoContent } from '../src/demo/content/types.ts';
-import { DEMO_PULL_REQUESTS, demoPullRequestStates } from '../src/demo/seeds.ts';
+import { DEMO_PULL_REQUESTS, demoPullRequestStates, demoPullRequests } from '../src/demo/seeds.ts';
 import type { GhSourceOptions, PrStateSource } from '../src/pr-status/index.ts';
 import type { Logger } from '../src/router.ts';
+import { visiblePullRequests } from '../src/sessions/pr-status-link.ts';
 
 const log: Logger = { info: () => undefined, error: () => undefined };
 
@@ -65,6 +68,63 @@ describe('createPrStatus: the source of each mode', () => {
     expect(link.port.stateOf(DEMO_PULL_REQUESTS.draft)).toBe('draft');
     expect(changed).toHaveBeenCalledTimes(1);
     expect(gh.calls).toEqual([]);
+    link.tracker.close();
+  });
+
+  it('demo: the fixed map is read without a connected client, also after the client count drops to zero', async () => {
+    const link = await createPrStatus(loadConfig({ RAROG_DEMO: '1', HOME: '/h', PATH: '/usr/bin' }), log, demoContentEn);
+    if (link === null) throw new Error('the demo has a PR status');
+    link.tracker.setClientConnected(true);
+    link.tracker.setClientConnected(false);
+    link.port.setSessionLinks('demo', [DEMO_PULL_REQUESTS.titled]);
+    await settle();
+    expect(link.port.factsOf(DEMO_PULL_REQUESTS.titled)?.title).toBe(DEMO_PULL_REQUESTS.title);
+    link.tracker.close();
+  });
+
+  it('demo: every scenario PR has the demo login as author, a creation time in the window and its card title', async () => {
+    const list = demoPullRequests(Date.now());
+    const titles = new Map<string, string>([
+      [DEMO_PULL_REQUESTS.titled, DEMO_PULL_REQUESTS.title], [DEMO_PULL_REQUESTS.draft, DEMO_PULL_REQUESTS.draftTitle],
+    ]);
+    const link = await createPrStatus(loadConfig({ RAROG_DEMO: '1', HOME: '/h', PATH: '/usr/bin' }), log, demoContentEn);
+    if (link === null) throw new Error('the demo has a PR status');
+    const changed = vi.fn();
+    link.port.listen(changed);
+    link.tracker.setClientConnected(true);
+    link.port.setSessionLinks('demo', list.pullRequests.map((pr) => pr.url));
+    await settle();
+    const windowStart = Date.parse(list.windowStart ?? '');
+    expect(list.pullRequests.map((pr) => pr.url).sort())
+      .toEqual([DEMO_PULL_REQUESTS.titled, DEMO_PULL_REQUESTS.bare, DEMO_PULL_REQUESTS.draft].sort());
+    const login = link.port.viewerLogin();
+    expect(login).not.toBeNull();
+    for (const pr of list.pullRequests) {
+      const facts = link.port.factsOf(pr.url);
+      expect(facts?.author, pr.url).toBe(login);
+      expect(facts?.createdAtMs, pr.url).toBeGreaterThanOrEqual(windowStart);
+      expect(facts?.title, pr.url).toBe(titles.get(pr.url));
+      // A verified PR does not enter the state map by itself.
+      expect(link.port.stateOf(pr.url), pr.url).toBeUndefined();
+    }
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed.mock.calls[0]?.[0]).toEqual({ urls: new Set(list.pullRequests.map((pr) => pr.url)), viewerChanged: true });
+    link.tracker.close();
+  });
+
+  it('demo: a scenario created 51 h after the start still lists its three PRs, with facts stored at the start', async () => {
+    const link = await createPrStatus(loadConfig({ RAROG_DEMO: '1', HOME: '/h', PATH: '/usr/bin' }), log, demoContentEn);
+    if (link === null) throw new Error('the demo has a PR status');
+    link.tracker.setClientConnected(true);
+    link.port.setSessionLinks('early', demoPullRequests(Date.now()).pullRequests.map((pr) => pr.url));
+    await settle();
+    const late = demoPullRequests(Date.now() + 51 * 60 * 60_000);
+    const shown = visiblePullRequests({
+      linked: late.pullRequests, windowStart: late.windowStart, viewer: link.port.viewerLogin(),
+      factsOf: (url) => link.port.factsOf(url),
+    });
+    expect(shown.map((pr) => pr.url).sort())
+      .toEqual([DEMO_PULL_REQUESTS.titled, DEMO_PULL_REQUESTS.bare, DEMO_PULL_REQUESTS.draft].sort());
     link.tracker.close();
   });
 

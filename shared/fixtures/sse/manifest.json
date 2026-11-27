@@ -614,6 +614,13 @@
       { "path": "/session/markedUnseen", "value": false }
     ]
   },
+  "session-changed.null-own-command-wait.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/backgroundTasks/2/ownCommandWait", "value": null }
+    ]
+  },
   "session-changed.null-pull-request-state.json": {
     "expect": "ignored",
     "base": "session-changed.max.json",
@@ -714,6 +721,13 @@
       { "path": "/session/title", "value": 5 }
     ]
   },
+  "session-changed.numeric-own-command-wait.json": {
+    "expect": "ignored",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/backgroundTasks/2/ownCommandWait", "value": 2 }
+    ]
+  },
   "session-changed.numeric-pull-request-state.json": {
     "expect": "ignored",
     "base": "session-changed.max.json",
@@ -791,6 +805,17 @@
       { "path": "/session/engine", "value": "unsupported" }
     ],
     "degrades": ["engine"]
+  },
+  "session-changed.unknown-own-command-wait.json": {
+    "expect": "degraded",
+    "base": "session-changed.max.json",
+    "patch": [
+      { "path": "/session/backgroundTasks/2/ownCommandWait", "value": "later" }
+    ],
+    "result": [
+      { "path": "/session/backgroundTasks/2/ownCommandWait", "remove": true }
+    ],
+    "degrades": ["backgroundTasks.ownCommandWait"]
   },
   "session-changed.unknown-pull-request-state.json": {
     "expect": "degraded",

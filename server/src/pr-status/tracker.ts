@@ -1,19 +1,25 @@
 /**
- * PR status tracker: the URL → state map of the PRs that current sessions list, kept fresh by a state source on a
- * fixed rhythm, only while at least one client is connected. It does not touch sessions or send frames: the caller
- * reads `stateOf` when it builds a session summary and gets the URLs whose state changed through `onChange`.
+ * PR status tracker: the URL → state map of the PRs that current sessions list, kept fresh by a source on a fixed
+ * rhythm, and the reads of the facts memory (`facts.ts`: author, creation time, title, `gh` login) that verify each
+ * linked URL once. Reads run only while at least one client is connected. It does not touch sessions or send frames:
+ * the caller reads `stateOf` and `factsOf` when it builds a session summary and learns what changed through `onChange`.
  *
  * Rhythm: a new URL is asked {@link NEW_URL_DELAY_MS} after it first appears (configurable); then `open`, `draft`
- * and `closed` every {@link OPEN_REFRESH_MS}, no state every {@link UNKNOWN_REFRESH_MS}; `merged` is final. A connecting
- * client gets everything overdue at once. One read at a time, at most `PR_BATCH_MAX` PRs per read.
+ * and `closed` every {@link OPEN_REFRESH_MS}, no state every {@link UNKNOWN_REFRESH_MS}; `merged` is final. A linked
+ * URL without facts is asked after the same delay, and again every {@link UNKNOWN_REFRESH_MS} until an answer has its
+ * facts; a URL with facts is never asked for them again and never enters the state map that way. A connecting client
+ * gets everything overdue at once. One read at a time, at most `PR_BATCH_MAX` PRs per read: the state refreshes
+ * first, the verifications fill the rest; a URL due for both is asked once. Every answer feeds the facts memory.
  *
  * Failures: `missing-gh` turns the tracker off until restart; a rate limit pauses every read until `resetAt`, at most
- * {@link RATE_LIMIT_PAUSE_MAX_MS}; any other failure pauses every read (new URLs too) for {@link FAILURE_PAUSE_MS}.
- * A known state stays through a failure. Log lines name the failure category and the PR count, nothing else.
- * Nothing here throws; timers are `unref`.
+ * {@link RATE_LIMIT_PAUSE_MAX_MS}; any other failure pauses every read (new URLs and verifications too) for
+ * {@link FAILURE_PAUSE_MS}. A known state stays through a failure, and a failure stores no facts. Log lines name the
+ * failure category and the PR count, nothing else: no login, author or title. Nothing here throws; timers are `unref`.
  */
 import type { PullRequestState } from '@rarog/shared';
 import type { Scheduler, TimerHandle } from '../drivers/runtime.ts';
+import { createPrFactsQueue } from './facts.ts';
+import type { PrFacts } from './facts.ts';
 import { PR_BATCH_MAX } from './gh.ts';
 import { parsePrUrl } from './source.ts';
 import type { PrReadResult, PrRef, PrStateSource } from './source.ts';
@@ -25,10 +31,19 @@ export const FAILURE_PAUSE_MS = 30 * 60_000;
 export const RATE_LIMIT_PAUSE_MAX_MS = 60 * 60_000;
 const RATE_LIMIT_PAUSE_MIN_MS = 60_000;
 
+/**
+ * What one read changed: URLs whose state (also from or to no state), facts or title changed, and whether the `gh`
+ * login changed (the first login learned counts). The login itself is never part of a change.
+ */
+export interface PrStatusChange {
+  readonly urls: ReadonlySet<string>;
+  readonly viewerChanged: boolean;
+}
+
 export interface PrStatusTrackerOptions {
   readonly source: PrStateSource;
-  /** URLs whose state changed after a read (also from or to no state). Called after the map is updated. */
-  readonly onChange: (urls: ReadonlySet<string>) => void;
+  /** Called after a read that changed something, once the map and the memory are updated. */
+  readonly onChange: (change: PrStatusChange) => void;
   /** Timers and wall-clock time (`resetAt` of GitHub is compared with `now()`). Default: real timers, `unref`. */
   readonly scheduler?: Scheduler;
   readonly log?: (line: string) => void;
@@ -42,9 +57,18 @@ export interface PrStatusTrackerOptions {
 export interface PrStatusTracker {
   /** Last read state of a tracked URL; `undefined` = unknown or not tracked. */
   stateOf(url: string): PullRequestState | undefined;
+  /** Author, creation time and latest title of a URL from the memory; `undefined` = not known (yet). */
+  factsOf(url: string): PrFacts | undefined;
+  /** The `gh` login of the last answer that had one; `null` before the first. Never log or send it. */
+  viewerLogin(): string | null;
   /** The whole current PR list of a session (replaces the previous one); addresses outside the grammar are ignored. */
   setSessionUrls(sessionId: string, urls: Iterable<string>): void;
-  /** Forgets a session; URLs no other session lists leave the map. */
+  /**
+   * The whole linked set of a session (replaces the previous one): each URL without facts is verified once. It does
+   * not put URLs into the state map.
+   */
+  setSessionLinks(sessionId: string, urls: Iterable<string>): void;
+  /** Forgets a session's list and linked set; URLs no other session lists leave the map, the facts stay. */
   dropSession(sessionId: string): void;
   /** Whether at least one client is connected; reads run only while it is `true`. */
   setClientConnected(connected: boolean): void;
@@ -78,6 +102,7 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
   const newUrlDelayMs = Math.max(0, opts.newUrlDelayMs ?? NEW_URL_DELAY_MS);
   const entries = new Map<string, Entry>();
   const sessions = new Map<string, ReadonlySet<string>>();
+  const facts = createPrFactsQueue();
   let connected = false;
   let disabled = false;
   let closed = false;
@@ -102,7 +127,7 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
   const schedule = (): void => {
     clearTimer();
     if (closed || disabled || !connected || reading !== null) return;
-    let next = Infinity;
+    let next = facts.nextDueAt();
     for (const entry of entries.values()) if (entry.dueAt < next) next = entry.dueAt;
     if (next === Infinity) return;
     const at = Math.max(next, pausedUntil);
@@ -113,7 +138,8 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
     pausedUntil = scheduler.now() + ms;
   };
 
-  const apply = (batch: readonly Entry[], result: PrReadResult): void => {
+  /** One read's answer: `batch` are the state entries asked, `verified` the facts-only URLs asked with them. */
+  const apply = (batch: readonly Entry[], verified: readonly PrRef[], result: PrReadResult): void => {
     if (!result.ok) {
       if (result.failure === 'missing-gh') {
         disabled = true;
@@ -124,7 +150,7 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
         ? rateLimitPause(result.resetAt)
         : FAILURE_PAUSE_MS;
       pause(ms);
-      const count = plural(batch.length);
+      const count = plural(batch.length + verified.length);
       safeLog(`pr-status: gh call failed (${result.failure}) for ${count}, paused for ${minutes(ms)} min`);
       return;
     }
@@ -138,14 +164,17 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
       if (state === 'merged') entry.dueAt = Infinity;
       else entry.dueAt = now + (state === undefined ? UNKNOWN_REFRESH_MS : OPEN_REFRESH_MS);
     }
+    const asked = [...batch.map((entry) => entry.ref.url), ...verified.map((ref) => ref.url)];
+    const learned = facts.apply(asked, result, now + UNKNOWN_REFRESH_MS);
+    for (const url of learned.urls) changed.add(url);
     if (result.limitReached !== undefined) {
       const ms = rateLimitPause(result.limitReached.resetAt);
       pause(ms);
       safeLog(`pr-status: GitHub rate limit reached, paused for ${minutes(ms)} min`);
     }
-    if (changed.size === 0) return;
+    if (changed.size === 0 && !learned.viewerChanged) return;
     try {
-      opts.onChange(changed);
+      opts.onChange({ urls: changed, viewerChanged: learned.viewerChanged });
     } catch {
       // The caller's failure must not stop the rhythm.
     }
@@ -169,7 +198,8 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
       .filter((entry) => entry.dueAt <= now)
       .sort((a, b) => a.dueAt - b.dueAt)
       .slice(0, PR_BATCH_MAX);
-    if (batch.length === 0) {
+    const verified = facts.due(now, PR_BATCH_MAX - batch.length, new Set(batch.map((entry) => entry.ref.url)));
+    if (batch.length === 0 && verified.length === 0) {
       schedule();
       return;
     }
@@ -177,7 +207,7 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
     reading = controller;
     let read: Promise<PrReadResult>;
     try {
-      read = opts.source.read(batch.map((entry) => entry.ref), controller.signal);
+      read = opts.source.read([...batch.map((entry) => entry.ref), ...verified], controller.signal);
     } catch {
       read = Promise.resolve({ ok: false, failure: 'error' });
     }
@@ -185,7 +215,7 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
       .catch((): PrReadResult => ({ ok: false, failure: 'error' }))
       .then((result) => {
         reading = null;
-        if (!closed) apply(batch, result);
+        if (!closed) apply(batch, verified, result);
       })
       .catch(() => {
         reading = null;
@@ -210,6 +240,8 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
 
   return {
     stateOf: (url) => entries.get(url)?.state,
+    factsOf: (url) => facts.factsOf(url),
+    viewerLogin: () => facts.viewerLogin(),
     setSessionUrls: (sessionId, urls) => {
       if (closed) return;
       try {
@@ -219,9 +251,20 @@ export function createPrStatusTracker(opts: PrStatusTrackerOptions): PrStatusTra
         // Keeps the previous list; nothing to undo.
       }
     },
+    setSessionLinks: (sessionId, urls) => {
+      if (closed) return;
+      try {
+        facts.setSessionLinks(sessionId, urls, scheduler.now() + newUrlDelayMs);
+        schedule();
+      } catch {
+        // Keeps the previous linked set; nothing to undo.
+      }
+    },
     dropSession: (sessionId) => {
       if (closed) return;
-      if (sessions.delete(sessionId)) sync();
+      const listed = sessions.delete(sessionId);
+      const linked = facts.dropSession(sessionId);
+      if (listed || linked) sync();
     },
     setClientConnected: (value) => {
       if (closed) return;

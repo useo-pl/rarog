@@ -142,11 +142,12 @@ func workflowTask(
 }
 
 /// Subagent w tle (`backgroundTasks[]`) w JSON-ie podsumowania sesji. `waitingSince` = stoi i czeka na
-/// własne zadanie; `ownTask` = treść jednej jego otwartej komendy.
-func agentTask(_ id: String, waitingSince: String? = nil, ownTask: String? = nil) -> String {
+/// własne zadanie; `ownTask` = treść jednej jego otwartej komendy; `wait` = the wait stage the server sent.
+func agentTask(_ id: String, waitingSince: String? = nil, ownTask: String? = nil, wait: String? = nil) -> String {
   var fields = [#""id":"\#(id)""#, #""kind":"agent""#, #""description":"wspólne widoki sekcji panelu""#]
   if let waitingSince { fields.append(#""waitingSince":"\#(waitingSince)""#) }
   if let ownTask { fields.append(#""ownTasks":[{"id":"\#(id)-c","command":"\#(ownTask)"}]"#) }
+  if let wait { fields.append(#""ownCommandWait":"\#(wait)""#) }
   return "{" + fields.joined(separator: ",") + "}"
 }
 
@@ -422,6 +423,66 @@ struct LiveActivityLifecycleTests {
     await settle()
     #expect(rig.store.liveActivityId == nil)
     #expect(!traces(rig).contains { $0.hasPrefix("live-activity: na wierzchu") })
+  }
+
+  @Test("arrival traces: foreground entry and every content carry device time, scene and ms since the entry")
+  func arrivalTraces() async throws {
+    let rig = rig()
+    await online(rig, [Frames.summary("s1", state: "running")])
+    await until("start") { rig.activities.requests.count == 1 }
+    // The shared budget is spent: arrival lines still go.
+    for index in 0..<ContractReporter.traceCap + 5 { rig.store.trace("ordinary \(index)") }
+    // Server epochs on the server's day, device time on the virtual clock: the line carries both as they are.
+    let first = Self.served(0, 1, 0, at: Self.t("10:00:00"))
+    rig.activities.push("la-1", first)
+    let before = "live-activity: content updatedEpoch \(first.updatedEpoch) at 2001-01-01T00:00:00.000Z, scene active,"
+      + " no return from the background yet"
+    await until("content before any return") { traces(rig).contains(before) }
+
+    rig.store.setScenePhase(.background)
+    rig.clock.advance(by: .seconds(60))
+    rig.activities.displayed["la-1"] = Self.shown(epoch: first.updatedEpoch)
+    rig.store.setScenePhase(.inactive)
+    await until("foreground line") {
+      traces(rig).contains(
+        "live-activity: foreground at 2001-01-01T00:01:00.000Z (scene inactive), tile updatedEpoch \(first.updatedEpoch)")
+    }
+    rig.clock.advance(by: .milliseconds(1500))
+    let chime = Self.served(0, 0, 1, at: Self.t("10:01:00"))
+    rig.activities.push("la-1", chime)
+    await until("content while inactive") {
+      traces(rig).contains(
+        "live-activity: content updatedEpoch \(chime.updatedEpoch) at 2001-01-01T00:01:01.500Z, scene inactive,"
+          + " 1500 ms after foreground")
+    }
+    // `inactive → active` is no new entry: the milliseconds still count from leaving the background.
+    rig.store.setScenePhase(.active)
+    rig.clock.advance(by: .milliseconds(700))
+    let next = Self.served(0, 1, 1, at: Self.t("10:01:02"))
+    rig.activities.push("la-1", next)
+    await until("content while active") {
+      traces(rig).contains(
+        "live-activity: content updatedEpoch \(next.updatedEpoch) at 2001-01-01T00:01:02.200Z, scene active,"
+          + " 2200 ms after foreground")
+    }
+    #expect(traces(rig).filter { $0.hasPrefix("live-activity: foreground") }.count == 1)
+    // Content of an activity other than this process's writes nothing.
+    rig.activities.running.append("stara")
+    rig.activities.push("stara", Self.served(0, 2, 2, at: Self.t("10:01:03")))
+    await settle()
+    #expect(traces(rig).filter { $0.hasPrefix("live-activity: content") }.count == 3)
+    #expect(!traces(rig).contains { $0.contains("la-1") || $0.contains("stara") })
+  }
+
+  @Test("foreground entry without a live activity of this process: the line says there is no tile")
+  func arrivalTraceWithoutTile() async throws {
+    let rig = rig()
+    await online(rig, [Frames.summary("s1", state: "waiting-input")])
+    rig.store.setScenePhase(.background)
+    rig.store.setScenePhase(.active)
+    await until("foreground line") {
+      traces(rig).contains("live-activity: foreground at 2001-01-01T00:00:00.000Z (scene active), no tile")
+    }
   }
 
   @Test("token aktywności → rejestracja z przyjętym tokenem urządzenia; rotacja → druga; ten sam — nic")

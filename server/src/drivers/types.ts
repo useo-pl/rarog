@@ -386,11 +386,12 @@ export type DriverEvent =
    */
   | { type: 'artifacts'; artifacts: readonly SessionArtifact[] }
   /**
-   * Pull requesty utworzone w bieżącej rozmowie (`docs/pull-requests.md`) — ładunek w kształcie
-   * protokołu. PUSTA lista jest pełnoprawnym zdarzeniem: „PR-ów nie ma” (`/clear`, pierwsza wypłata po
-   * podpięciu). Metadana karty jak artefakty: bez przejścia stanu, bez `seen` i bez pusha.
+   * Pull requests linked to the current conversation (`docs/pull-requests.md`), in the protocol shape: the linked set,
+   * newest first, at most 100, `createdAt` = the first link entry time. `windowStart` = time of the conversation's
+   * first entry; absent = not known. An EMPTY list is a full event: "no PRs" (`/clear`). Card metadata like artifacts:
+   * no state transition, `seen` or push.
    */
-  | { type: 'pull-requests'; pullRequests: readonly SessionPullRequest[] }
+  | { type: 'pull-requests'; pullRequests: readonly SessionPullRequest[]; windowStart?: string }
   /**
    * Scheduled tasks (crons) the conversation has armed now (`docs/scheduled-tasks.md`), in the protocol shape. An
    * EMPTY list is a full event: the first payout after the attach and after `/clear` goes out also empty, because a

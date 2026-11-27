@@ -1093,7 +1093,7 @@ describe('merge.ts: własne komendy subagenta jadą w `ownTasks`', () => {
     noteTasks(h.state, h.deps, { tasks: [agentTask(STANDBY)], since: SINCE });
     await h.settled();
     expect(h.lists.at(-1)).toEqual([{
-      ...agentTask(STANDBY),
+      ...agentTask(STANDBY), ownCommandWait: 'short',
       ownTasks: [
         { id: 'bjvzo6rnl', command: 'until grep -qE "TEST" log; do sleep 5; done', startedAt: after(-300_000) },
         { id: 'b00000002', command: 'until [ -f single2-summary.txt ]; do sleep 5; done', startedAt: after(-200_000) },

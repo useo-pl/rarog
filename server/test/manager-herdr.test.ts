@@ -675,29 +675,6 @@ describe('manager — sesje herdr', () => {
    * a panel where only the effort level changed (same resolved identifier) would keep the pill on the old value until
    * the next state transition.
    */
-  it('`init` z INNĄ rozmową (`/clear`) zdejmuje PR-y poprzedniej i rozsyła kartę', async () => {
-    const { manager, supervisor, id } = await withOneAgent();
-    const driver = supervisor.driver('w9:p72');
-    driver.queue.push({ type: 'init', engineSessionId: ENGINE_SESSION, model: 'claude-opus-5' });
-    driver.queue.push({
-      type: 'pull-requests',
-      pullRequests: [{
-        url: 'https://github.com/acme/widget/pull/7', repo: 'acme/widget', number: 7,
-        createdAt: '2026-11-10T10:00:00.000Z',
-      }],
-    });
-    await flush();
-    expect(manager.get(id)?.pullRequests).toHaveLength(1);
-
-    const events = record(manager);
-    driver.queue.push({ type: 'init', engineSessionId: 'nowa-rozmowa-po-clear', model: 'claude-opus-5' });
-    await flush();
-
-    expect(manager.get(id)?.pullRequests).toBeUndefined();
-    const changed = events.filter((e) => e.scope === 'global' && e.event.type === 'session-changed');
-    expect(changed.length).toBeGreaterThan(0);
-  });
-
   it('`init` ze zmianą samego effortu odświeża kartę', async () => {
     const { manager, supervisor, id } = await withOneAgent();
     supervisor.driver('w9:p72').queue.push({

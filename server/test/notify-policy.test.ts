@@ -103,6 +103,26 @@ describe('classify — co zasługuje na powiadomienie', () => {
   });
 
   /*
+   * A session working in a temporary directory is a helper of another agent (tests, measurements). Its end of
+   * turn is no news for the owner; a dialog or an error of such a session still stops work and still calls.
+   */
+  it('test session: "done" is silent and leaves no owed result; dialog and error unchanged', () => {
+    const test = (event: SmEvent, extra: Partial<ClassifyInput> = {}): NotifyClass | null =>
+      classify({ event, backgroundTasks: 0, testSession: true, ...extra });
+    expect(test({ type: 'agent-idle' })).toBeNull();
+    expect(test({ type: 'result', subtype: 'success' })).toBeNull();
+    expect(test({ type: 'agent-idle' }, { doneOwed: true })).toBeNull();
+    expect(test({ type: 'permission-requested' })).toBe('blocking');
+    expect(test({ type: 'question-requested' })).toBe('blocking');
+    expect(test({ type: 'agent-blocked' })).toBe('blocking');
+    expect(test({ type: 'result', subtype: 'error' })).toBe('failure');
+    expect(test({ type: 'limit-reached' })).toBe('failure');
+    expect(leavesResult({ event: { type: 'agent-idle' }, backgroundTasks: 0, testSession: true })).toBe(false);
+    expect(leavesResult({ event: { type: 'result', subtype: 'success' }, backgroundTasks: 0, testSession: true }))
+      .toBe(false);
+  });
+
+  /*
    * A subagent stops because it waits for its own command, the CLI reports this to the main agent
    * (fixture `incydent-gotowe-po-postoju-2.1.301`), which writes "still waiting" and ends the turn.
    * Nothing has finished, and one night can bring 27 such turns. A turn in which the only `user`

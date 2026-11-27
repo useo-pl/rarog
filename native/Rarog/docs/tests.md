@@ -197,7 +197,8 @@ xcodebuild ends with "No Accounts"), signed with `RAROG_IOS_SIGN=1`; `RAROG_IOS_
 **What the tests cover.** The test name says the area; the class's own doc comment says the scenario. The groups:
 
 - packages, `swift test`: logic of each package (reducers, outbox, transport, copy catalogs, markdown, models),
-  among them the background rule of a voice conversation under the locked-phone trial (`VoiceAgentWatchTests`) and
+  among them the rule that keeps a running recording in the background (`BackgroundRecordingTests` in RarogCore),
+  the background rule of a voice conversation (`VoiceAgentWatchTests`) and
   the locked-phone monitor's hold, heartbeat and lines on a manual clock (`LockedPhoneMonitorTests`, with the store's
   question to the server in `StoreLockedPhoneTests`), what the app's microphone reports for the voice Live Activity:
   a conversation's phase from its status and a waiting prompt, and the session it names by project and name, never
@@ -231,8 +232,9 @@ xcodebuild ends with "No Accounts"), signed with `RAROG_IOS_SIGN=1`; `RAROG_IOS_
   `VoiceActivityController` and others) with the fake tunnel from `RarogTransportTesting` (`TunnelCoordinatorTests`,
   `RelayGatesTests`, `SettingsSheetServerTests`) or a fake of ActivityKit and a real microphone center with
   recording places of the test's own (`VoiceActivityControllerTests`: the voice Live Activity's start, update and
-  end, an update on a new phase or subject that keeps the timer, another kind that starts it anew, the trial
-  switch, leftovers at launch, a refused request, the End button's handler and its lines);
+  end, an update on a new phase or subject that keeps the timer, another kind that starts it anew, whether the
+  background rule counts the tile as shown (granted, refused, removed), leftovers at launch, a refused request, the
+  End button's handler and its lines);
 - `RarogUITests` (XCUITest against the demo): `FlowUITests` (pair, list, transcript, send, decision cards),
   `CardsUITests`, `HeaderUITests` (status line, git, the diff window, the model pill), `ProjectsUITests`,
   `ProjectTreeUITests`, `QuestionUITests`, `MarkdownUITests`, `AttachmentUITests`, `VoiceUITests`,

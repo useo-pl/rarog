@@ -201,6 +201,28 @@ struct ProjectSelectorTests {
     #expect(groups["r"]?.tone == .unread)
   }
 
+  /// Catches a project that hides a long wait behind a plain one: with equal urgency the group's tone would be that of
+  /// whichever session comes first.
+  @Test("group tone: a long wait beats a plain wait in either session order; work beats a long wait")
+  func backgroundWaitLongGroupTone() throws {
+    let monitor = #","seen":true,"backgroundTasks":[{"id":"m","kind":"monitor","description":"log"}]"#
+    let long = #","seen":true"# + backgroundTasks(
+      agentTask("a", waitingSince: "2026-10-03T07:00:00.000Z", ownTask: "until false; do sleep 30; done", wait: "long"))
+    let (older, younger) = ("2026-10-03T07:00:00.000Z", "2026-10-03T09:00:00.000Z")
+    let state = try state([
+      summary("plain-first", project: "p", created: older, extra: monitor),
+      summary("long-second", project: "p", created: younger, extra: long),
+      summary("long-first", project: "q", created: older, extra: long),
+      summary("plain-second", project: "q", created: younger, extra: monitor),
+      summary("long", project: "r", created: older, extra: long),
+      summary("run", project: "r", state: "running", created: younger),
+    ])
+    let groups = Dictionary(uniqueKeysWithValues: state.projectGroups().map { ($0.name, $0) })
+    #expect(groups["p"]?.tone == .backgroundWaitLong)
+    #expect(groups["q"]?.tone == .backgroundWaitLong)
+    #expect(groups["r"]?.tone == .working)
+  }
+
   @Test("zakładki od najstarszej; cel: zapamiętana żywa → ostatnio aktywna → ekran projektu")
   func tabsAndTarget() throws {
     let state = try state([

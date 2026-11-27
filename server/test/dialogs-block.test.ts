@@ -370,6 +370,7 @@ describe('strażnik tabelaryczny bloku dialogu (test 8)', () => {
     'dialog-session-paused-2.1.309.txt': ['confirm', null, form],
     // Dialog zaufania bez numerów opcji: parser go nie czyta, więc nie dostaje przycisków wysyłających cyfry.
     'dialog-trust-2.1.293.txt': null,
+    'dialog-trust-preapproved-2.1.332.txt': null,
     'dialog-trust.txt': ['other', null, known('trust')],
     'ekran-login-2.1.293.txt': null,
     'footer-auto-tacka.txt': null,

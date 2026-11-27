@@ -56,7 +56,7 @@ struct SheetKeyboardAnchor: UIViewRepresentable {
         // responder it keeps, not itself: it leaves the window, and the keyboard would stay with nobody once the
         // sheet closes.
         // An anchor coming back into the window (a pop) keeps the responder it remembered while that one is still on
-        // screen: whoever held the keyboard meanwhile (the shortcut recorder of the page it pops from) leaves with
+        // screen: whoever held the keyboard meanwhile (a shortcut row listening on the page it pops from) leaves with
         // that page.
         if let anchor = before as? AnchorView {
           self.previous = anchor.previous ?? self.previous

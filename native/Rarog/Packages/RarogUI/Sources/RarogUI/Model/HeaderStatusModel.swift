@@ -196,6 +196,12 @@ public struct BackgroundTaskRow: Sendable, Equatable, Identifiable {
   /// Nazwa inna niż pole kontraktu celowo: słowo `waitingSince` poza plikiem reguł łapie strażnik źródeł,
   /// a jedyny dozwolony odczyt pola to zdanie w `init`, które bierze z niego chwilę do licznika.
   public let standbySince: Date?
+  /// A wait on its own command that has grown long (`BackgroundWaitWarning`): the warning line takes the place of the
+  /// state line. Set by `BackgroundPanel.lines`, which knows the session state and the own commands; `nil` = as before.
+  public internal(set) var warning: BackgroundWaitWarning?
+  /// The message of the Check button under the row, from the same stage as `warning` (`WaitCheckMessage`); whether the
+  /// button stands and what it shows, the store answers. Set by `BackgroundPanel.lines`; `nil` = no Check.
+  public internal(set) var check: WaitCheckMessage?
 
   public init(_ task: BackgroundTask, choices: [ModelChoice] = []) {
     id = task.id
@@ -255,7 +261,7 @@ public struct BackgroundTaskRow: Sendable, Equatable, Identifiable {
     let what = text.isEmpty ? kind : UICopy.taskNamed(kind: kind, name: text)
     var parts: [String]
     if waiting {
-      parts = [what, UICopy.agentWaitingSpoken(since: standbySince, now: now)]
+      parts = [what, warning?.spoken(now: now) ?? UICopy.agentWaitingSpoken(since: standbySince, now: now)]
     } else {
       parts = [UICopy.backgroundTaskWorking(what)]
       if let startedAt { parts.append(UICopy.sinceSpoken(RelativeTime.spokenSince(since: startedAt, now: now))) }
@@ -267,13 +273,19 @@ public struct BackgroundTaskRow: Sendable, Equatable, Identifiable {
 
   /// Zdanie dla czytnika: ile i co — bez czasu (w zdaniu nie tyka). Subagent w postoju mówi swój stan
   /// („subagent Research czeka na własne zadanie"): liczba obejmuje wszystkie zadania, więc zdanie nie może
-  /// udawać, że wszystkie pracują.
-  public static func spoken(_ tasks: [BackgroundTask]) -> String {
+  /// udawać, że wszystkie pracują. With the session state a long wait says so ("has been waiting a long time",
+  /// "is stuck on a command"), as the pill's warning mark shows it.
+  public static func spoken(_ tasks: [BackgroundTask], in state: SessionState? = nil) -> String {
     UICopy.backgroundSpoken(tasks.map { task in
       let text = ActivityText.taskText(task)
       let kind = UICopy.backgroundKind(task.kind)
       let what = text.isEmpty ? kind : UICopy.taskNamed(kind: kind, name: text)
-      return BackgroundTaskRules.waitingAgent(task) ? UICopy.backgroundTaskWaiting(what) : what
+      guard BackgroundTaskRules.waitingAgent(task) else { return what }
+      switch state.flatMap({ BackgroundWaitWarning.tone(BackgroundTaskRules.ownCommandWait(of: task, in: $0)) }) {
+      case .waiting?: return UICopy.backgroundTaskStuck(what)
+      case .backgroundWaitLong?: return UICopy.backgroundTaskWaitingLong(what)
+      default: return UICopy.backgroundTaskWaiting(what)
+      }
     })
   }
 }
@@ -287,6 +299,9 @@ public struct BackgroundBadge: Sendable, Equatable {
   public let text: String
   /// Znak pracy: na liście jest zadanie, które nie jest subagentem w postoju.
   public let working: Bool
+  /// The warning mark of the strongest wait on the list (`.backgroundWaitLong` at `long`, `.waiting` at `stuck`), also
+  /// during a turn; `nil` = no subagent waits long, or the session ended and its agent is a phantom.
+  public let warning: StatusTone?
   /// Zdanie dla czytnika: ile i co.
   public let spoken: String
 
@@ -296,7 +311,9 @@ public struct BackgroundBadge: Sendable, Equatable {
     let tasks = session.backgroundTasks ?? []
     text = UICopy.backgroundBadge(tasks.count)
     working = BackgroundTaskRules.tasksKeepRowWorking(session.backgroundTasks)
-    spoken = BackgroundTaskRow.spoken(tasks)
+    warning = BackgroundWaitWarning.tone(
+      BackgroundTaskRules.strongestOwnCommandWait(session.state, session.backgroundTasks))
+    spoken = BackgroundTaskRow.spoken(tasks, in: session.state)
   }
 }
 
@@ -391,14 +408,27 @@ public enum BackgroundPanelLine: Sendable, Equatable, Identifiable {
 /// pod jego wierszem. Płaska lista ze stałymi tożsamościami trzyma kotwicę przewinięcia na widocznym
 /// wierszu, gdy rozkład rośnie.
 public enum BackgroundPanel {
+  /// `state` = the session's state: with it a subagent that waits long gets its warning line
+  /// (`BackgroundTaskRow.warning`) and its Check message (`BackgroundTaskRow.check`); a session that ended has a
+  /// phantom agent and neither.
   public static func lines(
-    _ tasks: [BackgroundTask], choices: [ModelChoice] = [], expansion: WorkflowExpansion
+    _ tasks: [BackgroundTask], in state: SessionState? = nil, choices: [ModelChoice] = [],
+    expansion: WorkflowExpansion
   ) -> [BackgroundPanelLine] {
     var out: [BackgroundPanelLine] = []
     for task in tasks {
-      let row = BackgroundTaskRow(task, choices: choices)
+      var row = BackgroundTaskRow(task, choices: choices)
+      let own = ownLines(task, awaited: row.waiting)
+      if let state, row.waiting {
+        let commands = own.compactMap { line -> OwnTaskRow? in if case let .ownTask(command) = line { command } else { nil } }
+        let stage = BackgroundTaskRules.ownCommandWait(of: task, in: state)
+        row.warning = BackgroundWaitWarning(stage, since: row.standbySince, own: commands)
+        row.check = WaitCheckMessage(
+          key: BackgroundTaskRules.waitKey(task), stage: stage, agent: task.id, description: task.description,
+          since: row.standbySince, own: commands)
+      }
       out.append(.task(row))
-      out += ownLines(task, awaited: row.waiting)
+      out += own
       guard let section = section(task) else { continue }
       out += section.lines(expansion).map(BackgroundPanelLine.workflow)
     }

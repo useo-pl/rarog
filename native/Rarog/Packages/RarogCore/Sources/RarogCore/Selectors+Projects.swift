@@ -46,14 +46,16 @@ public struct ProjectGroup: Sendable, Equatable, Identifiable {
 
   /// Ranga tonu: błąd, czeka, nieodebrany wynik, praca, czekanie na zadanie w tle, cisza (`GROUP_TONE_RANK` z PWA;
   /// czekanie na zadanie w tle między pracą a ciszą).
+  /// A long wait on a background task stands just before a plain one: in a project that has both, the warning shows.
   static func urgency(_ tone: StatusTone) -> Int {
     switch tone {
     case .failed: 0
     case .waiting: 1
     case .unread: 2
     case .working: 3
-    case .backgroundWait: 4
-    case .quiet: 5
+    case .backgroundWaitLong: 4
+    case .backgroundWait: 5
+    case .quiet: 6
     }
   }
 }

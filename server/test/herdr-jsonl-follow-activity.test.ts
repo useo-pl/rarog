@@ -234,6 +234,17 @@ describe('a `tool_result` on the tail', () => {
       .toEqual([{ type: 'activity', kind: 'thinking' }]);
   });
 
+  it('a `tool_use` and a PR link entry in one batch: the activity still goes out, with the read signal', async () => {
+    const { follower, events } = await attached(userText('go'));
+    const before = events.length;
+    const link = line({
+      type: 'pr-link', prNumber: 42, prUrl: 'https://github.com/example/atlas/pull/42', prRepository: 'example/atlas',
+    });
+    expect(await activitiesAfter(follower, events, toolUse('toolu_a', 'Bash', BASH_A) + link, 1))
+      .toEqual([{ type: 'activity', ...toolA }]);
+    expect(events.slice(before).filter((e) => e.type === 'pull-request-entry')).toHaveLength(1);
+  });
+
   it('the result of an unknown id: no event, the open call stays on the row', async () => {
     const { follower, events } = await attached(userText('go'));
     await nextActivity(events, toolUse('toolu_a', 'Bash', BASH_A));

@@ -28,6 +28,7 @@ public enum ActivitySystemEvent: Sendable, Equatable {
   /// Nowa treść aktywności z `contentUpdates`, stan i `staleDate` (push serwera; czy także zapis samej apki, nie
   /// wiadomo). Rdzeń liczy z niej zapisy cofnięte do `client.log` i pamięta push, który przyszedł w trakcie zapisu
   /// z apki (zapis naprawczy w `RarogStore+LiveActivity`) — zapisu liczników nie budzi.
+  /// Each one also goes to `client.log` with its arrival time (`RarogStore+LiveActivityTrace`).
   case content(activityId: String, LiveActivityContent)
 }
 

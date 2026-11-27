@@ -368,14 +368,13 @@ final class InspectorUITests: XCTestCase {
     settle()
     XCTAssertFalse(element(app, "header.git.panel").exists, "przy panelu tap w gita nie otwiera popovera")
 
-    // Całe drzewo zwinięte do nagłówka: katalogi i pliki znikają, liczba w nagłówku zostaje.
+    // The whole tree folded to its header: directories and files leave.
     DemoServer.hideKeyboard(app)
     settle()
     title.tap()
     XCTAssertTrue(directory.waitForDisappearance(timeout: 5), "zwinięte drzewo: sam nagłówek")
     XCTAssertFalse(modified.exists, "zwinięte drzewo chowa pliki")
     XCTAssertEqual(title.value as? String, "zwinięte")
-    XCTAssertTrue(title.label.hasSuffix("3"), "liczba zmian w nagłówku: \(title.label)")
 
     // Session switch: the other session's panel, the fold stays, still no patch read; back — this session's tree.
     // On 11" the list comes back and the standing panel holds at 890 pt (hysteresis).

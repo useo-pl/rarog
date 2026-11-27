@@ -172,6 +172,67 @@ struct BackgroundTaskRulesTests {
     #expect(!BackgroundTaskRules.onlyWaitingAgents([]) && !BackgroundTaskRules.onlyWaitingAgents(nil))
   }
 
+  @Test("Live Activity counter of a stuck wait: only after a turn, only at `stuck`, read from the field")
+  func stuckWait() throws {
+    func agent(_ wait: String?) -> String {
+      agentTask("a", waitingSince: "2026-11-20T10:00:00.000Z", ownTask: "until false; do sleep 30; done", wait: wait)
+    }
+    let stuck = try Self.decode([agent("stuck")])
+    #expect(BackgroundTaskRules.stuckWait(.waitingInput, stuck))
+    let mixed = try Self.decode([Self.plain("command"), Self.plain("monitor"), agent("stuck")])
+    #expect(BackgroundTaskRules.stuckWait(.waitingInput, mixed))
+    for other in [agent("long"), agent("short"), agent(nil)] {
+      #expect(!BackgroundTaskRules.stuckWait(.waitingInput, try Self.decode([other])), "\(other)")
+    }
+    #expect(!BackgroundTaskRules.stuckWait(.waitingInput, nil))
+    let states: [SessionState] = [
+      .running, .starting, .waitingPermission, .waitingQuestion, .error, .limitReached, .interrupted, .done,
+      .resumable, .unsupported,
+    ]
+    for state in states {
+      #expect(!BackgroundTaskRules.stuckWait(state, stuck), "\(state)")
+    }
+  }
+
+  // Catches a phantom agent (`done`, `resumable`) giving a wait stage, the strongest stage picked by the raw string
+  // order, and a key that changes while the stage grows or stays the same after a new standby.
+  @Test("one wait: its stage as the session rules see it, the strongest stage of a list, and its key")
+  func ownCommandWaitStage() throws {
+    func agent(_ id: String, since: String = "2026-11-20T10:00:00.000Z", _ wait: String?) -> String {
+      agentTask(id, waitingSince: since, ownTask: "until false; do sleep 30; done", wait: wait)
+    }
+    let stuck = try #require(Self.decode([agent("a", "stuck")])?.first)
+    let live: [SessionState] = [
+      .waitingInput, .running, .starting, .waitingPermission, .waitingQuestion, .error, .limitReached, .interrupted,
+    ]
+    for state in live {
+      #expect(BackgroundTaskRules.ownCommandWait(of: stuck, in: state) == .stuck, "\(state)")
+    }
+    for state in [SessionState.done, .resumable] {
+      #expect(BackgroundTaskRules.ownCommandWait(of: stuck, in: state) == nil, "\(state): phantom agent")
+      #expect(BackgroundTaskRules.strongestOwnCommandWait(state, [stuck]) == nil, "\(state): phantom agent")
+    }
+    let lists: [(tasks: [String], strongest: OwnCommandWait?)] = [
+      ([agent("a", "short"), agent("b", "stuck"), agent("c", "long")], .stuck),
+      ([agent("a", "long"), agent("b", "short")], .long),
+      ([agent("a", "short"), Self.plain("command")], .short),
+      ([agent("a", nil), Self.plain("monitor")], nil),
+    ]
+    for list in lists {
+      #expect(BackgroundTaskRules.strongestOwnCommandWait(.waitingInput, try Self.decode(list.tasks)) == list.strongest)
+    }
+    #expect(BackgroundTaskRules.strongestOwnCommandWait(.waitingInput, nil) == nil)
+    // The key: the same wait keeps it while the stage grows; a new standby of the same agent gets a new one.
+    func key(_ task: String) throws -> String? { BackgroundTaskRules.waitKey(try #require(Self.decode([task])?.first)) }
+    let short = try key(agent("a", "short"))
+    let grown = try key(agent("a", "stuck"))
+    #expect(short != nil && short == grown, "the same wait keeps its key")
+    #expect(try key(agent("a", since: "2026-11-20T11:00:00.000Z", "short")) != short, "new standby, new key")
+    #expect(try key(agent("b", "short")) != short, "another agent, another key")
+    #expect(try key(agent("a", nil)) == nil, "no stage, no wait")
+    #expect(try key(agentTask("a", wait: "short")) == nil, "not in standby, no wait")
+  }
+
   @Test("reguły są uporządkowane: otwarty workflow ⇒ praca kafla ⇒ wiersz listy przy pracy; odwrotnie nie")
   func ordering() throws {
     var differs = (rowOnly: false, workOnly: false)

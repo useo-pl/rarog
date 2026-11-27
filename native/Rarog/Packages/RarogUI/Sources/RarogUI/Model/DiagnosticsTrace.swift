@@ -3,6 +3,7 @@ import RarogCore
 
 // Linie śladów diagnostycznych — same fakty (stan pola, klawiatura, wynik, czas), bez treści rozmowy.
 // Właściciel: łączność. Wysyła `RarogStore.trace(_:)`, budżet 20/h.
+// The return line (`resume`) goes under `TraceBudget.foreground`, apart from the shared 20.
 
 /// Skąd przyszło przerwanie: przycisk Stop albo Esc z klawiatury sprzętowej.
 public enum InterruptTrigger: Sendable, Equatable {

@@ -206,9 +206,6 @@ const ART_NOTICES: string[] = ARTIFACTS.files.flatMap((name) => linesOf(name, AR
 const P = CLI_SHAPES.artifactPublish.literals;
 const W = CLI_SHAPES.artifactWatch.literals;
 const watchEvents = ART_NOTICES.map((notice) => tag(notice, W.event));
-const outputFiles = CARRIED
-  .map((item) => ({ path: tag(item.text, N.outputFile), id: tag(item.text, N.taskId) }))
-  .filter(({ path }) => path !== '');
 
 /*
  * Scheduled tasks: calls paired with their results inside each file, run lines and carry attachments — the places
@@ -245,12 +242,7 @@ const carriedTasks = (key: string): Json[] => CRON_CARRIES.flatMap((carry) =>
 const MEASURED: Record<string, () => boolean> = {
   'notification.open': () => CARRIED.length > 0,
   'notification.taskId': () => CARRIED.every((item) => tag(item.text, N.taskId) !== ''),
-  'notification.toolUseId': () => CARRIED.some((item) => tag(item.text, N.toolUseId) !== ''),
-  'notification.outputFile': () => outputFiles.length > 0,
   'notification.status': () => statuses.some((status) => status !== ''),
-  // The output file the notification names: `…/<session uuid>/tasks/<task id>.output`.
-  'notification.outputDir': () => outputFiles.some(({ path }) => path.split('/').at(-2) === N.outputDir),
-  'notification.outputExtension': () => outputFiles.some(({ path, id }) => path.endsWith(`/${id}${N.outputExtension}`)),
   'notification.summary': () => summaries.some((summary) => summary !== ''),
   'notificationCarriers.queueType': () => carrier(C.queueType, C.queueText),
   'notificationCarriers.queueText': () => carrier(C.queueType, C.queueText),
@@ -380,6 +372,10 @@ const OUTSIDE: Record<string, string> = {
   'taskOutput.task': 'jak wyżej',
   'taskOutput.taskId': 'jak wyżej',
   'taskOutput.status': 'jak wyżej',
+  'prLink.type': 'no conversation with a PR in the Rarog workspace',
+  'prLink.url': 'as above',
+  'prLink.number': 'as above',
+  'prLink.repository': 'as above',
 };
 
 /**
@@ -395,7 +391,7 @@ const NO_SAMPLE: Record<string, string> = {
 /** Testy z próbkami wpisów CLI pisanymi w kodzie — jedyne pokrycie literałów spoza pomiaru. */
 const SAMPLES = [
   'herdr-jsonl-tasks.test.ts', 'harness-notices.test.ts', 'herdr-jsonl-follow.test.ts',
-  'herdr-agent-file.test.ts', 'herdr-agent-file-stop-hook.test.ts',
+  'herdr-agent-file.test.ts', 'herdr-agent-file-stop-hook.test.ts', 'herdr-pull-requests.test.ts',
 ]
   .map((name) => readFileSync(join(import.meta.dirname, name), 'utf8')).join('\n');
 

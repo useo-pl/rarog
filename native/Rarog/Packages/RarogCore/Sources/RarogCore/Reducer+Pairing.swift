@@ -66,6 +66,8 @@ extension AppState {
       unconfirmedOpenings = [:]
       sendProgress = [:]
       queuedIdleSince = [:]
+      // The Check guard follows the outbox: its entries are gone with it.
+      waitChecks = WaitCheckState()
       push.pendingTarget = nil
       push.pendingLink = nil
       pairing.newDevices = []

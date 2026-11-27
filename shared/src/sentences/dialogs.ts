@@ -100,6 +100,18 @@ export const DIALOGS_SENTENCES = {
   'dialogs.stale-decision': {
     en: "⚠ The answer didn't go through: the dialog in the terminal changed in the meantime. Tap again on the new card. Rarog sent no key.",
   },
+  'dialogs.start-dialog.imports': {
+    en:
+      'Claude Code asks in the terminal whether to allow external imports in the instruction files of this project. ' +
+      'Answer it in the terminal: Claude Code keeps the answer for this project for good. Rarog sends no key to it.',
+  },
+  'dialogs.start-dialog.refused': {
+    en: '⚠ A Claude Code start dialog stands in the terminal. Rarog sent no key and no text. Answer it in the terminal.',
+  },
+  'dialogs.start-dialog.unknown': {
+    en:
+      "Claude Code stands on a start dialog Rarog doesn't know. Answer it in the terminal; Rarog sends no key to it.",
+  },
   'dialogs.submit-abort.not-a-form': { en: 'the screen no longer shows a question form' },
   'dialogs.submit-abort.notes-editing': {
     en: 'the form is in note-editing mode (the digit may have been typed as text; check the field)',

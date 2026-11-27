@@ -403,10 +403,13 @@ public struct BackgroundTask: Sendable, Equatable, Codable {
   public var waitingSince: String?
   /// Otwarte własne komendy subagenta w tle (puścił je on, nie główny agent). Tylko rodzaj `agent`.
   public var ownTasks: [AgentOwnTask]?
+  /// How long the subagent has waited on its own command, by the server clock. Present only with `waitingSince` and
+  /// a non-empty `ownTasks`; the app reads the stage from here and never derives it.
+  public var ownCommandWait: OwnCommandWait?
 
   enum CodingKeys: String, CodingKey {
     case id, kind, description, command, agentType, model, summary, startedAt, runId, run
-    case waitingSince, ownTasks
+    case waitingSince, ownTasks, ownCommandWait
   }
 
   public init(from decoder: any Decoder) throws {
@@ -423,6 +426,7 @@ public struct BackgroundTask: Sendable, Equatable, Codable {
     run = try c.optional(.run)
     waitingSince = try c.optional(.waitingSince)
     ownTasks = try c.optional(.ownTasks)
+    ownCommandWait = try c.lenientOptional(.ownCommandWait, degrade: .backgroundTasksOwnCommandWait)
   }
 }
 
@@ -486,17 +490,18 @@ public struct SessionArtifact: Sendable, Equatable, Codable {
   }
 }
 
-/// Pull request utworzony w bieżącej rozmowie sesji: `gh pr create` agenta głównego, subagenta albo agenta
-/// workflow. Adres to na drucie zawsze `https://github.com/<owner>/<repo>/pull/<numer>`; apka sprawdza go przed
-/// otwarciem sama, a dekoder sprawdza tylko typy, żeby jeden zły adres nie zabrał całej listy sesji.
+/// Pull request bieżącej rozmowy sesji: Claude Code powiązał go wpisem `pr-link`, autorem jest login `gh`,
+/// a powstał po pierwszym wpisie rozmowy. Adres to na drucie zawsze `https://github.com/<owner>/<repo>/pull/<numer>`;
+/// apka sprawdza go przed otwarciem sama, a dekoder sprawdza tylko typy, żeby jeden zły adres nie zabrał całej
+/// listy sesji.
 public struct SessionPullRequest: Sendable, Equatable, Codable {
   public var url: String
   /// `<owner>/<repo>` z adresu.
   public var repo: String
   public var number: Int
-  /// Chwila utworzenia (ISO).
+  /// Chwila pierwszego wpisu `pr-link` tego PR-a (ISO).
   public var createdAt: String
-  /// Tytuł z `--title` polecenia (czysty, przycięty na serwerze); brak = polecenie go nie podało dosłownie.
+  /// Tytuł z GitHuba (czysty, przycięty na serwerze); brak = GitHub go (jeszcze) nie podał.
   public var title: String?
   /// PR state on GitHub; `nil` = unknown (not read, switched off, or a state this app does not know).
   public var state: PullRequestState?

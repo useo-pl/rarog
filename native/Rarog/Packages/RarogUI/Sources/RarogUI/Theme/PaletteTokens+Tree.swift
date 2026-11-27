@@ -10,7 +10,9 @@ extension PaletteTokens {
   public static let treeHeaderMeta = muted2
   /// The agent count in brackets after the name, "(10)", dimmed relative to the project
   /// name: text, so ≥ 4.5:1 on the column, on the sidebar and on the header's plates; quiet like the branch below.
-  public static let treeHeaderCount = muted2
+  /// The light value is a step darker than `muted2`: the first header's count stands in the fringe of the floating
+  /// filter glass's shadow, where `muted2` fell to 4.49:1 on the sidebar.
+  public static let treeHeaderCount = Pair(dark: muted2.dark, light: 0x66666E)
   /// Strzałka zwijania: grafika (≥ 3:1), cicha jak metadane.
   public static let treeChevron = muted2
   /// Prowadnica drzewa: kreska włoskowata od strzałki do ostatniego agenta projektu.

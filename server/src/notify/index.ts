@@ -161,6 +161,11 @@ export interface NoteInput {
    */
   readonly afterStart?: boolean;
   /**
+   * The session works in a temporary directory (`sessions/test-session.ts`): its "done" is silent and leaves no
+   * owed result; the rule is in `policy.ts` (`ClassifyInput.testSession`).
+   */
+  readonly testSession?: boolean;
+  /**
    * Rachunek tury od poprzedniego końca tury (liczy manager): wiadomości roli `user` i wywołania
    * narzędzi głównego agenta. Tura bez wyniku (sam postój subagenta albo sam meldunek o artefakcie
    * bez narzędzi) nie uzbraja „gotowe" — regułę trzyma `policy.ts` (`noResultTurn`).
@@ -347,6 +352,7 @@ export class Notifier implements NotifierLike {
       backgroundTasks: input.backgroundTasks,
       ...(input.afterHerdrRestore === true ? { afterHerdrRestore: true } : {}),
       ...(input.afterStart === true ? { afterStart: true } : {}),
+      ...(input.testSession === true ? { testSession: true } : {}),
       ...(input.turnInput === undefined ? {} : { turnInput: input.turnInput }),
       ...(input.waitingOnOwnCommand === true ? { waitingOnOwnCommand: true } : {}),
     };
@@ -375,6 +381,8 @@ export class Notifier implements NotifierLike {
         this.#log?.(`${PUSH_QUIET_LOG} ${input.project} (done, herdr restore)`);
       } else if (input.afterStart === true && kind === 'done') {
         this.#log?.(`${PUSH_QUIET_LOG} ${input.project} (done, session start)`);
+      } else if (input.testSession === true && kind === 'done') {
+        this.#log?.(`${PUSH_QUIET_LOG} ${input.project} (done, test session in a temporary directory)`);
       } else if (kind === 'done' && input.backgroundTasks === 0 && input.turnInput !== undefined
         && noResultTurn(input.turnInput)) {
         // A reason visible neither in the session state nor in the task list: the turn was triggered

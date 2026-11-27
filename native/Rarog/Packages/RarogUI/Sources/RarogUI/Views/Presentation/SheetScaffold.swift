@@ -100,6 +100,7 @@ struct FormSheet<Content: View>: View {
     }
     // Arkusz staje z korzenia sceny, gdzie odcienia szczegółu nie ma.
     .tint(Color(uiColor: Palette.text))
+    .toggleStyle(.appSwitch)
     .closesOnEscapeAndCommandW { if !locked { close.action() } }
     .interactiveDismissDisabled(locked)
     .presentationSizing(.form)
@@ -124,6 +125,7 @@ private struct WindowFrame: ViewModifier {
     content
       // Arkusz staje z korzenia sceny, gdzie odcienia szczegółu nie ma: bez tego przyciski paska byłyby błękitne.
       .tint(Color(uiColor: Palette.text))
+      .toggleStyle(.appSwitch)
       .overlay { WindowOutline() }
       .presentationSizing(
         WindowSizing(width: WindowLayout.sheetWidth(window: windowWidth, compact: sizeClass == .compact)))

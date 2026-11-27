@@ -34,8 +34,11 @@ extension SessionViewController {
     Task { @MainActor [weak self] in
       try? await Task.sleep(for: .milliseconds(300))
       guard let self, self.view.window != nil else { return }
-      self.store.trace(DiagnosticsTrace.resume(
-        awaySeconds: away, responder: self.keyboardResponder, hardwareKeyboard: GCKeyboard.coalesced != nil))
+      // Its own budget: navigation lines can spend the shared one within minutes and silence returns for the hour.
+      self.store.trace(
+        DiagnosticsTrace.resume(
+          awaySeconds: away, responder: self.keyboardResponder, hardwareKeyboard: GCKeyboard.coalesced != nil),
+        budget: .foreground)
     }
   }
 

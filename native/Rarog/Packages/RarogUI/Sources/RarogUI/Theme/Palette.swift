@@ -47,6 +47,8 @@ public enum Palette {
   static let strong = dynamic(PaletteTokens.strong)
   static let muted = dynamic(PaletteTokens.muted)
   static let muted2 = dynamic(PaletteTokens.muted2, high: PaletteTokens.muted2High)
+  /// Track of a switch that is on (`PaletteTokens.switchOn`), one value per theme.
+  static let switchOn = dynamic(PaletteTokens.switchOn)
   static let listHeaderInk = dynamic(PaletteTokens.listHeaderInk)
   /// Atrament wiersza bezczynnego — świadomie poniżej AA: bezczynny wiersz ma być mocno wygaszony.
   static let idleInk = dynamic(PaletteTokens.idleInk)
@@ -124,6 +126,7 @@ public enum Palette {
     case .unread: new
     case .quiet: done
     case .backgroundWait: runSmoked
+    case .backgroundWaitLong: wait
     }
   }
 

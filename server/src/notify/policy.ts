@@ -120,6 +120,12 @@ export interface ClassifyInput {
    */
   readonly afterStart?: boolean;
   /**
+   * A test session: its working directory lies in a temporary directory (`sessions/test-session.ts`), so another
+   * agent runs it for tests or measurements. Its "done" is silent and leaves no owed result; other classes are
+   * unchanged, because a dialog or an error of a helper session still stops work. Absent = no.
+   */
+  readonly testSession?: boolean;
+  /**
    * Co wywołało kończącą się turę. Nieobecne = nie wiadomo, czyli zwykłe zachowanie: wołający
    * nie liczy albo jego rachunek jest niepełny (podpięcie w trakcie tury, wiadomość, która mogła
    * jeszcze nie dojść z pliku). Liczy się WYŁĄCZNIE dla klasy „gotowe" — {@link noResultTurn}.
@@ -185,10 +191,11 @@ export function noResultTurn(turn: TurnInput | undefined): boolean {
  * Końcem zwykłej tury NIE jest: tura bez wyniku ({@link noResultTurn}: po samym postoju albo po
  * samym meldunku o artefakcie bez narzędzi), pierwsze `idle` karty odtworzonej po restarcie herdr
  * ani start sesji ({@link ClassifyInput.afterStart}) — w obu ostatnich żadna tura się nie skończyła.
+ * Nor is the end of a turn of a test session ({@link ClassifyInput.testSession}): nobody owes the owner its result.
  */
 export function leavesResult(input: ClassifyInput): boolean {
   if (kindOf(input.event) !== 'done') return false;
-  if (input.afterHerdrRestore === true || input.afterStart === true) return false;
+  if (input.afterHerdrRestore === true || input.afterStart === true || input.testSession === true) return false;
   return !noResultTurn(input.turnInput);
 }
 
@@ -287,9 +294,10 @@ export function classify(input: ClassifyInput): NotifyClass | null {
  *
  * Przed wszystkimi trzema: start sesji ({@link ClassifyInput.afterStart})
  * to cisza, także przy zaległym „gotowe” — sesja wstała, a żadna tura się nie skończyła.
+ * A test session ({@link ClassifyInput.testSession}) is silent too: its result is for the agent that started it.
  */
 function doneOrSilence(input: ClassifyInput): NotifyClass | null {
-  if (input.afterStart === true) return null;
+  if (input.afterStart === true || input.testSession === true) return null;
   if (input.backgroundTasks > 0) return null;
   if (noResultTurn(input.turnInput) && (input.doneOwed !== true || input.waitingOnOwnCommand === true)) {
     return null;

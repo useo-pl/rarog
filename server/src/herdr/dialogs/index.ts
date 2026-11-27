@@ -138,6 +138,8 @@
  * - `screen/confirm.ts`    — potwierdzenie ustawień CLI rozpoznane po kształcie (`confirmFrom`).
  * - `screen/resolve.ts`    — cross-check ekranu z jsonl i hookiem (`resolveOptions`).
  * - `screen/trust-arrow.ts` — dialog zaufania bez cyfr: pełny render, folder, `❯`, odcisk bloku.
+ * - `screen/start-dialog.ts` — start dialog herdr reads as ready: no prompt field, and the external imports dialog
+ *                           recognised from its option pair and key footer (`startDialogOf`).
  * - `screen/mode-footer.ts` — tryb uprawnień ze stopki ekranu (nie dialog: nadzorca, `mode-cycle.ts`).
  * - `screen/operation.ts`  — operacja dialogu zgody (ramka komendy).
  * - `screen/edit-frame.ts` — dowód wywołania `Edit` i `Write`: ścieżka z nagłówka i diff albo treść z ramki.
@@ -181,7 +183,8 @@
 export {
   FORM_SUBMIT_GONE_MESSAGE, MULTI_SELECT_MESSAGE, NOTE_NOT_ALLOWED_MESSAGE, NOTE_NO_CHANNEL_MESSAGE,
   NOTE_WRITE_FAILED_MESSAGE, NO_ANSWER_ON_SCREEN_MESSAGE, NO_DIGIT_MESSAGE, PAUSE_ESCAPE_MESSAGE,
-  SCREEN_CHANGED_MESSAGE, STALE_DECISION_MESSAGE, TERMINAL_DIALOG_MESSAGE, TERMINAL_ONLY_MESSAGE,
+  SCREEN_CHANGED_MESSAGE, STALE_DECISION_MESSAGE, START_DIALOG_IMPORTS_MESSAGE, START_DIALOG_REFUSED_MESSAGE,
+  START_DIALOG_UNKNOWN_MESSAGE, TERMINAL_DIALOG_MESSAGE, TERMINAL_ONLY_MESSAGE,
   formSubmitAbortMessage, hookAnswerPartialMessage, noteNotDeliveredMessage,
 } from './copy.ts';
 export {
@@ -227,6 +230,7 @@ export { dialogThreadOnScreen, parseOptions, subagentDialogOnScreen } from './sc
 export { blockVisible } from './screen/block-visible.ts';
 export { SANDBOX_NETWORK_TOOL } from './screen/kinds.ts';
 export { matchKnownDialog } from './screen/known.ts';
+export { startDialogOf } from './screen/start-dialog.ts';
 export { sameDialogIdentity } from './screen/identity.ts';
 export { SESSION_PAUSED_DIALOG, sessionPausedDialog } from './policy/pause.ts';
 export { TERMINAL_DIALOG_IDS } from './policy/terminal.ts';
@@ -246,6 +250,7 @@ export type { DecisionResolution, ExpectedDecision } from './screen/resolve.ts';
 export type { ScreenDialog } from './screen/parse.ts';
 export type { DialogIdentityStamp } from './screen/identity.ts';
 export type { KnownDialogId } from './screen/known.ts';
+export type { StartDialog, StartDialogId } from './screen/start-dialog.ts';
 export type { ScreenConsentDialogId } from './policy/consent.ts';
 export type { TerminalDialogId } from './policy/terminal.ts';
 export type { ScreenOption } from './screen/options.ts';

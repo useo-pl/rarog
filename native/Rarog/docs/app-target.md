@@ -56,15 +56,23 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   above zero are a `Link` to `rarog://jump/<kind>` (`jumpLink`, the `TallyLink` modifier; the app picks the first
   session of that kind from a fresh list, `AppState.firstSession`). No actions on this Live Activity.
 - **Voice Live Activity:** `VoiceActivityController` (`Rarog/VoiceActivityController.swift`, built in `RarogApp`
-  after the voice agent settings) shows the running voice conversation or message-field dictation under the
-  locked-phone trial, through `ActivityKitVoiceActivities` on `ActivityKit.Activity<VoiceActivityAttributes>`:
-  `request(…, pushType: nil)` with a relevance score of 100 (the board's content is built without one), `update` and
-  `end(nil, dismissalPolicy: .immediate)` by id off the main actor. `RarogApp` installs the handler of its End
-  button (`EndVoiceActivityIntent.handler`). `RarogAppIntents` (`Rarog/RarogAppIntents.swift`) and
-  `RarogWidgetIntents` (`RarogWidgets/RarogWidgetIntents.swift`) list the package's `RarogActivityIntents`
-  (`AppIntentsPackage`), so the intent is in the `Metadata.appintents` of the app and of the extension. The
-  `RarogWidgets` extension draws it with `RarogVoiceActivity`: the views from `RarogActivity` on translucent black
-  in the dark theme, like the board. Rules and lines: `docs/companion.md`, "Locked phone (trial)".
+  after the voice agent settings) shows the running voice conversation or message-field dictation, through
+  `ActivityKitVoiceActivities` on `ActivityKit.Activity<VoiceActivityAttributes>`: `request(…, pushType: nil)` with a
+  relevance score of 100 (the board's content is built without one), its `activityStateUpdates` followed until
+  `ended` or `dismissed` (the tile no longer counts for `BackgroundRecording`), `update`
+  with a stale date (a send from the tile) and `end` with the controller's last content and dismissal (`.immediate`,
+  or `.after` for a failed send) by id off the main actor. `RarogApp` installs the handlers of its buttons, End or
+  Stop (`EndVoiceActivityIntent.handler`) and Send (`SendDictationActivityIntent.handler`), both given the pressed
+  activity's id, and passes the scene phase to the controller. `RarogApp` also passes the scene phase and the screen
+  lock (`UIApplication.protectedDataWillBecomeUnavailableNotification`) to `BackgroundRecording`, whose device class
+  `AppEnvironment.voiceAgent` reads at launch (an iPad or the app on a Mac shows no tiles). The controller's
+  background work for a send comes from the store (`RarogStore.beginBackgroundWork(_:needsServer:expired:)`, the
+  adapter `UIKitBackgroundWork`).
+  `RarogAppIntents` (`Rarog/RarogAppIntents.swift`) and `RarogWidgetIntents` (`RarogWidgets/RarogWidgetIntents.swift`)
+  list the package's `RarogActivityIntents` (`AppIntentsPackage`), so the intents are in the `Metadata.appintents`
+  of the app and of the extension. The `RarogWidgets` extension draws it with `RarogVoiceActivity`: the views from
+  `RarogActivity` on translucent black in the dark theme, like the board, with `context.activityID` for the buttons
+  and `context.isStale` for the presentation. Rules and lines: `docs/companion.md`, "Locked phone".
 - **Live Activity layout:** `LiveActivityPresentation` composes the copy from state fields only (counters, usage,
   the Mac, project, run name, phase number and title; no content, tool, label or work time) and the machine word
   from the attributes (`LiveActivityPresentation(_:machine:)`, `context.attributes.machine` in the widget): the
@@ -155,7 +163,8 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   `docs/localization.md`) and About ("Version <v> · support, licenses"). Without a server the server row is muted and
   does not respond, and Pairing is hidden. The subtitles follow a new shortcut or engine as soon as a page saves it.
   A row pushes its page in the same sheet; Back is the system's chevron in a circle, without a title. Esc and Cmd+W
-  close the whole sheet from a page; on the shortcut recorder Esc goes back instead. The pages:
+  close the whole sheet from a page; while a shortcut row listens, Esc ends the listening instead and ⌘W is recorded
+  as a shortcut (`native/Rarog/docs/rarog-ui.md`, the "Changeable shortcuts" item). The pages:
   - **Server** (`SettingsServerPage`): Connection (the machine and its name, then the routes from `ServerRouteRows`:
     the address, and an "iroh" row with the first 8 characters of the EndpointId for a server reached over iroh;
     both rows with both routes), This Device (Name, Device ID, Paired, Access by device key), the relay registry
@@ -187,16 +196,16 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     pushes `LicensesView` with the `THIRD-PARTY-NOTICES` text shipped in the app.
 
   Settings open only after pairing, so before pairing only the three links are on screen. Every page carries its own
-  `SheetKeyboardAnchor`, so the sheet keeps the keyboard on a page and closing it gives the keyboard back to the
-  field under it, also after the shortcut recorder, whose capture view holds the keyboard instead of an anchor
-  (`native/Rarog/docs/file-layout.md`, the "Windows, popovers and forms" item). The page is navigation state
-  (`RarogNavigation.settingsPage`, `Model/SettingsPage.swift`): a tap on a `device-paired` push opens Settings on the
-  Pairing page and on a `version-changed` push on the Server page, also over open Settings and over the pairing card;
-  a pairing link opened by the system pops to the list, where its confirmation card stands at the top, and a new card
-  wins over a push request that arrived with it (`SettingsRoute`, `followSettingsRoute`). A page change while another
-  page stands goes in two steps, `nil`, a main queue turn, then the new page (`openSettings(page:)`), because
-  swapping the destination value does not pop a deeper page (the shortcut recorder, Licenses, the consent page).
-  Closing the sheet clears the page.
+  `SheetKeyboardAnchor`, so the sheet keeps the keyboard on a page and closing it gives the keyboard back to the field
+  under it, also after a listening shortcut row, whose capture view holds the keyboard for a while and gives it back
+  to the page's anchor (`native/Rarog/docs/file-layout.md`, the "Windows, popovers and forms" item). The page is
+  navigation state (`RarogNavigation.settingsPage`, `Model/SettingsPage.swift`): a tap on a `device-paired` push opens
+  Settings on the Pairing page and on a `version-changed` push on the Server page, also over open Settings and over
+  the pairing card; a pairing link opened by the system pops to the list, where its confirmation card stands at the
+  top, and a new card wins over a push request that arrived with it (`SettingsRoute`, `followSettingsRoute`). A page
+  change while another page stands goes in two steps, `nil`, a main queue turn, then the new page
+  (`openSettings(page:)`), because swapping the destination value does not pop a deeper page (Licenses, the consent
+  page). Closing the sheet clears the page.
 - **Pairing links:** the scan and the
   link field accept `rarog://pair#…` and `https://rarog.ai/pair#…` (another prefix is the `notALink` error).
   `onOpenURL` passes both to `PushRouting.link`: `rarog://pair…` and an `https` address with the host

@@ -194,6 +194,12 @@ describe('zestaw kontrolny: oczekiwany blok stoi na ekranie', () => {
   it.each(manifest.shapes.map((shape) => [shape.id, shape] as const))('%s', (_, shape) => {
     const lines = screenOf(shape.file).split('\n').map((line) => line.trimEnd());
     const title = lines.findLastIndex((line) => line.trim() === shape.block.title);
+    if (!shape.block.complete && title === -1) {
+      // The top of the block (rule and title) is above the pane edge: only the part under it stands on screen.
+      expect(shape.block.options, 'a cut block lists no digit options').toEqual([]);
+      expect(lines.some((line) => line.trim() === shape.block.footer), 'stopka').toBe(true);
+      return;
+    }
     expect(title, 'tytuł').toBeGreaterThan(0);
     const rule = lines.slice(0, title).findLastIndex((line) => BARE_RULE.test(line.trim())
       || STATUS_RULE.test(line.trim()));

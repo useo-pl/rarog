@@ -236,6 +236,7 @@ const DEGRADATION_PATHS: Record<keyof typeof DEGRADATIONS, RegExp> = {
   'activity.kind': at(`(?:${SUMMARY})?/activity/kind`),
   'waitingFor.kind': at(`${SUMMARY}/waitingFor/kind`),
   'backgroundTasks.kind': at(String.raw`${SUMMARY}/backgroundTasks/\d+/kind`),
+  'backgroundTasks.ownCommandWait': at(String.raw`${SUMMARY}/backgroundTasks/\d+/ownCommandWait`),
   'message.role': at(`${MESSAGE}/role`),
   'block.type': at(String.raw`${MESSAGE}/blocks/\d+/type`),
   'block.detailKind': at(String.raw`${MESSAGE}/blocks/\d+/detailKind`),

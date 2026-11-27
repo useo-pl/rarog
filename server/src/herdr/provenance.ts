@@ -16,13 +16,15 @@
  *    wykryciu agenta, przy jego wyjściu, przy ręcznym uruchomieniu kolejnego i przy zmianie
  *    silnika; znika wyłącznie po jawnym `pane.rename` z `null`.
  *
- * The provenance suffix is CLOSED (anchored at the end, lowercase hex, single spaces): a human in
- * herdr can label a pane too, and anything outside the patterns means "a foreign pane". In front
- * of the suffix the label carries a description, ` · ` apart: the pane's tab label, cut to 40
- * code points ({@link paneLabelDescription}), so herdr's Go-to window and the pane frame name the
- * pane like its tab. The suffix carries hashes, never a path; the description repeats what the
- * tab label already shows (the card title, a name given by hand, the directory name of a
- * terminal tab), so the label reveals nothing the herdr snapshot did not hold before.
+ * The provenance suffix is CLOSED (anchored at the end, `rt:` or `rc:` and a fixed number of
+ * base32 characters, `herdr/label-code.ts`): a human in herdr can label a pane too, and anything
+ * outside the patterns means "a foreign pane". In front of the suffix the label carries a
+ * description, ` · ` apart: the pane's tab label, cut to 40 code points
+ * ({@link paneLabelDescription}), so herdr's Go-to window and the pane frame name the pane like
+ * its tab. The suffix carries hashes, never a path; the description repeats what the tab label
+ * already shows (the card title, a name given by hand, the directory name of a terminal tab), so
+ * the label reveals nothing the herdr snapshot did not hold before. Every label is read through
+ * `legacyToCurrent` (`herdr/label-migration.ts`), so a label in the old format reads the same.
  *
  * Tu mieszka też etykieta TABA: czyszczenie wspólne dla Claude i terminala
  * ({@link sanitizeTabLabel} — to samo co karta, bez znaków sterujących) i format taba terminala
@@ -35,8 +37,12 @@ import { TERM_ID_RE } from '@rarog/shared';
 import type { TermRole } from '@rarog/shared';
 import { DIRECT_DISK, type WorkAreaDisk } from '../folder-gate/disk.ts';
 import { normalizeSessionLabel } from '../session-label.ts';
+import {
+  claudeLabelSuffix, joinLabel, keyCodeOf, readLabelSuffix, termLabelSuffix, type LabelSuffix,
+} from './label-code.ts';
+import { legacyToCurrent } from './label-migration.ts';
 
-/** Przedrostek nazw Raroga w herdr: nazwa agenta, etykiety paneli i etykieta taba terminala. */
+/** Prefix of Rarog names in herdr: the agent name and the terminal tab label. */
 export const HERDR_NAME_PREFIX = 'rarog';
 
 /** Nazwa agenta zakładanego przez Raroga. JEDNO źródło dla generatora i dla czytelnika. */
@@ -49,27 +55,37 @@ export function newRarogAgentName(): string {
 
 const PROJECT_KEY_RE = /^[0-9a-f]{16}$/;
 const LABEL_TRACE_RE = /^[0-9a-f]{8}$/;
-/*
- * Readers accept an optional leading description: `<description> · rarog-term <id>` and
- * `<description> · rarog-claude <key> <trace>`. The provenance suffix stays exact and anchored
- * at the end. The description is captured and checked in code (at least one non-whitespace
- * character), so a label made of a separator alone stays foreign; one greedy group keeps the
- * match linear on long labels.
- */
-const TERM_LABEL_RE = new RegExp(`^(?:(.+) · )?${HERDR_NAME_PREFIX}-term ([0-9a-f]{16})$`);
-const CLAUDE_LABEL_RE = new RegExp(
-  `^(?:(.+) · )?${HERDR_NAME_PREFIX}-claude ([0-9a-f]{16}) ([0-9a-f]{8})$`,
-);
 
-/** A captured description is valid when absent (bare format) or not blank. */
-function descriptionOk(description: string | undefined): boolean {
-  return description === undefined || /\S/u.test(description);
+/**
+ * Provenance as read from a label: the full terminal id, or the project key CODE (the label carries
+ * 35 bits of the key, readers only compare it with a directory) and the full tab label trace.
+ */
+type RawProvenance = LabelSuffix;
+
+declare const OPAQUE: unique symbol;
+
+/**
+ * Provenance read from a pane label. Only `kind` is visible outside this module; readers and
+ * writers go through the operations below, so the label format can change here alone.
+ */
+export type PaneProvenance =
+  | { readonly kind: 'term'; readonly [OPAQUE]: 'term' }
+  | { readonly kind: 'claude'; readonly [OPAQUE]: 'claude' };
+
+/** Provenance of a Claude pane label. */
+export type ClaudeProvenance = Extract<PaneProvenance, { kind: 'claude' }>;
+
+function opaque(raw: RawProvenance): PaneProvenance {
+  return raw as unknown as PaneProvenance;
 }
 
-/** Odczytana etykieta pochodzenia; `trace` ma wyłącznie etykieta panelu Claude. */
-export type PaneProvenance =
-  | { kind: 'term'; value: string }
-  | { kind: 'claude'; value: string; trace: string };
+function rawOf(provenance: PaneProvenance): RawProvenance {
+  return provenance as unknown as RawProvenance;
+}
+
+function claudeRawOf(provenance: ClaudeProvenance): Extract<RawProvenance, { kind: 'claude' }> {
+  return provenance as unknown as Extract<RawProvenance, { kind: 'claude' }>;
+}
 
 function sha256Hex(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
@@ -184,42 +200,91 @@ export function paneLabelDescription(tabLabel: string): string {
     .slice(0, PANE_LABEL_DESCRIPTION_MAX).join('').trim();
 }
 
-/** `<description> · <origin>`, or the bare origin when the description is empty. */
-function describedLabel(origin: string, tabLabel: string): string {
-  const description = paneLabelDescription(tabLabel);
-  return description === '' ? origin : `${description} · ${origin}`;
+/** `<description> · <suffix>`, or the bare suffix when the description is empty. */
+function describedLabel(suffix: string, tabLabel: string): string {
+  return joinLabel(paneLabelDescription(tabLabel), suffix);
+}
+
+/** Claude pane label from the project key CODE, so a rewrite keeps the key read from the label. */
+function claudeLabelFromCode(keyCode: string, trace: string, tabLabel: string): string {
+  if (!LABEL_TRACE_RE.test(trace)) throw new Error('Ślad etykiety taba spoza wzorca 8 hex.');
+  return describedLabel(claudeLabelSuffix(keyCode, trace), tabLabel);
 }
 
 /**
- * Claude pane label: `<description> · rarog-claude <project key> <tab label trace>`.
- * `tabLabel` is the pane's current tab label; omitted or blank = the bare format.
+ * Claude pane label: `<description> · rc:<project key code><tab label trace code>` for a 16-hex
+ * project key and an 8-hex trace. `tabLabel` is the pane's current tab label; omitted or blank =
+ * the bare format.
  */
 export function claudePaneLabel(key: string, trace: string, tabLabel = ''): string {
   if (!PROJECT_KEY_RE.test(key)) throw new Error('Klucz projektu spoza wzorca 16 hex.');
-  if (!LABEL_TRACE_RE.test(trace)) throw new Error('Ślad etykiety taba spoza wzorca 8 hex.');
-  return describedLabel(`rarog-claude ${key} ${trace}`, tabLabel);
+  return claudeLabelFromCode(keyCodeOf(key), trace, tabLabel);
 }
 
 /**
- * Terminal pane label: `<description> · rarog-term <terminal id>` (id shaped like `TERM_ID_RE`).
+ * Terminal pane label: `<description> · rt:<terminal id code>` (id shaped like `TERM_ID_RE`).
  * `tabLabel` is the terminal tab label (`terminalTabLabel`); omitted or blank = the bare format.
  */
 export function termPaneLabel(id: string, tabLabel = ''): string {
   if (!TERM_ID_RE.test(id)) throw new Error('Identyfikator terminala spoza wzorca 16 hex.');
-  return describedLabel(`rarog-term ${id}`, tabLabel);
+  return describedLabel(termLabelSuffix(id), tabLabel);
 }
 
 /**
  * Pane label from `pane.list` → provenance, or `null` for any label outside the patterns.
- * Reads both the bare format and the one with a leading description.
+ * Reads both the bare format and the one with a leading description, and an old-format label
+ * through `legacyToCurrent`.
  */
 export function parsePaneLabel(label: string | null | undefined): PaneProvenance | null {
   if (typeof label !== 'string') return null;
-  const term = TERM_LABEL_RE.exec(label);
-  if (term?.[2] !== undefined && descriptionOk(term[1])) return { kind: 'term', value: term[2] };
-  const claude = CLAUDE_LABEL_RE.exec(label);
-  if (claude?.[2] !== undefined && claude[3] !== undefined && descriptionOk(claude[1])) {
-    return { kind: 'claude', value: claude[2], trace: claude[3] };
-  }
-  return null;
+  const suffix = readLabelSuffix(legacyToCurrent(label));
+  return suffix === null ? null : opaque(suffix);
+}
+
+/** Full terminal id (`TERM_ID_RE` shape) of a terminal provenance; `null` for Claude or none. */
+export function provenanceTermId(provenance: PaneProvenance | null): string | null {
+  if (provenance === null) return null;
+  const raw = rawOf(provenance);
+  return raw.kind === 'term' ? raw.id : null;
+}
+
+/** Full terminal id from a pane label, or `null` (no label, a foreign one, a Claude pane). */
+export function paneLabelTermId(label: string | null | undefined): string | null {
+  return provenanceTermId(parsePaneLabel(label));
+}
+
+/**
+ * A Claude provenance whose project key code is the code of the key of `dir`, compared in the
+ * spelling given (the caller tries each candidate spelling); always `false` for a terminal
+ * provenance. 35 bits against the candidates of one path (about 60): a false match is about 2e-9.
+ */
+export function claudeKeyMatches(provenance: PaneProvenance, dir: string): boolean {
+  const raw = rawOf(provenance);
+  return raw.kind === 'claude' && raw.keyCode === keyCodeOf(projectKey(dir));
+}
+
+/** The trace in a Claude provenance is the trace of `tabLabel` ("Rarog set this tab label"). */
+export function claudeTraceMatches(provenance: ClaudeProvenance, tabLabel: string): boolean {
+  return claudeRawOf(provenance).trace === labelTrace(tabLabel);
+}
+
+/**
+ * Provenance for a Claude pane that has none yet: the key of `realCwd` (after
+ * {@link realProjectPath}) and the trace of the tab label Rarog has just set.
+ */
+export function newClaudeProvenance(realCwd: string, tabLabel: string): ClaudeProvenance {
+  const raw = { kind: 'claude', keyCode: keyCodeOf(projectKey(realCwd)), trace: labelTrace(tabLabel) } as const;
+  return raw as unknown as ClaudeProvenance;
+}
+
+/**
+ * Claude pane label rebuilt from a provenance: the description from `tabLabel`, the project key
+ * from the provenance as it was read (never hashed again from a path), and the trace either kept
+ * (`'keep'`) or taken from `tabLabel` (`'fresh'`, the tab label is Rarog's own).
+ */
+export function claudePaneLabelFrom(
+  provenance: ClaudeProvenance, tabLabel: string, trace: 'keep' | 'fresh',
+): string {
+  const raw = claudeRawOf(provenance);
+  return claudeLabelFromCode(raw.keyCode, trace === 'keep' ? raw.trace : labelTrace(tabLabel), tabLabel);
 }

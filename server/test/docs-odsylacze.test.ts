@@ -123,6 +123,8 @@ describe('rozwiązanie odsyłacza', () => {
     expect(FOREIGN_NAMES.has('SKILL.md')).toBe(true);
     expect(broken('server/src/x.ts', '// skills.md SKILL.md docs/prywatny.md .claude/skills/x/SKILL.md apps/w/a.md'))
       .toEqual([]);
+    // A user project's memory file named in a Claude Code dialog title: the export view has no file of that name.
+    expect(broken('docs/a.md', 'the start dialog "Allow external CLAUDE.md file imports?"')).toEqual([]);
     expect(broken('docs/a.md', 'code.claude.com/docs/en/commands.md [x](https://example.com/y.md) [s](#sekcja)'))
       .toEqual([]);
   });

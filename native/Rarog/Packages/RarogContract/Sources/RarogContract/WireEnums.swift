@@ -116,6 +116,13 @@ public enum BackgroundTaskKind: String, ContractEnum {
   public static var clientSentinel: BackgroundTaskKind? { .unsupported }
 }
 
+/// `OWN_COMMAND_WAITS` — how long a subagent in standby has waited on its own command (`BackgroundTask.ownCommandWait`),
+/// computed by the server. An unknown stage drops the field (`DegradationKey.backgroundTasksOwnCommandWait`), so the
+/// task reads as one without a known wait.
+public enum OwnCommandWait: String, ContractEnum {
+  case short, long, stuck
+}
+
 /// Rola wiadomości transkryptu. Nieznana rola → `system` (nie udaje ani człowieka, ani agenta).
 public enum MessageRole: String, ContractEnum {
   case user, assistant, system

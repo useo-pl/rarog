@@ -207,6 +207,42 @@ struct SessionRowTests {
     #expect(unread.status.tone == .unread, "nieodebrany wynik wygrywa")
   }
 
+  /// Catches the stuck word leaking onto `short` and `long` or onto a turn and a decision, and the voice agent hearing
+  /// a stuck session as a finished or seen result.
+  @Test("a subagent's wait on its own command: the state word and the voice agent's list state", arguments: [
+    (wait: "short", seen: false), (wait: "short", seen: true), (wait: "long", seen: false), (wait: "long", seen: true),
+    (wait: "stuck", seen: false), (wait: "stuck", seen: true),
+  ])
+  func ownCommandWait(_ sample: (wait: String, seen: Bool)) {
+    let agent = #""backgroundTasks":[{"id":"a","kind":"agent","waitingSince":"2026-10-03T08:00:00.000Z","#
+      + #""ownTasks":[{"id":"a-c","command":"sleep 9999"}],"ownCommandWait":"\#(sample.wait)"}]"#
+    let session = Sample.session(state: "waiting-input", extra: (sample.seen ? #""seen":true,"# : "") + agent)
+    let bare = Sample.session(state: "waiting-input", extra: sample.seen ? #""seen":true"# : "")
+    let stuck = sample.wait == "stuck"
+    #expect(RowStatus(session).text == (stuck ? UICopy.stuckOnCommand : RowStatus(bare).text))
+    let voice = VoiceAgentListState.of(session, in: AppState(clientBuild: 1))
+    #expect(voice == (stuck ? .other : VoiceAgentListState.of(bare, in: AppState(clientBuild: 1))))
+    // In a turn and at a decision the session keeps its own word.
+    for state in ["running", "waiting-permission", "error"] {
+      let other = Sample.session(state: state, extra: agent)
+      #expect(RowStatus(other).text == UICopy.stateLabel(other.state), "\(state)")
+    }
+  }
+
+  @Test("The reader hears the long wait on the row, in the list and in the session switcher", arguments: [true, false])
+  func longWaitSpoken(withProject: Bool) {
+    var state = AppState(clientBuild: 1)
+    for wait in ["short", "long"] {
+      let agent = #""seen":true,"backgroundTasks":[{"id":"a","kind":"agent","waitingSince":"2026-10-03T08:00:00.000Z","#
+        + #""ownTasks":[{"id":"a-c","command":"sleep 9999"}],"ownCommandWait":"\#(wait)"}]"#
+      state.sessions[wait] = Sample.session(id: wait, title: wait, label: nil, state: "waiting-input", extra: agent)
+    }
+    let rows = Dictionary(uniqueKeysWithValues: state.sessionRows.map { ($0.id, $0) })
+    let word = UICopy.toneSpoken(.backgroundWaitLong)
+    #expect(rows["long"]?.spoken(now: Sample.now, withProject: withProject).contains(word) == true)
+    #expect(rows["short"]?.spoken(now: Sample.now, withProject: withProject).contains(word) == false)
+  }
+
   @Test("Codex: sam stan z metką, tytuł z sufiksem #n przy duplikacie")
   func codexAndOrdinal() {
     var state = AppState(clientBuild: 1)

@@ -2,9 +2,9 @@
  * `rarog doctor`, the PR status line (`server/src/cli/doctor-pr-status.ts`): the four states against the fake `gh`
  * (`helpers/atrapa-gh.mjs`) found through a directory list of the test.
  *
- * - `RAROG_PR_STATUS=0` → info, no lookup, no process;
- * - no `gh` in the directories → warn with a fix;
- * - `gh auth status` with exit ≠ 0 → warn "not logged in";
+ * - `RAROG_PR_STATUS=0` → info that session cards show no PRs, no lookup, no process;
+ * - no `gh` in the directories → warn that session cards show no PRs, with a fix;
+ * - `gh auth status` with exit ≠ 0 → warn "not logged in", session cards show no PRs;
  * - exit 0 → ok with the program path;
  * - a `gh` that refuses a flag of the check (older than the flags) → warn "update gh", never "not logged in";
  * - demo and its review mode → info about the fixed state source, no lookup and no process.
@@ -58,7 +58,7 @@ describe('rarog doctor: PR status line', () => {
   it('`RAROG_PR_STATUS=0`: info, no lookup and no process', async () => {
     const s = stand(0);
     const line = await prStatusLine(env({ RAROG_PR_STATUS: '0' }), { directories: s.directories });
-    expect(line).toEqual({ verdict: 'info', text: 'PR status: off (RAROG_PR_STATUS=0)' });
+    expect(line).toEqual({ verdict: 'info', text: 'PR status: off (RAROG_PR_STATUS=0), so session cards show no PRs' });
     expect(s.calls()).toEqual([]);
   });
 
@@ -67,7 +67,7 @@ describe('rarog doctor: PR status line', () => {
     const line = await prStatusLine(env(), { directories: s.directories });
     expect(line).toEqual({
       verdict: 'warn',
-      text: `PR status: gh not found in ${s.directories.join(', ')}, so PRs show no state`,
+      text: `PR status: gh not found in ${s.directories.join(', ')}, so session cards show no PRs`,
       repair: 'install the GitHub CLI (gh) in one of these directories, run gh auth login --hostname github.com and'
         + ' restart the server, or set RAROG_PR_STATUS=0 in config.json',
     });
@@ -78,7 +78,7 @@ describe('rarog doctor: PR status line', () => {
     const line = await prStatusLine(env(), { directories: s.directories });
     expect(line).toEqual({
       verdict: 'warn',
-      text: `PR status: ${join(s.bin, 'gh')} is not logged in to github.com, so PRs show no state`,
+      text: `PR status: ${join(s.bin, 'gh')} is not logged in to github.com, so session cards show no PRs`,
       repair: 'gh auth login --hostname github.com as the user the service runs as; the server picks it up within'
         + ' 30 min, without a restart',
     });
@@ -100,7 +100,7 @@ describe('rarog doctor: PR status line', () => {
 
   it('the default directory list is the server one; a check that did not finish is a warn', () => {
     expect(prStatusLineOf({ flag: '', gh: null, auth: null }).text)
-      .toBe(`PR status: gh not found in ${GH_DIRECTORIES.join(', ')}, so PRs show no state`);
+      .toBe(`PR status: gh not found in ${GH_DIRECTORIES.join(', ')}, so session cards show no PRs`);
     expect(prStatusLineOf({ flag: '', gh: '/x/gh', auth: 'failed' })).toEqual({
       verdict: 'warn',
       text: 'PR status: gh auth status --active --no-refresh --hostname github.com did not finish (/x/gh)',

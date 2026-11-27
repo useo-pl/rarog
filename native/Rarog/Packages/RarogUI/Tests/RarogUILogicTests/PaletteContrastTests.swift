@@ -170,7 +170,7 @@ struct PaletteContrastTests {
 
   @Test("kropki i kreski stanów (grafika) ≥ 3:1; świadomy wyjątek: atrament bezczynnych ~2,8:1")
   func graphicsAndIdle() {
-    for tone in [StatusTone.working, .waiting, .failed, .unread, .quiet] {
+    for tone in [StatusTone.working, .waiting, .failed, .unread, .quiet, .backgroundWaitLong] {
       for background in [PaletteTokens.background, PaletteTokens.surface] {
         let ratio = contrast(PaletteTokens.tone(tone), on: background)
         #expect(ratio.dark >= 3 && ratio.light >= 3, "\(tone): \(ratio)")
@@ -178,6 +178,18 @@ struct PaletteContrastTests {
     }
     let idle = contrast(PaletteTokens.idleInk, on: PaletteTokens.background)
     #expect(idle.dark < 4.5 && idle.dark > 2.5 && idle.light < 4.5 && idle.light > 2.5, "świadomy wyjątek atramentu bezczynnego wiersza: \(idle)")
+  }
+
+  /// A switch that is on: the white system knob stands on the `switchOn` track, the track on the form card. The card
+  /// is the system grouped cell: about `surface2` in the dark theme, `surface` in the light one.
+  @Test("switch on: white knob on `switchOn` >= 3:1, `switchOn` on the form card >= 3:1, both themes")
+  func switchOnTrack() {
+    let knob = contrast(PaletteTokens.Pair(dark: 0xFFFFFF, light: 0xFFFFFF), on: PaletteTokens.switchOn)
+    #expect(knob.dark >= 3 && knob.light >= 3, "knob on track: \(knob)")
+    for card in [PaletteTokens.surface, PaletteTokens.surface2] {
+      let track = contrast(PaletteTokens.switchOn, on: card)
+      #expect(track.dark >= 3 && track.light >= 3, "track on \(card): \(track)")
+    }
   }
 
   /// Sekcja „w tle”: `done` niesie glify skończonego (✓ ■ ?) i zgaszoną kropkę pracy bez kontaktu ze
@@ -252,7 +264,7 @@ struct PaletteContrastTests {
   /// złożony na tle paska), więc jego tło jest to samo u sióstr i na płytce.
   @Test("kafelek skrótu na zakładce: cyfra ≥ 4,5:1 na kafelku każdego stanu, u siostry i na płytce bieżącej")
   func tabShortcutKeyAA() {
-    let tones: [StatusTone] = [.quiet, .working, .unread, .waiting, .failed, .backgroundWait]
+    let tones: [StatusTone] = [.quiet, .working, .unread, .waiting, .failed, .backgroundWait, .backgroundWaitLong]
     for tone in tones {
       let look = TabTokens.key(tone)
       let ratio = contrast(look.ink, on: look.fill)
@@ -339,7 +351,7 @@ struct PaletteContrastTests {
     let label = contrast(PaletteTokens.text, on: plate)
     #expect(label.dark >= 7 && label.light >= 7, "etykieta bieżącej (`text`): \(label)")
     // Znak stanu przed etykietą (grafika) stoi przy „Rozróżniaj bez koloru” w pełnym kryciu także na płytce.
-    for tone in [StatusTone.working, .waiting, .failed, .unread, .backgroundWait] {
+    for tone in [StatusTone.working, .waiting, .failed, .unread, .backgroundWait, .backgroundWaitLong] {
       let ratio = contrast(PaletteTokens.tone(tone), on: plate)
       #expect(ratio.dark >= 3 && ratio.light >= 3, "znak \(tone) na płytce: \(ratio)")
     }
@@ -374,6 +386,17 @@ struct PaletteContrastTests {
     #expect(TabTokens.markAlpha(.backgroundWait, current: true) == .opaque)
   }
 
+  /// The long wait's mark is the only carrier of the warning on a sibling tab besides its color, so it keeps 3:1 over
+  /// the bar in its real opacity.
+  @Test("long wait mark on a sibling tab (current: false): ≥ 3:1 over the bar in its real opacity")
+  func backgroundWaitLongSiblingMark() {
+    let alpha = TabTokens.markAlpha(.backgroundWaitLong, current: false)
+    let mark = TabTokens.composite(PaletteTokens.tone(.backgroundWaitLong), alpha, on: PaletteTokens.background)
+    let ratio = contrast(mark, on: PaletteTokens.background)
+    print("long wait sibling mark in opacity \(alpha): \(ratio)")
+    #expect(ratio.dark >= 3 && ratio.light >= 3, "sibling mark in opacity \(alpha): \(ratio)")
+  }
+
   /// Kwadracik nie niesie tekstu, więc progu kontrastu tekstu nie ma; stan mówi zdanie zakładki. Kolorowy (kolor kropki
   /// listy sesji) ma jednak odcinać się od tła paska mocniej niż cichy.
   @Test("kwadracik: cichy słabiej niż kolorowy wobec tła paska, w obu motywach")
@@ -382,7 +405,7 @@ struct PaletteContrastTests {
       contrast(TabTokens.composite(look.color, look.alpha, on: PaletteTokens.background), on: PaletteTokens.background)
     }
     let quiet = onBar(TabTokens.square(.quiet))
-    for tone in [StatusTone.working, .unread, .waiting, .failed, .backgroundWait] {
+    for tone in [StatusTone.working, .unread, .waiting, .failed, .backgroundWait, .backgroundWaitLong] {
       let colored = onBar(TabTokens.square(tone))
       #expect(quiet.dark < colored.dark && quiet.light < colored.light, "\(tone): cisza \(quiet), kolor \(colored)")
     }

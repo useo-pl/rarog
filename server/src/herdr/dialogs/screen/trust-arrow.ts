@@ -10,6 +10,12 @@
  * kolumny kursora, etykieta opcji, cyfra), także oddzielonej pustą linią. Każdy inny kształt (trzecia opcja, ucięta
  * góra albo dół, cyfry, zawinięty folder) daje `null`, czyli kartę bez przycisku. Moduł jest czysty: decyzję
  * o klawiszu podejmuje `send/trust-step.ts`.
+ *
+ * One exception to the option-shaped line rule: the warning about permissions the folder pre-approves (Claude Code
+ * 2.1.332). Between its opening line "⚠ This folder pre-approves …:" and its closing sentence "These will apply
+ * without asking." a line may carry the three-space margin of the permission list, which is the indent of an option
+ * line. The folder's settings write that list, so it still may not hold `❯`, an option label or a numbered option,
+ * and a warning without its closing sentence gives `null`.
  */
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -45,6 +51,9 @@ const CURSOR_MARK = SCREEN_SIGNATURES.trustArrowCursorMark.pattern;
 const CONTENT_LINE = SCREEN_SIGNATURES.trustArrowContentLine.pattern;
 const DIGIT_OPTION = SCREEN_SIGNATURES.optionLine.pattern;
 const FOOTER = SCREEN_SIGNATURES.trustArrowFooter.pattern;
+const WARNING_OPEN = SCREEN_SIGNATURES.trustArrowWarningOpen.pattern;
+const WARNING_CLOSE = SCREEN_SIGNATURES.trustArrowWarningClose.pattern;
+const WARNING_LIST_LINE = SCREEN_SIGNATURES.trustArrowWarningListLine.pattern;
 
 const blank = (line: string | undefined): boolean => (line ?? '').trim() === '';
 
@@ -60,10 +69,37 @@ function optionOf(line: string): { label: string; cursor: boolean } | null {
  * bez `❯` i bez etykiety opcji (z cyfrą albo bez).
  */
 function plainLine(line: string): boolean {
-  if (blank(line)) return true;
-  const text = CONTENT_LINE.exec(line)?.[1];
-  if (text === undefined || CURSOR_MARK.test(line)) return false;
-  return !NO_OPTION.test(text) && !YES_OPTION.test(text) && !DIGIT_OPTION.test(text);
+  return blank(line) || textOf(line, CONTENT_LINE) !== null;
+}
+
+/** Text of a block line with the given margin, or `null`: no such margin, `❯`, an option label or a numbered option. */
+function textOf(line: string, margin: RegExp): string | null {
+  const text = margin.exec(line)?.[1];
+  if (text === undefined || CURSOR_MARK.test(line)) return null;
+  return NO_OPTION.test(text) || YES_OPTION.test(text) || DIGIT_OPTION.test(text) ? null : text;
+}
+
+/**
+ * Whether the block lines outside the option pair hold no further list position. A line is blank or block text with
+ * the one-space margin. Inside the pre-approved permissions warning a line is never blank and may carry the
+ * three-space margin of the permission list instead; the warning must close before the option pair.
+ */
+function onlyPlainLines(lines: readonly string[], from: number, to: number, first: number, last: number): boolean {
+  let inWarning = false;
+  for (let index = from; index < to; index += 1) {
+    const line = lines[index] ?? '';
+    if (index === first || index === last) {
+      if (inWarning) return false;
+    } else if (inWarning) {
+      const text = textOf(line, CONTENT_LINE);
+      if (text === null && textOf(line, WARNING_LIST_LINE) === null) return false;
+      if (text !== null && WARNING_CLOSE.test(text)) inWarning = false;
+    } else {
+      if (!plainLine(line)) return false;
+      inWarning = WARNING_OPEN.test(textOf(line, CONTENT_LINE) ?? '');
+    }
+  }
+  return !inWarning;
 }
 
 /**
@@ -94,9 +130,7 @@ export function parseTrustArrowDialog(screenText: string): TrustArrowDialog | nu
   const block = dialogBlock(lines, first);
   if (block.ambiguous || block.top === -1 || block.title?.kind !== 'known' || block.title.id !== 'trust') return null;
   // Od kreski do stopki jedyną listą jest para opcji: pusta linia nie chowa dodatkowej pozycji.
-  for (let index = block.top + 1; index < footer; index += 1) {
-    if (index !== first && index !== last && !plainLine(lines[index] ?? '')) return null;
-  }
+  if (!onlyPlainLines(lines, block.top + 1, footer, first, last)) return null;
   const content = lines.slice(block.top + 1, first).map(unbox).join(' ');
   if (!SCREEN_SIGNATURES.knownDialogTrust.pattern.test(content)) return null;
 

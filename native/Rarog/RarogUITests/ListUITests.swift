@@ -109,7 +109,14 @@ final class ListUITests: XCTestCase {
     // Krótkie przesunięcie: czerwony przycisk, stuknięcie zamyka bez pytania.
     let first = DemoServer.reveal(app, tapped)
     XCTAssertTrue(first.exists, "sesja do zamknięcia stuknięciem")
-    first.swipeLeft()
+    // A slow drag of 110 pt with a hold, not `swipeLeft()`: the icon-only pill is 80 pt wide, and the system swipe
+    // flicks across most of the row, which passes the full-swipe threshold and closes the session at once.
+    DemoServer.waitUntilStill(first)
+    let short = first.frame
+    let start = app.coordinate(withNormalizedOffset: .zero)
+      .withOffset(CGVector(dx: short.minX + short.width * 0.75, dy: short.midY))
+    start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: -110, dy: 0)),
+                withVelocity: .slow, thenHoldForDuration: 0.3)
     let action = app.buttons["Zamknij panel w herdr"].firstMatch
     XCTAssertTrue(action.waitForAppearance(timeout: 5), "czerwony przycisk po przesunięciu")
     shot("przesuniecie")

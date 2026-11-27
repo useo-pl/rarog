@@ -15,8 +15,8 @@ import RarogContract
 public enum VoiceNotice: Sendable, Equatable {
   /// Minuta ciszy.
   case silence
-  /// Limit długości sesji (15 min).
-  case sessionLimit
+  /// The recording reached its length limit (`seconds`: the limit, for the sentence).
+  case sessionLimit(seconds: Int)
   /// Przerwanie z zewnątrz: tło, rozmowa, zmiana wyjścia audio.
   case interrupted
   /// Strumień padł po wyczerpaniu prób; tekst, który zdążył przyjść, został.
@@ -78,6 +78,13 @@ func voiceLimitCountdown(elapsed: TimeInterval, maxSession: TimeInterval, warnin
   return max(0, Int(left.rounded(.up)))
 }
 
+/// The session limit of a recording: the server's `maxSessionSeconds` (`fallback` when it gives none or the route
+/// has no key), capped by the host's `ceiling`. A reconnect keeps counting from the microphone's open.
+func voiceSessionLimit(server seconds: Int, ceiling: TimeInterval?, fallback: TimeInterval) -> TimeInterval {
+  let server = seconds > 0 ? TimeInterval(seconds) : fallback
+  return ceiling.map { min(server, $0) } ?? server
+}
+
 @MainActor
 final class VoiceRecorder {
   struct Deps {
@@ -93,6 +100,9 @@ final class VoiceRecorder {
     var microphoneGranted: @MainActor () -> Bool = { false }
     /// Debug trace channel (`client.log`): one line when the recording gets ready, without text.
     var trace: @MainActor (String) -> Void = { _ in }
+    /// The host's cap on the recording's length, in seconds: the recording ends at the lower of it and the server's
+    /// limit (`VoiceTiming.defaultMaxSession` when the server gives none or the route has no key). `nil`: no cap.
+    var sessionCeiling: TimeInterval? = nil
   }
 
   struct Handlers {
@@ -137,7 +147,8 @@ final class VoiceRecorder {
   init(deps: Deps, handlers: Handlers) {
     self.deps = deps
     self.handlers = handlers
-    maxSession = deps.timing.defaultMaxSession
+    maxSession = voiceSessionLimit(
+      server: 0, ceiling: deps.sessionCeiling, fallback: deps.timing.defaultMaxSession)
   }
 
   /// Mikrofon otwarty albo właśnie się otwiera.
@@ -189,7 +200,9 @@ final class VoiceRecorder {
       },
       token: { [weak self] token in
         guard let self, self.streamID == id else { return }
-        self.maxSession = token.maxSessionSeconds > 0 ? TimeInterval(token.maxSessionSeconds) : self.deps.timing.defaultMaxSession
+        self.maxSession = voiceSessionLimit(
+          server: token.maxSessionSeconds, ceiling: self.deps.sessionCeiling,
+          fallback: self.deps.timing.defaultMaxSession)
       },
       done: { [weak self] end in
         guard let self, self.streamID == id else { return }
@@ -431,7 +444,7 @@ final class VoiceRecorder {
       let now = self.deps.scheduler.now
       let elapsed = now - self.startedAt
       if elapsed >= self.maxSession {
-        self.stop(with: .sessionLimit)
+        self.stop(with: .sessionLimit(seconds: Int(self.maxSession.rounded())))
         return
       }
       if now - self.lastVoiceAt >= self.deps.timing.silenceLimit {

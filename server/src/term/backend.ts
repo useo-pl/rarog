@@ -321,7 +321,7 @@ export interface TermBackend {
     id: string, cwd: string, role?: TermSessionRole, opts?: TermEnsureOptions,
   ): Promise<TermSessionHandle>;
   /**
-   * ODZYSKIWANIE paneli terminala po etykiecie: panel z etykietą `rarog-term <id>` bez
+   * ODZYSKIWANIE paneli terminala po etykiecie: panel z etykietą `rt:<id>` bez
    * tokenu dostaje token z powrotem, panel z tokenem bez etykiety — etykietę; konflikt zostaje
    * nietknięty. Niczego nie zamyka i niczego nie zakłada.
    *

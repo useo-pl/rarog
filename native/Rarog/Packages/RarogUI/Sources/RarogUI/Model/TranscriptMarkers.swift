@@ -99,15 +99,16 @@ public enum NewLineJump {
   /// Odstęp pigułki od paska cytatu albo od góry safe area — i linii od nich po skoku.
   public static let gap: Double = 6
 
-  /// Przesunięcie listy (`contentOffset.y`), przy którym linia staje `gap` pod paskiem cytatu — pasek stoi `gap`
-  /// pod górą safe area, więc pas nad linią to wysokość paska i dwa odstępy, jak skok do tury z listy promptów.
+  /// The list offset (`contentOffset.y`) at which the line stands `gap` under the quote bar. The bar hangs from the
+  /// safe area's top (the header's edge), so the band above the line is the bar's height and one gap, as for the jump
+  /// to a turn from the prompts list.
   /// `bar == nil` — w transkrypcie nie ma promptów, paska nie będzie: linia `gap` pod górą. Przy samej górze treści
   /// pasek zostaje schowany (`PromptBar.nearTop` liczy się od przesunięcia), więc lista staje tuż przed progiem:
   /// linia bez pustego pasa po pasku i bez paska, który by ją zasłonił.
   public static func offset(lineMinY: Double, insetTop: Double, bar: Double?) -> Double {
     let bare = lineMinY - insetTop - gap
     guard let bar else { return bare }
-    let underBar = lineMinY - insetTop - bar - 2 * gap
+    let underBar = lineMinY - insetTop - bar - gap
     if underBar + insetTop >= PromptBar.nearTop { return underBar }
     return min(bare, PromptBar.nearTop - insetTop - 1)
   }

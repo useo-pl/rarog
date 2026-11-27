@@ -21,12 +21,12 @@
  * 3. **Zero logowania treści.** Bajty ekranu przechodzą przez ten moduł do gniazd WS i nie
  *    trafiają ani do logu, ani do pliku stanu. Na dysku zostaje jeden plik z samymi
  *    identyfikatorami paneli, ich katalogami i znacznikiem czasu (`term-herdr.json`).
- * 4. **Pochodzenie panelu = jego ETYKIETA `rarog-term <id>`, władza = token.** Token
+ * 4. **Pochodzenie panelu = jego ETYKIETA `rt:<id>`, władza = token.** Token
  *    `rarog-term` ginie przy restarcie serwera herdr, etykieta panelu (`pane.rename`) — nie, bo
  *    herdr trzyma ją w snapshotcie. `reconcile()` przywraca token panelom z etykietą (jeden
  *    przebieg naraz, wspólny mutex z zakładaniem), niczego przy tym nie zamyka, a niepewny wynik
  *    znaczy odmowę zamiast drugiego taba obok. The label leads with the tab label
- *    (`<tab label> · rarog-term <id>`), so herdr's Go-to names the pane like its tab.
+ *    (`<tab label> · rt:<id>`), so herdr's Go-to names the pane like its tab.
  * 5. **Etykieta TABA to slot albo rola plus katalog** (`rarog 1 · rarog`) — przy
  *    zakładaniu i, dla tabów w starym formacie, przy migracji w `reconcile`. Tylko tab jednopanelowy
  *    z naszym panelem i etykietą „1” z `workspace.create`; nazwa nadana ręcznie zostaje
@@ -41,10 +41,11 @@ import type { ServerSystem } from '@rarog/shared/rest';
 import { redact } from '../auth/index.ts';
 import { RAROG_TERM_PANE_TOKEN, termPaneTokenOf } from '../config.ts';
 import type { RarogConfig } from '../config.ts';
+import { isLegacyPaneLabel } from '../herdr/label-migration.ts';
 import { decideProjectWorkspace, sharedProjectPlacement } from '../herdr/project-workspace.ts';
 import type { ProjectPlacement } from '../herdr/project-workspace.ts';
 import {
-  parsePaneLabel, realProjectPath, termPaneLabel, terminalTabLabel,
+  paneLabelTermId, realProjectPath, termPaneLabel, terminalTabLabel,
 } from '../herdr/provenance.ts';
 import { HerdrUnavailableError } from '../herdr/socket.ts';
 import { HerdrReadOnlyError, isBareShellForeground } from '../herdr/types.ts';
@@ -576,10 +577,9 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
     });
   }
 
-  /** Tożsamość z etykiety `rarog-term <id>` panelu albo `null` (brak, cudza, panel Claude). */
+  /** Tożsamość z etykiety `rt:<id>` panelu albo `null` (brak, cudza, panel Claude). */
   function labelIdOf(pane: HerdrPaneInfo): string | null {
-    const provenance = parsePaneLabel(pane.label);
-    return provenance?.kind === 'term' ? provenance.value : null;
+    return paneLabelTermId(pane.label);
   }
 
   /**
@@ -645,8 +645,8 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
    * JEDEN przebieg odzyskiwania. Kroki:
    *
    * 1. Świeży `pane.list` (pełny wiersz z etykietą) i `listPaneIds` (pełny inwentarz obecności).
-   * 2. Etykieta `rarog-term <id>` bez tokenu → token wraca (bez TTL). Token bez etykiety
-   *    (panel w starym formacie) → `pane.rename` na `rarog-term <token>`. Tożsamość obecna na więcej niż
+   * 2. Etykieta `rt:<id>` bez tokenu → token wraca (bez TTL). Token bez etykiety
+   *    (panel w starym formacie) → `pane.rename` na `rt:<token>`. Tożsamość obecna na więcej niż
    *    jednym panelu albo panel z etykietą i INNYM tokenem → konflikt: nie ruszamy żadnego.
    * 3. Prune `term-herdr.json` wyłącznie po `listPaneIds`.
    * 4. Wynik: potwierdzone, przywrócone, zmigrowane, nieznane (timeout mutacji) i konflikty.
@@ -849,7 +849,7 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
   /**
    * MIGRACJA etykiet tabów terminala w starym formacie — krok `reconcile`, pod jego mutexem.
    *
-   * Panel z potwierdzoną tożsamością (token) i NASZĄ etykietą panelu `rarog-term <id>` (także
+   * Panel z potwierdzoną tożsamością (token) i NASZĄ etykietą panelu `rt:<id>` (także
    * nadaną w tym samym przebiegu), tab jednopanelowy z etykietą z {@link LEGACY_TERM_TAB_LABELS}
    * → `tab.rename` na nowy format. Inna etykieta taba = ręczna, nietknięta; split (więcej niż jeden panel) — nietknięty, bo tab nie jest wtedy „terminala". Katalog i slot bierzemy
    * z pliku stanu (katalog powstania), a gdy ten nie pasuje — z bieżącego `cwd` panelu; żadna
@@ -857,7 +857,7 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
    * potwierdzeniem stanu. Etykieta jest deterministyczna, więc śladu nie potrzebuje.
    * `RAROG_HERDR_TAB_LABELS=0` gasi ten krok w całości.
    *
-   * The same step gives a bare pane label `rarog-term <id>` its description: the terminal tab
+   * The same step gives a bare pane label `rt:<id>` its description: the terminal tab
    * label from the same identity and directory, so a pane without a match keeps its old label.
    * Single-pane tabs only, each write behind its own fresh confirmation.
    *
@@ -879,6 +879,8 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
       // Token przy CUDZEJ etykiecie panelu znaczy „człowiek nazwał ten panel po swojemu" —
       // jego tab też zostaje jego.
       if (labelIdOf(pane) !== id && !labelledNow.has(pane.paneId)) continue;
+      // An old-format label is rewritten by the label migration first; its description comes on a later pass.
+      if (isLegacyPaneLabel(pane.label)) continue;
       const checkKey = `${pane.paneId}|${id}|${pane.tabId}`;
       if (tabLabelChecked.has(checkKey)) continue;
       const stateCwd = state[pane.paneId]?.cwd ?? '';
@@ -928,7 +930,7 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
         }
       }
       /*
-       * The pane label: a bare `rarog-term <id>` gets the terminal tab label in front, so herdr's
+       * The pane label: a bare `rt:<id>` gets the terminal tab label in front, so herdr's
        * Go-to names the pane like its tab. A label that already has a description stays (Rarog
        * wrote it, or a human chose it within the pattern), which makes the step idempotent.
        */
@@ -1046,7 +1048,7 @@ export function createHerdrBackend(options: HerdrBackendOptions): TermBackend {
          * (etykieta Raroga tej ścieżki albo `cwd` panelu w projekcie); bez dowodu nowy workspace.
          * Samo `pane.cwd` nie wystarcza: dryfuje z każdym `cd`, więc tab projektu A wchodziłby do
          * workspace'u projektu B. Sloty jednego projektu trzymają się razem dzięki etykiecie
-         * `rarog-term <id>` pierwszego slotu (dowód mocny).
+         * `rt:<id>` pierwszego slotu (dowód mocny).
          */
         /*
          * Pisownie dla rozpoznania etykiet: `cwd` z rejestru i katalogi powstania

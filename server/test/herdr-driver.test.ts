@@ -5202,9 +5202,9 @@ describe('plik rozmowy subagenta', () => {
     await feedUntil('2026-01-01T00:00:06.000Z');
     await eventually({ ...base, ownTasks: [COMMAND] }, 'pracuje z własną komendą');
 
-    // Postój: agent czeka i wiadomo, na co.
+    // Standby: the agent waits, and on what; the stage is `stuck`, because the driver runs on the system clock.
     await feedUntil('2026-01-01T00:00:09.000Z');
-    await eventually({ ...base, waitingSince: '2026-01-01T00:00:07.000Z', ownTasks: [COMMAND] }, 'czeka na komendę');
+    await eventually({ ...base, waitingSince: '2026-01-01T00:00:07.000Z', ownTasks: [COMMAND], ownCommandWait: 'stuck' }, 'czeka na komendę');
 
     // Koniec komendy stoi tylko w kolejce pliku GŁÓWNEGO; plik subagenta jeszcze o nim nie wie.
     await feedUntil('2026-01-01T00:00:10.001Z');
@@ -5276,7 +5276,7 @@ describe('plik rozmowy subagenta', () => {
     await waitFor(() => JSON.stringify(agent(fx) ?? {}).includes('ownTasks'), 'własna komenda pod agentem');
     expect(agent(fx)).toEqual({
       id: AGENT, kind: 'agent', description: 'Przegląd', startedAt: '2026-10-09T21:39:58.108Z',
-      waitingSince: '2026-10-09T21:51:18.194Z', ownTasks: [COMMAND],
+      waitingSince: '2026-10-09T21:51:18.194Z', ownTasks: [COMMAND], ownCommandWait: 'stuck',
     });
     fx.driver.dispose();
 

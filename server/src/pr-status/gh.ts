@@ -1,6 +1,8 @@
 /**
- * The `gh` state source: one batched GraphQL query for up to {@link PR_BATCH_MAX} PRs, run with the user's `gh` login
- * for `github.com`. The only place in the server that starts `gh` (guard: `server/test/pr-status-granice.test.ts`).
+ * The `gh` source: one batched GraphQL query for up to {@link PR_BATCH_MAX} PRs, run with the user's `gh` login for
+ * `github.com`. Every read asks the same fields: state, draft mark, title, creation time and author of each PR, and
+ * the login of the account (`viewer`). The only place in the server that starts `gh` (guard:
+ * `server/test/pr-status-granice.test.ts`).
  *
  * - program: the first executable `gh` in the closed directory list {@link GH_DIRECTORIES}, looked up once, on the
  *   first read; `execFile` without a shell;
@@ -17,7 +19,8 @@ import { accessSync, constants, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import type { PullRequestState } from '@rarog/shared';
 import { PR_STATUS_ENV_PASSTHROUGH } from '../config-env.ts';
-import type { PrReadResult, PrRef, PrStateSource } from './source.ts';
+import { clipUnits, stripControlChars } from '../text.ts';
+import type { PrFactsRead, PrReadResult, PrRef, PrStateSource } from './source.ts';
 
 /**
  * Where `gh` is looked for, in this order; `~/` is the server's `HOME`. A closed list of absolute paths, no `PATH`
@@ -44,6 +47,12 @@ export const GH_OUTPUT_CAP_BYTES = 1024 * 1024;
 
 /** PRs per call (aliases in one query). */
 export const PR_BATCH_MAX = 50;
+
+/** Longest title kept, in UTF-16 code units: the limit of `SessionPullRequest.title`. */
+export const PR_TITLE_MAX = 120;
+
+/** Fields asked of every PR. */
+const PR_FIELDS = 'state isDraft title createdAt author{login}';
 
 /** `gh` exit code for "authentication required". */
 const NOT_LOGGED_IN_EXIT = 4;
@@ -107,12 +116,12 @@ export function buildQueryBody(prs: readonly PrRef[]): string {
   const variables: Record<string, string | number> = {};
   prs.forEach((pr, i) => {
     declarations.push(`$o${i}:String!,$r${i}:String!,$n${i}:Int!`);
-    fields.push(`p${i}:repository(owner:$o${i},name:$r${i}){pullRequest(number:$n${i}){state isDraft}}`);
+    fields.push(`p${i}:repository(owner:$o${i},name:$r${i}){pullRequest(number:$n${i}){${PR_FIELDS}}}`);
     variables[`o${i}`] = pr.owner;
     variables[`r${i}`] = pr.repo;
     variables[`n${i}`] = pr.number;
   });
-  const query = `query(${declarations.join(',')}){${fields.join(' ')} rateLimit{remaining resetAt}}`;
+  const query = `query(${declarations.join(',')}){${fields.join(' ')} viewer{login} rateLimit{remaining resetAt}}`;
   return JSON.stringify({ query, variables });
 }
 
@@ -163,7 +172,52 @@ function epochOf(value: unknown): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** States of `prs` from one run. Reads stdout whatever the exit code; stdout without a `data` object fails the call. */
+/**
+ * A title from GitHub as the list may show it: control characters out, trimmed, at most {@link PR_TITLE_MAX} UTF-16
+ * code units. Empty after that, or not a string: no title.
+ */
+export function prTitle(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const title = clipUnits(stripControlChars(value).trim(), PR_TITLE_MAX);
+  return title === '' ? undefined : title;
+}
+
+/**
+ * What `errors[]` says about each alias (the first element of the error path). Only `NOT_FOUND` at the repository
+ * (`[pN]`) or at the PR (`[pN, "pullRequest"]`) means the PR is missing; any other error on the alias path, also next
+ * to a not-found one, is an error.
+ */
+function aliasVerdicts(answer: Record<string, unknown> | null): Map<string, 'missing' | 'error'> {
+  const verdicts = new Map<string, 'missing' | 'error'>();
+  const errors = answer?.['errors'];
+  if (!Array.isArray(errors)) return verdicts;
+  for (const item of errors) {
+    const error = record(item);
+    const path = error?.['path'];
+    if (!Array.isArray(path) || typeof path[0] !== 'string') continue;
+    const alias = path[0];
+    const notFound = error?.['type'] === 'NOT_FOUND'
+      && (path.length === 1 || (path.length === 2 && path[1] === 'pullRequest'));
+    if (!notFound) verdicts.set(alias, 'error');
+    else if (verdicts.get(alias) !== 'error') verdicts.set(alias, 'missing');
+  }
+  return verdicts;
+}
+
+/** Author and creation time of one `pullRequest` object; a verdict from `errors[]` wins over the object. */
+function factsOf(pullRequest: Record<string, unknown> | null, verdict: 'missing' | 'error' | undefined): PrFactsRead {
+  if (verdict !== undefined) return { kind: verdict };
+  const author = record(pullRequest?.['author'])?.['login'];
+  const createdAtMs = epochOf(pullRequest?.['createdAt']);
+  if (typeof author !== 'string' || author === '' || createdAtMs === null) return { kind: 'error' };
+  return { kind: 'found', author, createdAtMs };
+}
+
+/**
+ * Answers for `prs` from one run. Reads stdout whatever the exit code; stdout without a `data` object fails the call.
+ * The state reads only the PR object, whatever `errors[]` or the facts say; an answer without `viewer.login` makes
+ * the facts of every PR an error.
+ */
 export function readGhOutput(run: GhRun, prs: readonly PrRef[]): PrReadResult {
   if (run.failure === 'timeout') return { ok: false, failure: 'timeout' };
   if (run.failure === 'output-cap') return { ok: false, failure: 'output-cap' };
@@ -176,13 +230,23 @@ export function readGhOutput(run: GhRun, prs: readonly PrRef[]): PrReadResult {
     }
     return { ok: false, failure: run.code === NOT_LOGGED_IN_EXIT ? 'not-logged-in' : 'error' };
   }
+  const login = record(data['viewer'])?.['login'];
+  const viewer = typeof login === 'string' && login !== '' ? login : null;
+  const verdicts = aliasVerdicts(answer);
   const states = new Map<string, PullRequestState | null>();
+  const titles = new Map<string, string>();
+  const facts = new Map<string, PrFactsRead>();
   prs.forEach((pr, i) => {
-    states.set(pr.url, stateOf(record(record(data[`p${i}`])?.['pullRequest'])));
+    const pullRequest = record(record(data[`p${i}`])?.['pullRequest']);
+    states.set(pr.url, stateOf(pullRequest));
+    const title = prTitle(pullRequest?.['title']);
+    if (title !== undefined) titles.set(pr.url, title);
+    facts.set(pr.url, viewer === null ? { kind: 'error' } : factsOf(pullRequest, verdicts.get(`p${i}`)));
   });
   const limit = record(data['rateLimit']);
-  if (limit?.['remaining'] === 0) return { ok: true, states, limitReached: { resetAt: epochOf(limit['resetAt']) } };
-  return { ok: true, states };
+  const result = { ok: true, states, titles, facts, viewer } as const;
+  if (limit?.['remaining'] === 0) return { ...result, limitReached: { resetAt: epochOf(limit['resetAt']) } };
+  return result;
 }
 
 interface RunOptions {
@@ -246,7 +310,7 @@ export function createGhSource(opts: GhSourceOptions): PrStateSource {
     read: async (prs, signal) => {
       try {
         const batch = prs.slice(0, PR_BATCH_MAX);
-        if (batch.length === 0) return { ok: true, states: new Map() };
+        if (batch.length === 0) return { ok: true, states: new Map(), titles: new Map(), facts: new Map(), viewer: null };
         if (bin === undefined) {
           bin = findGh({ home, ...(opts.directories === undefined ? {} : { directories: opts.directories }) });
         }

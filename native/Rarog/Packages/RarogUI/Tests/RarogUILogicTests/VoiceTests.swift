@@ -17,6 +17,15 @@ private func settle() async {
   await dictationSettle()
 }
 
+/// Speech every second for `seconds` seconds of the recorder's clock, so silence never ends the recording.
+@MainActor
+private func speak(_ h: RecorderHarness, seconds: Int) {
+  for _ in 0..<seconds {
+    h.mic.frame(peak: 0.5)
+    h.clock.advance(1)
+  }
+}
+
 /// Ręczny zegar: żaden test nie czeka sekundy na keepalive ani minuty na ciszę.
 @MainActor
 final class ManualScheduler: VoiceScheduler {
@@ -938,7 +947,66 @@ struct VoiceRecorderTests {
     }
     await settle()
     h.clock.advance(2.5)
-    #expect(h.view.phase == .idle && h.view.notice == .sessionLimit)
+    #expect(h.view.phase == .idle && h.view.notice == .sessionLimit(seconds: 180))
+  }
+
+  @Test(
+    "the limit: the key's, the default without one, capped by the host",
+    arguments: [
+      (900, 600.0, 600.0), (300, 600, 300), (0, 600, 600), (900, nil, 900), (0, nil, 900), (1200, nil, 1200),
+    ] as [(Int, TimeInterval?, TimeInterval)])
+  func limitRule(key: Int, ceiling: TimeInterval?, limit: TimeInterval) {
+    #expect(voiceSessionLimit(server: key, ceiling: ceiling, fallback: VoiceTiming().defaultMaxSession) == limit)
+  }
+
+  // Catches a message-field cap that the recorder ignores: the field would record up to the server's 15 minutes.
+  @Test("the host's cap under a 900 s key: the countdown from 480 s, the end at 600 s with the cap in the notice")
+  func hostCapUnderKey() async {
+    let h = RecorderHarness(ceiling: 600)
+    h.mint.results = [.token(token(maxSession: 900))]
+    await h.recording()
+    speak(h, seconds: 479)
+    #expect(h.view.phase == .recording && h.view.secondsLeft == nil)
+    speak(h, seconds: 1)
+    #expect(h.view.secondsLeft == 120)
+    speak(h, seconds: 119)
+    #expect(h.view.phase == .recording)
+    speak(h, seconds: 1)
+    await settle()
+    h.clock.advance(2.5)
+    #expect(h.view.phase == .idle && h.view.notice == .sessionLimit(seconds: 600))
+  }
+
+  // Catches a cap applied only when a key arrives: the system route has none and would keep the default 900 s.
+  @Test("a route without a key takes the host's cap")
+  func hostCapWithoutKey() async {
+    let h = RecorderHarness(fake: true, ceiling: 600)
+    await h.recorder.start()?.value
+    speak(h, seconds: 599)
+    #expect(h.view.phase == .recording)
+    speak(h, seconds: 1)
+    await settle()
+    #expect(h.view.phase == .idle && h.view.notice == .sessionLimit(seconds: 600))
+  }
+
+  // Catches a reconnect that starts the limit over: a dropped connection would buy another full session.
+  @Test("a reconnect with a new key does not renew the limit: the end stays 600 s after the microphone opened")
+  func reconnectKeepsLimit() async {
+    let h = RecorderHarness(ceiling: 600)
+    h.mint.results = [.token(token(maxSession: 900)), .token(token(maxSession: 900, apiKey: "snx_temp_test_b"))]
+    await h.recording()
+    h.sockets[0].reply(#"{"tokens":[{"text":"first","is_final":true}]}"#)
+    speak(h, seconds: 300)
+    h.sockets[0].drop()
+    await h.pass(3)
+    h.sockets.last?.open()
+    #expect(h.sockets.count == 2 && h.mint.calls.count == 2, "a new key and a new connection")
+    speak(h, seconds: 296)
+    #expect(h.view.phase == .recording && h.view.secondsLeft == 1)
+    speak(h, seconds: 1)
+    await settle()
+    h.clock.advance(2.5)
+    #expect(h.view.phase == .idle && h.view.notice == .sessionLimit(seconds: 600))
   }
 
   @Test("licznik limitu milczy poza oknem ostrzeżenia")
@@ -1113,7 +1181,7 @@ struct DictationEndTraceTests {
   @Test("one distinct word per notice, never the notice's text")
   func words() {
     let notices: [VoiceNotice] = [
-      .silence, .sessionLimit, .interrupted, .streamFailed, .microphone(.denied), .dictation(.engineFailed),
+      .silence, .sessionLimit(seconds: 600), .interrupted, .streamFailed, .microphone(.denied), .dictation(.engineFailed),
       .message("Server key refused for project-x"),
     ]
     let words = notices.map(DictationEndTrace.reason)

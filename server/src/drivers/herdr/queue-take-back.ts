@@ -74,6 +74,8 @@ export interface QueueTakeBackConfig {
 export interface QueueTakeBackPort extends PromptGatesPort {
   audit(entry: { readonly method: 'send_keys'; readonly keys: readonly string[] }): void;
   enqueue(step: () => Promise<void>): Promise<unknown>;
+  /** A Claude Code start dialog stands in the pane (`start-dialog-gate.ts`): no key goes to it. */
+  startDialogStands(): Promise<boolean>;
 }
 
 /** The follower of a Claude pane in scope, which every step after the gates has. */
@@ -158,6 +160,8 @@ export class QueueTakeBack {
     const follower = this.#follower;
     if (!this.#claude || follower === null || this.#port.disposed()) return this.#refuse('pane');
     if (this.#field.holdsField()) return this.#refuse('busy');
+    if (await this.#port.startDialogStands()) return this.#refuse('dialog');
+    if (this.#port.disposed()) return this.#refuse('pane');
     // The last Enter from Rarog's queue first: a hook may still hand its text back to the field.
     while (this.#queue.submitUnsettled()) {
       await this.#sleep(this.#pollMs);

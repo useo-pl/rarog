@@ -50,6 +50,7 @@ extension UICopy {
     case .speechOff: L("voiceAgent.call.end.speechOff")
     case .speechUnavailable: L("voiceAgent.call.end.speechUnavailable")
     case .speechFailed: L("voiceAgent.call.end.speechFailed")
+    case .sessionLimit: L("voiceAgent.call.end.sessionLimit")
     }
   }
 

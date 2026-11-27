@@ -1,7 +1,7 @@
 /**
  * Pull request list refresh of the herdr driver (`drivers/herdr/pull-request-poll.ts`): signals that arrive
  * before the timer fires fold into one read, a signal during a read orders the next one, a stale read repeats at
- * once, a backlog repeats after `PULL_REQUESTS_BACKLOG_MS`, and only a changed list goes out.
+ * once, a backlog repeats after `PULL_REQUESTS_BACKLOG_MS`, and only changed links (the set or the window) go out.
  *
  * The facade wiring (which events order a read) is covered end to end in `herdr-pull-requests.test.ts`.
  */
@@ -14,11 +14,18 @@ import {
 import type { PullRequestPollDeps, PullRequestPollState } from '../src/drivers/herdr/pull-request-poll.ts';
 import { PULL_REQUESTS_BACKLOG_MS } from '../src/herdr/background/index.ts';
 import type { PullRequestFilesReader, PullRequestRead } from '../src/herdr/background/pull-request-files.ts';
+import type { PullRequestLinks } from '../src/herdr/background/pull-requests.ts';
 
 const POLL_MS = 50;
 
 const pr = (n: number): SessionPullRequest => ({
-  url: `https://github.com/o/r/pull/${n}`, repo: 'o/r', number: n, createdAt: '2026-11-10T10:00:00.000Z',
+  url: `https://github.com/example/atlas/pull/${String(n)}`, repo: 'example/atlas', number: n,
+  createdAt: '2026-11-10T10:00:00.000Z',
+});
+const START = '2026-11-10T09:00:00.000Z';
+/** One read with the linked set `linked` and the window `windowStart`. */
+const read = (linked: SessionPullRequest[], backlog = false, windowStart: string | null = START): PullRequestRead => ({
+  links: { linked, windowStart }, backlog,
 });
 
 /** Manual clock: timers fire only on `fire()`, so every delay is visible. */
@@ -63,10 +70,10 @@ class ManualReader implements PullRequestFilesReader {
 
 function setup(reader: ManualReader | null = new ManualReader()): {
   state: PullRequestPollState; deps: PullRequestPollDeps; scheduler: ManualScheduler; reader: ManualReader | null;
-  sent: (readonly SessionPullRequest[])[]; dispose: () => void;
+  sent: PullRequestLinks[]; dispose: () => void;
 } {
   const scheduler = new ManualScheduler();
-  const sent: (readonly SessionPullRequest[])[] = [];
+  const sent: PullRequestLinks[] = [];
   let disposed = false;
   const state = createPullRequestPollState(reader, POLL_MS);
   const deps: PullRequestPollDeps = {
@@ -92,19 +99,44 @@ describe('pull request poll of the herdr driver', () => {
     const reader = t.reader as ManualReader;
     schedulePullRequests(t.state, t.deps, 0);
     t.scheduler.fire();
-    await reader.settle({ pullRequests: [], backlog: false });
+    await reader.settle(read([]));
     expect(t.sent).toEqual([]);
 
     schedulePullRequests(t.state, t.deps);
     t.scheduler.fire();
-    await reader.settle({ pullRequests: [pr(1)], backlog: false });
-    expect(t.sent).toEqual([[pr(1)]]);
+    await reader.settle(read([pr(1)]));
+    expect(t.sent).toEqual([read([pr(1)]).links]);
 
     schedulePullRequests(t.state, t.deps);
     t.scheduler.fire();
-    await reader.settle({ pullRequests: [pr(1)], backlog: false });
-    expect(t.sent).toEqual([[pr(1)]]);
+    await reader.settle(read([pr(1)]));
+    expect(t.sent).toEqual([read([pr(1)]).links]);
     expect(t.scheduler.delays()).toEqual([]);
+  });
+
+  it('only the set or only the window changes → a new payout', async () => {
+    const t = setup();
+    const reader = t.reader as ManualReader;
+    const next = async (linked: SessionPullRequest[], windowStart: string | null): Promise<void> => {
+      schedulePullRequests(t.state, t.deps, 0);
+      t.scheduler.fire();
+      await reader.settle(read(linked, false, windowStart));
+    };
+    await next([pr(1)], START);
+    await next([pr(1)], '2026-11-10T08:00:00.000Z');
+    await next([pr(1), pr(2)], '2026-11-10T08:00:00.000Z');
+    await next([pr(1), pr(2)], '2026-11-10T08:00:00.000Z');
+    expect(t.sent.map((links) => [links.linked.length, links.windowStart])).toEqual([
+      [1, START], [1, '2026-11-10T08:00:00.000Z'], [2, '2026-11-10T08:00:00.000Z'],
+    ]);
+  });
+
+  it('a window without links after attach does not go out', async () => {
+    const t = setup();
+    schedulePullRequests(t.state, t.deps, 0);
+    t.scheduler.fire();
+    await (t.reader as ManualReader).settle(read([], false, START));
+    expect(t.sent).toEqual([]);
   });
 
   it('a signal during a read orders the next read after it, with the signal delay', async () => {
@@ -116,7 +148,7 @@ describe('pull request poll of the herdr driver', () => {
     schedulePullRequests(t.state, t.deps, 0);
     expect(t.state.prAgain).toBe(true);
     expect(t.scheduler.delays()).toEqual([]);
-    await reader.settle({ pullRequests: [], backlog: false });
+    await reader.settle(read([]));
     expect(t.state.prReading).toBe(false);
     expect(t.state.prAgain).toBe(false);
     expect(t.scheduler.delays()).toEqual([POLL_MS]);
@@ -132,8 +164,8 @@ describe('pull request poll of the herdr driver', () => {
     expect(t.scheduler.delays()).toEqual([0]);
 
     t.scheduler.fire();
-    await reader.settle({ pullRequests: [pr(2)], backlog: true });
-    expect(t.sent).toEqual([[pr(2)]]);
+    await reader.settle(read([pr(2)], true));
+    expect(t.sent).toEqual([read([pr(2)]).links]);
     expect(t.scheduler.delays()).toEqual([PULL_REQUESTS_BACKLOG_MS]);
   });
 
@@ -157,7 +189,7 @@ describe('pull request poll of the herdr driver', () => {
     schedulePullRequests(t.state, t.deps, 0);
     t.scheduler.fire();
     t.dispose();
-    await reader.settle({ pullRequests: [pr(3)], backlog: false });
+    await reader.settle(read([pr(3)]));
     expect(t.sent).toEqual([]);
     expect(t.state.prReading).toBe(false);
   });

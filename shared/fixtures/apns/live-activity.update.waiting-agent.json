@@ -10,7 +10,7 @@
       "timestamp": 1791367200,
       "event": "update",
       "content-state": {
-        "waiting": 0,
+        "waiting": 2,
         "working": 2,
         "finished": 1,
         "updatedEpoch": 1791367200

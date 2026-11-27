@@ -1,0 +1,15 @@
+    /Users/u/imp/l/shared/notes-02.md
+    /Users/u/imp/l/shared/notes-03.md
+    /Users/u/imp/l/shared/notes-04.md
+    /Users/u/imp/l/shared/notes-05.md
+    /Users/u/imp/l/shared/notes-06.md
+    … +9 imports not shown.
+    Yes covers those too, plus any this project adds later.
+
+  Important: Only use Claude Code with files you trust. Accessing untrusted files may pose security risks
+  https://code.claude.com/docs/en/security
+
+  ❯ No, disable external imports
+    Yes, allow external imports
+
+  Enter to confirm · Esc to disable

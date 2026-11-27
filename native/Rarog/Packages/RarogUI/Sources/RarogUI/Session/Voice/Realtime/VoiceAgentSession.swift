@@ -122,6 +122,8 @@ extension SonioxSpeechConfig {
 final class VoiceAgentSession {
   /// Seconds the "sent" state stands in the status row.
   static let sentSeconds: TimeInterval = 3
+  /// Seconds a conversation lasts at most, from the tap: then it ends with `RealtimeConversation.End.sessionLimit`.
+  static let sessionLimit: TimeInterval = 1200
 
   /// What a send of the message field took: the conversation run and the number of prompts `show_prompt` wrote so
   /// far. Its result shows "Sent to the session" only while both still hold (``fieldSent(_:)``), so a late result
@@ -167,6 +169,10 @@ final class VoiceAgentSession {
   private var sentTimer: VoiceTimer?
   /// The end sentence was dismissed (tap on the row, field edit).
   private var noticeDismissed = false
+  /// The length limit of the running conversation (``sessionLimit`` after its start) and the number that ties it to
+  /// that conversation: a timer of an ended one never ends the next.
+  private var limitTimer: VoiceTimer?
+  private var limitNumber = 0
 
   /// `dependencies`: socket, audio and clock around the key provider (app: `production`, tests: fakes); the same
   /// provider gives the Soniox speech key of `speech`, read at `speechSpeed`.
@@ -199,9 +205,12 @@ final class VoiceAgentSession {
   /// A conversation dropped without an end still tells the microphone center, so nothing stays held for it.
   isolated deinit {
     microphoneCenter?.changed(self)
+    limitTimer?.cancel()
   }
 
-  var isActive: Bool {
+  var isActive: Bool { Self.runs(phase) }
+
+  private static func runs(_ phase: RealtimeConversation.Phase) -> Bool {
     switch phase {
     case .idle, .ended: false
     default: true
@@ -330,6 +339,11 @@ final class VoiceAgentSession {
     if case .ended = next {
       transient = nil
       hearing = false
+      limitTimer?.cancel()
+      limitTimer = nil
+    } else if !Self.runs(previous) {
+      // A start (the phase leaves idle or ended); a start call while the conversation runs changes no phase.
+      armLimit()
     }
     if next == .checkingSession {
       if previous != .checkingSession { startChecking() }
@@ -339,6 +353,18 @@ final class VoiceAgentSession {
     refresh(reports: false)
     // Readiness and the end both come with a phase change, so the center learns every change of the use here.
     microphoneCenter?.changed(self)
+  }
+
+  /// The conversation ends ``sessionLimit`` seconds after its start, whatever happens in between (mute, answers).
+  private func armLimit() {
+    limitTimer?.cancel()
+    limitNumber += 1
+    let number = limitNumber
+    limitTimer = scheduler.schedule(after: Self.sessionLimit) { [weak self] in
+      guard let self, self.limitNumber == number, self.isActive else { return }
+      self.limitTimer = nil
+      self.conversation.end(.sessionLimit)
+    }
   }
 
   private func speech(_ started: Bool) {

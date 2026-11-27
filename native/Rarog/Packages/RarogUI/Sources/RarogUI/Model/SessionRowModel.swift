@@ -17,8 +17,10 @@ public struct RowStatus: Sendable, Equatable {
     // pracą nie jest i słowo „pracuje w tle" przy nim nie pada.
     let backgroundWork = BackgroundTaskRules.tasksKeepRowWorking(session.backgroundTasks)
     let running = session.state == .running || session.state == .starting
-    // Tura skończona, a coś dalej mieli w tle: barwa pracy i dwa słowa więcej.
-    text = tone == .working && !running && backgroundWork ? UICopy.backgroundWork : base
+    // Tura skończona, a coś dalej mieli w tle: barwa pracy i dwa słowa więcej. A subagent stuck on its own command
+    // after the turn has its own word, with the tone `.waiting` from the same rule.
+    text = BackgroundTaskRules.stuckWait(session.state, session.backgroundTasks) ? UICopy.stuckOnCommand
+      : tone == .working && !running && backgroundWork ? UICopy.backgroundWork : base
     self.tone = tone
   }
 }
@@ -213,6 +215,8 @@ public struct SessionRowModel: Sendable, Equatable, Identifiable {
     if let ordinal { parts.append(UICopy.ordinalSpoken(ordinal)) }
     if isCodex { parts.append(UICopy.codexSpoken) }
     parts.append(status.text)
+    // The long wait changes only the dot's colour; the reader gets it in words.
+    if status.tone == .backgroundWaitLong { parts.append(UICopy.toneSpoken(status.tone)) }
     if let since = clockSince {
       let value = RelativeTime.spokenSince(since: since, now: now)
       parts.append(clockKind == .waiting ? UICopy.cardWaitClock(value) : UICopy.sinceSpoken(value))

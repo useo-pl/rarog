@@ -341,6 +341,7 @@ struct MainSplitView: View {
       // Achromatycznie: przyciski systemowe szczegółu i jego arkuszy bez błękitu
       // akcentu — wyróżnia je kontrast, nie kolor (`docs/design.md` „Core principle").
       .tint(Color(uiColor: Palette.text))
+      .toggleStyle(.appSwitch)
     }
     .navigationSplitViewStyle(.balanced)
     // Jedyny arkusz apki: okna (terminal Cmd+F/Cmd+G, historia, diff) i formularze („Nowa sesja",

@@ -163,6 +163,24 @@
         }
       }
     },
+    "push.body.fallback.stalled" : {
+      "comment" : "Server sentence, area push, code push.body.fallback.stalled. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A subagent is waiting on its own command."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subagent czeka na własną komendę."
+          }
+        }
+      }
+    },
     "push.body.label" : {
       "comment" : "Server sentence, area push, code push.body.label. Arguments: 1. label (text).",
       "extractionState" : "manual",
@@ -303,6 +321,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agent skończył"
+          }
+        }
+      }
+    },
+    "push.detail.stalled" : {
+      "comment" : "Server sentence, area push, code push.detail.stalled. Arguments: 1. agent (text).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subagent \"%1$@\" is waiting on its own command."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subagent „%1$@” czeka na własną komendę."
           }
         }
       }
@@ -537,6 +573,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "❓ Pyta · %1$@"
+          }
+        }
+      }
+    },
+    "push.title.stalled" : {
+      "comment" : "Server sentence, area push, code push.title.stalled. Arguments: 1. project (text).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⏰ Waiting over 1 h · %1$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⏰ Czeka ponad 1 h · %1$@"
           }
         }
       }
@@ -3295,6 +3349,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "⚠ Odpowiedź nie trafiła — dialog w terminalu zdążył się zmienić. Tapnij ponownie na świeżej karcie. Rarog NIE wysłał żadnego klawisza."
+          }
+        }
+      }
+    },
+    "server.dialogs.start-dialog.imports" : {
+      "comment" : "Server sentence, area dialogs, code dialogs.start-dialog.imports. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code asks in the terminal whether to allow external imports in the instruction files of this project. Answer it in the terminal: Claude Code keeps the answer for this project for good. Rarog sends no key to it."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code pyta w terminalu, czy zezwolić na zewnętrzne importy w plikach instrukcji tego projektu. Odpowiedz w terminalu: Claude Code zapamięta odpowiedź dla tego projektu na stałe. Rarog nie wysyła do tego dialogu żadnego klawisza."
+          }
+        }
+      }
+    },
+    "server.dialogs.start-dialog.refused" : {
+      "comment" : "Server sentence, area dialogs, code dialogs.start-dialog.refused. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⚠ A Claude Code start dialog stands in the terminal. Rarog sent no key and no text. Answer it in the terminal."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⚠ W terminalu stoi dialog startowy Claude Code. Rarog nie wysłał żadnego klawisza ani tekstu. Odpowiedz w terminalu."
+          }
+        }
+      }
+    },
+    "server.dialogs.start-dialog.unknown" : {
+      "comment" : "Server sentence, area dialogs, code dialogs.start-dialog.unknown. No arguments.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code stands on a start dialog Rarog doesn't know. Answer it in the terminal; Rarog sends no key to it."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code stoi na dialogu startowym, którego Rarog nie zna. Odpowiedz w terminalu; Rarog nie wysyła do niego żadnego klawisza."
           }
         }
       }

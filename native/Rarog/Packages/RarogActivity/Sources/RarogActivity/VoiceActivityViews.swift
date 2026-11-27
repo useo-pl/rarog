@@ -7,10 +7,15 @@ import SwiftUI
 // UIKit tests render them with `ImageRenderer` (`VoiceActivityViewTests`). Owner: voice agent.
 //
 // The tile is one row: the glyph in a circle of the phase's colour; three lines, the small "Voice agent · 0:42", the
-// phase word and the muted subject ("All sessions", "atlas · demo"); and the End (Stop) button in the error tone.
-// The colours are dark values (the activity is pinned to the dark theme like the board), so nothing here depends on
-// the theme. The text part is one VoiceOver element with the kind, the phase and the subject in words and the timer
-// as its value; the button stays its own element.
+// phase word and the muted subject ("All sessions", "atlas · demo"); and the buttons of the phase
+// (``VoiceActivityPresentation/controls``): a conversation's End capsule in the error tone, a recording dictation's
+// two round icon buttons, Stop (a square, error tone) and Send (an up arrow, the dictation's blue), and none while a
+// dictation is being sent or after its send failed. Each button carries the id of its activity, which the widget
+// extension passes in. The timer counts up from the state's start and stops for good at its stop
+// (``VoiceActivityAttributes/ContentState/stoppedAt``): a failure tile does not keep counting. The colours are dark
+// values (the activity is pinned to the dark theme like the board), so nothing here depends on the theme. The text
+// part is one VoiceOver element with the kind, the phase and the subject in words and the timer as its value; each
+// button stays its own element.
 
 extension VoiceActivityPresentation {
   /// The tile's type stops growing at this size, so its three lines keep their row (the board's limit).
@@ -23,7 +28,9 @@ extension VoiceActivityPresentation {
 
   /// The End (Stop) button's tone, the same in every phase: it ends what records.
   static var endColor: Color { Color(uiColor: LiveActivityPalette.rgb(LiveActivityPalette.errPair.dark)) }
-  /// The button's word: the tile's text colour over the dark error tone.
+  /// The Send button's tone: the dictation's blue.
+  static var sendColor: Color { Color(uiColor: LiveActivityPalette.rgb(LiveActivityPalette.newPair.dark)) }
+  /// The buttons' word and glyph: the tile's text colour over the dark tone.
   static var endTextColor: Color { Color(uiColor: LiveActivityPalette.rgb(LiveActivityPalette.textPair.dark)) }
 }
 
@@ -42,21 +49,75 @@ struct VoiceActivityGlyph: View {
   }
 }
 
-/// The system timer counting up from the recording's start.
+/// The system timer counting up from the recording's start, or up to its stop, where it stays.
 struct VoiceActivityTimer: View {
-  let startedAt: Date
+  let state: VoiceActivityPresentation.State
 
   var body: some View {
-    Text(startedAt, style: .timer).monospacedDigit()
+    Self.text(state).monospacedDigit()
+  }
+
+  /// A `pauseTime` still ahead lets the timer run until then (SwiftUI, `Text(timerInterval:pauseTime:)`); one
+  /// passed shows the value it stopped at.
+  static func text(_ state: VoiceActivityPresentation.State) -> Text {
+    guard let stop = state.stoppedAt, stop > state.startedAt else { return Text(state.startedAt, style: .timer) }
+    return Text(timerInterval: state.startedAt...stop, pauseTime: stop, countsDown: false)
+  }
+}
+
+/// The buttons of the phase: End, Stop and Send, or nothing; each runs its intent for `activityID`.
+struct VoiceActivityControls: View {
+  let presentation: VoiceActivityPresentation
+  let activityID: String
+
+  var body: some View {
+    switch presentation.controls {
+    case .end:
+      VoiceActivityEndButton(presentation: presentation, activityID: activityID)
+    case .stopAndSend:
+      HStack(spacing: 8) {
+        VoiceActivityIconButton(
+          intent: EndVoiceActivityIntent(activityID: activityID), symbol: "stop.fill",
+          tone: VoiceActivityPresentation.endColor, label: presentation.endWord)
+        VoiceActivityIconButton(
+          intent: SendDictationActivityIntent(activityID: activityID), symbol: "arrow.up",
+          tone: VoiceActivityPresentation.sendColor, label: presentation.sendWord)
+      }
+    case .none:
+      EmptyView()
+    }
+  }
+}
+
+/// A round 44 pt icon button of a dictation: runs `intent` in the app's process without opening the app.
+struct VoiceActivityIconButton<Intent: AppIntent>: View {
+  let intent: Intent
+  let symbol: String
+  let tone: Color
+  let label: String
+
+  var body: some View {
+    Button(intent: intent) {
+      Image(systemName: symbol)
+        .font(.system(size: 17, weight: .bold))
+        .foregroundStyle(VoiceActivityPresentation.endTextColor)
+        .frame(width: 44, height: 44)
+        .background(Circle().fill(tone.opacity(0.28)))
+        .overlay(Circle().strokeBorder(tone.opacity(0.55), lineWidth: 1))
+        .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(label)
   }
 }
 
 /// End (Stop for a dictation): runs ``EndVoiceActivityIntent`` in the app's process without opening the app.
 struct VoiceActivityEndButton: View {
   let presentation: VoiceActivityPresentation
+  let activityID: String
 
   var body: some View {
-    Button(intent: EndVoiceActivityIntent()) {
+    Button(intent: EndVoiceActivityIntent(activityID: activityID)) {
       Text(presentation.endWord)
         .font(.subheadline.weight(.semibold))
         .lineLimit(1)
@@ -75,9 +136,12 @@ struct VoiceActivityEndButton: View {
 /// The tile on the Lock Screen (and the banner on a device without the Dynamic Island).
 public struct VoiceActivityLockScreenView: View {
   let presentation: VoiceActivityPresentation
+  let activityID: String
 
-  public init(presentation: VoiceActivityPresentation) {
+  /// `activityID`: the activity this tile shows (`ActivityViewContext.activityID`), which its buttons carry.
+  public init(presentation: VoiceActivityPresentation, activityID: String) {
     self.presentation = presentation
+    self.activityID = activityID
   }
 
   public var body: some View {
@@ -86,7 +150,7 @@ public struct VoiceActivityLockScreenView: View {
       VStack(alignment: .leading, spacing: 1) {
         HStack(spacing: 0) {
           Text(presentation.lead)
-          VoiceActivityTimer(startedAt: presentation.state.startedAt)
+          VoiceActivityTimer(state: presentation.state)
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -103,8 +167,8 @@ public struct VoiceActivityLockScreenView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(presentation.spoken)
-      .accessibilityValue(Text(presentation.state.startedAt, style: .timer))
-      VoiceActivityEndButton(presentation: presentation)
+      .accessibilityValue(VoiceActivityTimer.text(presentation.state))
+      VoiceActivityControls(presentation: presentation, activityID: activityID)
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 12)
@@ -138,7 +202,7 @@ public struct VoiceActivityCompactTrailing: View {
   }
 
   public var body: some View {
-    VoiceActivityTimer(startedAt: presentation.state.startedAt)
+    VoiceActivityTimer(state: presentation.state)
       .font(.system(.body, design: .rounded, weight: .semibold))
       .foregroundStyle(presentation.color)
       .multilineTextAlignment(.trailing)
@@ -195,7 +259,7 @@ public struct VoiceActivityExpandedTrailing: View {
   }
 
   public var body: some View {
-    VoiceActivityTimer(startedAt: presentation.state.startedAt)
+    VoiceActivityTimer(state: presentation.state)
       .font(.title3.weight(.semibold))
       .foregroundStyle(presentation.color)
       .multilineTextAlignment(.trailing)
@@ -204,12 +268,15 @@ public struct VoiceActivityExpandedTrailing: View {
   }
 }
 
-/// Expanded Dynamic Island, bottom: the subject line and the End (Stop) button.
+/// Expanded Dynamic Island, bottom: the subject line and the buttons of the phase.
 public struct VoiceActivityExpandedBottom: View {
   let presentation: VoiceActivityPresentation
+  let activityID: String
 
-  public init(presentation: VoiceActivityPresentation) {
+  /// `activityID`: the activity this view shows (`ActivityViewContext.activityID`), which its buttons carry.
+  public init(presentation: VoiceActivityPresentation, activityID: String) {
     self.presentation = presentation
+    self.activityID = activityID
   }
 
   public var body: some View {
@@ -221,7 +288,7 @@ public struct VoiceActivityExpandedBottom: View {
         .truncationMode(.tail)
         .accessibilityHidden(true)
       Spacer(minLength: 8)
-      VoiceActivityEndButton(presentation: presentation)
+      VoiceActivityControls(presentation: presentation, activityID: activityID)
     }
     .dynamicTypeSize(...VoiceActivityPresentation.islandMaxTypeSize)
   }

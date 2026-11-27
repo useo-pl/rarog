@@ -144,6 +144,9 @@ struct ListJumpPillTests {
   func workDoesNotCount() throws {
     let rows = Self.rows(10, [6: .working, 7: .working, 8: .quiet, 9: .backgroundWait])
     #expect(try #require(evaluate(rows)) == .none)
+    // A long wait is only a warning: it has the waiting color but makes no pill.
+    let long = Self.rows(10, [8: .backgroundWaitLong, 9: .backgroundWaitLong])
+    #expect(try #require(evaluate(long)) == .none)
   }
 
   @Test("several rows below: the target is the first under the visible part; several above: the last over it")
@@ -171,6 +174,7 @@ struct ListJumpPillTests {
     #expect(Pill.Attention(.working) == nil)
     #expect(Pill.Attention(.quiet) == nil)
     #expect(Pill.Attention(.backgroundWait) == nil)
+    #expect(Pill.Attention(.backgroundWaitLong) == nil)
   }
 
   @Test("tree rows: an agent row takes its dot's tone and the name the tree row draws; the sentence row is nothing")
@@ -189,5 +193,48 @@ struct ListJumpPillTests {
     let still = SessionRowModel(summary, ordinal: nil, freshResult: false)
     #expect(Row(ProjectTreeRow.session(pulsing)).attention == .unread)
     #expect(Row(ProjectTreeRow.session(still)).attention == nil)
+  }
+}
+
+/// The pills stand only while they leave the list room to scroll: together they cover at most half of the visible part.
+@Suite("list jump pill: room left to scroll")
+struct ListJumpPillFitTests {
+  private typealias Pill = ListJumpPill
+
+  private static let both = Pill.Result(
+    above: Pill.Side(waiting: 1, target: "a"), below: Pill.Side(failed: 1, target: "b"))
+  private static let belowOnly = Pill.Result(below: Pill.Side(failed: 1, target: "b"))
+
+  private func fits(_ result: Pill.Result, above: CGFloat, below: CGFloat, visible: CGFloat) -> Bool {
+    Pill.fits(result, pillHeights: Pill.PillHeights(above: above, below: below), visibleHeight: visible)
+  }
+
+  @Test("regular text in a tall list: both one-line pills stand")
+  func regularTextTallList() {
+    #expect(fits(Self.both, above: 44, below: 44, visible: 600))
+    #expect(fits(Self.belowOnly, above: 44, below: 44, visible: 600))
+  }
+
+  @Test("largest text in landscape: two 125 pt pills over a 200 pt visible part go, one of them alone goes too")
+  func largestTextLandscape() {
+    #expect(!fits(Self.both, above: 125, below: 125, visible: 200))
+    #expect(!fits(Self.belowOnly, above: 125, below: 125, visible: 200))
+  }
+
+  @Test("pills covering exactly half of the visible part stand; a half point more and they go")
+  func exactlyHalf() {
+    #expect(fits(Self.both, above: 50, below: 50, visible: 200))
+    #expect(!fits(Self.both, above: 50, below: 50.5, visible: 200))
+  }
+
+  @Test("only the sides with a pill count: one 125 pt pill fits a 380 pt visible part, two do not")
+  func onlyShownSidesCount() {
+    #expect(fits(Self.belowOnly, above: 125, below: 125, visible: 380))
+    #expect(!fits(Self.both, above: 125, below: 125, visible: 380))
+  }
+
+  @Test("no pill: nothing to hide, also in a visible part of no height")
+  func noPill() {
+    #expect(fits(.none, above: 125, below: 125, visible: 0))
   }
 }

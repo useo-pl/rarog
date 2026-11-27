@@ -5,8 +5,9 @@ import SwiftUI
 import UIKit
 
 /// The "Model and Effort" sheet of a live session: three rows instead of menus. Model and Effort are chips
-/// (`RecentChip`) in horizontally scrolling rows, Ultracode is a system segmented control Yes / No. A tap only
-/// CHOOSES; one Apply sends the difference of model, effort and ultracode in one request.
+/// (`RecentChip`) in rows that flow into further lines when the chips do not fit (`FlowLayout`), Ultracode is a
+/// system segmented control Yes / No. A tap only CHOOSES; one Apply sends the difference of model, effort and
+/// ultracode in one request.
 /// On iPad a popover at the pill in the row under the message field (`Session/ComposerPills`), on a phone a sheet as
 /// tall as its content.
 ///
@@ -39,10 +40,6 @@ struct ModelSheet: View {
 
   /// Space between the last row and Apply.
   private static let applyGap: CGFloat = 18
-  /// The chip row fades out over its last 12 %, a hint that it scrolls.
-  private static let fade = LinearGradient(
-    stops: [.init(color: .black, location: 0.88), .init(color: .clear, location: 1)],
-    startPoint: .leading, endPoint: .trailing)
 
   var body: some View {
     // When the content does not fit (accessibility text, keyboard) it scrolls instead of cutting off Apply. The ideal
@@ -203,36 +200,26 @@ struct ModelSheet: View {
     }
   }
 
-  /// Chips in one horizontally scrolling row; the selected chip is scrolled into view when the row appears.
-  /// `describe` gives a chip its label and VoiceOver hint.
+  /// Chips in a row that flows into further lines when they do not fit, so every chip stays whole and in view at any
+  /// text size. `describe` gives a chip its label and VoiceOver hint.
   private func chips(
     _ values: [String], selected: String?, identifier: String,
     describe: @escaping (String) -> (label: String, hint: String?), pick: @escaping (String) -> Void
   ) -> some View {
-    ScrollViewReader { proxy in
-      ScrollView(.horizontal) {
-        HStack(spacing: 8) {
-          ForEach(values, id: \.self) { value in
-            let pressed = value == selected
-            let text = describe(value)
-            Button {
-              pick(value)
-              error = nil
-            } label: {
-              RecentChip(label: text.label, pressed: pressed)
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(pressed ? .isSelected : [])
-            .accessibilityHint(text.hint ?? String())
-            .accessibilityIdentifier("\(identifier).\(value)")
-            .id(value)
-          }
+    FlowLayout(spacing: 8) {
+      ForEach(values, id: \.self) { value in
+        let pressed = value == selected
+        let text = describe(value)
+        Button {
+          pick(value)
+          error = nil
+        } label: {
+          RecentChip(label: text.label, pressed: pressed)
         }
-      }
-      .scrollIndicators(.hidden)
-      .mask(Self.fade)
-      .onAppear {
-        if let selected { proxy.scrollTo(selected) }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(pressed ? .isSelected : [])
+        .accessibilityHint(text.hint ?? String())
+        .accessibilityIdentifier("\(identifier).\(value)")
       }
     }
   }

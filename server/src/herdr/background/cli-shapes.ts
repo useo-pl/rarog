@@ -61,25 +61,10 @@ export const CLI_SHAPES = {
     literals: {
       open: '<task-notification>',
       taskId: '<task-id>',
-      // The call that started the task and the file its output goes to (also on CLI 2.1.316, live session file).
-      toolUseId: '<tool-use-id>',
-      outputFile: '<output-file>',
-      /*
-       * The output file's place: `<tmp>/claude-<uid>/<slug>/<session uuid>/tasks/<task id>.output`. For a `Bash`
-       * command a regular file with the output and an `[exited with code N]` line; for an agent the CLI puts a
-       * symlink to the agent's conversation file there. The CLI deletes these files after some days (unmeasured).
-       * Read only by the pull request reader (`pull-request-files.ts`).
-       */
-      outputDir: 'tasks',
-      outputExtension: '.output',
       status: '<status>',
       summary: '<summary>',
     },
     cli: '2.1.296',
-    common: {
-      outputDir: 'ordinary word: the driver event of the task list has the same name',
-      outputExtension: 'ordinary word: `.output` stands in code as an object field (`deps.output`)',
-    },
   },
   notificationCarriers: {
     what: 'wpisy niosące meldunek poza wpisem `user` z gołym napisem: kolejka promptów i załącznik',
@@ -448,6 +433,22 @@ export const CLI_SHAPES = {
       ended: 'ordinary word: the same word is a value of the agent notification note (`notification.ts`)',
       createdAt: 'ordinary word: device and note stores have a field with this name',
     },
+  },
+  /**
+   * The entry that links a pull request to the conversation (`pull-requests.ts`): a top-level entry
+   * `{type, sessionId, prNumber, prUrl, prRepository, timestamp}` in the main conversation file, seen on CLI
+   * 2.1.296–2.1.3xx and never in a subagent file. No conversation in the Rarog workspace has one, so no measured fixture
+   * holds it: the literals stand on the list outside the measurement in `herdr-background-fixtures.test.ts`.
+   */
+  prLink: {
+    what: 'the entry that links a pull request to the conversation: its type, PR URL, number and repository',
+    literals: {
+      type: 'pr-link',
+      url: 'prUrl',
+      number: 'prNumber',
+      repository: 'prRepository',
+    },
+    cli: '2.1.296',
   },
 } as const satisfies Record<string, CliShape>;
 

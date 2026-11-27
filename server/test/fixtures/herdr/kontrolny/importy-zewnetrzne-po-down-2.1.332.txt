@@ -1,0 +1,18 @@
+$ claude --session-id 00000000-0000-4000-9000-000000000001 --model sonnet --setting-sources project,local --settings ../../../ust.json
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Allow external CLAUDE.md file imports?
+
+  This project's CLAUDE.md or .claude/rules imports files outside the current working directory. Never allow this for third-party
+  repositories.
+
+  External imports:
+    /Users/u/imp/a/shared/notes.md
+
+  Important: Only use Claude Code with files you trust. Accessing untrusted files may pose security risks
+  https://code.claude.com/docs/en/security
+
+    No, disable external imports
+  ❯ Yes, allow external imports
+
+  Enter to confirm · Esc to disable

@@ -157,7 +157,7 @@ The entry carries no screen text and no key.
 
 - `server/test/dialogi-warstwa2-karty-korpusu.test.ts`: golden file `fixtures/herdr/karty-korpusu-warstwa2.json`,
   the card of every corpus screen with the flag on and the class from the truth manifest
-  (`fixtures/herdr/warstwa2-prawda.json`); 39 of 55 layer 2 screens get a decision card, 47 a card with Esc at least,
+  (`fixtures/herdr/warstwa2-prawda.json`); 40 of 60 layer 2 screens get a decision card, 48 a card with Esc at least,
   no screen gets fewer buttons than with the flag off. Refresh: `RAROG_FIXTURES_WRITE=1`.
 - `server/test/dialogi-warstwa2-karta.test.ts`: the pair of reads, `unstable`, occurrence ids and the episode line on
   a fake port.

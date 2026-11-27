@@ -22,7 +22,7 @@ import {
   type AnyText, type ArglessSentenceCode, arglessCodeOf, foreign, isServerSentence, say, textOf,
 } from '@rarog/shared/sentences';
 import type { SessionDriver } from '../drivers/types.ts';
-import type { ScreenConsentDialogId } from './dialogs/index.ts';
+import type { ScreenConsentDialogId, StartDialog } from './dialogs/index.ts';
 import type { KeyRowKey } from './dialogs/send/key-row.ts';
 import type { TakeBackKey } from './dialogs/send/take-back-keys.ts';
 import type { TrustStepKey } from './dialogs/send/trust-step.ts';
@@ -276,6 +276,20 @@ export interface HerdrLaunchResult {
   status: HerdrAgentStatus;
   /** `false`, dopóki panel stoi na dialogu — `agent.prompt` oddałby wtedy `agent_not_ready`. */
   interactiveReady: boolean;
+  /**
+   * A Claude Code start dialog herdr reads as ready (`idle`, `interactive_ready`, no session id) that ended the wait
+   * with `status: 'blocked'`. Absent when herdr reported `blocked` itself or when no dialog stood.
+   */
+  startDialog?: StartDialog;
+}
+
+/**
+ * A pane Rarog launched whose engine session herdr does not know yet (the supervisor has not seen the agent on a
+ * list): a start dialog may stand in it. `startDialog` is what the launcher read ({@link HerdrLaunchResult}); `null`
+ * when herdr reported `blocked` itself or the launch has not settled.
+ */
+export interface HerdrStartPhase {
+  readonly startDialog: StartDialog | null;
 }
 
 /**
@@ -388,7 +402,7 @@ export interface HerdrSupervisor extends HerdrLauncher {
    * Etykieta KARTY tej sesji powstała albo się zmieniła — etykieta taba w herdr ma za nią pójść
    * Woła ją manager z JEDNEGO miejsca (`#setLabel`); nadzorca odkłada pracę (debounce
    * na klucz) i nazywa tab wyłącznie wtedy, gdy ma do tego prawo (tab jednopanelowy, panel
-   * z etykietą pochodzenia `rarog-claude`, lokator `claude`, etykieta taba nie nadana ręcznie).
+   * z etykietą pochodzenia `rc:`, lokator `claude`, etykieta taba nie nadana ręcznie).
    * Nigdy nie rzuca i niczego nie zwraca — to jest best effort, nie warunek sesji.
    * Opcjonalna, bo atrapy nadzorcy w testach i mock demo tabów w herdr nie mają.
    */
@@ -829,9 +843,10 @@ export interface HerdrLaunchClient {
   reportPaneMetadata(params: HerdrPaneMetadataParams): Promise<void>;
   /**
    * Etykieta PANELU (`pane.rename`); `null` ją zdejmuje. Wołający: launcher, na panelu,
-   * który SAM przed chwilą założył (`rarog-claude <klucz> <ślad>`, `herdr/provenance.ts`), oraz
+   * który SAM przed chwilą założył (`rc:<klucz><ślad>`, `herdr/provenance.ts`), oraz
    * backend terminala — świeży panel terminala i migracja panelu, który już nosi token
-   * `rarog-term` (`rarog-term <id>`, `term/herdr-backend.ts`).
+   * `rarog-term` (`rt:<id>`, `term/herdr-backend.ts`). The label migration
+   * (`herdr/label-migration.ts`) rewrites old-format labels through it too.
    *
    * herdr etykiet nie normalizuje (zmierzone: ESC, `\n`, pusty napis przyjęte), więc
    * fasada odrzuca pusty adres, pusty napis i znaki sterujące, ZANIM cokolwiek pójdzie do gniazda.
@@ -840,7 +855,7 @@ export interface HerdrLaunchClient {
   /**
    * Etykieta TABA (`tab.rename`). Wołający: launcher i backend terminala, każdy zaraz po
    * SWOIM `workspace.create`, które nadaje pierwszemu tabowi „1"; nadzorca, gdy etykieta karty
-   * się zmieni (`syncTabLabel` — tylko tab jednopanelowy z panelem `rarog-claude`, etykieta nie
+   * się zmieni (`syncTabLabel` — tylko tab jednopanelowy z panelem `rc:`, etykieta nie
    * nadana ręcznie); backend terminala przy migracji starych etykiet tabów (`reconcile`).
    * Te same bramki wejścia co {@link renamePane}; zdjęcia nie ma (herdr wymaga napisu).
    */

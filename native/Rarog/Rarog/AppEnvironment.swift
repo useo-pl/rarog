@@ -133,8 +133,6 @@ enum AppEnvironment {
     DictationTestMode.reset(defaults: .standard)
     // Agent głosowy: bez zgody i z domyślnym głosem.
     for key in VoiceAgentPreferences.keys { UserDefaults.standard.removeObject(forKey: key) }
-    // The locked-phone trial: off, as on a new device.
-    UserDefaults.standard.removeObject(forKey: LockedPhoneTrial.key)
     // Shortcuts changed in Settings: every test starts with ⌥⌘M and ⌥⌘V.
     for key in AppShortcutSettings.keys { UserDefaults.standard.removeObject(forKey: key) }
     // The app's text size (⌘+, ⌘-): every test starts with the system's size, or with the step it asks for
@@ -149,9 +147,14 @@ enum AppEnvironment {
   }
 
   /// Ustawienia agenta głosowego dla magazynu (`RarogStore.attachVoiceAgent`): zgoda i głos w `UserDefaults` apki.
+  /// The device class of the background rule comes from here: an iPad and the app on a Mac show no Live Activity
+  /// tiles, so there the screen lock, not the tile, ends a recording in the background. Not from
+  /// `areActivitiesEnabled`: an iPhone with Live Activities off ends a recording in the background as at a refused
+  /// tile.
   @MainActor
   static func voiceAgent(defaults: UserDefaults = .standard) -> VoiceAgentSettings {
-    .live(defaults: defaults)
+    let noTiles = UIDevice.current.userInterfaceIdiom == .pad || ProcessInfo.processInfo.isiOSAppOnMac
+    return .live(defaults: defaults, noTiles: noTiles)
   }
 }
 

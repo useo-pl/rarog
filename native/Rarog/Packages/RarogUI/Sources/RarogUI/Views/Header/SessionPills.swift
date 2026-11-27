@@ -48,6 +48,8 @@ struct PillLabel: View {
   let text: String
   var tone: Tone = .neutral
   var leadingDot: UIColor?
+  /// A state mark after the dot (SF Symbol and its ink): the background pill's warning of a long wait.
+  var mark: (symbol: String, ink: UIColor)?
   /// Fill of an untoned pill: `surface2` in the status line, clear in the message field, like the paperclip and
   /// microphone circles (`RingButton`) — on the glass card the pill shows by its line, not by a fill of its own.
   var restFill: UIColor = Palette.surface2
@@ -67,6 +69,12 @@ struct PillLabel: View {
       HStack(spacing: 5) {
         if let leadingDot {
           Circle().fill(Color(uiColor: leadingDot)).frame(width: 6, height: 6)
+        }
+        if let mark {
+          Image(systemName: mark.symbol)
+            .appFont(.caption.weight(.semibold))
+            .imageScale(.small)
+            .foregroundStyle(Color(uiColor: mark.ink))
         }
         Text(text)
           .appFont(.caption.monospaced())
@@ -177,7 +185,8 @@ struct CliUpdatePill: View {
 
 /// `● 3 w tle` — sama liczba, kropka w barwie pracy (proces w tle nikogo nie blokuje, więc bez
 /// bursztynu). Kropka to znak pracy: gdy na liście stoją sami subagenci w postoju, pigułka dalej liczy
-/// zadania (`1 w tle`), ale kropki nie ma (`BackgroundBadge`). Licznik czasu tylko w panelu, żeby
+/// zadania (`1 w tle`), ale kropki nie ma (`BackgroundBadge`). A subagent that waits long on its own command adds
+/// the mark of its stage in the warning colour (`BackgroundBadge.warning`). Licznik czasu tylko w panelu, żeby
 /// nagłówek nie tykał. Po ostatnim zadaniu pigułka znika razem z panelem — pusta ramka nie zostaje (koniec
 /// przebiegu workflow też zamyka panel). Panel czyta zadania z magazynu sam, więc otwarty popover nadąża za
 /// ramkami listy.
@@ -207,7 +216,10 @@ struct BackgroundTasksPill: View {
       case let .panelSheet(anchor): navigation.openInspectorSheet(sessionId: sessionId, anchor: anchor)
       }
     } label: {
-      PillLabel(text: badge.text, tone: .run, leadingDot: badge.working ? Palette.run : nil, bordered: false)
+      PillLabel(
+        text: badge.text, tone: .run, leadingDot: badge.working ? Palette.run : nil,
+        mark: badge.warning.flatMap { tone in StateGlyph.mark(tone).map { ($0, Palette.tone(tone)) } },
+        bordered: false)
     }
     .buttonStyle(.plain)
     .accessibilityLabel(badge.spoken)

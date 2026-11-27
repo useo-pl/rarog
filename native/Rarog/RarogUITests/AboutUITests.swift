@@ -28,7 +28,8 @@ final class AboutUITests: XCTestCase {
     let section = DemoServer.revealSettings(app, "settings.about.version", in: page)
     XCTAssertTrue(section.exists, "version row on the About page")
     let version = section.label
-    XCTAssertNotNil(version.range(of: #"^Wersja \d+\.\d+ \(\d+\)$"#, options: .regularExpression), version)
+    // `MARKETING_VERSION` has two or three parts (1.0, 1.1.0); the build number follows in brackets.
+    XCTAssertNotNil(version.range(of: #"^Wersja \d+\.\d+(\.\d+)? \(\d+\)$"#, options: .regularExpression), version)
 
     for (id, label) in [("privacy", "Polityka prywatności"), ("setup", "Instalacja serwera"), ("support", "Wsparcie")] {
       let link = element(app, "settings.about.\(id)")

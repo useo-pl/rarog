@@ -38,7 +38,9 @@ extension UICopy {
   /// czekaniu na zadanie w tle jest takie jak przy ciszy, więc ton dochodzi własnym słowem.
   public static func tabSpoken(_ session: SessionSummary, current: Bool) -> String {
     var parts = [tabLabel(session), RowStatus(session).text]
-    if session.statusTone == .backgroundWait { parts.append(toneSpoken(.backgroundWait)) }
+    // A long wait keeps the same status word too, so its own tone word follows it.
+    let tone = session.statusTone
+    if tone == .backgroundWait || tone == .backgroundWaitLong { parts.append(toneSpoken(tone)) }
     let base = list(parts, .comma)
     return current ? base : L("projects.tabSpoken", base)
   }

@@ -12,6 +12,8 @@ extension AppState {
     // An accepted entry whose wait for its session's stream this event ends gets a countdown (`Reducer+Send`).
     let waiting = entriesWaitingForStream()
     let effects = reduce(event, now: now, timing: timing)
+    // The Check guard follows its outbox entries, whichever event moved them (`Reducer+WaitCheck`).
+    settleWaitChecks(after: event, now: now)
     return effects + countdownsAfterTheWait(waiting, now: now, timing: timing)
   }
 
@@ -120,6 +122,8 @@ extension AppState {
       return applyQueueTakeBack(event)
     case let .inbox(event):
       applyInbox(event)
+    case let .waitCheck(event):
+      applyWaitCheck(event)
     }
     return []
   }

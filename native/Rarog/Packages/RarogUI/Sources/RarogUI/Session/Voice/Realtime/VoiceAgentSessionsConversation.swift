@@ -19,14 +19,15 @@ import RarogCore
 // - One microphone: right before the start the conversation takes the app's microphone (`DictationCenter`), as the
 //   session screen's conversation does: a running conversation at a session ends, and so does dictation; a
 //   conversation at a session or dictation that starts later ends this one (`VoiceAgentSession.handOff`).
-// - Ends: the end action, the app in the background (`scene(_:)`; under the locked-phone trial not a conversation
-//   past its readiness gate), a logout, another login, the mode not offered, the mode's consent withdrawn, the lost
-//   server connection (`AppState.global` offline), an audio interruption, a Soniox failure, a read session's new
-//   conversation. The owner's own reasons reach the host as `ownerReason`, so they end
+// - Ends: the end action, the app in the background (`scene(_:)`; not a conversation past its readiness gate that
+//   the background rule keeps, `BackgroundRecording`), a logout, another login, the mode not offered, the mode's
+//   consent withdrawn, the lost server connection (`AppState.global` offline), an audio interruption, a Soniox
+//   failure, a read session's new conversation. The owner's own reasons reach the host as `ownerReason`, so they end
 //   through the core's end check with their reason and sentence. Every end reaches the host as `conversationEnded()`,
 //   from the session's indicator, whatever ended it.
-// - While a conversation runs or its opening list is read, each change of the store's state or of the consent checks
-//   the end rules (`observe()`), so a withdrawn consent ends the conversation without any call from a view.
+// - While a conversation runs or its opening list is read, each change of the store's state, of the consent or of the
+//   background rule's inputs (the tile, the lock) checks the end rules (`observe()`), so a withdrawn consent, the
+//   tile removed or the lock ends the conversation without any call from a view.
 
 /// What the list button does now (``VoiceAgentSessionsConversation/entry``).
 enum VoiceAgentSessionsEntry: Sendable, Equatable {
@@ -224,7 +225,7 @@ final class VoiceAgentSessionsConversation {
   }
 
   /// The scene phase of the app: in the background no start begins, and the running conversation ends unless the
-  /// locked-phone trial keeps it (``ownReason()``).
+  /// background rule keeps it (``ownReason()``).
   func scene(_ phase: ScenePhase) {
     background = phase == .background
     observe()
@@ -255,17 +256,17 @@ final class VoiceAgentSessionsConversation {
   }
 
   /// The owner's end reasons for the host (``VoiceAgentSessionsHost/ownerReason``). The background ends a start, the
-  /// opening list and a conversation still connecting; under the locked-phone trial it keeps a ready one.
+  /// opening list and a conversation still connecting; it keeps a ready one while the background rule says so.
   private func ownReason() -> VoiceAgentWatch.Reason? {
-    if background, !settings.lockedPhoneTrial.keeps(running: session?.isReady == true) { return .background }
+    if background, !settings.background.keeps(running: session?.isReady == true) { return .background }
     if !settings.sessionsAllowed { return .disabled }
     if case .offline = backend.state.global { return .connectionLost }
     return nil
   }
 
-  /// While a conversation runs or its opening list is read, the next change of the store's state or of the consent
-  /// checks the end rules. The change comes before the new value is in place, so the check runs on the next turn of
-  /// the main actor.
+  /// While a conversation runs or its opening list is read, the next change of the store's state, of the consent or of
+  /// the background rule's inputs (the tile, the lock) checks the end rules. The change comes before the new value is
+  /// in place, so the check runs on the next turn of the main actor.
   private func watch() {
     guard !watching else { return }
     watching = true
@@ -273,6 +274,7 @@ final class VoiceAgentSessionsConversation {
     withObservationTracking {
       _ = backend.state
       _ = settings.sessionsAllowed
+      _ = settings.background.keeps(running: true)
     } onChange: {
       Task { @MainActor in
         guard let self = owner.value as? VoiceAgentSessionsConversation else { return }

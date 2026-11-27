@@ -30,9 +30,10 @@ public struct VoiceTiming: Sendable, Equatable {
   public var tick: TimeInterval = 1
   /// Minuta ciszy kończy nagrywanie — otwarty mikrofon kosztuje baterię i sesję.
   public var silenceLimit: TimeInterval = 60
-  /// Od ilu sekund przed limitem sesji widać „zostało m:ss" (2 min przed 15 = od 13. minuty).
+  /// How many seconds before the session limit the "m:ss left" countdown shows.
   public var limitWarning: TimeInterval = 120
-  /// Limit sesji, gdy serwer nie podał `maxSessionSeconds`.
+  /// The session limit when the server gives no `maxSessionSeconds` (the system route has no key at all); a host's
+  /// cap (`VoiceRecorder.Deps.sessionCeiling`) can lower it.
   public var defaultMaxSession: TimeInterval = 900
 
   public init() {}
@@ -234,6 +235,9 @@ enum DictationReadyTrace {
 /// The reason word of `dictation: ended <reason>` for a recording that ended by itself, from its notice; never the
 /// notice's sentence (a key refusal carries the server's text).
 enum DictationEndTrace {
+  /// The word of a recording that a Send from outside the app's screens ended (`ComposerDictation.sendFromLockScreen`).
+  static let liveActivitySend = "live-activity-send"
+
   static func reason(_ notice: VoiceNotice) -> String {
     switch notice {
     case .silence: "silence"

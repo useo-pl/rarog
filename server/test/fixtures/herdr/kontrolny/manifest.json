@@ -7461,6 +7461,94 @@
         "buttons": [],
         "why": "Zgoda `Edit` pliku `~/dotfiles/settings.json` w HOME przebiegu w trybie `auto`: to cel dowiązania `settings.json` HOME przebiegu, poza `~/.claude`. Ekranu „Auto mode can't check actions in this session” nie było, od razu stanął dialog zgody z cyframi; klasa rejestru `permission prompt` (herdr `blocked`), hook ruszył. Kształt z klasą zgody ma w zestawie werdykt bez przycisków, a opcja 2 („always allow access”) zmienia uprawnienia sesji. Zmierzona na atrapie API, osobnym serwerze herdr i serwerze próbnym Raroga w trybie `all` z hookiem `ok`, odrzucona `Esc`; dokładne wejście narzędzia w `<zrzut>.input.json`."
       }
+    },
+    {
+      "id": "importy-zewnetrzne-2.1.332",
+      "file": "kontrolny/importy-zewnetrzne-2.1.332.txt",
+      "cli": "2.1.332",
+      "columns": 139,
+      "billing": "api-key",
+      "waitingFor": { "status": null, "value": null },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Allow external CLAUDE.md file imports?",
+        "options": [],
+        "footer": "Enter to confirm · Esc to disable",
+        "complete": true
+      },
+      "today": { "event": "screen-dialog", "reason": "unreadable", "knownDialog": null, "buttons": [], "bodyPrint": null },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Dialog startowy przed REPL, gdy plik pamięci projektu importuje plik spoza katalogu sesji (`@../shared/notes.md`), w projekcie z zaufaniem: tytuł, opis, lista importów, opcje bez cyfr („❯ No, disable external imports”, „Yes, allow external imports”), stopka „Esc to disable”. Odpowiedź CLI zapisuje na stałe dla projektu, więc to decyzja przy biurku. herdr przez cały dialog `idle` z `interactive_ready` i pustym id sesji, rejestr CLI bez wpisu sesji. Zamknięty `Esc` („No”)."
+      }
+    },
+    {
+      "id": "importy-zewnetrzne-po-down-2.1.332",
+      "file": "kontrolny/importy-zewnetrzne-po-down-2.1.332.txt",
+      "cli": "2.1.332",
+      "columns": 139,
+      "billing": "api-key",
+      "waitingFor": { "status": null, "value": null },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Allow external CLAUDE.md file imports?",
+        "options": [],
+        "footer": "Enter to confirm · Esc to disable",
+        "complete": true
+      },
+      "today": { "event": "screen-dialog", "reason": "unreadable", "knownDialog": null, "buttons": [], "bodyPrint": null },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Ten sam dialog importów po `down`: `❯` przeszedł na „Yes, allow external imports”, dialog stoi. Bez wpisu rejestru, herdr `idle`. Zamknięty `Esc`, który i przy kursorze na „Yes” znaczy „No”."
+      }
+    },
+    {
+      "id": "importy-zewnetrzne-dluga-lista-2.1.332",
+      "file": "kontrolny/importy-zewnetrzne-dluga-lista-2.1.332.txt",
+      "cli": "2.1.332",
+      "columns": 139,
+      "billing": "api-key",
+      "waitingFor": { "status": null, "value": null },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Allow external CLAUDE.md file imports?",
+        "options": [],
+        "footer": "Enter to confirm · Esc to disable",
+        "complete": false
+      },
+      "today": { "event": "screen-dialog", "reason": "unreadable", "knownDialog": null, "buttons": [], "bodyPrint": null },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Dialog importów z 15 importami w niskim panelu (16 wierszy): CLI pokazuje sześć ścieżek, linię „… +9 imports not shown.” i „Yes covers those too, plus any this project adds later.”, a kreska, tytuł, opis i pierwsza ścieżka stoją nad krawędzią panelu. Na ekranie zostają ścieżki, opcje bez cyfr i stopka. Parser bloku nie widzi regionu opcji (`optionRegion` = `null`, jak na każdym zrzucie importów i zaufania), więc `blockVisible` = `false`. Bez wpisu rejestru, herdr `idle`. Zamknięty `Esc`."
+      }
+    },
+    {
+      "id": "importy-zewnetrzne-po-zaufaniu-2.1.332",
+      "file": "kontrolny/importy-zewnetrzne-po-zaufaniu-2.1.332.txt",
+      "cli": "2.1.332",
+      "columns": 139,
+      "billing": "api-key",
+      "waitingFor": { "status": null, "value": null },
+      "shape": null,
+      "block": {
+        "top": "bare-rule",
+        "title": "Allow external CLAUDE.md file imports?",
+        "options": [],
+        "footer": "Enter to confirm · Esc to disable",
+        "complete": true
+      },
+      "today": { "event": "screen-dialog", "reason": "unreadable", "knownDialog": null, "buttons": [], "bodyPrint": null },
+      "policy": {
+        "verdict": "no-buttons",
+        "buttons": [],
+        "why": "Projekt BEZ zaufania z importem spoza katalogu: najpierw dialog zaufania (akceptacja `down` i Enter), zaraz po nim ten sam dialog importów w tym samym procesie CLI. Bez wpisu rejestru, herdr `idle`. Zamknięty `Esc`."
+      }
     }
   ],
   "missing": [

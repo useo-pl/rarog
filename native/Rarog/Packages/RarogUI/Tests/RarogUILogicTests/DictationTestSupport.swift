@@ -227,7 +227,8 @@ final class RecorderHarness {
 
   /// `fake`: strumień-atrapa zamiast Soniox (kolejność `prepare` → mikrofon → `start`, odmowa rozpoznawania).
   /// `micGranted`: the microphone permission is already granted, so no system prompt stands before it opens.
-  init(fake: Bool = false, micGranted: Bool = false) {
+  /// `ceiling`: the host's cap on the recording's length (`VoiceRecorder.Deps.sessionCeiling`).
+  init(fake: Bool = false, micGranted: Bool = false, ceiling: TimeInterval? = nil) {
     mint = ThrottledMint(clock: clock)
     mic.onStart = { [unowned self] in self.log.entries.append("microphone") }
     mint.onCall = { [unowned self] in self.log.entries.append("mint") }
@@ -241,6 +242,7 @@ final class RecorderHarness {
       },
       scheduler: clock, timing: .production)
     deps.microphoneGranted = { micGranted }
+    deps.sessionCeiling = ceiling
     deps.trace = { [unowned self] in self.traces.append($0) }
     if fake {
       deps.makeStream = { [unowned self] handlers in

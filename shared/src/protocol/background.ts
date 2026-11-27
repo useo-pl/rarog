@@ -20,6 +20,14 @@ import { z } from 'zod';
 export type BackgroundTaskKind = 'command' | 'agent' | 'workflow' | 'monitor';
 
 /**
+ * How long a subagent in standby has waited on its own background command (`BackgroundTask.ownCommandWait`), on the
+ * server clock from `waitingSince`: `short` below 30 minutes, `long` from 30, `stuck` from 60
+ * (`docs/subagent-long-wait.md`). Wire values; a new meaning is a new value.
+ */
+export const OWN_COMMAND_WAITS = ['short', 'long', 'stuck'] as const;
+export type OwnCommandWait = (typeof OWN_COMMAND_WAITS)[number];
+
+/**
  * Jedno ŻYWE zadanie w tle widziane w transkrypcie sesji.
  *
  * Powstaje przy wpisie startu, znika przy powiadomieniu ze statusem terminalnym. Nie jest to
@@ -104,6 +112,15 @@ export interface BackgroundTask {
    * rozmowy subagenta (`docs/background-tasks.md`, „Subagent's own commands”).
    */
   ownTasks?: AgentOwnTask[];
+  /**
+   * The wait stage of a subagent in standby on its own command. Present exactly on a task of kind `agent` with
+   * `waitingSince` and a non-empty `ownTasks`; the server computes it on every emission, so a list whose files did not
+   * change still goes out when a threshold passes. Clients read this field and never derive the stage themselves.
+   *
+   * Additive: `PROTOCOL_VERSION` stays. An unknown string drops only this field on the client
+   * (`DEGRADATIONS['backgroundTasks.ownCommandWait']`); `null` or a non-string rejects the frame.
+   */
+  ownCommandWait?: OwnCommandWait;
 }
 
 /**
@@ -176,9 +193,9 @@ export const PULL_REQUEST_STATES = ['open', 'draft', 'merged', 'closed'] as cons
 export type PullRequestState = (typeof PULL_REQUEST_STATES)[number];
 
 /**
- * Pull request utworzony w bieżącej rozmowie (`docs/pull-requests.md`). Serwer składa listę z plików
- * rozmowy: wywołanie `Bash` z poleceniem `gh pr create` i linia wyniku z adresem PR. Stan na GitHubie
- * (`state`) jest opcjonalny: jego źródło opisuje `docs/pull-requests.md`.
+ * A pull request of the session's current conversation (`docs/pull-requests.md`): Claude Code linked it with a
+ * `pr-link` entry, its author is the `gh` login and it was created after the conversation's first entry. The title
+ * and the state come from GitHub; the state (`state`) is optional.
  */
 export interface SessionPullRequest {
   /**
@@ -190,11 +207,11 @@ export interface SessionPullRequest {
   repo: string;
   /** Numer PR z adresu (dodatnia liczba całkowita). */
   number: number;
-  /** Chwila utworzenia (ISO, `timestamp` wpisu z wynikiem `gh pr create`). */
+  /** When the conversation first linked it (ISO, the `timestamp` of its first `pr-link` entry). */
   createdAt: string;
   /**
-   * Tytuł z argumentu `--title`/`-t` polecenia: bez znaków sterujących, do 120 jednostek UTF-16. Nieobecny =
-   * polecenie tytułu nie podało albo podało go wyrażeniem powłoki (`--fill`, `"$T"`).
+   * The title on GitHub: no control characters, trimmed, at most 120 UTF-16 units. Missing = GitHub gave none
+   * (yet) or it was empty.
    */
   title?: string;
   /**
@@ -266,6 +283,7 @@ export const backgroundTaskSchema = z.object({
   // nieznane klucze, więc bez tych linii klient parsujący tym schematem by ich nie zobaczył.
   waitingSince: z.string().optional(),
   ownTasks: z.array(agentOwnTaskSchema).optional(),
+  ownCommandWait: z.enum(OWN_COMMAND_WAITS).optional(),
 });
 
 type _AgentOwnTaskSchemaMatchesType =

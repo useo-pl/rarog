@@ -17,15 +17,16 @@ import Foundation
 // - Items speak in the order of their first text, one Soniox stream at a time (`SonioxSpeech`, rule 1). A tool's
 //   reading is a stream of its own in the same queue (`RealtimeConversation+Reading.swift`).
 // - A Soniox failure during the conversation ends it with its reason, without a retry. A key near its expiry is
-//   renewed through the same provider (`keyNeeded`); no key then ends the conversation too. One exception: the stream
-//   limit (`SonioxSpeech.Failure.isStreamLimit`) ends that item's synthesis; what Soniox said plays out and the item
-//   is fixed to it in the conversation (`RealtimeConversation+SpeechBargeIn.swift`); its later text does not go to
-//   Soniox.
+//   renewed through the same provider (`keyNeeded`); no key then ends the conversation too. One exception: an error
+//   that ends one stream (`SonioxSpeech.Failure.endsStreamOnly`: the stream limit, a request timeout) ends that item's
+//   synthesis; what Soniox said plays out and the item is fixed to it in the conversation
+//   (`RealtimeConversation+SpeechBargeIn.swift`); its later text does not go to Soniox.
 // - Speech over the answer: `RealtimeConversation+SpeechBargeIn.swift`.
 // - The price counts the characters that went out in text frames (`SonioxSpeech`, rule 6), not text that waited in
 //   the queue and was cancelled or cut off by the end.
 // - `client.log` gets events and numbers only, never the text or the key: `tts start`, `tts first pcm`, `tts end`,
-//   `tts cancel`, `tts error <code>`, a speech line per response (characters, GENERATED audio, price) and the total
+//   `tts cancel`, `tts error <code>` (on a stream with the time since its last text frame and whether its `text_end`
+//   went out, `SonioxSpeech.StreamText`), a speech line per response (characters, GENERATED audio, price) and the total
 //   in the end line.
 
 /// Why there is no Soniox speech key.
@@ -108,7 +109,7 @@ extension RealtimeConversation {
     var toFix: Set<String> = []
     /// A `response.create` waits until the fixes of `toFix` went out.
     var orderHeld = false
-    /// Items the stream limit cut: their later text never goes to Soniox, also after they played out.
+    /// Items an error that ends one stream cut: their later text never goes to Soniox, also after they played out.
     var limited: Set<String> = []
   }
 
@@ -218,8 +219,8 @@ extension RealtimeConversation {
     case .keyNeeded: renewSpeechKey(generation: generation)
     case let .failed(failure):
       handlers.diagnostic(.speechError(code: failure.logCode))
-      // The stream limit ends that item's synthesis only; its `finished` follows.
-      if failure.isStreamLimit, case let .stream(item, _, _) = failure, var entry = tts.items[item] {
+      // The stream limit or a request timeout ends that item's synthesis only; its `finished` follows.
+      if failure.endsStreamOnly, case let .stream(item, _, _, _) = failure, var entry = tts.items[item] {
         entry.cut = true
         tts.items[item] = entry
         tts.limited.insert(item)
@@ -264,7 +265,7 @@ extension RealtimeConversation {
     updatePhase()
   }
 
-  /// The item played out whole: the conversation keeps it, unless the stream limit cut its synthesis short.
+  /// The item played out whole: the conversation keeps it, unless a stream-only error cut its synthesis short.
   private func completeSpeech(_ item: String) {
     guard let entry = tts.items.removeValue(forKey: item) else { return }
     // Text the user never heard: the response does not count as played out whole.

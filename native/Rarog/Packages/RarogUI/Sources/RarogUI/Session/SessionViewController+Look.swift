@@ -30,6 +30,7 @@ struct TranscriptLook: Equatable {
 }
 
 /// Faza apki dla transkryptu: w tle zmiany cech pochodzą ze zrzutów przełącznika, nie od człowieka.
+/// The voice conversation's end rules on this screen read the same phase (`voiceAgentWatchInput`).
 @MainActor
 enum TranscriptAppPhase {
   /// Testy podmieniają (w procesie testów apka jest zawsze na wierzchu).

@@ -32,7 +32,9 @@ const actionSchema = z.discriminatedUnion('action', [
       'artifacts', 'pull-requests', 'scheduled-tasks', 'prompt-blocked']),
     label: z.string().trim().min(1).max(80).optional(),
     // Katalog sesji zamiast `SCENARIO_CWD`: długa nazwa projektu w nagłówku (tytuł to nazwa katalogu, nie etykieta).
-    cwd: z.string().startsWith('/').max(200).optional() }).strict(),
+    cwd: z.string().startsWith('/').max(200).optional(),
+    // `standby` only: the subagent has stood 47 min (`long`) or 75 min (`stuck`) on a wait loop of its own.
+    wait: z.enum(['long', 'stuck']).optional() }).strict(),
   // Notatka projektu zapisana „na innym urządzeniu": nowa wersja w magazynie demo i event `notes`.
   z.object({ action: z.literal('note-remote'), text: z.string().max(4096) }).strict(),
   z.object({ action: z.literal('emit'), sessionId: z.uuid(),
@@ -251,7 +253,7 @@ export function createDemoControl(
     if (action.action === 'create') {
       const scenario = action.scenario;
       await reset();
-      const pane = panels.create(scenario, action.label ?? `M1 ${scenario}`, action.cwd);
+      const pane = panels.create(scenario, action.label ?? `M1 ${scenario}`, action.cwd, action.wait);
       sessionId = pane.sessionId;
       driver = pane.driver;
       // Adopcja i historia są asynchroniczne. Odpowiedź create daje gotowy scenariusz,

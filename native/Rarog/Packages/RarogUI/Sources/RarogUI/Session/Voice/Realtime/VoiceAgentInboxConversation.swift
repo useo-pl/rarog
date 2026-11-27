@@ -23,10 +23,12 @@ import RarogCore
 //   indicator and calls the actions; it counts nothing. Every end of the conversation hands back the block's text:
 //   on top of the card's reply field while it is on screen, otherwise into the session's draft, never both.
 // - Ends: the session screen's rules of the card's session (logout, another login, the feature off, background
-//   unless the locked-phone trial keeps a ready conversation, `/clear` and `/resume`), the card gone, the Inbox left
+//   unless the background rule keeps a ready conversation, `/clear` and `/resume`), the card gone, the Inbox left
 //   or another session opened (`VoiceAgentInboxWatch`), the second tap or ``end()`` (before "Open session" writes
-//   the fields' drafts), a start on another card, dictation taking the microphone. Each change of the store's state, of the place or of the voice agent's switch in Settings
-//   checks them (`watch()`), so the switch turned off ends the conversation without any call from a view.
+//   the fields' drafts), a start on another card, dictation taking the microphone. Each change of the store's
+//   state, of the place, of the voice agent's switch in Settings or of the background rule's inputs checks them
+//   (`watch()`), so the switch turned off, the tile removed or the lock ends the conversation without any call
+//   from a view.
 
 /// The voice conversation of the Inbox cards.
 @MainActor
@@ -294,8 +296,9 @@ final class VoiceAgentInboxConversation {
   }
 
   /// While a conversation runs or connects, the next change of the store's state, of the place (the navigation it
-  /// reads) or of the voice agent's switch in Settings checks it, so the switch turned off ends it without any other
-  /// change. The change comes before the new value is in place, so the check runs on the next turn of the main actor.
+  /// reads), of the voice agent's switch in Settings or of the background rule's inputs (the tile, the lock) checks
+  /// it, so the switch turned off, the tile removed or the lock ends it without any other change. The change comes
+  /// before the new value is in place, so the check runs on the next turn of the main actor.
   private func watch() {
     guard !watching else { return }
     watching = true
@@ -304,6 +307,7 @@ final class VoiceAgentInboxConversation {
       _ = backend.state
       _ = place()
       _ = settings.enabled
+      _ = settings.background.keeps(running: true)
     } onChange: {
       Task { @MainActor in
         guard let self = owner.value as? VoiceAgentInboxConversation else { return }
@@ -322,7 +326,7 @@ final class VoiceAgentInboxConversation {
       app: VoiceAgentWatch.Input(
         state: state, sessionId: sessionId, login: backend.loginEpoch, enabled: settings.enabled,
         sonioxAllowed: sonioxAllowed, selected: sessionId, background: place.background,
-        keepsInBackground: settings.lockedPhoneTrial.keeps(running: session?.isReady == true)),
+        keepsInBackground: settings.background.keeps(running: session?.isReady == true)),
       place: place, cardStands: state.inboxVoiceTarget(sessionId) != nil)
   }
 }

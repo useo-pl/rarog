@@ -326,7 +326,9 @@ and a "Read file" in a description must not rename it to `Read`. Code: `dialogBl
   option above it (a description may start in the digit column), with only blank lines and footer chrome under it.
   A digit repeated inside that run (a repaint, or a repeated digit under a description) still leaves the region
   unreadable. Numbered lines with a digitless choice under them (a `❯` line without a digit, then a key footer) are
-  body, not options. The card text of every kind, a confirmation included, runs up to the first option of the run,
+  body, not options. A numbered line behind a left edge with no right edge is body too: the CLI draws a wrapped
+  question behind a `│` gutter, and the wrap can start a line with a digit and a dot; the line goes on the card
+  without the gutter. The card text of every kind, a confirmation included, runs up to the first option of the run,
   so the body list stays on the card and counts toward the text limit. Wrapped labels are joined within the run.
 - **Exactly one pair** gives a title only when its rule is the NEAREST rule above the options. A pair higher up (in
   the scrollback above a dialog without a listed title) does not name the dialog under it.
@@ -515,7 +517,8 @@ captures from `measured/` and `refusals/`. Fields of a shape entry:
 - `shape`: the layer 2 registry shape (`layer2/shapes.ts`) the capture matches, or `null`;
 - `block`: the expected block: top (`bare-rule` or `status-rule`, the session status rule), title, digit options, key
   footer and `complete` (the whole block stands on screen, also without a footer when the measurement showed the
-  block end);
+  block end; with `complete: false` the rule and title may be above the pane edge, and then only the footer is
+  checked);
 - `today`: the card the current code puts up over the capture without jsonl and without a hook: event kind, reason of
   a card without a decision, known dialog, buttons and block fingerprint;
 - `policy`: the button policy verdict (`buttons`, `partial`, `no-buttons`, the same values as `verdict` in a
@@ -560,6 +563,17 @@ Result on CLI 2.1.319 (127-column pane):
 - "Change effort level?" did not appear, neither after a choice in the `/effort` picker nor after `/effort low`: the
   CLI changes the level at once and prints the result in place ("Set effort level to …"). The nearest corpus file is
   the reconstruction `dialog-effort-change.txt` without a CLI version.
+
+On CLI 2.1.332 a project whose memory file imports a file outside the session directory shows the start dialog
+"Allow external CLAUDE.md file imports?" before the REPL (`importy-zewnetrzne-…`): the list of imports, "No, disable
+external imports" (under `❯`) and "Yes, allow external imports" without digits, and the footer "Enter to confirm ·
+Esc to disable". `down` moves `❯` to "Yes" and the dialog stays; Esc dismisses it as "No". With 15 imports in a
+16-row pane the CLI 2.1.332 lists six paths and "… +9 imports not shown.", and the rule and title are above the pane
+edge.
+In a project without trust the trust dialog comes first and the imports dialog follows it in the same process.
+herdr reports `idle` with `interactive_ready` and no session id for the whole dialog, the registry has no session
+entry, and the current card has no buttons (`unreadable`). The options have no digits, so the block parser finds no
+option region on any of the four captures, as on the trust dialog.
 
 On CLI 2.1.317 with `--effort ultracode` the `/effort` slider has the toggle "Ultracode  on" and the line
 "Ultracode: dynamic workflows on every task", registry class `dialog open`, herdr `blocked`.
@@ -638,6 +652,16 @@ cannot answer it, so it has its own path (an exception to the digit path, modele
   numbered option), also past a blank line. A third option, a cut top or bottom, digits or another label give no
   recognition either, so the card has no button. The block fingerprint takes the option lines without `❯`, so it is
   the same before and after `down`.
+- **Pre-approved permissions warning** (CLI 2.1.332, `dialog-trust-preapproved-2.1.332.txt`): when the folder's
+  settings pre-approve tool permissions, the block has one more paragraph: "⚠ This folder pre-approves N tool
+  permissions in <settings files>:", the permission list and "These will apply without asking. Only proceed if you
+  trust this configuration." The first list line has a three-space margin, which is the indent of an option line; a
+  wrapped rest of the list has the one-space margin. The parser lets a line carry the three-space margin only
+  between the start of the opening line and the closing sentence, so a wrapped opening line is read too. The
+  folder's settings write that list, so inside the paragraph
+  a `❯`, an option label, a numbered option and a blank line still give no recognition, and so does a warning
+  without its closing sentence. The list is part of the fingerprint, so another list is another dialog. The card is
+  the same known dialog card: it shows neither the warning nor the list.
 - **Card**: `resolveOptions` gives `no-jsonl` with `knownDialog: 'trust'`, no options (no made-up digits), the
   identity `known`/`trust` and the fingerprint. The card carries the folder and the engine session id
   (`ActiveReq.trustArrow`); the app card is the known dialog card it was.
@@ -1052,6 +1076,10 @@ Another result means herdr changed its rules. Read the difference in `src/detect
 the blocked state) became unnecessary or has become the only way to a card. The check sees only the screen. On a live
 pane the rule `osc_title_working` (a terminal title with a spinner, priority 1100) beats all screen rules, so a live
 pane can be `working` where the check gives `blocked`.
+
+A start dialog that herdr reports as ready (`idle`, `interactive_ready`) instead of `blocked`, such as the external
+imports dialog, is recognized by the launcher from the screen; the card, the refusals and the code:
+`docs/start-dialogs.md`.
 
 ## Permission hook: installation and channel state
 

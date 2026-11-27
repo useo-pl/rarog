@@ -10,12 +10,12 @@
     "input": "decideCard: blockedSeq 1, answeredSeq -1, active null, decided null, canRetry false, hookAnswersEnabled true, layer2 true; then judgeLayer2; occurrence id l2:000000000000"
   },
   "summary": {
-    "screens": 405,
-    "cards": 405,
-    "existing": 283,
+    "screens": 410,
+    "cards": 410,
+    "existing": 284,
     "choices": 26,
     "escOnly": 8,
-    "none": 88
+    "none": 92
   },
   "screens": {
     "composer-empty-2.1.258.ansi.txt": {
@@ -1249,6 +1249,19 @@
       "question": null,
       "card": "80de920b21af888cf9545d07bb7e9db25c78ff210907867c2787fd98ef3ace06"
     },
+    "dialog-trust-preapproved-2.1.332.txt": {
+      "class": null,
+      "action": "screen-dialog",
+      "layer2": "existing",
+      "why": null,
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:082360e808a5",
+      "toolName": "dialog:trust",
+      "options": [],
+      "titleSha": null,
+      "question": null,
+      "card": "604e800ef70b0b8aaff8df7255803a0db6ee041c3a05005e4bd5e104129f9217"
+    },
     "dialog-trust.txt": {
       "class": null,
       "action": "screen-dialog",
@@ -1347,6 +1360,58 @@
       "titleSha": null,
       "question": null,
       "card": "fa5b2ec90e6c001899f4633794edd219e46c72e4eac6609b4984aeab0142f80c"
+    },
+    "kontrolny/importy-zewnetrzne-2.1.332.txt": {
+      "class": null,
+      "action": "screen-dialog",
+      "layer2": "none",
+      "why": "class-unknown",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:f1f37793f9fe",
+      "toolName": "dialog",
+      "options": [],
+      "titleSha": null,
+      "question": null,
+      "card": "3d168474b9a06470428bd75c6aa7ad700d1d78d752811d8998a8490a6f6a58bc"
+    },
+    "kontrolny/importy-zewnetrzne-dluga-lista-2.1.332.txt": {
+      "class": null,
+      "action": "screen-dialog",
+      "layer2": "none",
+      "why": "class-unknown",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:30db357025d1",
+      "toolName": "dialog",
+      "options": [],
+      "titleSha": null,
+      "question": null,
+      "card": "ea033678eb6ed168b409d96d0dd6aa99d2220b8ee84705241213d7ceb4a2fce6"
+    },
+    "kontrolny/importy-zewnetrzne-po-down-2.1.332.txt": {
+      "class": null,
+      "action": "screen-dialog",
+      "layer2": "none",
+      "why": "class-unknown",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:f1f37793f9fe",
+      "toolName": "dialog",
+      "options": [],
+      "titleSha": null,
+      "question": null,
+      "card": "3f5e150cb6a2b7b83c3e56a888276a64509fe989aa5b808231da844989c1809a"
+    },
+    "kontrolny/importy-zewnetrzne-po-zaufaniu-2.1.332.txt": {
+      "class": null,
+      "action": "screen-dialog",
+      "layer2": "none",
+      "why": "class-unknown",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:f1f37793f9fe",
+      "toolName": "dialog",
+      "options": [],
+      "titleSha": null,
+      "question": null,
+      "card": "95a7d8d36ded93e4f9962fb4364b89a036c5a7934b45f083d8d4574ec785f5cc"
     },
     "kontrolny/pauza-2.1.322.txt": {
       "class": "dialog",

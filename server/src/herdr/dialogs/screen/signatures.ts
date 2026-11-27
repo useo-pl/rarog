@@ -420,11 +420,66 @@ export const SCREEN_SIGNATURES = {
     pattern: /^ (\S.*)$/,
     cli: '2.1.319',
   },
+  trustArrowWarningOpen: {
+    what: 'start of the pre-approved permissions warning in the trust dialog block, without the margin',
+    // `dialog-trust-preapproved-2.1.332.txt`. The count and the settings file names vary with the folder, and a
+    // narrow pane wraps the line, so the pattern takes the start only.
+    pattern: /^⚠ This folder pre-approves /,
+    cli: '2.1.332',
+  },
+  trustArrowWarningClose: {
+    what: 'sentence that ends the pre-approved permissions warning in the trust dialog block, without the margin',
+    // `dialog-trust-preapproved-2.1.332.txt`
+    pattern: /^These will apply without asking\./,
+    cli: '2.1.332',
+  },
+  trustArrowWarningListLine: {
+    what: 'permission list line of the warning: a three-space margin, the same shape as an option line without `❯`',
+    // `dialog-trust-preapproved-2.1.332.txt`: the first list line has this margin, a wrapped rest has one space.
+    pattern: /^ {3}(\S.*)$/,
+    cli: '2.1.332',
+  },
   trustArrowFooter: {
     what: 'stopka dialogu zaufania bez cyfr — ostatnia linia bloku',
     // `kontrolny/zaufanie-2.1.319.txt`
     pattern: /^Enter to confirm · Esc to cancel$/,
     cli: '2.1.319',
+  },
+  /*
+   * Start dialog about external imports: it stands before the prompt field when a memory file of the project (or its
+   * `.claude/rules`) imports a file outside the project, and herdr reads it as `idle` (its blocked rules look for
+   * "esc to cancel"). Captures `kontrolny/importy-zewnetrzne-*-2.1.332.txt` at 139 columns.
+   */
+  startDialogImportsTitle: {
+    what: 'title line of the external imports start dialog, the first line under the bare rule of its block',
+    // `kontrolny/importy-zewnetrzne-2.1.332.txt`
+    pattern: /^Allow external CLAUDE\.md file imports\?$/,
+    cli: '2.1.332',
+  },
+  startDialogImportsNoOption: {
+    what: 'decline option of the external imports start dialog (no digit), the label without the cursor column',
+    // `kontrolny/importy-zewnetrzne-2.1.332.txt` (cursor on it), `kontrolny/importy-zewnetrzne-po-down-2.1.332.txt`
+    pattern: /^No, disable external imports$/,
+    cli: '2.1.332',
+  },
+  startDialogImportsYesOption: {
+    what: 'allow option of the external imports start dialog (no digit), the label without the cursor column',
+    // `kontrolny/importy-zewnetrzne-po-down-2.1.332.txt` (cursor on it after `down`)
+    pattern: /^Yes, allow external imports$/,
+    cli: '2.1.332',
+  },
+  startDialogImportsOptionLine: {
+    what: 'option line of the external imports start dialog: two-space margin, cursor column (`❯` or a space), a '
+      + 'space, the label',
+    // `kontrolny/importy-zewnetrzne-2.1.332.txt`, `kontrolny/importy-zewnetrzne-po-down-2.1.332.txt`
+    pattern: /^ {2}(?:(❯)| ) (\S.*)$/,
+    cli: '2.1.332',
+  },
+  startDialogImportsFooter: {
+    what: 'key footer of the external imports start dialog, the last line of the screen',
+    // `kontrolny/importy-zewnetrzne-2.1.332.txt`, also under the cut top of `…-dluga-lista-2.1.332.txt`
+    pattern: /^Enter to confirm · Esc to disable$/,
+    cli: '2.1.332',
   },
   knownDialogModel: {
     what: 'tytuł bloku dialogu zmiany modelu („Switch model?”), nie zdanie gdziekolwiek na ekranie',

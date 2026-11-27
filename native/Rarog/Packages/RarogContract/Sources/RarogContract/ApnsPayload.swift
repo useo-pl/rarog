@@ -25,6 +25,9 @@ public enum ApnsPushKind: String, ContractEnum {
   /// A weekly plan window reached 97% (`server/src/notify/weekly-limit.ts`): no session; a banner also in the
   /// foreground, a tap opens the session list.
   case weeklyLimit = "weekly-limit"
+  /// A subagent of the session has waited over an hour on its own background command: a session kind with its own
+  /// collapse key; the tap opens the session.
+  case stalled
 }
 
 /// Blok `rarog` alertu.

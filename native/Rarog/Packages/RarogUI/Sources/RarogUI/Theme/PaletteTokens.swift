@@ -29,6 +29,12 @@ public enum PaletteTokens {
   /// `muted2` przy „Zwiększ kontrast”: 7,4:1 / 6,1:1 na tle zamiast 6,1:1 / 4,7:1, dalej ciszej niż
   /// `muted`, więc oba stopnie wyciszenia zostają rozróżnialne (`PaletteContrastTests`).
   public static let muted2High = Pair(dark: 0x9E9EA3, light: 0x5A5A62)
+  /// Track of a switch that is on: green, the colour people expect of an iOS switch, so on and off differ at a
+  /// glance and not only by the knob's side (a grey track looked like the off track). The system tint would be
+  /// `text`: in the dark theme a near-white track under the white knob. A deep green, not `run`: the knob stays at
+  /// ≥ 3:1 on the track and the track at ≥ 3:1 on the form card in both themes, and the switch does not read as the
+  /// "working" state.
+  public static let switchOn = Pair(dark: 0x248A3D, light: 0x248A3D)
   /// Tekst drugiego planu: w połowie drogi między `text` a `muted` (prawy panel). Nazwa
   /// skończonego zadania i nazwa pliku w drzewie zmian w spoczynku — czytelniej niż `muted`, ciszej niż `text`;
   /// pod wskaźnikiem nazwa pliku wraca do `text`. ≥ 7:1 na tle i na `surface` (`PaletteContrastTests`).
@@ -135,6 +141,7 @@ public enum PaletteTokens {
     case .unread: new
     case .quiet: done
     case .backgroundWait: runSmoked
+    case .backgroundWaitLong: wait
     }
   }
 

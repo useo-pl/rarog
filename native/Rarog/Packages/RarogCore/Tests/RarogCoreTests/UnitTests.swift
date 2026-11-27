@@ -78,6 +78,75 @@ struct ContractReporterTests {
     #expect(reporter.pending.isEmpty)
   }
 
+  /// `CLIENT_LOG_MAX_REQUEST_BYTES` of `server/src/client-log.ts` (`export const … = <a> * <b>;`).
+  static func serverRequestLimit() throws -> Int {
+    let source = try String(
+      contentsOf: GoldenFrames.repoRoot().appending(path: "server/src/client-log.ts"), encoding: .utf8)
+    let match = try #require(source.firstMatch(of: #/export const CLIENT_LOG_MAX_REQUEST_BYTES = (\d+) \* (\d+);/#))
+    return try #require(Int(match.output.1)) * #require(Int(match.output.2))
+  }
+
+  /// Bytes the server checks for a body: each event as a line with its `receivedAt` and the newline.
+  static func serverBytes(_ body: ClientLogBody) throws -> Int {
+    let added = #","receivedAt":"2026-11-25T20:05:55.496Z""#.utf8.count + 1
+    return try body.events.reduce(0) { $0 + (try JSONEncoder().encode($1).count) + added }
+  }
+
+  // A queue gathered without a connection can grow past the server's ceiling. Sent as one body, it is refused whole,
+  // and every later flush sends the same body again, so `client.log` stays blocked for good.
+  @Test("a queue over the server's ceiling goes in several bodies under it; a failed body keeps itself and the rest")
+  func flushSplitsAtServerCeiling() async throws {
+    let limit = try Self.serverRequestLimit()
+    #expect(ContractReporter.serverRequestLimit == limit)
+    let reporter = ContractReporter()
+    reporter.bind(Self.serverA)
+    reporter.armed = true
+    let now = Date()
+    for index in 0..<ContractReporter.voiceAgentTraceCap {
+      reporter.recordTrace("voice-agent: \(index) " + String(repeating: "ż", count: 190), budget: .voiceAgent, now: now)
+    }
+    let queued = reporter.pending
+    let whole = ClientLogBody(events: queued.map { .init(at: "2026-11-25T20:05:55.209", level: "debug", msg: $0) })
+    #expect(try Self.serverBytes(whole) > limit, "the queue alone is over the ceiling")
+
+    let sent = SentLog()
+    await reporter.flush({ body in await sent.add(body) }, now: now)
+    let bodies = await sent.bodies
+    #expect(bodies.count > 1)
+    for body in bodies {
+      #expect(try JSONEncoder().encode(body).count < limit)
+      #expect(try Self.serverBytes(body) < limit)
+    }
+    #expect(bodies.flatMap { $0.events.map(\.msg) } == queued, "every line once, in order")
+    #expect(reporter.pending.isEmpty)
+
+    let failing = ContractReporter()
+    failing.bind(Self.serverA)
+    failing.armed = true
+    for line in queued { failing.recordTrace(line, budget: .voiceAgent, now: now) }
+    let attempts = SentLog()
+    await failing.flush({ body in
+      guard await attempts.count == 0 else { return false }
+      return await attempts.add(body)
+    }, now: now)
+    let first = await attempts.bodies.first?.events.map(\.msg) ?? []
+    #expect(!first.isEmpty && first.count < queued.count)
+    #expect(failing.pending == Array(queued.dropFirst(first.count)), "the failed body and the ones after it wait")
+  }
+
+  @Test("a line longer than the batch allows goes cut to its first characters instead of blocking the queue")
+  func flushCutsOversizedLine() async throws {
+    let reporter = ContractReporter()
+    reporter.bind(Self.serverA)
+    reporter.armed = true
+    reporter.record(["błąd: " + String(repeating: "\"", count: try Self.serverRequestLimit())])
+    let sent = SentLog()
+    await reporter.flush({ body in await sent.add(body) }, now: Date())
+    let msgs = await sent.bodies.flatMap { $0.events.map(\.msg) }
+    #expect(msgs.count == 1 && msgs[0].count == ContractReporter.maxLineCharacters && msgs[0].hasPrefix("błąd: "))
+    #expect(reporter.pending.isEmpty)
+  }
+
   static let serverA = ServerKey(serverURL: URL(string: "https://a.example"), iroh: nil)!
   static let serverB = ServerKey(serverURL: URL(string: "https://b.example"), iroh: nil)!
 

@@ -97,7 +97,7 @@ final class HeaderChromeTests: XCTestCase {
   /// pierwszy atrament (kwadracik) stoi 8 pt od brzegu celu dotyku, czyli z paskiem (8 pt) na 16 pt od krawędzi
   /// kolumny.
   func testTabStateMarkOnlyWhenDifferentiatingWithoutColor() throws {
-    for tone in [StatusTone.working, .waiting, .failed, .unread, .backgroundWait] {
+    for tone in [StatusTone.working, .waiting, .failed, .unread, .backgroundWait, .backgroundWaitLong] {
       let tab = ProjectTabModel(
         id: "t", kind: .session, target: .session("t"), label: "Claude Code", tone: tone, current: true,
         spoken: "Claude Code")
@@ -217,7 +217,7 @@ final class HeaderChromeTests: XCTestCase {
   /// Drabina pilności: kafelek ma kolor `TabTokens.key` i jest kryjący — u siostry
   /// i na płytce bieżącej to ten sam kolor; bez cyfry stoi kwadracik `TabTokens.square`.
   func testTileAndSquareCarryStateColor() throws {
-    for tone in [StatusTone.quiet, .working, .unread, .waiting, .failed, .backgroundWait] {
+    for tone in [StatusTone.quiet, .working, .unread, .waiting, .failed, .backgroundWait, .backgroundWaitLong] {
       let fill = TabTokens.key(tone).fill.dark
       for current in [false, true] {
         let tab = ProjectTabModel(
@@ -252,7 +252,7 @@ final class HeaderChromeTests: XCTestCase {
   func testTabWidthDoesNotDependOnTone() throws {
     for digit in [Int?.none, 1, 8] {
       var widths: [CGFloat] = []
-      for tone in [StatusTone.quiet, .working, .unread, .waiting, .failed, .backgroundWait] {
+      for tone in [StatusTone.quiet, .working, .unread, .waiting, .failed, .backgroundWait, .backgroundWaitLong] {
         let tab = ProjectTabModel(
           id: "t", kind: .session, target: .session("t"), label: "Claude Code", tone: tone, current: false,
           spoken: "Claude Code")

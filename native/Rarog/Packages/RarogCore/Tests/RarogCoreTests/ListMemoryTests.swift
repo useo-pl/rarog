@@ -217,6 +217,21 @@ struct HeldUnreadTests {
     #expect(state.listOrder.map(\.id) == ["old", "young", "run"], "oba trzymane, remis po wieku")
     #expect(state.listOrder.map(state.listOrderRank) == [1, 1, 2])
   }
+
+  // Catches a row read before its subagent's wait reached `stuck` staying at rank 1: the threshold does not change
+  // `stateSince`, so the held memory would still match.
+  @Test("a result read and held on the list, then a stuck wait: the row moves up to rank 0")
+  func heldThenStuck() throws {
+    var state = try start()
+    play(&state, [try Frames.sessionChanged(summary("B", created: "2026-10-03T07:10:00.000Z", extra: Self.seen))], at: at)
+    #expect(state.heldUnread["B"] != nil && state.listOrder.map(\.id) == ["A", "B", "C", "D"], "B held after reading")
+    let stuck = backgroundTasks(
+      agentTask("agent_w", waitingSince: "2026-10-03T07:00:00.000Z", ownTask: "sleep 9999", wait: "stuck"))
+    play(&state, [try Frames.sessionChanged(
+      summary("B", created: "2026-10-03T07:10:00.000Z", extra: Self.seen + stuck))], at: at)
+    #expect(state.listOrder.map(\.id) == ["B", "A", "C", "D"])
+    #expect(state.listOrderRank(try #require(state.sessions["B"])) == 0)
+  }
 }
 
 @MainActor

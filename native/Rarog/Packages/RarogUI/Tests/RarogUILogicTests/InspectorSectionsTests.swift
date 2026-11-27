@@ -34,7 +34,7 @@ struct InspectorSectionsTests {
       "BackgroundTasksHeader(", "if !finished.isEmpty", "InspectorFinishedSection(", "if !scheduled.isEmpty",
       "InspectorScheduledSection(", "if !artifacts.isEmpty",
       "InspectorArtifactsSection(", "if !pullRequests.isEmpty", "InspectorPullRequestsSection(",
-      "InspectorFilesSection(",
+      "InspectorFilesContainer(",
     ]
     var cursor = panel.startIndex
     for marker in markers {

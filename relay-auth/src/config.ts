@@ -10,7 +10,7 @@ import type { RelayAuthGate } from '../../shared/src/relay-auth.ts';
 import { ProviderTokens, apnsKeyScalar } from './wspolne.ts';
 
 /** Worker code version (`version` in `/v1/health`); equal to `version` in `relay-auth/package.json` (test). */
-export const RELAY_AUTH_VERSION = '1.1.1';
+export const RELAY_AUTH_VERSION = '1.1.2-beta.1';
 
 /**
  * Non-secret variables (`[vars]` in `wrangler.toml`):

@@ -169,7 +169,7 @@ final class SheetKeyboardAnchorTests: XCTestCase {
     XCTAssertTrue(h.field.isFirstResponder, "the closed sheet gives the keyboard back to the field")
   }
 
-  /// A page without an anchor that takes the keyboard itself (the shortcut recorder) is pushed and popped: the page
+  /// A page without an anchor that takes the keyboard itself (a listening shortcut row) is pushed and popped: the page
   /// anchor coming back keeps the field under the sheet, not the recorder that leaves, so closing the sheet on that
   /// page still gives the keyboard back to the field.
   func testKeyboardReturnsToFieldAfterARecorderPageWithoutAnchor() async throws {

@@ -15,7 +15,7 @@ public struct Degradation: Sendable, Hashable, Codable {
 }
 
 /// Fields the decoder MAY degrade: a mirror of the `DEGRADATIONS` keys in `shared/src/decode.ts` and nothing else
-/// (36 entries; the last one is a closed folder whose state the app cannot read, which drops out of `folder-access`).
+/// (37 entries; the last one is a closed folder whose state the app cannot read, which drops out of `folder-access`).
 ///
 /// Reguła: nieznany ŁAŃCUCH w polu wyliczeniowym psuje JEDNO pole, nie ramkę. `null`,
 /// brak wymaganego pola, zły typ i uszkodzony znany blok dalej odrzucają całą ramkę.
@@ -34,6 +34,7 @@ public enum DegradationKey: String, CaseIterable, Sendable {
   case activityKind = "activity.kind"
   case waitingForKind = "waitingFor.kind"
   case backgroundTasksKind = "backgroundTasks.kind"
+  case backgroundTasksOwnCommandWait = "backgroundTasks.ownCommandWait"
   case messageRole = "message.role"
   case blockType = "block.type"
   case blockDetailKind = "block.detailKind"
@@ -70,8 +71,8 @@ public enum DegradationKey: String, CaseIterable, Sendable {
       "unsupported"
     case .herdrMode, .noticeKind: "unknown"
     case .herdrDialog, .herdrDialogReason, .cliDialog, .contextKind, .activityKind, .waitingForKind,
-      .blockDetailKind, .channel, .blockInputKind, .permissionInputKind, .noticeOutcome, .pullRequestsState, .seenBy,
-      .inboxHead, .folderAccessBlock:
+      .backgroundTasksOwnCommandWait, .blockDetailKind, .channel, .blockInputKind, .permissionInputKind, .noticeOutcome,
+      .pullRequestsState, .seenBy, .inboxHead, .folderAccessBlock:
       nil
     case .messageRole: "system"
     case .attachmentsKind: "file"

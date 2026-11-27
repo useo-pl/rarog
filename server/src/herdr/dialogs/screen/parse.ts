@@ -25,7 +25,7 @@ import { trimmedLines } from './text.ts';
 import { DIALOG_TAIL_LINES, blockTopOf, dialogRegions, framedDialogText } from './region.ts';
 import {
   OPTION_LINE_PATTERN, guideMap, isCompleteOptionSet, optionsCloseRegion, optionsIn, selectedOptionIn,
-  selectedWithLabel, unbox, unframe,
+  selectedWithLabel, unframe,
 } from './options.ts';
 import type { LabelGuide, ScreenOption } from './options.ts';
 import { contentEscalates } from '../policy/escalation.ts';
@@ -43,7 +43,7 @@ import type { KnownDialogId } from './known.ts';
 import { NOTES_EDITING_MARKER, formFooter, formMultiSelect, formSubmitMode, questionFrom } from './form.ts';
 import { confirmFrom } from './confirm.ts';
 import { fileDialogShown } from './file-dialog.ts';
-import { digitlessChoiceBelow, lastRunStart } from './option-run.ts';
+import { digitlessChoiceBelow, lastRunStart, regionLine } from './option-run.ts';
 
 /** Czy na ekranie stoi dialog, który z definicji NIE MA wpisu w jsonl ani zrzutu hooka? */
 export function screenOnlyDialog(text: string): boolean {
@@ -217,7 +217,7 @@ export interface ScreenDialog {
 export interface OptionRegion {
   /** Kandydat z `dialogRegions`: surowe linie regionu i to, czy zaczyna się za kreską. */
   readonly candidate: { readonly lines: readonly string[]; readonly bounded: boolean };
-  /** Linie regionu po `unbox` (rozpoznanie kształtu). */
+  /** Linie regionu po `regionLine` (`unbox`; rozpoznanie kształtu). */
   readonly region: readonly string[];
   /** Te same linie z zachowanym wcięciem — jedyne źródło pomiaru dla `descriptionAfter`. */
   readonly raw: readonly string[];
@@ -247,7 +247,7 @@ export function optionRegion(
   lines: readonly string[], labels?: ReturnType<typeof guideMap>,
 ): OptionRegion | null {
   for (const candidate of dialogRegions(lines)) {
-    const region = candidate.lines.map(unbox);
+    const region = candidate.lines.map(regionLine);
     const raw = candidate.lines.map(unframe);
     // Tryb zatwierdzania liczymy PRZED opcjami: wariant `preview` wyłącza czytanie opisów
     // (ramka podglądu stoi dokładnie tam, gdzie w drugim wariancie stoi opis).

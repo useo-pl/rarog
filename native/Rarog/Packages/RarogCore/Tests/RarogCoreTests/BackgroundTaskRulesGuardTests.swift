@@ -82,13 +82,16 @@ struct BackgroundTaskRulesGuardTests {
   static let byKind = "rozstrzyganie po rodzaju zadania"
   static let byRun = "rozstrzyganie po rozkładzie przebiegu workflow"
   static let byStandby = "rozstrzyganie po postoju subagenta"
+  static let byWaitStage = "deciding by the wait stage of a subagent"
+  static let byOwnTasks = "deciding by the own commands of a subagent"
 
   static let rules: [Rule] = [
     Rule(
       // Pustość, `contains`, `count`, pętla, kopia do zmiennej: wszystko zaczyna się od słowa
-      // `backgroundTasks`. W porządku jest tylko podanie listy wprost do reguły.
+      // `backgroundTasks`. W porządku jest tylko podanie listy wprost do reguły, also after plain leading arguments
+      // (`stuckWait(session.state, session.backgroundTasks)`).
       name: listOutsideRules,
-      fine: #"\bBackgroundTaskRules\.\w+\(\s*(?:[\w$]+[?!]?\.)*backgroundTasks\s*\)"#,
+      fine: #"\bBackgroundTaskRules\.\w+\(\s*(?:[\w$.?!]+\s*,\s*)*(?:[\w$]+[?!]?\.)*backgroundTasks\s*\)"#,
       pattern: #"\bbackgroundTasks\b"#
     ),
     Rule(
@@ -118,6 +121,22 @@ struct BackgroundTaskRulesGuardTests {
       fine: nil,
       pattern: #"\bwaitingSince\b"#
     ),
+    Rule(
+      // The wait stage field `ownCommandWait`: what follows from it (the row's tone and rank, the Live Activity
+      // counter) answers `BackgroundTaskRules`; no source file outside the rules file reads the field. Asking the rule
+      // of the same name (`BackgroundTaskRules.ownCommandWait(of:in:)`) is fine.
+      name: byWaitStage,
+      fine: #"\bBackgroundTaskRules\.ownCommandWait\("#,
+      pattern: #"\bownCommandWait\b"#
+    ),
+    Rule(
+      // The own commands of a subagent (`ownTasks`): whether a subagent waits on its own command, and how long, is
+      // the server's stage in `ownCommandWait`, never the app's own reading of the list. Lines that only draw the
+      // commands or strip them before the disk stand on the `allowed` list.
+      name: byOwnTasks,
+      fine: nil,
+      pattern: #"\bownTasks\b"#
+    ),
   ]
 
   /// Lista ZAMKNIĘTA. Pliki rdzenia listę przechowują albo kopiują, pliki `RarogUI` ją opisują albo rysują;
@@ -134,6 +153,12 @@ struct BackgroundTaskRulesGuardTests {
       file: "RarogCore/Sources/RarogCore/SnapshotCacheFile.swift",
       statement: "copy.backgroundTasks = session.backgroundTasks?.map { task in",
       reason: "`scrub`: kopia listy bez opisów, komend i rozkładu przed zapisem na dysk; liczba zadań zostaje"
+    ),
+    Allowed(
+      file: "RarogCore/Sources/RarogCore/SnapshotCacheFile.swift",
+      statement: "bare.ownTasks = task.ownTasks?.map { own in",
+      reason: "`scrub`: the subagent's own commands lose their command text before the disk; the entries stay and"
+        + " decide nothing"
     ),
     Allowed(
       file: "RarogUI/Sources/RarogUI/Model/SessionRowModel.swift",
@@ -172,6 +197,12 @@ struct BackgroundTaskRulesGuardTests {
       statement: "standbySince = waiting ? task.waitingSince.flatMap(ServerTime.parse) : nil",
       reason: "LICZNIK postoju: wiersz subagenta liczy czas od początku postoju; czy agent czeka, mówi linia"
         + " wyżej (`BackgroundTaskRules.waitingAgent`), a pole daje tylko chwilę"
+    ),
+    Allowed(
+      file: "RarogUI/Sources/RarogUI/Model/HeaderStatusModel.swift",
+      statement: "let rows = (task.ownTasks ?? []).map { BackgroundPanelLine.ownTask(OwnTaskRow($0, task: task.id, awaited: awaited)) }",
+      reason: "drawing: the subagent's own commands under its row in the background section; whether the agent"
+        + " waits on them comes from `waitingAgent`, how long from the server's stage"
     ),
   ]
 
@@ -309,11 +340,11 @@ struct BackgroundTaskRulesGuardTests {
     let caught = try Self.offences(in: Self.sources())
     #expect(Self.allowed.map(\.file) == [
       "RarogCore/Sources/RarogCore/Reducer+List.swift", "RarogCore/Sources/RarogCore/SnapshotCacheFile.swift",
-      "RarogUI/Sources/RarogUI/Model/SessionRowModel.swift", "RarogUI/Sources/RarogUI/Model/HeaderStatusModel.swift",
+      "RarogCore/Sources/RarogCore/SnapshotCacheFile.swift", "RarogUI/Sources/RarogUI/Model/SessionRowModel.swift", "RarogUI/Sources/RarogUI/Model/HeaderStatusModel.swift",
       "RarogUI/Sources/RarogUI/Views/Header/BackgroundTasksPanel.swift",
       "RarogUI/Sources/RarogUI/Views/Inspector/InspectorPanel.swift",
       "RarogUI/Sources/RarogUI/Model/ActivityText.swift", "RarogUI/Sources/RarogUI/Model/HeaderStatusModel.swift",
-      "RarogUI/Sources/RarogUI/Model/HeaderStatusModel.swift",
+      "RarogUI/Sources/RarogUI/Model/HeaderStatusModel.swift", "RarogUI/Sources/RarogUI/Model/HeaderStatusModel.swift",
     ])
     for entry in Self.allowed {
       #expect(!entry.reason.trimmingCharacters(in: .whitespaces).isEmpty, "\(entry.file): wyjątek bez powodu")
@@ -341,6 +372,16 @@ struct BackgroundTaskRulesGuardTests {
     // Reguła postoju poza plikiem reguł: własna kopia definicji „czeka".
     #expect(try Self.hits("return task.kind == .agent && task.waitingSince != nil") == [Self.byKind, Self.byStandby])
     #expect(try Self.hits("let waiting = tasks.filter { $0.waitingSince != nil }") == [Self.byStandby])
+    // A copy of the stuck wait rule outside the rules file, in the core and in `RarogUI`.
+    #expect(try Self.hits("|| tasks.contains { $0.ownCommandWait == .stuck }") == [Self.byWaitStage])
+    #expect(try Self.uiHits("if task.ownCommandWait == .long { tone = .backgroundWait }") == [Self.byWaitStage])
+    // The app's own reading of a subagent's own commands: the predicate the server computes, copied into a selector
+    // or a row model, alone or next to the standby rule.
+    #expect(try Self.hits("let onOwnCommand = !(task.ownTasks ?? []).isEmpty") == [Self.byOwnTasks])
+    #expect(try Self.hits("return BackgroundTaskRules.waitingAgent(task) && task.ownTasks?.isEmpty == false")
+      == [Self.byOwnTasks])
+    #expect(try Self.uiHits("if task.waitingSince != nil, let own = task.ownTasks, !own.isEmpty { text = stuck }")
+      == [Self.byStandby, Self.byOwnTasks])
     for sample in old {
       #expect(try Self.hits(sample.line) == sample.rules, "wzorce nie łapią: \(sample.line)")
     }
@@ -369,6 +410,10 @@ struct BackgroundTaskRulesGuardTests {
       "return rank > 2 && BackgroundTaskRules.tasksKeepRowWorking(backgroundTasks) ? 2 : rank",
       "return BackgroundTaskRules.hasOpenWorkflow(session.backgroundTasks)",
       "quietStates.contains($0.state) && BackgroundTaskRules.hasBackgroundWork($0.backgroundTasks)",
+      "let stuck = BackgroundTaskRules.stuckWait(session.state, session.backgroundTasks)",
+      "waitingStates.contains($0.state) || BackgroundTaskRules.stuckWait($0.state, $0.backgroundTasks)",
+      "let stage = BackgroundTaskRules.ownCommandWait(of: task, in: session.state)",
+      "let strongest = BackgroundTaskRules.strongestOwnCommandWait(session.state, session.backgroundTasks)",
       "// stary zapis: !(session.backgroundTasks ?? []).isEmpty",
       "/* task.kind == .workflow */ let x = 1",
       "if var activity = session.activity, activity.kind == .tool, activity.delegation != nil {",

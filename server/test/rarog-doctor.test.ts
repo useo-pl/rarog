@@ -963,7 +963,7 @@ describe.skipIf(!IS_MAC)(macOnly('rarog doctor: linia iroh z gniazdem administra
         `consent channel settings: no sandbox access to ${path.join(dataDir(), 'run')}/ and no other PermissionRequest`
           + ` hook in ${path.join(dir, '.claude', 'settings.json')}`,
         `consent without a hook: none in the last 7 days (${path.join(dataDir(), 'server.log')})`,
-        'PR status: off (RAROG_PR_STATUS=0)',
+        'PR status: off (RAROG_PR_STATUS=0), so session cards show no PRs',
       ]);
       expect(run.stdout).toContain('result: ok 10, ERROR 0, unknown 0, warn 0');
     });

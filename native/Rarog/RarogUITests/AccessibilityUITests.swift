@@ -54,6 +54,17 @@ final class AccessibilityUITests: AccessibilityAudit {
     let mixed = try XCTUnwrap(ScreenPixels.contrast(counts: [0xFFFFFF: 9000, 0x1C1C1E: 600, 0xA2A3A8: 400]))
     XCTAssertEqual(mixed.ink, 0xA2A3A8)
   }
+
+  /// The idle ink dimmed by the jump pill's shadow is still the idle ink; an ink lighter than it, or darker than the
+  /// shadow can make it, is another text.
+  func testIdleInkInPillShadowTakesOnlyTheShadowsDimming() {
+    func ink(_ value: UInt32) -> ScreenPixels.Contrast { .init(ink: value, background: 0xEDEDF2, ratio: 2.7) }
+    XCTAssertTrue(ink(0x92929A).isIdleInkInPillShadow)
+    XCTAssertTrue(ink(0x8F8F97).isIdleInkInPillShadow, "measured under the pill's shadow")
+    XCTAssertFalse(ink(0x8F8F97).isIdleInk)
+    XCTAssertFalse(ink(0x9A9AA2).isIdleInkInPillShadow, "lighter than the idle ink")
+    XCTAssertFalse(ink(0x76767E).isIdleInkInPillShadow, "darker than a 12 % shadow makes the light idle ink")
+  }
 }
 
 /// The walk through the main screens and the audit of one screen, shared by `AccessibilityUITests` and
@@ -260,6 +271,7 @@ class AccessibilityAudit: XCTestCase {
     let ultracodeToggle = app.switches["newSession.ultracode"]
     let ultracodeFrame = ultracodeToggle.exists ? ultracodeToggle.frame.insetBy(dx: -1, dy: -1) : nil
     let footer = Self.formFooter(app)
+    let listCover = Self.listCover(app)
     // Rząd zakładek paska projektu: przy klawiaturze sprzętowej każda zakładka niesie klawisz z cyfrą skrótu Cmd.
     // Klawisz jest ukryty dla czytnika, więc nie ma go w drzewie — rozpoznaje go położenie w rzędzie.
     // Rząd, nie ramka jednej zakładki: pasek przewija się w poziomie (nowa zakładka dojeżdża na środek) i ramki
@@ -288,6 +300,12 @@ class AccessibilityAudit: XCTestCase {
       if let frame {
         facts.inSummary = summaries.contains { $0.contains(frame) }
         facts.inRow = rows.contains { $0.contains(frame) }
+        facts.underListFooter = facts.inRow && (listCover.footerTop.map { frame.minY >= $0 } ?? false)
+          && !listCover.footerTexts.contains { text in
+            !text.label.isEmpty && text.label == element?.label
+              || text.frame.insetBy(dx: -1, dy: -1).contains(frame) && frame.insetBy(dx: -1, dy: -1).contains(text.frame)
+          }
+        facts.inPillShadow = facts.inRow && listCover.pillShadows.contains { $0.intersects(frame) }
         facts.inHeaderTitle = titleFrame?.contains(frame) ?? false
         facts.inUltracodeToggle = ultracodeFrame?.contains(frame) ?? false
         facts.underFooter = footer.map { footer in
@@ -368,6 +386,10 @@ class AccessibilityAudit: XCTestCase {
     var underFooter = false
     /// Arkusz modelu na iPhonie (ekran `arkusz-modelu…` na telefonie).
     var phoneModelSheet = false
+    /// A text of a list row that lies whole under the list's footer card (`listCover`).
+    var underListFooter = false
+    /// A text of a list row that reaches into a jump pill or its shadow (`listCover`).
+    var inPillShadow = false
   }
 
   /// Świadome wyjątki (opisane w `native/Rarog/README.md`); `nil` = zgłoszenie oblewa test.
@@ -409,7 +431,13 @@ class AccessibilityAudit: XCTestCase {
       if let contrast = facts.contrast {
         if contrast.ratio >= 4.5 { return "fałszywy alarm audytu: piksele \(contrast)" }
         if facts.inRow, contrast.isIdleInk { return "świadomie wyciszony wiersz bezczynny: \(contrast)" }
-        return nil
+        // The jump pill floats over the rows at the list's edge, and its shadow dims the row it touches. Measured
+        // (iPad, the app's largest text) on the caption "gotowe · 34 min" cut by the "below" pill: #92929A at the top
+        // of the line, #8A8A92 at the capsule, #8F8F97 for the whole frame, so the idle ink missed its ±2 match.
+        if facts.inPillShadow, contrast.isIdleInkInPillShadow {
+          return "muted idle row in the jump pill's shadow: \(contrast)"
+        }
+        return facts.underListFooter ? Self.underListFooter : nil
       }
       if !facts.hasElement {
         // Wiersz listy przebudowany w trakcie audytu (zegar co sekundę, strumień demo) nie ma już elementu,
@@ -417,6 +445,11 @@ class AccessibilityAudit: XCTestCase {
         // dawało ≥ 4,5:1 albo atrament wiersza bezczynnego (README); tokeny pilnuje `PaletteContrastTests`.
         return "audyt nie wskazał elementu: nie da się zmierzyć (raport)"
       }
+      // Measured (iPad, the app's largest text): the last row's line "zgoda: Bash · npm test…" stood at y = 1192.5 pt
+      // with the footer card's text from 1085 pt down. The frame held either no text at all or the footer's own
+      // lines (#6B6B73 on #EFEFF2, the same pixels as "Mac · example.ts.net"), never the row's. The footer's own
+      // texts are not rows under it and keep the pixel verdict.
+      if facts.underListFooter { return Self.underListFooter }
       return facts.visible ? nil : "tekstu nie ma w kadrze: element ucięty albo zasłonięty, audyt mierzył cudze piksele"
     }
     if type == .elementDetection, facts.inSummary {
@@ -501,6 +534,33 @@ class AccessibilityAudit: XCTestCase {
     guard let top = frames.map(\.minY).min() else { return nil }
     return (top - 12, frames)
   }
+
+  private static let underListFooter =
+    "under the list footer card: the row is scrolled under it, the pixels belong to the footer"
+
+  /// What stands over the session list's edges: the top of the footer card's text (`list.usage`), under which a row
+  /// scrolled to the bottom keeps its place in the accessibility tree, the footer's own texts (a finding with the
+  /// label or the frame of one of them is the footer's, not a row's), and each shown jump pill's frame grown by its shadow's
+  /// reach. A pill that gave way is not in the tree, so it covers
+  /// nothing here either.
+  @MainActor
+  private static func listCover(
+    _ app: XCUIApplication
+  ) -> (footerTop: CGFloat?, footerTexts: [(label: String, frame: CGRect)], pillShadows: [CGRect]) {
+    let any = app.descendants(matching: .any)
+    let usage = any.matching(identifier: "list.usage").firstMatch
+    let texts = usage.exists
+      ? usage.descendants(matching: .any).allElementsBoundByIndex.map { (label: $0.label, frame: $0.frame) } : []
+    let pills = ["list.jump.above", "list.jump.below"].compactMap { id -> CGRect? in
+      let pill = any.matching(identifier: id).firstMatch
+      return pill.exists ? pill.frame.insetBy(dx: -pillShadowReach, dy: -pillShadowReach) : nil
+    }
+    return (usage.exists ? usage.frame.minY : nil, texts, pills)
+  }
+
+  /// How far the jump pill's shadow shows around it: twice its 6 pt radius (measured: the ground starts to dim
+  /// 11.5 pt above the capsule).
+  private static let pillShadowReach: CGFloat = 12
 
   /// Etykieta klawisza skrótu na zakładce: jedna cyfra 1–9 (Cmd+1…9).
   private static func isShortcutDigit(_ label: String?) -> Bool {
@@ -597,6 +657,18 @@ struct ScreenPixels {
 
     /// Atrament wiersza bezczynnego (`PaletteTokens.idleInk`: jasny `#92929A`, ciemny `#58585F`).
     var isIdleInk: Bool { [0x92929A, 0x58585F].contains { ScreenPixels.close($0, ink) } }
+
+    /// The idle ink under the jump pill's black shadow: each channel between the ink dimmed by the shadow's full
+    /// opacity (`JumpToBottomBar.shadowOpacity`: light 0.12, dark 0.5) and the ink itself.
+    var isIdleInkInPillShadow: Bool {
+      [(UInt32(0x92929A), 0.12), (UInt32(0x58585F), 0.5)].contains { idle, opacity in
+        [16, 8, 0].allSatisfy { shift in
+          let plain = Double((idle >> UInt32(shift)) & 0xFF)
+          let seen = Double((ink >> UInt32(shift)) & 0xFF)
+          return seen <= plain + 2 && seen >= plain * (1 - opacity) - 2
+        }
+      }
+    }
   }
 
   private let width: Int

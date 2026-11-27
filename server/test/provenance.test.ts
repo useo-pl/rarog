@@ -10,12 +10,15 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { encodeHex } from '../src/herdr/label-code.ts';
 import {
-  HERDR_NAME_PREFIX, RAROG_AGENT_NAME_RE, claudePaneLabel, labelTrace, newRarogAgentName,
-  parsePaneLabel, projectKey, realProjectPath, sanitizeTabLabel, termPaneLabel,
-  terminalTabLabel,
+  HERDR_NAME_PREFIX, RAROG_AGENT_NAME_RE, claudeKeyMatches, claudePaneLabel, claudePaneLabelFrom,
+  claudeTraceMatches, labelTrace, newClaudeProvenance, newRarogAgentName, paneLabelTermId, parsePaneLabel,
+  projectKey, realProjectPath, sanitizeTabLabel, termPaneLabel, terminalTabLabel,
 } from '../src/herdr/provenance.ts';
+import type { ClaudeProvenance } from '../src/herdr/provenance.ts';
 import { RAROG_TERM_PANE_TOKEN, termPaneTokenOf } from '../src/config.ts';
 import { labelFromPrompt, normalizeSessionLabel } from '../src/session-label.ts';
 
@@ -56,17 +59,44 @@ describe('labelTrace', () => {
   });
 });
 
-describe('etykiety panelu — format i parser', () => {
-  it('Claude: `rarog-claude <klucz> <ślad>` w obie strony', () => {
-    const label = claudePaneLabel(KEY, TRACE);
-    expect(label).toBe(`rarog-claude ${KEY} ${TRACE}`);
-    expect(parsePaneLabel(label)).toEqual({ kind: 'claude', value: KEY, trace: TRACE });
+describe('pane label format: `rt:` and `rc:` in Crockford base32', () => {
+  it('terminal: the full 64-bit id in 13 characters and back', () => {
+    const label = termPaneLabel('d703c6f230f3e25e', 'rarog 1 · atlas');
+    expect(label).toBe('rarog 1 · atlas · rt:tw1wdwhgyfh5w');
+    expect(parsePaneLabel(label)).toEqual({ kind: 'term', id: 'd703c6f230f3e25e' });
+    expect(paneLabelTermId(label)).toBe('d703c6f230f3e25e');
+    expect(termPaneLabel(KEY)).toMatch(/^rt:[0-9a-hjkmnp-tv-z]{13}$/u);
   });
 
-  it('terminal: `rarog-term <id>` w obie strony', () => {
-    const label = termPaneLabel(KEY);
-    expect(label).toBe(`rarog-term ${KEY}`);
-    expect(parsePaneLabel(label)).toEqual({ kind: 'term', value: KEY });
+  it('Claude: 7 characters of the project key and the full 32-bit trace, the trace comes back', () => {
+    const label = claudePaneLabel('5987c60c24159c09', '428a2dd7', 'fixes');
+    expect(label).toBe('fixes · rc:b63wc318a52vnr');
+    expect(parsePaneLabel(label)).toEqual({ kind: 'claude', keyCode: 'b63wc31', trace: '428a2dd7' });
+    expect(encodeHex('5987c60c24159c09').slice(0, 7)).toBe('b63wc31');
+    expect(claudePaneLabel(KEY, TRACE)).toMatch(/^rc:[0-9a-hjkmnp-tv-z]{14}$/u);
+  });
+
+  it('every value round-trips: one label per value', () => {
+    fc.assert(fc.property(fc.stringMatching(/^[0-9a-f]{16}$/u), fc.stringMatching(/^[0-9a-f]{8}$/u),
+      (id, trace) => {
+        expect(paneLabelTermId(termPaneLabel(id, 'x'))).toBe(id);
+        const claude = parsePaneLabel(claudePaneLabel(id, trace, 'x'));
+        expect(claude).toEqual({ kind: 'claude', keyCode: encodeHex(id).slice(0, 7), trace });
+      }));
+  });
+
+  it('the parser refuses a wrong length, `i l o u`, padding bits and a blank description', () => {
+    const refused = [
+      'rt:tw1wdwhgyfh5', 'rt:tw1wdwhgyfh5w0', 'rc:b63wc318a52vn', 'rc:b63wc318a52vnr0',
+      'notatki · rt:abc',
+      // `i`, `l`, `o`, `u` and uppercase are outside the alphabet.
+      'rt:tw1wdwhgyfh5i', 'rt:tw1wdwhgyfhlw', 'rc:b63wc318a52vno', 'rc:b63uc318a52vnr', 'rt:TW1WDWHGYFH5W',
+      // The last character carries zero padding bits: 1 bit for the id, 3 for the trace.
+      'rt:tw1wdwhgyfh5x', 'rc:b63wc318a52vns', 'rc:b63wc318a52vnz',
+      ' · rt:tw1wdwhgyfh5w', '   · rc:b63wc318a52vnr', 'a ·rt:tw1wdwhgyfh5w', 'a · rt:tw1wdwhgyfh5w ',
+      'a\nb · rt:tw1wdwhgyfh5w', 'rt: tw1wdwhgyfh5w', 'rc:b63wc31 8a52vnr',
+    ];
+    for (const label of refused) expect(parsePaneLabel(label), JSON.stringify(label)).toBeNull();
   });
 
   it('budowanie etykiety ze złym kluczem, śladem albo id RZUCA', () => {
@@ -209,5 +239,40 @@ describe('terminalTabLabel — `rarog <slot|rola> · <katalog>`', () => {
   it('katalog ze znakiem sterującym i katalog główny', () => {
     expect(terminalTabLabel('shell', 2, '/tmp/a\u001bb')).toBe('rarog 2 · a b');
     expect(terminalTabLabel('popup', 0, '/')).toBe('rarog popup');
+  });
+});
+
+describe('Claude pane label rebuilt from a read provenance', () => {
+  const read = (label: string): ClaudeProvenance => {
+    const provenance = parsePaneLabel(label);
+    if (provenance?.kind !== 'claude') throw new Error(`not a Claude label: ${label}`);
+    return provenance;
+  };
+
+  it('keeps the key read from the label, never one hashed again from a path', () => {
+    // KEY is the hash of no path, so a rebuild that hashes a directory cannot produce it.
+    const owned = read(claudePaneLabel(KEY, TRACE, 'old'));
+    expect(claudePaneLabelFrom(owned, 'by hand', 'keep')).toBe(claudePaneLabel(KEY, TRACE, 'by hand'));
+    expect(claudePaneLabelFrom(owned, 'atlas', 'fresh')).toBe(claudePaneLabel(KEY, labelTrace('atlas'), 'atlas'));
+    expect(claudePaneLabelFrom(owned, '', 'keep')).toBe(claudePaneLabel(KEY, TRACE));
+  });
+
+  it('compares the key with a directory and the trace with a tab label', () => {
+    const dir = '/Users/u/Projects/atlas';
+    const owned = read(claudePaneLabel(projectKey(dir), labelTrace('atlas'), 'atlas'));
+    expect(claudeKeyMatches(owned, dir)).toBe(true);
+    expect(claudeKeyMatches(owned, '/Users/u/Projects/birch')).toBe(false);
+    expect(claudeTraceMatches(owned, 'atlas')).toBe(true);
+    expect(claudeTraceMatches(owned, 'Atlas')).toBe(false);
+    const term = parsePaneLabel(termPaneLabel(projectKey(dir)));
+    expect(term === null ? null : claudeKeyMatches(term, dir)).toBe(false);
+  });
+
+  it('a new provenance carries the key of the directory and the trace of the tab label', () => {
+    const dir = '/Users/u/Projects/atlas';
+    const fresh = newClaudeProvenance(dir, 'atlas');
+    expect(claudePaneLabelFrom(fresh, 'atlas', 'keep'))
+      .toBe(claudePaneLabel(projectKey(dir), labelTrace('atlas'), 'atlas'));
+    expect(claudeKeyMatches(fresh, dir)).toBe(true);
   });
 });

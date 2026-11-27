@@ -166,6 +166,35 @@ extension UICopy {
   /// „subagent Research czeka na własne zadanie” — subagent w postoju w zdaniu o zadaniach w tle.
   static func backgroundTaskWaiting(_ what: String) -> String { L("header.backgroundTaskWaiting", what) }
 
+  /// A subagent that waits long on its own command, in the sentence about background tasks: "subagent Research has
+  /// been waiting a long time on its own task" at `long`, "subagent Research is stuck on a command" at `stuck`.
+  static func backgroundTaskWaitingLong(_ what: String) -> String { L("header.backgroundTaskWaitingLong", what) }
+  static func backgroundTaskStuck(_ what: String) -> String { L("header.backgroundTaskStuck", what) }
+
+  /// The warning line in place of the state line: "waiting 47m on: pgrep, sleep"; without a known standby time
+  /// "waiting on: pgrep, sleep".
+  static func waitWarning(since: String?, tools: String) -> String {
+    guard let since else { return L("header.waitWarning.untimed", tools) }
+    return L("header.waitWarning", since, tools)
+  }
+
+  /// The warning line for the reader: "waiting a long time on: pgrep, sleep, for 47 minutes" at `long`, "stuck on:
+  /// pgrep, sleep, for 1 hour" at `stuck`; without a known standby time no time.
+  static func waitWarningSpoken(stuck: Bool, tools: String, since: String?) -> String {
+    let head = stuck ? L("header.waitWarningSpoken.stuck", tools) : L("header.waitWarningSpoken.long", tools)
+    guard let since else { return head }
+    return L("header.waitWarningSpoken.since", head, since)
+  }
+
+  /// "Check": the button under a subagent that waits long on its own command; it sends the main agent a question.
+  static var waitCheck: String { L("header.waitCheck") }
+  /// The Check button for the reader: what a tap does.
+  static var waitCheckHint: String { L("header.waitCheckHint") }
+  /// "Sent · 21:40" in place of Check once the server took the message; "Sent to the main agent at 21:40" for the
+  /// reader.
+  static func waitCheckSent(_ clock: String) -> String { L("header.waitCheckSent", clock) }
+  static func waitCheckSentSpoken(_ clock: String) -> String { L("header.waitCheckSentSpoken", clock) }
+
   /// „komenda: pnpm test” — narzędzia komendy pod opisem zadania (czytnik).
   static func backgroundTaskTools(_ tools: String) -> String { L("header.backgroundTaskTools", tools) }
 

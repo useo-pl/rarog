@@ -11,6 +11,7 @@ import type { DriverEvent, InternalBlock } from '../drivers/types.ts';
 import type { NotifierLike } from '../notify/index.ts';
 import { backdateState } from './activity-clocks.ts';
 import type { AttachSlots } from './attach-slots.ts';
+import type { StalledWaitListener } from './conversation-lists.ts';
 import type { ClaimWindows } from './claim-window.ts';
 import * as seenMarks from './seen-marks.ts';
 import type { SeenMarkStore } from './seen-marks.ts';
@@ -20,6 +21,7 @@ import type { SmEvent } from './state-machine.ts';
 /** Fields of the manager configuration the branches read (`ManagerConfig`, described there). */
 export interface DriverEventsConfig {
   readonly notifier?: Pick<NotifierLike, 'forget'>;
+  readonly stalledWait?: Pick<StalledWaitListener, 'forget'>;
   readonly logger?: (line: string) => void;
   /** Consent channel; only its presence matters here (the nudge on entering `blocked`). */
   readonly consent?: unknown;
@@ -103,6 +105,8 @@ export function applyInitEvent(
    */
   if (previousEngineSession !== undefined && previousEngineSession !== event.engineSessionId) {
     port.config.notifier?.forget(session.id);
+    // The stalled wait alarm of the previous conversation stops its tries too.
+    port.config.stalledWait?.forget(session.id);
     // A claim window of the previous conversation does not hold a dialog of the new one (`claim-window.ts`).
     port.claimWindows.conversationChanged(session);
   }
@@ -148,11 +152,13 @@ export function applyInitEvent(
    * PR-y należą do rozmowy jak artefakty. Driver po wymianie startuje z pustym podpisem listy, więc
    * pusta lista nowej rozmowy nie wyszłaby z niego nigdy: lista poprzedniej schodzi tu, przy zmianie rozmowy.
    */
-  const pullRequestsDropped = conversationChanged
-    && (session.pullRequests !== undefined || session.scheduledTasks !== undefined);
+  const pullRequestsDropped = conversationChanged && (session.pullRequests !== undefined
+    || session.pullRequestLinks !== undefined || session.scheduledTasks !== undefined);
   if (pullRequestsDropped) {
-    // Scheduled tasks too; the driver sends the new conversation's list after this `init`, also when empty.
+    // The links and the window too, and scheduled tasks; the driver sends the new conversation's after this `init`.
     session.pullRequests = undefined;
+    session.pullRequestLinks = undefined;
+    session.pullRequestWindowStart = undefined;
     session.scheduledTasks = undefined;
   }
   const moved = port.applyTransition(session, { type: 'driver-init' });

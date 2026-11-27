@@ -1,6 +1,6 @@
 /**
- * Pane labels lead with a description: `<description> · rarog-claude <key> <trace>` and
- * `<description> · rarog-term <id>`, so herdr's Go-to window names a Rarog pane by its tab.
+ * Pane labels lead with a description: `<description> · rc:<key code><trace code>` and
+ * `<description> · rt:<id code>`, so herdr's Go-to window names a Rarog pane by its tab.
  *
  * This file pins the writing side: the generator, the launcher, the supervisor's tab label sync
  * (with the migration of bare labels) and the terminal backend (new pane, migration in
@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { foreign } from '@rarog/shared/sentences';
 import { HERDR_RESYNC_MS, loadConfig } from '../src/config.ts';
 import { createHerdrLauncher } from '../src/herdr/launcher.ts';
+import { keyCodeOf } from '../src/herdr/label-code.ts';
 import { createProjectPlacement } from '../src/herdr/project-workspace.ts';
 import {
   claudePaneLabel, labelTrace, paneLabelDescription, parsePaneLabel, projectKey, termPaneLabel,
@@ -67,8 +68,8 @@ class RecordingHerdr extends FakeHerdr {
 describe('the label generator: description first, provenance suffix last', () => {
   it('Claude and terminal labels with a description', () => {
     expect(claudePaneLabel(KEY, labelTrace('PR-y'), 'PR-y'))
-      .toBe(`PR-y · rarog-claude ${KEY} ${labelTrace('PR-y')}`);
-    expect(termPaneLabel(KEY, 'rarog 2 · atlas')).toBe(`rarog 2 · atlas · rarog-term ${KEY}`);
+      .toBe(`PR-y · ${claudePaneLabel(KEY, labelTrace('PR-y'))}`);
+    expect(termPaneLabel(KEY, 'rarog 2 · atlas')).toBe(`rarog 2 · atlas · ${termPaneLabel(KEY)}`);
   });
 
   it('description: the card cleanup, 40 code points, trimmed; empty = the bare format', () => {
@@ -79,14 +80,14 @@ describe('the label generator: description first, provenance suffix last', () =>
     // The cut lands after a space, so the description loses it.
     expect(paneLabelDescription(`${'a'.repeat(39)} tail`)).toBe('a'.repeat(39));
     for (const blank of ['', '   ', '\u0007\n']) {
-      expect(claudePaneLabel(KEY, '89abcdef', blank)).toBe(`rarog-claude ${KEY} 89abcdef`);
-      expect(termPaneLabel(KEY, blank)).toBe(`rarog-term ${KEY}`);
+      expect(claudePaneLabel(KEY, '89abcdef', blank)).toMatch(/^rc:[0-9a-z]{14}$/u);
+      expect(termPaneLabel(KEY, blank)).toMatch(/^rt:[0-9a-z]{13}$/u);
     }
   });
 
   it('every generated label reads back as its provenance, whatever the tab label', () => {
     const piece = fc.constantFrom(
-      'a', ' ', '·', ' · ', '\n', '\r', '\u2028', '\u0085', '😀', 'rarog-term ', `rarog-claude ${KEY} `,
+      'a', ' ', '·', ' · ', '\n', '\r', '\u2028', '\u0085', '😀', 'rarog-term ', `rarog-claude ${KEY} `, 'rt:', 'rc:',
     );
     const tabLabel = fc.oneof(
       fc.string({ unit: 'grapheme', maxLength: 60 }),
@@ -94,14 +95,14 @@ describe('the label generator: description first, provenance suffix last', () =>
     );
     fc.assert(fc.property(tabLabel, (raw) => {
       expect(parsePaneLabel(claudePaneLabel(KEY, '89abcdef', raw)))
-        .toEqual({ kind: 'claude', value: KEY, trace: '89abcdef' });
-      expect(parsePaneLabel(termPaneLabel(KEY, raw))).toEqual({ kind: 'term', value: KEY });
+        .toEqual({ kind: 'claude', keyCode: keyCodeOf(KEY), trace: '89abcdef' });
+      expect(parsePaneLabel(termPaneLabel(KEY, raw))).toEqual({ kind: 'term', id: KEY });
     }));
   });
 });
 
 describe('launcher: a new Claude pane carries its tab label', () => {
-  it('start with the title "PR-y" → `PR-y · rarog-claude <key> <sha(PR-y)>`', async () => {
+  it('start with the title "PR-y" → `PR-y · rc:<key code><sha(PR-y) code>`', async () => {
     const cwd = '/Users/u/Projects/atlas';
     const sessionId = '11111111-2222-4333-8444-555555555555';
     const herdr = new RecordingHerdr();
@@ -120,7 +121,7 @@ describe('launcher: a new Claude pane carries its tab label', () => {
 
     await (await launcher.launch({ cwd, label: 'PR-y' })).ready;
 
-    const expected = `PR-y · rarog-claude ${projectKey(cwd)} ${labelTrace('PR-y')}`;
+    const expected = `PR-y · ${claudePaneLabel(projectKey(cwd), labelTrace('PR-y'))}`;
     expect(herdr.paneRenames).toEqual([{ paneId: 'w1:p1', label: expected }]);
     expect(herdr.tabLabels).toEqual([{ tabId: 'w1:p1t', label: 'PR-y' }]);
   });
@@ -169,14 +170,14 @@ describe('supervisor: the pane label follows the tab label', () => {
     await h.fire();
   }
 
-  it('card "a" → "b": `b · rarog-claude <key> <sha(b)>` in one `pane.rename`', async () => {
+  it('card "a" → "b": `b · rc:<key code><sha(b) code>` in one `pane.rename`', async () => {
     const herdr = herdrWith(described('a'), 'a');
     const h = await start(herdr);
 
     await sync(h, 'b');
 
     expect(herdr.tabLabels).toEqual([{ tabId, label: 'b' }]);
-    expect(herdr.paneRenames).toEqual([{ paneId, label: `b · rarog-claude ${KEY} ${labelTrace('b')}` }]);
+    expect(herdr.paneRenames).toEqual([{ paneId, label: `b · ${bare('b')}` }]);
   });
 
   it('old bare label, tab with the card label → one migration; the second pass writes nothing', async () => {
@@ -187,7 +188,7 @@ describe('supervisor: the pane label follows the tab label', () => {
     await sync(h, 'a');
 
     expect(herdr.tabLabels).toEqual([]);
-    expect(herdr.paneRenames).toEqual([{ paneId, label: `a · rarog-claude ${KEY} ${labelTrace('a')}` }]);
+    expect(herdr.paneRenames).toEqual([{ paneId, label: `a · ${bare('a')}` }]);
 
     // A Rarog restart: no memory of the settled label, the described label itself says "done".
     h.supervisor.dispose();
@@ -204,7 +205,7 @@ describe('supervisor: the pane label follows the tab label', () => {
 
     expect(herdr.tabLabels).toEqual([]);
     expect((await herdr.getTab(tabId)).label).toBe('moje');
-    expect(herdr.paneRenames).toEqual([{ paneId, label: `moje · rarog-claude ${KEY} ${labelTrace('old')}` }]);
+    expect(herdr.paneRenames).toEqual([{ paneId, label: `moje · ${bare('old')}` }]);
   });
 
   it('a pane label set by hand (outside the pattern) → zero writes', async () => {
@@ -238,7 +239,7 @@ describe('supervisor: the pane label follows the tab label', () => {
 
     expect(herdr.tabLabels).toEqual([{ tabId, label: title }]);
     expect(herdr.paneRenames).toEqual([{
-      paneId, label: `release notes for the offline sync on a · rarog-claude ${KEY} ${labelTrace(title)}`,
+      paneId, label: `release notes for the offline sync on a · ${bare(title)}`,
     }]);
 
     h.supervisor.dispose();
@@ -312,7 +313,7 @@ describe('supervisor: the pane label follows the tab label', () => {
 describe('terminal: the pane leads with the terminal tab label', () => {
   const CWD = '/Users/testowy/Projects/atlas';
   const ID = termIdFor(CWD, 2);
-  const DESCRIBED = `rarog 2 · atlas · rarog-term ${ID}`;
+  const DESCRIBED = `rarog 2 · atlas · ${termPaneLabel(ID)}`;
   const dirs: string[] = [];
   afterEach(() => {
     while (dirs.length > 0) rmSync(dirs.pop() ?? '', { recursive: true, force: true });
@@ -356,7 +357,7 @@ describe('terminal: the pane leads with the terminal tab label', () => {
     return herdr;
   }
 
-  it('new pane in slot 2 → `rarog 2 · atlas · rarog-term <id>`; reconcile then writes nothing', async () => {
+  it('new pane in slot 2 → `rarog 2 · atlas · rt:<id code>`; reconcile then writes nothing', async () => {
     const herdr = new RecordingHerdr();
     const backend = backendOver(herdr);
 
@@ -368,7 +369,7 @@ describe('terminal: the pane leads with the terminal tab label', () => {
     expect(herdr.tabLabels).toEqual([{ tabId: `${handle.ref}t`, label: 'rarog 2 · atlas' }]);
   });
 
-  it('old `rarog-term <id>` with a token → one migration; the second pass and a restart write nothing', async () => {
+  it('bare `rt:<id code>` with a token → one migration; the second pass and a restart write nothing', async () => {
     const herdr = herdrWith(termPaneLabel(ID));
     const dataDir = dataDirOf();
     const backend = backendOver(herdr, dataDir);

@@ -287,9 +287,9 @@ export function createMockHerdr(content: DemoContent): MockHerdr {
   );
 
   const scenarioPanels: ScenarioPanels = {
-    create(scenario, label, cwd = SCENARIO_CWD) {
+    create(scenario, label, cwd = SCENARIO_CWD, wait) {
       const sessionId = randomUUID();
-      const driver = new ScenarioDriver(scenario, label);
+      const driver = new ScenarioDriver(scenario, label, wait);
       panes.set(sessionId, { key: sessionId, cwd, scenario: { kind: 'idle' },
         launchedByRarog: true, driver });
       // Normalna ścieżka przyłączenia panelu herdr; seedy innych sesji zostają na miejscu.

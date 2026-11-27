@@ -46,6 +46,8 @@ extension RealtimeConversation {
     case speechUnavailable
     /// Soniox speech failed during the conversation (a dropped socket, an error frame, a refused key).
     case speechFailed
+    /// The conversation reached its length limit from the tap (`VoiceAgentSession.sessionLimit`).
+    case sessionLimit
   }
 
   /// Zdarzenie diagnostyczne bez treści, do `client.log` (`RarogStore.trace`) przez ekran rozmowy.
@@ -92,7 +94,8 @@ extension RealtimeConversation {
     case speechEnd
     /// Speech over the answer stopped the synthesis of an answer item (Soniox `cancel`, or it never started).
     case speechCancel
-    /// Soniox failed (`SonioxSpeech.Failure.logCode`); the conversation ends, except at the stream limit.
+    /// Soniox failed (`SonioxSpeech.Failure.logCode`); the conversation ends, except at an error that ends one stream
+    /// (`SonioxSpeech.Failure.endsStreamOnly`).
     case speechError(code: String)
     /// Characters, generated audio and price of the Soniox speech of one response.
     case speechResponse(number: Int, SpeechCount)

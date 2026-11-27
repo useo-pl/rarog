@@ -197,8 +197,8 @@ const read = (name: string): unknown => JSON.parse(readFileSync(path.join(DIR, n
 const LEGACY_BLOCK = 'pilot'; // stara-nazwa
 /** Format 3 banners without the localization-key variant: one per kind. */
 const BANNERS_V3 = [
-  'alert.blocking.v3.json', 'alert.device-paired.v3.json', 'alert.done.v3.json', 'alert.test.v3.json',
-  'alert.version-changed.v3.json', 'alert.weekly-limit.v3.json',
+  'alert.blocking.v3.json', 'alert.device-paired.v3.json', 'alert.done.v3.json', 'alert.stalled.v3.json',
+  'alert.test.v3.json', 'alert.version-changed.v3.json', 'alert.weekly-limit.v3.json',
 ];
 /** Rodzaje bez sesji: tekst jawny bez `sessionId` i ramka bez `thread-id`. */
 const SESSIONLESS_KINDS = ['test', 'device-paired', 'version-changed', 'weekly-limit'];
@@ -269,10 +269,12 @@ describe('złote ramki APNs: pliki → kontrakt', () => {
    * Subagent w postoju pracą nie jest. Cztery sesje po turze: sam czekający subagent z wynikiem
    * nieodebranym → „skończyły"; ten sam z wynikiem odebranym → nic; czekający obok komendy i subagent
    * pracujący → „pracuje". Sesja po turze nie jest celem tapnięcia.
+   * Two sessions after a turn with a subagent stuck on its own command (one next to a live command) → waiting, each
+   * once, and no tap target.
    */
-  it('subagent w postoju nie liczy się do „pracuje"; z nieodebranym wynikiem liczy się do „skończyły"', () => {
+  it('subagent w postoju nie liczy się do „pracuje"; z nieodebranym wynikiem liczy się do „skończyły"; `stuck` → waiting', () => {
     const { aps } = liveActivityFrameSchema.parse(read('live-activity.update.waiting-agent.json')).payload;
-    expect(aps['content-state']).toEqual({ waiting: 0, working: 2, finished: 1, updatedEpoch: aps.timestamp });
+    expect(aps['content-state']).toEqual({ waiting: 2, working: 2, finished: 1, updatedEpoch: aps.timestamp });
   });
 
   it('prywatność ekranu blokady: ramka Live Activity nie ma kluczy na treść', () => {
@@ -485,6 +487,19 @@ describe('złote ramki APNs formatu 3: pliki `apns-v3/` → kontrakt', () => {
     expect('thread-id' in frame.payload.aps).toBe(false);
     expect('badge' in frame.payload.aps).toBe(false);
     expect(frame.headers['apns-priority']).toBe('10');
+  });
+
+  it('stalled wait: session kind, urgent, one hour, own collapse key, thread of the session, codes in the ciphertext', () => {
+    const frame = alertV3FrameSchema.parse(readV3('alert.stalled.v3.json'));
+    const plain = plaintextSchema.parse(JSON.parse(openV3(frame.payload.rarog)));
+    expect(plain.kind).toBe('stalled');
+    expect(plain.sessionId).toBe('demo-atlas');
+    expect(plain.titleRef?.code).toBe('push.title.stalled');
+    expect(plain.bodyRef?.code).toBe('push.detail.stalled');
+    expect(frame.headers['apns-priority']).toBe('10');
+    expect(frame.headers['apns-collapse-id']).not.toBe(topicFor('demo-atlas'));
+    expect((frame.payload.aps as Record<string, unknown>)['thread-id']).toBe(topicFor('demo-atlas'));
+    expect(JSON.stringify(frame.payload)).not.toContain('Fix the flaky login test');
   });
 
   it('ramka z obcym kluczem w bloku `rarog`, innym tekstem zastępczym albo bez `mutable-content` — odrzucona', () => {

@@ -46,7 +46,7 @@ export { isFallbackLabel, nextFallbackLabel };
 import type {
   CreateSessionOptions, ManagerApi, RestartOptions, SendMessageAck, SendMessageOptions,
 } from './manager-api.ts';
-import { MAX_TURNS_DETAIL, transition } from './state-machine.ts';
+import { MAX_TURNS_DETAIL, transition, zeroTurnEvents } from './state-machine.ts';
 import type { SmEvent } from './state-machine.ts';
 import type { NotifierLike } from '../notify/index.ts';
 import { Session, wireStateDetail } from './session.ts';
@@ -98,12 +98,13 @@ import { HerdrLifecycle } from './herdr-lifecycle.ts';
 import { LaunchGate } from './launch-gate.ts';
 import type { LaunchOptions, PromptDisplay } from './launch-gate.ts';
 import { SessionRestart, resumeUltracodeOf } from './session-restart.ts';
+import { inTemporaryDirectory } from './test-session.ts';
 import { SessionTakeBack } from './session-take-back.ts';
 import { applyAgentStateEvent, applyHistoryEvent, applyInitEvent } from './driver-events.ts';
 import type { DriverEventsPort } from './driver-events.ts';
 import { applyUsage } from './context-usage.ts';
 import { applyConversationList, dropConversationLists } from './conversation-lists.ts';
-import type { ConversationListsPort } from './conversation-lists.ts';
+import type { ConversationListsPort, StalledWaitListener } from './conversation-lists.ts';
 import type { ContextUsagePort } from './context-usage.ts';
 import { createSessionListReader } from '../session-list.ts';
 import type { SessionListReader } from '../session-list.ts';
@@ -389,6 +390,8 @@ export interface ManagerConfig {
    * sprawdzić zmianę stanu sesji.
    */
   readonly notifier?: NotifierLike;
+  /** The stalled wait alarm (`bootstrap/push.ts`); absent = no alarm, like `notifier`. */
+  readonly stalledWait?: StalledWaitListener;
   /**
    * Odczyt domyślnego modelu konta CLI (`~/.claude/settings.json`, pole `model`) — WYŁĄCZNIE
    * do zasiania pigułki sesji startującej bez `--model`. Wołany świeżo przy każdym `create()`,
@@ -656,7 +659,9 @@ class RarogManager implements Manager {
       emitSessionChanged: (session) => { this.#emitSessionChanged(session); },
     });
     this.#interrupts = new InterruptWindows({
-      sessions: this.#sessions, now: () => this.#now(), logger: (line) => { this.#config.logger?.(line); },
+      sessions: this.#sessions, herdrBlocked: this.#herdrBlocked, now: () => this.#now(),
+      logger: (line) => { this.#config.logger?.(line); },
+      applyTransition: (session, event) => this.#applyTransition(session, event),
     });
     this.#timing = new DialogTimings({ now: () => this.#now(), logger: (line) => { this.#config.logger?.(line); } });
     this.#claimWindows = new ClaimWindows({
@@ -677,6 +682,7 @@ class RarogManager implements Manager {
     this.#conversationLists = {
       emitSessionChanged: this.#emit.emitSessionChanged, prStatus: this.#prStatus,
       quiet: (sessionId) => { this.#config.notifier?.quiet(sessionId); },
+      stuckWaits: (session, waits) => { this.#config.stalledWait?.stuckWaits(session, waits); },
     };
     this.#herdrLifecycle = new HerdrLifecycle(config, {
       sessions: this.#sessions,
@@ -2158,6 +2164,7 @@ class RarogManager implements Manager {
      */
     const driver = session.driver;
     if (driver === null) throw new BadStateError(HERDR_NO_DRIVER_INTERRUPT_MESSAGE);
+    const fromCard = session.state === 'waiting-permission';
     this.#expirePending(session, true);
     // Karty kanału zgód: przerwanie z telefonu to zwolnienie do terminala, nigdy cyfra.
     this.#consentCards.releaseConsentCards(session);
@@ -2183,7 +2190,7 @@ class RarogManager implements Manager {
        */
       this.#note(session, { type: 'interrupt-requested' });
     }
-    return this.#interrupts.trackInterrupt(id, delivered);
+    return this.#interrupts.trackInterrupt(id, delivered, fromCard ? session.stateSince : null);
   }
 
   /**
@@ -2350,6 +2357,7 @@ class RarogManager implements Manager {
      * kilkanaście dziennie.
      */
     this.#config.notifier?.forget(session.id);
+    this.#config.stalledWait?.forget(session.id);
   }
 
   /**
@@ -2913,9 +2921,8 @@ class RarogManager implements Manager {
   #settleEmptyStart(session: Session): void {
     if (!session.emptyStart) return;
     session.emptyStart = false;
-    this.#applyTransition(session, { type: 'driver-init' });
     // Bez „gotowe”: karta dalej wstaje (`awaitingFirstTurn`), więc to nie koniec tury.
-    this.#applyTransition(session, { type: 'result', subtype: 'success' });
+    for (const event of zeroTurnEvents(session.state)) this.#applyTransition(session, event);
     // „Tura zerowa" nie jest turą: rachunek wiadomości zostaje niepełny do końca pierwszej
     // prawdziwej.
     session.turnInput = undefined;
@@ -2925,6 +2932,7 @@ class RarogManager implements Manager {
     const driver = session.driver;
     if (driver === null) return;
     session.driver = null;
+    this.#config.stalledWait?.forget(session.id); // The alarm's tries end with the driver (`stalled-wait.ts`).
     // Przycisk ponownej wysyłki po blokadzie hooka należał do tego drivera (jego pole promptu, jego echo).
     session.promptBlocked = undefined;
     session.turnOpenedBySend = undefined;
@@ -3869,6 +3877,8 @@ class RarogManager implements Manager {
         ? { afterHerdrRestore: true } : {}),
       // Sesja wstała, żadna tura się nie skończyła: bez „gotowe”.
       ...(started ? { afterStart: true } : {}),
+      // A helper session of another agent (tests, measurements): its "done" is not news.
+      ...(inTemporaryDirectory(session.cwd) ? { testSession: true } : {}),
       // Terminal Raroga pod wpisem (także Claude): baner ma
       // prowadzić tam, gdzie prowadzi wiersz listy, a nie na ekran sesji, którego klient nie pokazuje.
       ...(session.termId === undefined ? {} : { termId: session.termId }),

@@ -15,9 +15,12 @@
 //   - wyliczenia: `SessionState`, `EffortLevel`, `HerdrMode`, `KnownDialogID`, `RefuseReason`,
 //     `CliDialogClass`, `Engine`, `MessageRole`, `DetailKind`, `Delegation`, `InputKind`, `ApnsPushKind`;
 //   - bloki podsumowania sesji: `GitFileKinds`, `GitCommit`, `SessionUsage`, `ContextLimitState`, `Activity`,
-//     `BackgroundTask`, `SessionArtifact`, `WaitingFor`, `CliUpdate`, `SessionPromptBlocked`;
+//     `SessionArtifact`, `WaitingFor`, `CliUpdate`, `SessionPromptBlocked`;
 //   - części wiadomości: `MessageAttachment`, `TranscriptNotice`, `TranscriptPromptBlocked`.
 //   Gdy któryś z nich dostanie pole albo regułę kodów zdań, trafia tu jako kopia w tym samym commicie.
+// - Copied for an additive field rather than for sentence codes: `BackgroundTask`, from before the wait stage
+//   (`ownCommandWait`), so the old app's `SessionSummary` reads frames that carry it. Its nested `AgentOwnTask` and
+//   `WorkflowRun` are shared, because the field does not change them.
 
 /// Przestrzeń nazw zamrożonych typów starej apki (jej `SessionSummary` obok bieżącego).
 enum OldApp {}

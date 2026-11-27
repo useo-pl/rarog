@@ -16,10 +16,10 @@ import type { HerdrSocketStatus, HerdrStreamEvent, HerdrSubscription } from '../
 import {
   TAB_LABEL_DEBOUNCE_MS, createHerdrSupervisor,
 } from '../../src/herdr/supervisor.ts';
-import type { HerdrSupervisorHandle, HerdrTransport } from '../../src/herdr/supervisor.ts';
+import type { HerdrLauncherSeam, HerdrSupervisorHandle, HerdrTransport } from '../../src/herdr/supervisor.ts';
 import { HerdrGoneError } from '../../src/herdr/types.ts';
 import type {
-  HerdrAgentInfo, HerdrClient, HerdrLaunchClient, HerdrScreen,
+  HerdrAgentInfo, HerdrClient, HerdrLaunchClient, HerdrLauncher, HerdrScreen,
 } from '../../src/herdr/types.ts';
 import { foreign } from '@rarog/shared/sentences';
 
@@ -75,7 +75,7 @@ export class VirtualScheduler implements Scheduler {
 }
 
 /** `agent.list` from a fixed list; every input method succeeds and does nothing. */
-class StaticAgentClient implements HerdrClient {
+export class StaticAgentClient implements HerdrClient {
   constructor(private readonly agents: HerdrAgentInfo[]) {}
 
   listAgents(): Promise<HerdrAgentInfo[]> {
@@ -145,11 +145,15 @@ export interface TabLabelHarness {
 
 /**
  * A started supervisor over `agents`, with `launchClient` as its pane and tab channel.
- * `options.tabLabels` is `RAROG_HERDR_TAB_LABELS` (absent = on, like the default config).
+ * `options.tabLabels` is `RAROG_HERDR_TAB_LABELS` (absent = on, like the default config);
+ * `options.client` replaces the agent client (e.g. one that fails while herdr is down);
+ * `options.createLauncher` turns the launch channel on with a launcher built on the supervisor's seam.
  */
 export async function startTabLabelHarness(
   agents: HerdrAgentInfo[], launchClient: HerdrLaunchClient,
-  options: { tabLabels?: boolean } = {},
+  options: {
+    tabLabels?: boolean; client?: HerdrClient; createLauncher?: (seam: HerdrLauncherSeam) => HerdrLauncher;
+  } = {},
 ): Promise<TabLabelHarness> {
   const scheduler = new VirtualScheduler();
   const logs: string[] = [];
@@ -160,16 +164,18 @@ export async function startTabLabelHarness(
       yoloRoots: [],
       sendEnabled: true,
       ...(options.tabLabels === undefined ? {} : { tabLabels: options.tabLabels }),
+      launchEnabled: options.createLauncher !== undefined,
       dataDir: join(FIXTURES, 'unused'),
       now: () => 1_000_000,
       logger: (line) => { logs.push(line); },
     },
     {
       createDriver: () => noopDriver(),
-      client: new StaticAgentClient(agents),
+      client: options.client ?? new StaticAgentClient(agents),
       transport: new SilentTransport(),
       scheduler,
       launchClient,
+      ...(options.createLauncher === undefined ? {} : { createLauncher: options.createLauncher }),
       audit: { log: () => {}, flush: () => Promise.resolve() },
       hidden: {
         flush: () => Promise.resolve(),

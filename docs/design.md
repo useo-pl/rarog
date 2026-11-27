@@ -20,10 +20,11 @@ so the dark theme is the primary mode. The main screen has one job: answer "is a
 session states. Buttons have no accent color of their own: contrast and outline set them apart. Only the default
 action has the accent: the amber Send in the message field (only while there is something to send) and Resume on the
 state card. So amber next to a session (the dot, the tab mark, the decision card, the Scroll to Decision button) means
-"someone is waiting for you". Outside a session amber carries only warnings: `auto` mode (the mode pill, the new
-session form), the warning threshold of usage, a modified file in the git line, and the dot of the dictation status
-row while recording connects or finishes (while it records, the dot is `--err`). Your own message bubble follows the
-rule too: it sits on a tinted grey, not a color ("Colors").
+"someone is waiting for you", with one warning: a session whose subagent has waited long on its own command (the
+`timer` mark, "Tab bar in the session header"). Outside a session amber carries only warnings: `auto` mode (the
+mode pill, the new session form), the warning threshold of usage, a modified file in the git line, and the dot of the
+dictation status row while recording connects or finishes (while it records, the dot is `--err`). Your own message
+bubble follows the rule too: it sits on a tinted grey, not a color ("Colors").
 
 **First exception: syntax highlighting.** The `--hl-*` tokens apply in exactly three places: inside a code block, on
 a tool card with a shell command (the collapsed `Tool: target` line and the expanded input), and in the command block
@@ -69,8 +70,9 @@ Dark is the primary mode; light follows the system setting. The table copies `Pa
 | `--strong` | `#FFFFFF` | `#1C1C1E` | agent bold and headings |
 | `--muted` | `#A3A3A3` | `#51515A` | metadata |
 | `--muted-2` | `#8E8E93` (`#9E9EA3`¹) | `#6B6B73` (`#5A5A62`¹) | the second muting step |
+| `--switch-on` | `#248A3D` | `#248A3D` | the track of a switch that is on; the only green outside states |
 | `--idle-ink` | `#58585F` | `#92929A` | the row of an idle agent |
-| `--wait` | `#FFB454` | `#9B5700` | **waiting for you** |
+| `--wait` | `#FFB454` | `#9B5700` | **waiting for you**; a long wait on a background task |
 | `--run` | `#4ADE80` | `#1C773D` | working |
 | `--run-smoked` | `#328D53` | `#52966C` | waits on a background task that does not work (standby subagent, monitor) |
 | `--err` | `#F87171` | `#B31B1B` | error, refusal |
@@ -319,9 +321,8 @@ copy keeps Polish sentence case there. Everything read as a sentence (messages, 
 sentence case. State words are lowercase human words: waiting for permission, working, interrupted ("Session
 interrupted." with Resume), plan limit ("Plan limit reached. Try again after 14:00."). Errors say what failed, then
 what to do next: "The server isn't responding. Check Tailscale." The app never speaks in the first person: progress
-is a verb with an ellipsis (Connecting…). An empty transcript says "Tell the agent what to do. You can put your phone
-down." from the LEFT, where the transcript content starts: it is the first line of the conversation, not a poster in
-the middle of the window.
+is a verb with an ellipsis (Connecting…). An empty transcript says "Tell the agent what to do." from the LEFT, where
+the transcript content starts: it is the first line of the conversation, not a poster in the middle of the window.
 
 ## Visual direction
 
@@ -489,7 +490,10 @@ A tab is its text and a state mark before the label; the current tab adds a plat
   and waiting on a background task take the full state color. On the smoked green tile the digit is dark in both modes
   (`onRunSmoked` `#0A0A0A`), because white keeps only 3.5:1 there; with "Differentiate Without Color" that tab has an
   hourglass mark, opaque also on a sibling tab (other marks sit at 70 % there, `TabTokens.markAlpha`), and its
-  VoiceOver sentence adds "waiting on a background task" after the status word. The mark is ALWAYS there and the tab
+  VoiceOver sentence adds "waiting on a background task" after the status word. A session whose subagent has waited
+  long on its own command (`backgroundWaitLong`) takes the waiting color with a `timer` mark, opaque on a sibling too
+  (the waiting color at 70 % keeps only about 2.9:1 in light mode), and its sentence adds "waiting a long time on a
+  background task" (`subagent-long-wait.md`, "Session row"). The mark is ALWAYS there and the tab
   width does not depend on state (`HeaderChromeTests`), so a sibling's state change does not shift the bar; only
   being the current tab adds width (the "×", below). The tile
   is opaque, so its digit keeps 4.5:1 on the current plate too (`PaletteContrastTests`).
@@ -631,7 +635,8 @@ toggles `plan` ↔ `auto` (`POST /api/sessions/:id/mode`). Success does NOT flip
 new mode after the server reads the pane footer. `auto` has the amber tone (the pane does not ask for permissions),
 `plan` the `--new` tone. The MODEL pill opens the model and effort popover (`ModelSheet`; on a phone a sheet as tall as
 its content): Model and Effort are rows of the recent project chips of New Session (`Views/Common/RecentChip.swift`)
-that scroll sideways, and, for a model the server announces it for, Ultracode is a system segmented control Yes / No.
+that flow into further lines when they do not fit, and, for a model the server announces it for, Ultracode is a system
+segmented control Yes / No.
 A model without effort levels shows a sentence instead of the Effort chips. Without proof on the session card no
 Ultracode segment is selected; a session with ultracode ends the model pill text with that word.
 
@@ -938,7 +943,9 @@ rows in `Views/Header/BackgroundTasksSection.swift`.
 - A subagent works (dot and counter), waits for its own task (an hourglass in `--run-smoked` and "waiting on its own
   task · 18m") or has finished (no row). Amber stays for what waits on a human, so standby gets the smoked green of a
   session that waits on a background task; without contact with the source the hourglass goes to `--done` like the
-  dot (`BackgroundTaskMark`). A subagent's
+  dot (`BackgroundTaskMark`). From a long wait on its own command the state line becomes a warning line with the
+  stage's mark in `--wait` (`subagent-long-wait.md`, "Background section and pill"); the hourglass takes the same
+  colour. A subagent's
   own commands hang under it on a BRANCH, one line each (`pnpm test · 21m`). A workflow run uses the same branch:
   working phases and agents ● in `--run`, finished ✓ in `--done` with `--muted` text, pending ○ in `--muted`.
 - RECENTLY FINISHED (the last 3, in the inspector and in the popover) is quieter than what runs: a result mark (✓ ■ ? in
@@ -962,11 +969,12 @@ rows in `Views/Header/BackgroundTasksSection.swift`.
   finished tasks; under the pointer the title goes to `--text`. A deleted artifact stays dimmed (`square.dashed` in
   `--muted-2`, title in `--muted`, `deleted · 1d ago · Oct 15`) and is not a button; a URL outside
   `https://claude.ai/artifact/<id>` gets no link.
-- PULL REQUESTS (`docs/pull-requests.md`): PRs that the session's current conversation created with `gh pr create`,
+- PULL REQUESTS (`docs/pull-requests.md`): PRs that Claude Code linked to the session's current conversation with a
+  `pr-link` entry, whose author is the `gh` login and which were created after the conversation's first entry,
   newest first, shown only when there is at least one; the section does not fold, but merged and closed PRs do
   (below). A row speaks the artifact's visual
   language: an `arrow.triangle.pull` glyph and the first line in `linkInk` (no underline; `--text` under the
-  pointer). The first line is the `--title` of the command, or `owner/repo#n` without one; under it a `--muted-2`
+  pointer). The first line is the PR's title on GitHub, or `owner/repo#n` without one; under it a `--muted-2`
   line `acme/widget#42 · 2h ago · 14:05` (the reference only when the first line is a title). When the server knows
   the GitHub state, a label opens the line: the word (`open`, `draft`, `merged`, `closed`, in the app language;
   `draft` stays `draft` in Polish too) in white `caption2` semibold on a capsule of GitHub's state colour, muted
@@ -1117,7 +1125,8 @@ Readability rules for the transcript and the list. They live on the client; the 
 - **The green dot at the background task line and on the N in background pill is a WORK SIGN**: it shows only when a
   task on the list works. A subagent in standby (its turn ended, it waits for its own background command) is not
   work: with only such agents the line says `waiting: subagent · <description>` without a dot, and the pill counts
-  every task, also without a dot. An open workflow run on the list takes the line first, during a turn and after it;
+  every task, also without a dot. A subagent that waits long on its own command adds the warning mark of its stage
+  after the pill's dot. An open workflow run on the list takes the line first, during a turn and after it;
   without one, a live delegation from the activity (`subagent: …`, `workflow: …`) takes precedence under a working
   row and keeps its dot.
 - **The scroll-to-bottom button is an arrow in a circle, with no text**: a 36 pt circle on the column axis above the
@@ -1146,7 +1155,8 @@ row roles in `ProjectTreeRowLayout` (`Model/ProjectTreeRows.swift`), the guide c
 
 - **Tree**: one list over the column. A project header sits on the column background, not on a card: a fold chevron,
   the name in semibold mono followed by the agent count in brackets, `willow (2)`, in `footnote` mono (a step below
-  the name, on its baseline) without the weight and in `--muted-2` (only above zero; the name truncates before it,
+  the name, on its baseline) without the weight and in `--muted-2`, in the light theme a step darker (#66666E) to
+  hold 4.5:1 in the fringe of the filter glass's shadow (only above zero; the name truncates before it,
   the bracket stays; no state color, the agent rows under the header carry the state), and under it the branch with
   `↑`/`↓` and, for an ambiguous name, the path. The whole header folds and lights up under the pointer as one plate.
   Agents are indented so their dot lines up with the first letter of the project name, and show the session name
@@ -1371,7 +1381,8 @@ of the agent rows, which a folded project keeps when they wait, serve the glance
 
 - Only the default action of the message field and of the state card carries the amber accent (Send, Resume);
   navigation buttons are achromatic, and any other color on a control means a state or an effect (Stop in `--err`,
-  Allow in `--run`).
+  Allow in `--run`). One exception: a switch that is on has the deep green `--switch-on` track, as on iOS, so on
+  and off differ at a glance.
 - Green ≠ done. Done is grey (nothing to do); green `--run` says working, and outside state it carries only approval
   and what git added (diff lines, `+` in the status line).
 - No fireworks skeletons; a skeleton is a faithful layout of the target content.

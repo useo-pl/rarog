@@ -48,9 +48,7 @@ A turn caused by a standby notification alone gives no `done` push. The code liv
 
 Rarog does NOT read `agent-<id>.meta.json` outside a workflow run, the files of nested agents (a subagent starts them,
 so they are not on the list), the content of workflow agents' files beyond the first-line tag, the `tasks/` directory
-with command output (for the task list; the pull request reader reads one output file there, that of a recognized
-`gh pr create` that ran in the background: `pull-requests.md`, "Reading"), the CLI footer on the pane screen, or the
-system process list. A pane out of scope
+with command output, the CLI footer on the pane screen, or the system process list. A pane out of scope
 (`inScope: false`, outside the `RAROG_HERDR_ROOTS` directories) has no follower and no reader, so it has no task list.
 
 ## Task lifecycle
@@ -409,6 +407,10 @@ their Swift mirrors in `RarogContract` (`SessionSummary.swift`, `Transcript.swif
   task; present means neither working nor finished. The reducer fills it, and `merge.ts` removes it after a wake.
 - **`BackgroundTask.ownTasks`** (`{ id, command?, startedAt? }[]`, kind `agent` only): open commands the subagent
   started itself, assembled by `merge.ts`; absent when the server knows no open command.
+- **`BackgroundTask.ownCommandWait`** (`'short' | 'long' | 'stuck'`, kind `agent` only): how long a subagent in
+  standby has waited on its own command, set by `merge.ts` with `ownCommandWaitOf` from `work.ts` exactly when the task
+  has `waitingSince` and a non-empty `ownTasks` (the demo does not send it). Stages, clock and rules:
+  `subagent-long-wait.md`.
 - **`TranscriptNotice.outcome: 'waiting'`**: the notice of a standby, from `notice.ts` ("Notice in the transcript").
 
 Golden frames (reference SSE frames in `shared/fixtures/sse/`) cover them: the task `agent_9b2c` in
@@ -430,6 +432,8 @@ computes the rows (`BackgroundPanel.lines`, `BackgroundTaskRow`, `OwnTaskRow` in
 - **A waiting subagent** (`waitingSince`): an hourglass instead of the dot and one line
   `waiting on its own task · 18m`; the timer counts from `waitingSince`. `BackgroundTaskRules.waitingAgent` decides
   that the agent waits; the row takes only the moment from the field, and without a valid time it shows no timer.
+  From 30 minutes on its own command the line becomes a warning (`waiting 47m on: pgrep, sleep`) and the pill gets a
+  warning mark (`subagent-long-wait.md`, "Background section and pill").
 - **A finished subagent** has no row. Its end shows as a transcript notice and in the inspector's Recently finished
   section (`FinishedTasks.rows`), where a standby notice never goes. The transcript line of a `waiting` notice:
   `Subagent is waiting on its own background task: “<name>”.` (`UICopy.harnessNotice`).
@@ -465,6 +469,8 @@ take its last word for a tool.
 The demo server (`pnpm run demo:server`, fakes without herdr) has a controlled pane `standby`
 (`server/src/demo/scenarios.ts`): one subagent in standby for 18 min with two own commands (the second without text)
 and a standby notice in the history; the `agent-wake` event clears the standby. `StandbyAgentUITests` runs on it.
+The `create` action's `wait` field (`long` or `stuck`) makes the subagent stand 47 or 75 min on a wait loop of its own
+(`subagent-long-wait.md`, "Background section and pill").
 
 ## Workflow run layout
 
@@ -597,9 +603,10 @@ Server:
   session after a turn (`waiting-input`, `done`, `resumable`) with a live task: a non-workflow task that is neither a
   subagent in standby nor a monitor, or an open run (no layout, no agents, or an agent in flight). A session whose
   whole background waits does not count as working, and with an unacknowledged result (`waiting-input`,
-  `seen !== true`) counts as finished. The silence timer (`isBusy`) is held only by an open workflow run (`hasOpenWorkflow`), because a
-  development server in the background would hold it forever. The run list (`workflowsWithRun`) has the `workflow`
-  tasks with a read layout from all sessions.
+  `seen !== true`) counts as finished. Exception: a `waiting-input` session with a subagent stuck on its own command
+  (`stuckWait`) counts once, as waiting (`subagent-long-wait.md`, "Live Activity"). The silence timer (`isBusy`) is
+  held only by an open workflow run (`hasOpenWorkflow`), because a development server in the background would hold it
+  forever. The run list (`workflowsWithRun`) has the `workflow` tasks with a read layout from all sessions.
 
 App, computed without the server:
 
@@ -609,10 +616,15 @@ App, computed without the server:
   the unread and silence tones into the work tone). A session whose list holds only tasks that do not work (subagents
   in standby, monitors; `hasTasks` without `tasksKeepRowWorking`) gets the tone `backgroundWait` instead of silence
   in `waiting-input` with an acknowledged result, `done` and `resumable`: the smoked green `runSmoked`, without the
-  work dot. An unacknowledged result stays unread. Rank, push and the Live Activity count it as silence. The status
-  word stays the silence word, so the session tab's VoiceOver sentence adds the tone word after it
-  (`UICopy.tabSpoken`), and the tab's status mark keeps full opacity also on a tab that is not current.
-- **Live Activity start state**: `hasBackgroundWork` and `hasOpenWorkflow`, as in `work.ts`
+  work dot. An unacknowledged result stays unread. Rank and push count it as silence, and so does the Live Activity
+  until a subagent's wait reaches `stuck` (then it counts as waiting). The status word stays the silence word, so the
+  session tab's VoiceOver sentence adds the tone word after it (`UICopy.tabSpoken`), and the tab's status mark keeps
+  full opacity also on a tab that is not current. Exception to the rank and the tone: a `waiting-input` session with
+  a subagent stuck on its own command (`stuckWait`) gets the tone `.waiting`, rank 0 and its own word, over an
+  unread result and over other work (`subagent-long-wait.md`, "Session row"). A wait at `long` turns
+  `backgroundWait` of a received result into the warning tone `backgroundWaitLong`, which counts as calm like it (same
+  section).
+- **Live Activity start state**: `hasBackgroundWork`, `hasOpenWorkflow` and `stuckWait`, as in `work.ts`
   (`Selectors+LiveActivity.swift`, `aggregate` and `matches`). They differ from the row in one case: a run whose agents
   all finished while its task is listed is work for the row, not for the Live Activity.
 - **`RarogUI` models** (`native/Rarog/Packages/RarogUI/Sources/RarogUI/Model/`) never test list emptiness themselves,
@@ -640,16 +652,18 @@ App, computed without the server:
 The app has no counterpart of `tasksHoldingDonePush`, `tasksBlockRestart` and `workflowsWithRun`: pushes, restarts and
 the run list are the server's. Two tables hold the answers for every list shape:
 `server/test/herdr-background-work.test.ts` and `BackgroundTaskRulesTests.swift`. The golden frame
-`shared/fixtures/apns/live-activity.update.waiting-agent.json` guards the shared Live Activity case: four sessions after
-a turn give `waiting: 0, working: 2, finished: 1`, and the app core must build the same state
-(`LiveActivityInputTests`).
+`shared/fixtures/apns/live-activity.update.waiting-agent.json` guards the shared Live Activity case: six sessions after
+a turn, two of them with a stuck wait, give `waiting: 2, working: 2, finished: 1` and no `top`, and the app core must
+build the same state (`LiveActivityInputTests`).
 
 Two guards keep the rules in one place. `server/test/herdr-background-boundary.test.ts` keeps `sessions/manager.ts`,
 `sessions/session-restart.ts`, `sessions/conversation-lists.ts` and `notify/**` from computing on tasks (no length,
-search, loop, decision by task kind, or reading of `waitingSince` and `ownTasks` outside `work.ts`). In the app,
+search, loop, decision by task kind, or reading of `waitingSince`, `ownTasks` and `ownCommandWait` outside
+`work.ts`). In the app,
 `BackgroundTaskRulesGuardTests.swift` scans `RarogCore/Sources` and `RarogUI/Sources`: outside
-`BackgroundTaskRules.swift` the word `backgroundTasks`, a task kind comparison and a `waitingSince` read may appear only
-as an argument of a `BackgroundTaskRules` function or in a line from the test's closed exception list, each with a
+`BackgroundTaskRules.swift` the word `backgroundTasks`, a task kind comparison and a read of `waitingSince`,
+`ownTasks` or `ownCommandWait` may appear only as an argument of a `BackgroundTaskRules` function (or, for
+`ownCommandWait`, its call) or in a line from the test's closed exception list, each with a
 reason (an exception whose line is gone fails the test). The guard does not track a list under another name; behavior
 tests in `RarogUILogicTests` cover that (`SessionRowStageTests.swift`, `ActivityTextTests.swift`, `BackgroundRowTests`
 in `HeaderModelTests.swift`).
@@ -805,11 +819,13 @@ Each file's header describes it; this list says where to look. The directory `se
 - `server/src/herdr/background/notice.ts`: notification to transcript notice.
 - `server/src/herdr/background/artifacts.ts`: the session's artifact list (`artifacts.md`), here because its
   notification shares the carrier and the registry.
-- `server/src/herdr/background/pull-requests.ts`: the session's PR list (`pull-requests.md`), next to the artifact
-  list because it reads the same conversation files and travels the same way to the app.
+- `server/src/herdr/background/pull-requests.ts`: the PRs linked to the conversation and its window
+  (`pull-requests.md`), next to the artifact list because the registry holds its CLI words and it travels the same
+  way to the app; which of them the card shows is decided in `server/src/sessions/pr-status-link.ts`.
 - `server/src/herdr/background/scheduled-tasks.ts`: the session's scheduled tasks (crons) from the main conversation
   file, and the prefilter for its raw lines; here because the registry holds its CLI words.
-- `server/src/herdr/background/pull-request-files.ts`: the reader of all conversation files for the PR list.
+- `server/src/herdr/background/pull-request-files.ts`: the reader of the main conversation file for the PRs linked
+  to the conversation.
 - `server/src/herdr/background/scheduled-task-file.ts`: the reader of the main conversation file for the scheduled
   tasks (`scheduled-tasks.md`).
 - `server/src/herdr/background/incremental-read.ts`: one incremental read of one conversation file (offset, chunks,
@@ -1031,8 +1047,9 @@ What the fixtures show on CLI 2.1.296:
   reason says why ("Standby-only turn: no `done` push"); `working in the background: N` usually means a subagent woke
   within the 15 s. Without a `push: armed done` line the push never armed, and background work at the turn end is the
   only reason without its own line. The other reasons log `(done, you are watching Rarog)`, `(done, a banner about
-  this matter already went out)`, `(done, herdr restore)`, `(done, session start)`, `(done, turn after a subagent
-  standby alone)` and `(done, turn after an artifact task notification alone)`.
+  this matter already went out)`, `(done, herdr restore)`, `(done, session start)`, `(done, test session in a temporary
+  directory)`, `(done, turn after a subagent standby alone)` and `(done, turn after an artifact task notification
+  alone)`.
 - **An artifact was deleted, an idle session turned blue, and no push came.** Expected: the watch end notification
   woke the agent, and a turn without tools gives no `done`. Mark as Read in the row menu clears the blue.
 - **A `done` push came after a turn with a standby.** The turn held other input (a prompt, an end notice, a subagent
@@ -1055,7 +1072,8 @@ What the fixtures show on CLI 2.1.296:
   restarts when it called `Agent`, `Task` or `Workflow`, has an own command without proof of its end, or has a file
   not known to its last line (a skip, a truncation, over 256 MiB, a line over 8 MiB or an unreadable line, a file that
   ends on an attachment); every agent stays with `RAROG_AGENT_FILES=0`. An agent with a monitor leaves up to 31 minutes
-  after its standby. Workaround: restart Claude Code in the terminal.
+  after its standby. Workaround: restart Claude Code in the terminal. How long an agent has waited on its own command
+  travels in `ownCommandWait` (`subagent-long-wait.md`).
 - **A dormant agent that waits for something Rarog does not see does not block restart.** The rule knows commands,
   monitors and `Agent`, `Task`, `Workflow` calls, not other own tasks such as a skill run in the background: such an
   agent goes dormant after a minute, and a restart from Rarog kills it without a refusal.

@@ -130,6 +130,6 @@ describe('Live Activity — sends without an attempt', () => {
     h.sessions = IDLE;
     expect(h.controller.chime()).toBe(1);
     await h.clock.advance(0);
-    expect(h.logs).toContain('live-activity: done chime → not sent (paused)');
+    expect(h.logs).toContainEqual(expect.stringMatching(/^live-activity: done chime → not sent \(paused\), updatedEpoch \d+$/));
   });
 });

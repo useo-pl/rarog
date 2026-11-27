@@ -19,10 +19,14 @@ public enum StatusTone: Sendable, Equatable {
   /// Przydymiona zieleń — agent skończył turę i czeka na zadanie w tle, które nie jest pracą: subagent w postoju
   /// albo monitor. Zastępuje wyłącznie ciszę; ranga, push i kafel liczą go jak ciszę (``isCalm``).
   case backgroundWait
+  /// The waiting colour with its own mark: as ``backgroundWait``, but a subagent has waited on its own command long
+  /// enough to warn (the server's stage `long`). Only a received result gets it; rank, filters, pills and push count
+  /// it as silence (``isCalm``), because it is only a warning.
+  case backgroundWaitLong
 
   /// Ton spokojny: cisza albo czekanie na zadanie w tle. Tak liczą wszystkie miejsca poza barwą, znakiem
   /// i zdaniem tonu (przełącznik sesji, licznik okna przełącznika).
-  public var isCalm: Bool { self == .quiet || self == .backgroundWait }
+  public var isCalm: Bool { self == .quiet || self == .backgroundWait || self == .backgroundWaitLong }
 }
 
 /// Od kiedy liczy zegar karty.
@@ -160,9 +164,13 @@ extension SessionSummary {
   /// 3 odebrany wynik, 4 done. Zadanie w tle podnosi do pracy rangi spokojniejsze; czy lista zadań
   /// trzyma wiersz przy pracy, rozstrzyga `BackgroundTaskRules.tasksKeepRowWorking` (`BackgroundTaskRules.swift`).
   /// Subagent w postoju wiersza przy pracy nie trzyma: sesja, której całe tło czeka, ma rangę jak bez tła.
+  /// Exception: a session after a turn whose subagent is stuck on its own command (`BackgroundTaskRules.stuckWait`)
+  /// waits for the owner, so it has rank 0 like a decision, also with an unread result or other work in the background.
   public var listRank: Int {
     switch state {
     case .waitingPermission, .waitingQuestion:
+      return 0
+    case .waitingInput where BackgroundTaskRules.stuckWait(state, backgroundTasks):
       return 0
     case .waitingInput, .error, .limitReached, .interrupted, .resumable:
       let rank = state == .waitingInput && resultSeen ? 3 : 1
@@ -187,12 +195,21 @@ extension SessionSummary {
       case .limitReached, .error: .failed
       case .done, .resumable, .unsupported: .quiet
       }
+    // A subagent stuck on its own command after the turn will not come back by itself: the session waits for the
+    // owner. It wins over an unread result and over other work in the background; a decision, an error and a turn
+    // keep their own tone (the rule holds only in `waitingInput`).
+    if BackgroundTaskRules.stuckWait(state, backgroundTasks) { return .waiting }
     // Proces w tle nikogo nie blokuje — barwa pracy; „czeka" i „błąd" wygrywają. Subagent
     // w postoju i monitor pracą nie są: reguła ich nie liczy.
     if base == .unread || base == .quiet, BackgroundTaskRules.tasksKeepRowWorking(backgroundTasks) { return .working }
     // Cisza z zadaniem na liście, które nie pracuje: agent czeka na zadanie w tle. Nieodebrany wynik zostaje
     // sobą, a sesja nieobsługiwana — ciszą.
-    if base == .quiet, waitsOnBackground, BackgroundTaskRules.hasTasks(backgroundTasks) { return .backgroundWait }
+    // A subagent that has waited long on its own command turns that wait into a warning; a phantom agent (`done`,
+    // `resumable`) has no stage, so its row keeps the plain wait.
+    if base == .quiet, waitsOnBackground, BackgroundTaskRules.hasTasks(backgroundTasks) {
+      let long = BackgroundTaskRules.strongestOwnCommandWait(state, backgroundTasks) == .long
+      return long ? .backgroundWaitLong : .backgroundWait
+    }
     return base
   }
 
@@ -227,9 +244,14 @@ extension AppState {
   /// nieodebrany (``heldUnread``) trzyma rangę 1 także po `seen` — do zmiany stanu sesji, pełnego stanu listy
   /// albo zejścia apki w tło. Remis w randze 1 idzie dalej po wieku, więc wiersz stoi DOKŁADNIE na swoim
   /// miejscu. Styl wiersza (kropka, wyciszenie) idzie za prawdziwą ``SessionSummary/listRank``.
+  /// A held row whose real rank is above it (rank 0: a subagent stuck on its own command) moves up: the wait crossing
+  /// its threshold does not change `stateSince`, so the memory alone would keep it at rank 1.
   public func listOrderRank(_ session: SessionSummary) -> Int {
-    if session.state == .waitingInput, session.resultSeen, heldUnread[session.id] == session.stateSince { return 1 }
-    return session.listRank
+    let rank = session.listRank
+    if rank > 1, session.state == .waitingInput, session.resultSeen, heldUnread[session.id] == session.stateSince {
+      return 1
+    }
+    return rank
   }
 
   private func ordered(rank: (SessionSummary) -> Int) -> [SessionSummary] {

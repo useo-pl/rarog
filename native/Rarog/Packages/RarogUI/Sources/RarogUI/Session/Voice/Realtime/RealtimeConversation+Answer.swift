@@ -24,8 +24,8 @@ extension RealtimeConversation {
     case cut
   }
 
-  /// Per run: which responses called a tool, played audio, lost an item to the stream limit or had an item that ended
-  /// without audio, and which were reported.
+  /// Per run: which responses called a tool, played audio, lost an item to an error that ends one stream (the stream
+  /// limit, a request timeout) or had an item that ended without audio, and which were reported.
   struct AnswerLog {
     var calledTool: Set<String> = []
     var audible: Set<String> = []

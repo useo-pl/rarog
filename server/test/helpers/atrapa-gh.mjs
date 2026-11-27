@@ -7,12 +7,17 @@
  * - `started.jsonl`: one line per call, written when the call starts (`pid`, `start`), so a killed call is on record;
  * - `calls.jsonl`: one line per finished call: `argv`, `stdin`, `env`, `pid`, `start`, `end`.
  *
- * A scenario: `states` (`"owner/repo#n"` → `"OPEN"`, `"MERGED"`, `"CLOSED"`, `null`, or a whole `pullRequest`
- * object such as `{ state: "OPEN", isDraft: true }`; missing = `"OPEN"`; a string answers with `isDraft: false`),
- * `rateLimit` (`{ remaining, resetAt }`), `extraErrors` (added to `errors`), `notFoundMessage` (text of the
- * `NOT_FOUND` error), `stdout` (raw text instead of the built answer), `stderr`, `exit`, `sleepMs`, `stdoutBytes`
- * (that many bytes of `x` on stdout). Like the measured `gh`, a `null` alias adds a `NOT_FOUND` error and exit 1, and
- * stdout still carries the whole answer.
+ * A scenario: `states` (`"owner/repo#n"` → `"OPEN"`, `"MERGED"`, `"CLOSED"`, `null`, or an object laid over the
+ * default `pullRequest` object, such as `{ state: "OPEN", isDraft: true }` or `{ author: null }`; missing = `"OPEN"`),
+ * `repoErrors` (`"owner/repo#n"` → an error type: the alias is `null` and the error stands on the alias path; with
+ * `NOT_FOUND` this is the measured shape of a repository that does not exist or is not visible), `viewer` (the login
+ * of `viewer`, default `octo-owner`; `null` leaves `viewer` out), `rateLimit` (`{ remaining, resetAt }`), `extraErrors`
+ * (added to `errors`), `notFoundMessage` (text of the `NOT_FOUND` error), `stdout` (raw text instead of the built
+ * answer), `stderr`, `exit`, `sleepMs`, `stdoutBytes` (that many bytes of `x` on stdout).
+ *
+ * The default `pullRequest` object answers every field the query asks: `state`, `isDraft: false`, `title`
+ * (`Change <n>`), `createdAt` and `author.login` (`octo-owner`). Like the measured `gh`, a `null` PR or repository adds
+ * a `NOT_FOUND` error and exit 1, and stdout still carries the whole answer.
  */
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -58,21 +63,36 @@ if (typeof scenario.stdoutBytes === 'number') {
   const variables = body.variables ?? {};
   const data = {};
   const errors = [];
+  const states = scenario.states ?? {};
+  const repoErrors = scenario.repoErrors ?? {};
   for (let i = 0; `o${i}` in variables; i += 1) {
-    const key = `${variables[`o${i}`]}/${variables[`r${i}`]}#${variables[`n${i}`]}`;
-    const states = scenario.states ?? {};
+    const number = variables[`n${i}`];
+    const key = `${variables[`o${i}`]}/${variables[`r${i}`]}#${number}`;
     const state = key in states ? states[key] : 'OPEN';
-    if (state === null) {
+    if (key in repoErrors) {
+      data[`p${i}`] = null;
+      errors.push({
+        type: repoErrors[key],
+        path: [`p${i}`],
+        message: scenario.notFoundMessage ?? `Could not resolve to a Repository with the name '${key}'.`,
+      });
+    } else if (state === null) {
       data[`p${i}`] = { pullRequest: null };
       errors.push({
         type: 'NOT_FOUND',
         path: [`p${i}`, 'pullRequest'],
-        message: scenario.notFoundMessage ?? `Could not resolve to a PullRequest with the number of ${variables[`n${i}`]}.`,
+        message: scenario.notFoundMessage ?? `Could not resolve to a PullRequest with the number of ${number}.`,
       });
     } else {
-      data[`p${i}`] = { pullRequest: typeof state === 'string' ? { state, isDraft: false } : state };
+      const base = {
+        state: 'OPEN', isDraft: false, title: `Change ${number}`, createdAt: '2026-11-12T17:00:00Z',
+        author: { login: 'octo-owner' },
+      };
+      data[`p${i}`] = { pullRequest: typeof state === 'string' ? { ...base, state } : { ...base, ...state } };
     }
   }
+  const viewer = 'viewer' in scenario ? scenario.viewer : 'octo-owner';
+  if (viewer !== null) data.viewer = { login: viewer };
   data.rateLimit = scenario.rateLimit ?? { remaining: 4999, resetAt: '2026-11-12T20:00:00Z' };
   errors.push(...(scenario.extraErrors ?? []));
   const answer = errors.length > 0 ? { data, errors } : { data };

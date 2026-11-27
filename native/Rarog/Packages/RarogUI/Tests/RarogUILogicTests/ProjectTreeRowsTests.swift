@@ -165,8 +165,8 @@ struct ProjectTreeRowsTests {
     }
   }
 
-  /// "(10)" after the name is text: ≥ 4.5:1 on the column, on the sidebar, on the pointer plate and on `surface2`, and
-  /// quieter than the name.
+  /// "(10)" after the name is text: ≥ 4.5:1 on the column, on the sidebar, on the pointer plate, on `surface2` and in
+  /// the filter glass's shadow, and quieter than the name.
   @Test("agent count bracket: ≥ 4.5:1 on every header background, dimmer than the name; only with agents")
   func agentsBadge() {
     func ratio(_ ink: UInt32, _ background: UInt32) -> Double {
@@ -184,6 +184,11 @@ struct ProjectTreeRowsTests {
         }
       }
     }
+    // The first header stands in the fringe of the floating filter glass's shadow: on the iPad the light sidebar
+    // (#EDEDF2) dims to #E7E7EC at the top of the first header's count. Over the dark column the shadow only deepens
+    // the ground, so the dark count gains contrast there.
+    let shaded = ratio(PaletteTokens.treeHeaderCount.light, 0xE7E7EC)
+    #expect(shaded >= 4.5, "light: bracket in the filter glass's shadow \(shaded)")
     func row(agents: Int) -> ProjectRowModel {
       ProjectRowModel(
         cwd: willow, name: "willow", agents: agents, tone: agents > 0 ? .quiet : nil, branch: nil, ahead: nil,

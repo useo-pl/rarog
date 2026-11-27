@@ -3,8 +3,9 @@ import Foundation
 import Testing
 
 // The background rule of the end check of a voice conversation (`VoiceAgentWatch`): the background refuses every
-// start, and it ends a started conversation unless the host says the background keeps it (the locked-phone trial on
-// and the conversation past its readiness gate). The other end reasons: `VoiceAgentSessionTests`. Owner: voice agent.
+// start, and it ends a started conversation unless the host says the background keeps it (the background rule keeps
+// it and the conversation is past its readiness gate). The other end reasons: `VoiceAgentSessionTests`.
+// Owner: voice agent.
 
 private func input(background: Bool, keeps: Bool) -> VoiceAgentWatch.Input {
   VoiceAgentWatch.Input(
@@ -12,9 +13,9 @@ private func input(background: Bool, keeps: Bool) -> VoiceAgentWatch.Input {
     epoch: nil, boundary: nil)
 }
 
-@Suite("voice conversation end check: the background and the locked-phone trial")
+@Suite("voice conversation end check: the background and the host's keep")
 struct VoiceAgentWatchTests {
-  // Catches a start check that lets the trial keep a start in the background: the app would open the microphone
+  // Catches a start check that lets the host keep a start in the background: the app would open the microphone
   // there without the user's tap in the foreground.
   @Test("the start check refuses the background whatever the host says", arguments: [false, true])
   func startRefusedInBackground(keeps: Bool) {
@@ -22,8 +23,8 @@ struct VoiceAgentWatchTests {
     #expect(watch.check(input(background: true, keeps: keeps)) == .background)
   }
 
-  // Catches a gate that ends a kept conversation (the trial would do nothing), keeps one the host does not keep (the
-  // trial off, or a conversation still connecting), or stays latched after the host stops keeping it.
+  // Catches a gate that ends a kept conversation (its tile would do nothing), keeps one the host does not keep (no
+  // tile, or a conversation still connecting), or stays latched after the host stops keeping it.
   @Test("after the start the background ends the conversation unless the host keeps it")
   func startedConversation() {
     var watch = VoiceAgentWatch(sessionId: "s1", start: input(background: false, keeps: false))

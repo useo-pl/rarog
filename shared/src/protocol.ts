@@ -429,11 +429,11 @@ export interface SessionSummary {
    */
   artifacts?: SessionArtifact[];
   /**
-   * Pull requesty utworzone w bieżącej rozmowie sesji Claude (`docs/pull-requests.md`): `gh pr create`
-   * w narzędziu `Bash` agenta głównego, subagenta albo agenta workflow. Najnowszy pierwszy, najwyżej 20.
+   * PRs that Claude Code linked to the current conversation with a `pr-link` entry, whose author is the `gh` login
+   * and which were created after its first entry (`docs/pull-requests.md`). Newest first, at most 20.
    *
-   * Nieobecne = brak PR-ów albo brak odczytu plików rozmowy (Codex, panel spoza `RAROG_HERDR_ROOTS`); pusta
-   * tablica nie jedzie na drut. Lista idzie za rozmową: po `/clear` pole znika.
+   * Missing = no such PRs, no reading (Codex, a pane outside `RAROG_HERDR_ROOTS`) or no answer from GitHub; an
+   * empty array does not travel. The list follows the conversation: after `/clear` the field goes.
    *
    * Pole ADDYTYWNE — `PROTOCOL_VERSION` zostaje, stary klient je ignoruje.
    */

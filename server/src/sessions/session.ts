@@ -483,11 +483,18 @@ export class Session {
    */
   artifacts: readonly SessionArtifact[] | undefined;
   /**
-   * Pull requesty bieżącej rozmowy (`docs/pull-requests.md`) — stan ULOTNY jak `artifacts`: jedynym
-   * źródłem są pliki rozmowy, a driver wypłaca listę przy każdym podpięciu, także pustą. `undefined` = brak
-   * PR-ów albo brak odczytu; pustej tablicy tu nie trzymamy.
+   * The PRs the card shows (`docs/pull-requests.md`): the owner's PRs among `pullRequestLinks`, recomputed by
+   * `pr-status-link.ts` from the links, the window and the facts from GitHub. VOLATILE like `artifacts`. `undefined`
+   * = none shown; an empty array is never kept here.
    */
   pullRequests: readonly SessionPullRequest[] | undefined;
+  /**
+   * Pull requests linked to the current conversation (the driver's `pull-requests` event, newest first, at most 100)
+   * and the time of the conversation's first entry. VOLATILE like `pullRequests` and cleared with it when the
+   * conversation changes; `pullRequests` is what the card shows from them. `undefined` = no links or no read.
+   */
+  pullRequestLinks: readonly SessionPullRequest[] | undefined;
+  pullRequestWindowStart: string | undefined;
   /**
    * Scheduled tasks of the current conversation (`docs/scheduled-tasks.md`), VOLATILE like `pullRequests`: the driver
    * reads them from the conversation file and pays the list out at every attach. `undefined` = none or no read.

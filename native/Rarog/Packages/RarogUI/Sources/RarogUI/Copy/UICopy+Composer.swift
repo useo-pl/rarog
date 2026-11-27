@@ -312,7 +312,7 @@ extension UICopy {
   public static func voiceNotice(_ notice: VoiceNotice) -> String {
     switch notice {
     case .silence: L("composer.voiceNotice.silence")
-    case .sessionLimit: L("composer.voiceNotice.sessionLimit")
+    case let .sessionLimit(seconds): L("composer.voiceNotice.sessionLimit", limitMinutes(seconds))
     case .interrupted: L("composer.voiceNotice.interrupted")
     case .streamFailed: L("composer.voiceNotice.streamFailed")
     case let .microphone(error): microphoneError(error)
@@ -332,8 +332,12 @@ extension UICopy {
 
   /// Ostrzeżenie o limicie dla czytnika — raz, bez odliczania sekund na głos.
   static func voiceLimitSpoken(seconds: Int) -> String {
-    let minutes = max(1, Int((Double(seconds) / 60).rounded(.up)))
-    return L("composer.voiceLimitSpoken", minutes)
+    L("composer.voiceLimitSpoken", limitMinutes(seconds))
+  }
+
+  /// Whole minutes of a span the user hears or reads about a limit: rounded up, at least one.
+  private static func limitMinutes(_ seconds: Int) -> Int {
+    max(1, Int((Double(seconds) / 60).rounded(.up)))
   }
 
   /// `m:ss` — licznik jest głosem maszyny, więc bez „minut" i „sekund".

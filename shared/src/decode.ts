@@ -123,6 +123,8 @@ export const DEGRADATIONS = {
   'activity.kind': undefined,
   'waitingFor.kind': undefined,
   'backgroundTasks.kind': UNSUPPORTED,
+  /** `BackgroundTask.ownCommandWait`: an unknown stage drops the field, so the task reads as without a known wait. */
+  'backgroundTasks.ownCommandWait': undefined,
   /** Notka systemowa — nie udaje ani człowieka, ani agenta. */
   'message.role': 'system',
   /** Blok zastępczy `{ type: 'unsupported' }`; reszta pól nieznanego bloku jest odcinana. */
@@ -289,6 +291,9 @@ function buildSchemas(raw: boolean) {
     activity: activity.optional(),
     backgroundTasks: z.array(backgroundTaskSchema.extend({
       kind: lenient(backgroundTaskSchema.shape.kind, UNSUPPORTED satisfies Fallback<'backgroundTasks.kind'>),
+      ownCommandWait: lenientOpt(
+        backgroundTaskSchema.shape.ownCommandWait, undefined satisfies Fallback<'backgroundTasks.ownCommandWait'>,
+      ),
     })).optional(),
     waitingFor: waitingFor.optional(),
     pullRequests: z.array(sessionPullRequestSchema.extend({

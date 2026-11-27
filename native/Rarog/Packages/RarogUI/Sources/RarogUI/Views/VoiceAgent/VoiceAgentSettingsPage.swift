@@ -12,7 +12,6 @@ import SwiftUI
 /// that mode on through its own consent page and off by removing its consent
 /// (`VoiceAgentSettingsModel.showsSessions`). A server that does not offer the agent gets the setup steps instead of
 /// all of that (`VoiceAgentSettingsModel.showsSetup`): no switch, no consent, and the stored consent stays as it is.
-/// The last section is the locked-phone trial switch (`LockedPhoneTrial`), shown wherever the page has its switches.
 struct VoiceAgentSettingsPage: View {
   @Bindable var model: VoiceAgentSettingsModel
   /// From `SettingsSheet`: read from the store inside this body, so the page follows the server live (a version
@@ -82,13 +81,6 @@ struct VoiceAgentSettingsPage: View {
       }
       if model.showsShortcut {
         ShortcutPageSection(shortcut: .voiceAgent)
-      }
-      Section {
-        let trial = settings.lockedPhoneTrial
-        Toggle(UICopy.voiceAgentLockedTrialTitle(), isOn: Binding(get: { trial.on }, set: { trial.set($0) }))
-          .accessibilityIdentifier("voiceAgent.lockedTrial.toggle")
-      } footer: {
-        Text(UICopy.voiceAgentLockedTrialLead())
       }
     }
     .scrollContentBackground(.hidden)

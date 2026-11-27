@@ -81,9 +81,10 @@ struct LiveActivityInputTests {
     #expect(!LiveActivityInput.isBusy([]))
   }
 
-  /// Te same cztery sesje po turze co producent ramki `live-activity.update.waiting-agent.json`.
+  /// Te same sześć sesji po turze co producent ramki `live-activity.update.waiting-agent.json`.
   static func waitingAgentSessions() throws -> [SessionSummary] {
-    let waiting = agentTask("agent_w", waitingSince: iso(-1080), ownTask: "until grep -q TEST log.txt; do sleep 5; done")
+    let command = "until grep -q TEST log.txt; do sleep 5; done"
+    let waiting = agentTask("agent_w", waitingSince: iso(-1080), ownTask: command, wait: "short")
     return try sessions([
       Frames.summary("demo-rarog", state: "waiting-input", title: "rarog", stateSince: iso(-1080),
                      extra: backgroundTasks(waiting)),
@@ -93,30 +94,60 @@ struct LiveActivityInputTests {
                      extra: backgroundTasks(waiting, workflowTask("c1", run: false, kind: "command"))),
       Frames.summary("demo-willow", state: "waiting-input", title: "willow", stateSince: iso(-300),
                      extra: backgroundTasks(agentTask("agent_r1"))),
+      Frames.summary("demo-stuck", state: "waiting-input", title: "demo", stateSince: iso(-5400),
+                     extra: backgroundTasks(
+                       agentTask("agent_s1", waitingSince: iso(-5400), ownTask: command, wait: "stuck"))),
+      Frames.summary("demo-atlas-api", state: "waiting-input", title: "atlas-api", stateSince: iso(-4200),
+                     extra: #","seen":true"# + backgroundTasks(
+                       agentTask("agent_s2", waitingSince: iso(-4200), ownTask: command, wait: "stuck"),
+                       workflowTask("c2", run: false, kind: "command"))),
     ])
   }
 
-  @Test("subagent w postoju: liczniki jak złota ramka serwera — czekający to nie „pracuje”, tylko „skończyły”")
+  @Test("subagent w postoju: liczniki jak złota ramka serwera — czekający to nie „pracuje”, tylko „skończyły”; `stuck` czeka")
   func goldenWaitingAgent() throws {
     let list = try Self.waitingAgentSessions()
     let golden = try Self.golden("live-activity.update.waiting-agent.json")
-    #expect(golden.waiting == 0 && golden.working == 2 && golden.finished == 1 && golden.top == nil)
+    #expect(golden.waiting == 2 && golden.working == 2 && golden.finished == 1 && golden.top == nil)
     // Ramka nie ma przebiegów, limitów ani Maca, więc stan startowy jest jej równy w całości.
     #expect(LiveActivityInput.aggregate(list, now: Self.now) == golden)
-    // Subagent w postoju kafla nie trzyma (jak każde zadanie spoza workflow) — tak samo serwer.
+    // Subagent w postoju kafla nie trzyma (jak każde zadanie spoza workflow), also at `stuck` — tak samo serwer.
     #expect(!LiveActivityInput.isBusy(list))
     // Liczba na kaflu prowadzi do sesji z TEGO licznika.
     var app = AppState(clientBuild: 1)
     for session in list { app.sessions[session.id] = session }
     #expect(app.firstSession(.finished)?.id == "demo-rarog")
     #expect(try ["demo-atlas", "demo-willow"].contains(#require(app.firstSession(.working)).id))
-    #expect(app.firstSession(.waiting) == nil)
+    #expect(try ["demo-stuck", "demo-atlas-api"].contains(#require(app.firstSession(.waiting)).id))
     let byKind = Dictionary(uniqueKeysWithValues: SessionJump.allCases.map { kind in
       (kind, list.filter { LiveActivityInput.matches($0, kind) }.map(\.id).sorted())
     })
     #expect(byKind[.working] == ["demo-atlas", "demo-willow"] && byKind[.finished] == ["demo-rarog"])
+    // A stuck session counts once, as waiting, also next to a live command.
+    #expect(byKind[.waiting] == ["demo-atlas-api", "demo-stuck"])
     // Odebrany wynik przy samym czekającym: ani praca, ani „skończyły”.
     #expect(SessionJump.allCases.allSatisfy { !LiveActivityInput.matches(list[1], $0) })
+  }
+
+  @Test("stuck wait: a decision counts once, a turn works, a phantom agent counts as before; the jump follows the counter")
+  func stuckSession() throws {
+    let stuck = agentTask("agent_s", waitingSince: Self.iso(-5400), ownTask: "until false; do sleep 30; done", wait: "stuck")
+    let list = try Self.sessions([
+      Frames.summary("ask", state: "waiting-permission", stateSince: Self.iso(-60), extra: backgroundTasks(stuck)),
+      Frames.summary("turn", state: "running", stateSince: Self.iso(-120), extra: backgroundTasks(stuck)),
+      Frames.summary("gone", state: "done", extra: backgroundTasks(stuck)),
+      Frames.summary("later", state: "resumable", extra: backgroundTasks(stuck)),
+    ])
+    let state = LiveActivityInput.aggregate(list, now: Self.now)
+    #expect(state.waiting == 1 && state.working == 1 && state.finished == 0 && state.top == .init(sessionId: "ask"))
+    let alone = try Self.sessions([
+      Frames.summary("stuck", state: "waiting-input", stateSince: Self.iso(-5400), extra: backgroundTasks(stuck)),
+    ])
+    #expect(LiveActivityInput.aggregate(alone, now: Self.now).top == nil, "a session after a turn is no tap target")
+    var app = AppState(clientBuild: 1)
+    for session in alone { app.sessions[session.id] = session }
+    #expect(app.firstSession(.waiting)?.id == "stuck")
+    #expect(app.firstSession(.finished) == nil)
   }
 
   @Test("seedy demo (złota lista `sessions-snapshot.demo`): liczniki i sesja wiodąca jak ramka z seedów")

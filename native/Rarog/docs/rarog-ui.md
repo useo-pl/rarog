@@ -149,6 +149,19 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     covers the last line when expanded; id `<field>.fold`. Expanding keeps the TOP of the bubble in place, collapsing
     keeps the bottom of the row, so the button stays under the finger (`togglePromptFold`); a pinned transcript stays
     pinned. The prompt bar and the "Prompts in This Session" list show the prompt shortened. Tests: `PromptFoldTests`.
+- **Prompt bar and prompt history (`Session/PromptBarView`, rules in `Model/PromptBar`):** the bar quotes the prompt
+  whose result is on screen and hangs from the header's bottom edge (the safe area's top): square top corners,
+  `Radius.block` on the bottom two, the full `userPlate`, a dark shade along the top edge and a drop shadow below. It
+  slides down from under the edge in 180 ms (decelerating) and back up in 120 ms (accelerating); a mask hides whatever
+  is above the edge. With Reduce Motion it fades in place; without a window scene (tests) it flips at once. The
+  logical state is `isShown`; `isHidden` turns true only at the end of the slide out, and the "N new" pill is placed
+  again then. The touch target is 44 pt below the edge. A tap opens the popover as a timeline: on the iPad a title
+  (`headline`) with the prompt count (`footnote`, `muted`), on the phone the sheet's title bar; rows inset 8 pt without
+  separators, a dot on a 2 pt rail (none above the newest and below the oldest), the time (`caption`, fixed-width
+  digits) above up to two lines of the prompt. The current turn has an `ahead` dot with a halo, the `userPlate` row
+  background and semibold text; under the pointer another row gets the shared hover wash (`rarogHover(.fill)`) in the
+  same rounded shape. Newest on top, keyboard focus on the first row, a tap jumps to the turn and puts the
+  prompt 6 pt under the bar, as the "N new" jump does with its line (`NewLineJump`). Tests: `PromptBarViewTests`.
 - **Markdown (own parser, no dependency):** `MarkdownParser` (blocks) and `MarkdownInlineParser` (code, links, bare
   addresses, emphasis, strikethrough, `\*` escapes) → `MarkdownLayout` (paragraphs with a role, gap and quote depth)
   → `MarkdownRenderer` (iOS: `NSAttributedString`, Dynamic Type through `UIFontMetrics`). Everything except the last
@@ -573,16 +586,18 @@ Part of the app description: [native/Rarog/README.md](../README.md).
     /api/usage/details` once per opening. In the suggestion list app commands stand between the server's commands with
     a note (`AppCommand.merged`). Tests: `AppCommandsTests`, `UsageSheetModelTests`, `UsageUITests`.
   - **Model and Effort sheet** (`Views/Header/ModelSheet`, rules in `ModelSheetModel` and `ModelDraft`): three rows
-    with the field name above. Model: one horizontally scrolling row of chips (`Views/Common/RecentChip`, the recent
-    project chip of New Session) with the positions of `ModelSheetModel.options`. Effort: chips of the chosen
-    model's levels (`ModelSheetModel.efforts`) in the same kind of row; a model without levels shows a sentence in its
-    place (`header.effortNone`). Ultracode, only for a model with `ModelChoice.ultracode`: a system segmented control
-    Yes / No; without proof on the card no segment is selected, and No sends an explicit `false`. Each chip row fades
-    out over its last 12 % and scrolls the selected chip into view when it appears. A tap only chooses; Apply,
+    with the field name above. Model: a row of chips (`Views/Common/RecentChip`, the recent project chip of New
+    Session) with the positions of `ModelSheetModel.options`. Effort: chips of the chosen model's levels
+    (`ModelSheetModel.efforts`) in the same kind of row; a model without levels shows a sentence in its place
+    (`header.effortNone`). Ultracode, only for a model with `ModelChoice.ultracode`: a system segmented control
+    Yes / No; without proof on the card no segment is selected, and No sends an explicit `false`. A chip row that
+    does not fit the sheet's width (large text) flows into further lines (`FlowLayout` in `Views/Header/HeaderLayouts`,
+    rule in `Model/ChipFlow`), so every chip stays whole; a row that fits stands in one line. A tap only chooses; Apply,
     18 pt under the last row, sends the difference (`ModelSheetModel.patch`). On a phone the sheet is as tall as its
     content (`popoverSheetChrome(title:fitsContent:)` leaves the detent to the sheet). The sheet that sent Apply keeps
     its form with the spinner until the reply (`AppState.modelSheetReason(for:ownRequest:)`), closes on 202 and shows
-    the server's sentence on a refusal. Tests: `SessionPillsTests`, `HeaderUITests.testModelSheetApply`.
+    the server's sentence on a refusal. Tests: `SessionPillsTests`, `ChipFlowTests`,
+    `HeaderUITests.testModelSheetApply`.
   - **Model pill in flight** (`ModelPill` in `Session/ComposerPills`, `ModelPillModel.make(_:choices:target:)`): Apply
     in the model popover records the sent body as the session's change in flight (`SessionControlsState.modelChanges`,
     before the request). Until the list shows every sent value, or 20 s pass (`SessionControlTiming.modelChangeWait`),
@@ -718,8 +733,11 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   session, an error, `resumable`, `done`, an unsupported session, Codex and a pane out of reach show a card
   (`StateCards.make`). An action's result belongs to the card it came from (`StateCardModel.key`).
 - **Dictation (`Session/Voice/`):** `VoiceRecorder` (states, a minute of silence, the session limit, a countdown
-  from the 13th minute) over one `DictationStream` per route, on an injected clock, socket and microphone
-  (`VoiceTests`, `SonioxBacklogTests`). The order is `prepare()` → microphone → `start()`, so a refusal in
+  in its last two minutes) over one `DictationStream` per route, on an injected clock, socket and microphone
+  (`VoiceTests`, `SonioxBacklogTests`). The session limit counts from the microphone's open, and a reconnect does not
+  renew it: the key's `maxSessionSeconds` (15 minutes without a key), capped by the host (`voiceSessionLimit`); the
+  message field caps it at 10 minutes (`ComposerDictation.sessionCeiling`), a note and an Inbox reply keep 15, and
+  the end sentence names the limit's minutes. The order is `prepare()` → microphone → `start()`, so a refusal in
   `prepare()` never opens the microphone; on the Soniox route with the microphone permission already granted,
   `start()` (the key fetch and the socket) runs while the microphone opens, and a refused microphone ends it with
   no socket left. Recording starts when the microphone opens: until the first connection streams, `SonioxStream`
@@ -742,11 +760,12 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   Apple's servers) and the locale, never the text. During a voice agent conversation the composer microphone and the
   dictation shortcut mute the conversation instead of dictating (`docs/companion.md`, "Conversation").
   `VoiceFieldText` and `ComposerDictation` keep typed text and the dictation apart; the background, a call and closing
-  the screen end the recording with the text in the field, saved into the persistent draft. With the locked-phone
-  trial on, the background keeps a message-field recording whose microphone opened (`VoiceRecorder.microphoneOpened`),
-  and its text keeps landing in the same field; a note's recording still ends (`docs/companion.md`, "Locked phone
-  (trial)"). Every message-field recording ends with one `client.log` line, `dictation: ended <reason>`, never its
-  text (`DictationEndTrace` for a recording that ends by itself). Send during a recording
+  the screen end the recording with the text in the field, saved into the persistent draft. The background keeps a
+  message-field recording whose microphone opened (`VoiceRecorder.microphoneOpened`) while its Live Activity tile
+  stands on a phone, or until the screen locks on an iPad (`BackgroundRecording`), and its text keeps landing in the
+  same field; a note's recording still ends (`docs/companion.md`, "Locked phone"). Every message-field recording
+  ends with one `client.log` line, `dictation: ended <reason>`, never its text (`DictationEndTrace` for a recording
+  that ends by itself). Send during a recording
   ends it like a second microphone tap, waits for the last words (at most the finalization wait above, plus up to
   3 s for a first connection that still holds the speech) and sends the whole text once; leaving the screen during
   that wait sends what the field holds then.
@@ -754,18 +773,26 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   has a Keyboard Shortcut section with the dictation row (⌥⌘M by default), and the Voice Agent page, while the agent
   is on, one with the voice agent row (⌥⌘V by default); the value is the glyphs of the shortcut in force, and the
   Settings list repeats them in the subtitles of both rows. The first-mic Dictation sheet and the note's Dictation
-  page have no shortcut section. A tap on the row opens a page that records the next key press
-  with modifiers from a hardware keyboard (without one it says so), shows the glyphs and saves on Save Shortcut;
-  Esc without modifiers leaves the page, Restore Default gives the default back. The choice belongs to the device
+  page have no shortcut section. The shortcut is changed in the row (`ShortcutRowEditor`): a tap on the capsule
+  makes the row listen ("Press shortcut…") and an invisible capture view over it takes the hardware keyboard
+  (`ShortcutCaptureView`, which keeps the previous responder and gives the keyboard back after); the first
+  combination the rules accept is saved at once, and a refused one leaves a sentence under the row while the row
+  keeps listening. Esc without modifiers, a second tap on the capsule, a tap anywhere else, the row leaving the
+  screen, another responder taking the keyboard and the keyboard disconnecting end the listening without a save.
+  While the row listens every key press stays with it, so ⌘W and the menu shortcuts are recorded (or refused), not
+  run, and Esc does not close the sheet. An arrow in a circle next to the capsule (Restore Default) gives the default
+  back while the shortcut differs from it. Without a hardware keyboard the capsule only shows the shortcut and the
+  footer says a keyboard is needed. The choice belongs to the device
   (`UserDefaults`, keys `rarog.shortcut.<name>`), nothing saved means the default, and it does not go to the server.
-  A combination is refused with one sentence under the field and not saved when it lacks ⌘, ⌥ or ⌃ (Shift alone does
+  A combination is refused with one sentence under the row and not saved when it lacks ⌘, ⌥ or ⌃ (Shift alone does
   not count), its key is not a letter or a digit, the system owns it (`AppShortcutSettings.systemCombinations`: ⌘M,
   ⌘H, ⌘Q, ⌘Tab, ⌘Space, ⌘, and the text editing ⌘A, ⌘C, ⌘V, ⌘Z, ⇧⌘Z), or another app shortcut that works at the same
   time uses it (`AppShortcut.overlaps`, the menu's ⌘1–9 and ⌘0 included; dictation and the voice agent exclude each
   other). ⌘= and ⌘- of the text size are refused as not a letter or a digit.
   A stored value a rule refuses today reads as the default. `AppShortcut.key` and `modifiers` read the setting, so
   the session screen's key commands, the note form's shortcut, the pointer tips, the shortcut sheet and the menu bar
-  follow a save without their own code; SwiftUI draws again through Observation (`AppShortcutSettingsTests`).
+  follow a save without their own code; SwiftUI draws again through Observation (`AppShortcutSettingsTests`,
+  `ShortcutRowEditorTests`, `ShortcutCaptureViewTests`).
 - **App text size (`Model/TextScale`, `Views/TextScale/`):** with a hardware keyboard ⌘+ (registered as ⌘= and
   ⇧⌘=) makes the app's text one step bigger, ⌘- one step smaller and ⌘0 (Actual Size) gives the system's size back;
   the menu bar lists them under View and the shortcut sheet in Tabs and View. The steps are the seven standard
@@ -923,8 +950,13 @@ Part of the app description: [native/Rarog/README.md](../README.md).
   footer does not call up a pill over itself. The target is the nearest row off screen. `ListJumpPillTracker` counts
   on every layout of the collection (a scroll, new content, size or safe area, through a helper view laid out after
   the collection), on every list body (a row changing state or name with the same ids), after the collection applies
-  new rows and when a pill's height changes; the observed result changes only when it differs, so scrolling redraws
-  nothing. It hears the collection through `TreeListAnchor.addRecipient`, the same report `TreeReturnScroll` hears.
+  new rows, when a pill's height changes and when the list's size or safe area changes (a taller footer card or
+  filter row); the observed result changes only when it differs, so scrolling redraws nothing. The pills stand only
+  while together they cover at most half of the visible part (`ListJumpPill.fits`); otherwise both give way, so a
+  finger always finds rows to drag (at the largest text in landscape a pill is about as tall as half the visible
+  list). A pill that gives way keeps its count and stays in the layout to be measured, but is not drawn, takes no
+  touch and is hidden from VoiceOver; at regular text nothing changes. It hears the collection through
+  `TreeListAnchor.addRecipient`, the same report `TreeReturnScroll` hears.
   The pills are overlays on the list inside its safe area: "below" its 44 pt touch target on the footer card, "above"
   at the top edge, the lower capsule centered inside; they change no inset or margin. The capsule hugs its text (10 pt
   over and under it, at the ends its radius, so the air looks the same on every side), translucent: `surface2` at 60 %

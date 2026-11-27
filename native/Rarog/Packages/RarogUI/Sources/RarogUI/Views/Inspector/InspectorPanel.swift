@@ -49,7 +49,8 @@ struct InspectorPanel: View {
     let session = state.sessions[sessionId]
     let tasks = session?.backgroundTasks ?? []
     let lines = BackgroundPanel.lines(
-      tasks, choices: state.sessionControls.models ?? [], expansion: inspector.expansions[sessionId] ?? WorkflowExpansion())
+      tasks, in: session?.state, choices: state.sessionControls.models ?? [],
+      expansion: inspector.expansions[sessionId] ?? WorkflowExpansion())
     let fresh = state.transcripts[sessionId]?.git
     let changes = InspectorChanges.make(meta: GitMeta(session: session, fresh: fresh), fresh: fresh, stale: gitStale)
     let finished = FinishedTasks.rows(state.transcripts[sessionId]?.messages ?? [])
@@ -103,7 +104,8 @@ struct InspectorPanel: View {
       .padding(.bottom, 24)
     }
     .scrollPosition(id: anchor(inspector), anchor: .top)
-    .environment(\.sectionPlace, .inspector))
+    .environment(\.sectionPlace, .inspector)
+    .environment(\.waitCheckScope, WaitCheckScope(store: store, sessionId: sessionId)))
     .background { FilePreviewAnchor(presenter: previewPresenter) }
     // Zegar zamrożenia W TLE poza leniwym stosem: żyje, dopóki stoi panel, niezależnie od przewinięcia.
     .background { freezeClock(state) }
@@ -325,8 +327,8 @@ private struct ArtifactRowView: View {
 
 // MARK: - Pull requesty
 
-/// PULL REQUESTY (`docs/pull-requests.md`): PR-y utworzone w bieżącej rozmowie sesji (`gh pr create` agenta,
-/// subagenta albo agenta workflow), najnowszy pierwszy; sekcja stoi tylko z wierszami (serwer wysyła najwyżej 20).
+/// PULL REQUESTY (`docs/pull-requests.md`): PR-y właściciela powiązane z bieżącą rozmową sesji wpisem `pr-link`,
+/// najnowszy pierwszy; sekcja stoi tylko z wierszami (serwer wysyła najwyżej 20).
 /// Kreska nad etykietą i wiersze płasko, bez kontenera, jak ARTEFAKTY — każdy wiersz jest celem kotwicy panelu.
 /// Open, draft and unknown-state PRs stay in view; merged and closed ones fold under one row at the end
 /// (`PullRequestRows.split`), folded by default.

@@ -11,8 +11,12 @@ import type { ApnsChannel } from '../notify/apns-channel.ts';
 import { createFanoutSink } from '../notify/fanout.ts';
 import { Notifier, sessionLook } from '../notify/index.ts';
 import { Presence } from '../notify/presence.ts';
+import { createStalledWaitAlert } from '../notify/stalled-wait.ts';
+import type { StalledWaitAlert } from '../notify/stalled-wait.ts';
 import type { Logger } from '../router.ts';
+import type { StalledWaitListener } from '../sessions/conversation-lists.ts';
 import type { ManagerApi } from '../sessions/manager-api.ts';
+import { inTemporaryDirectory } from '../sessions/test-session.ts';
 
 /** Start log phrase when `RAROG_PUSH_RELAY_URL` has a bad value (`docs/server-config.md`). */
 export const PUSH_RELAY_DISABLED_LOG = 'push: push relay off';
@@ -33,6 +37,29 @@ export interface Push {
   readonly apns: ApnsChannel | undefined;
   /** `null` = Rarog sends no banners; exists only with the APNs channel. */
   readonly notifier: Notifier | null;
+  /** The stalled wait alarm for the manager; exists only with the APNs channel. */
+  readonly stalledWait: StalledWaitListener | undefined;
+  /** Closes the stalled wait alarm, then the APNs channel, so no retry fires after the sender closed. */
+  close(): Promise<void>;
+}
+
+/**
+ * The stalled wait alarm behind the manager's listener: the session facts of the push (`title`, `label`, `termId`) and
+ * the test session rule (`inTemporaryDirectory(cwd)`) come from the session at every list swap.
+ */
+export function stalledWaitListener(
+  alert: Pick<StalledWaitAlert, 'update' | 'forget'>, testSession: (cwd: string) => boolean = inTemporaryDirectory,
+): StalledWaitListener {
+  return {
+    stuckWaits: (session, waits) => {
+      alert.update({
+        sessionId: session.id, project: session.title, testSession: testSession(session.cwd),
+        ...(session.label === undefined ? {} : { label: session.label }),
+        ...(session.termId === undefined ? {} : { termId: session.termId }),
+      }, waits);
+    },
+    forget: (sessionId) => { alert.forget(sessionId); },
+  };
 }
 
 export function createPush(config: RarogConfig, deps: PushDeps): Push {
@@ -76,6 +103,10 @@ export function createPush(config: RarogConfig, deps: PushDeps): Push {
     // Klucze push urządzeń i filtr tokenów odpiętych: magazyn `devices.json` powstał wcześniej.
     pairedDevices: devices,
   });
+  // Plakietka na ikonie = sesje, które STOJĄ i czekają na człowieka (`waiting-permission`
+  // i `waiting-question`). Liczona w chwili WYSYŁKI.
+  const badge = (): number => (managerRef()?.list() ?? [])
+    .filter((s) => s.state === 'waiting-permission' || s.state === 'waiting-question').length;
   /*
    * Harmonogram powstaje WYŁĄCZNIE z kanałem APNs — to jedyny kanał zdolny wysłać baner. Bez
    * niego nie ma też obecności w routerze (`main()`), więc `POST /api/presence` jest no-opem.
@@ -87,12 +118,13 @@ export function createPush(config: RarogConfig, deps: PushDeps): Push {
       // Dźwięk „skończył” z kafla Live Activity: zlecany przy wysłanym „gotowe”.
       sink: createFanoutSink({ apns: apns.sink, chime: () => apns.liveActivity.chime() }),
       look: (id) => sessionLook(managerRef()?.get(id)),
-      // Plakietka na ikonie = sesje, które STOJĄ i czekają na człowieka (`waiting-permission`
-      // i `waiting-question`). Liczona w chwili WYSYŁKI.
-      badge: () => (managerRef()?.list() ?? [])
-        .filter((s) => s.state === 'waiting-permission' || s.state === 'waiting-question').length,
+      badge,
     })
     : null;
+  // The stalled wait alarm sends through the same sink, next to the scheduler and never through it.
+  const alert = apns === undefined ? undefined : createStalledWaitAlert({
+    send: (content) => apns.sink.send(content), presence, badge, log: (line) => { log.info(line); },
+  });
   if (notifier !== null && apns !== undefined) {
     // Powrót do Raroga kasuje czekające banery i dźwięki kafla, które jeszcze nie wyszły.
     const liveActivity = apns.liveActivity;
@@ -113,5 +145,13 @@ export function createPush(config: RarogConfig, deps: PushDeps): Push {
     // Przepustki dla wpisów, które ich nie mają albo którym kończy się termin; bez przekaźnika — nic.
     apns.passes?.start();
   }
-  return { presence, apns, notifier };
+  return {
+    presence, apns, notifier,
+    stalledWait: alert === undefined ? undefined : stalledWaitListener(alert),
+    close: () => {
+      // The alarm only stops its timers (nothing to wait for), so the channel starts closing at once, as before.
+      void alert?.close();
+      return apns?.close() ?? Promise.resolve();
+    },
+  };
 }

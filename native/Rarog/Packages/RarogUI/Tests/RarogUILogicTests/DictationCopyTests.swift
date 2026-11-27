@@ -117,9 +117,21 @@ struct DictationCopyTests {
     for error in [VoiceMicError.denied, .unavailable, .busy, .failed] {
       #expect(VoiceNotice.microphone(error).opensSettings == (error == .denied), "\(error)")
     }
-    for notice in [VoiceNotice.silence, .sessionLimit, .interrupted, .streamFailed, .message("x")] {
+    for notice in [VoiceNotice.silence, .sessionLimit(seconds: 600), .interrupted, .streamFailed, .message("x")] {
       #expect(!notice.opensSettings, "\(notice)")
     }
+  }
+
+  // Catches a limit sentence with a fixed number: the field's 10 minutes and a note's 15 would read the same.
+  @Test("the limit sentence names the limit's minutes, rounded up, in the form the number takes")
+  func limitNotice() {
+    #expect(UICopy.voiceNotice(.sessionLimit(seconds: 600)) == "Limit 10 minut — kończę nagrywanie. Tekst został w polu.")
+    #expect(UICopy.voiceNotice(.sessionLimit(seconds: 300)).hasPrefix("Limit 5 minut "))
+    #expect(UICopy.voiceNotice(.sessionLimit(seconds: 900)).hasPrefix("Limit 15 minut "))
+    #expect(UICopy.voiceNotice(.sessionLimit(seconds: 60)).hasPrefix("Limit 1 minuty "))
+    #expect(UICopy.voiceNotice(.sessionLimit(seconds: 90)).hasPrefix("Limit 2 minut "))
+    #expect(L("composer.voiceNotice.sessionLimit", language: .en, 10)
+      == "Recording stopped at the 10-minute limit. The text is still in the field.")
   }
 
   @Test("zgody iOS: mikrofon bez nazwy dostawcy; rozpoznawanie mowy z tekstem z pomiaru; en w Info.plist = en katalogu")

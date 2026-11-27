@@ -2,15 +2,17 @@ import Foundation
 import RarogContract
 import RarogCore
 
-// Keyboard shortcuts in Settings: the shortcut section on the Dictation and Voice Agent pages, the page that records
-// a new shortcut and its refusals. The glyphs of a combination come from `AppShortcut.Combination`, outside the
+// Keyboard shortcuts in Settings: the shortcut section on the Dictation and Voice Agent pages, its row that listens
+// for a new shortcut, and the refusals. The glyphs of a combination come from `AppShortcut.Combination`, outside the
 // catalog. Owner: shortcuts.
 extension UICopy {
-  public static var shortcutSettingsLead: String { L("shortcutSettings.lead") }
+  /// Footer without a hardware keyboard: the shortcut is only shown.
   public static var shortcutSettingsNoKeyboard: String { L("shortcutSettings.noKeyboard") }
-  public static var shortcutSettingsCurrent: String { L("shortcutSettings.current") }
-  public static var shortcutSettingsNew: String { L("shortcutSettings.new") }
-  public static var shortcutSettingsSave: String { L("shortcutSettings.save") }
+  /// The shortcut's capsule while the row waits for a key press.
+  public static var shortcutSettingsListening: String { L("shortcutSettings.listening") }
+  /// VoiceOver hint of the shortcut's capsule.
+  public static var shortcutSettingsChangeHint: String { L("shortcutSettings.changeHint") }
+  /// The label of the button that gives the default back (an arrow in a circle next to the shortcut).
   public static var shortcutSettingsRestoreDefault: String { L("shortcutSettings.restoreDefault") }
 
   /// Header of the shortcut section on the Dictation and Voice Agent pages.
@@ -18,9 +20,9 @@ extension UICopy {
     L("shortcutSettings.header", language: language)
   }
 
-  /// Footer of the shortcut section on the Dictation and Voice Agent pages.
-  static func shortcutSettingsFooter(language: CopyLanguage = .current) -> String {
-    L("shortcutSettings.footer", language: language)
+  /// Footer of the shortcut section on the Dictation and Voice Agent pages, with a hardware keyboard.
+  static func shortcutSettingsHint(language: CopyLanguage = .current) -> String {
+    L("shortcutSettings.hint", language: language)
   }
 
   /// The label of a shortcut row on its page: the action the shortcut starts and ends, so it does not repeat the
@@ -31,13 +33,8 @@ extension UICopy {
       : L("shortcutSettings.action.dictation", language: language)
   }
 
-  /// The name of a changeable shortcut: the title of the page that records it.
-  public static func shortcutSettingsName(_ shortcut: AppShortcut) -> String {
-    shortcut == .voiceAgent ? voiceAgentTitle() : dictationTitle()
-  }
-
-  /// One sentence under the field. The page offers only changeable shortcuts, so `notConfigurable` does not reach it
-  /// and shares the sentence of a taken combination.
+  /// One sentence under the shortcut row. The pages offer only changeable shortcuts, so `notConfigurable` does not
+  /// reach it and shares the sentence of a taken combination.
   public static func shortcutSettingsRefusal(_ refusal: AppShortcutSettings.Refusal) -> String {
     switch refusal {
     case .needsModifier: L("shortcutSettings.refusal.needsModifier")

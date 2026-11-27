@@ -1,18 +1,23 @@
 /**
  * Interrupt idempotency windows of the session manager: the "in flight" window before the `escape` is delivered
  * and the debounce window after it, one entry per session. The manager owns one {@link InterruptWindows}, gives it
- * a narrow {@link InterruptWindowsPort} (sessions, clock, logger), asks it before sending a new `escape` and hands it
- * the driver's delivery promise. Session state, transitions and the driver call stay in the manager. This module does
- * not import `manager.ts`.
+ * a narrow {@link InterruptWindowsPort} (sessions, herdr `blocked`, clock, logger, transition), asks it before sending
+ * a new `escape` and hands it the driver's delivery promise. An `escape` not delivered from a decision that still
+ * stands puts the card back on it.
+ * The driver call and the interrupt's own transition stay in the manager. This module does not import `manager.ts`.
  */
 import type { Session } from './session.ts';
+import type { SmEvent } from './state-machine.ts';
 import { INTERRUPT_DEBOUNCE_MS } from './state-sentences.ts';
 
-/** What the interrupt windows read from the manager: sessions, clock, logger. */
+/** What the interrupt windows read from the manager: sessions, herdr `blocked`, clock, logger, the state transition. */
 export interface InterruptWindowsPort {
   readonly sessions: ReadonlyMap<string, Session>;
+  /** Sessions whose last herdr `agent-state` was `blocked` (manager `#herdrBlocked`). */
+  readonly herdrBlocked: ReadonlySet<string>;
   readonly now: () => number;
   readonly logger?: (line: string) => void;
+  readonly applyTransition: (session: Session, event: SmEvent) => boolean;
 }
 
 /** Both interrupt windows of every session; one instance per manager. */
@@ -76,10 +81,18 @@ export class InterruptWindows {
    * Porównanie tożsamości przy rozstrzygnięciu nie jest asekuracją: nowa tura użytkownika
    * unieważnia oba okna (`resetInterruptWindows`), a spóźniony `escape` sprzed tej tury nie
    * ma prawa ani skasować cudzego wpisu, ani otworzyć debounce'u NAD nową turą.
+   *
+   * @param fromCard for an interrupt taken from `waiting-permission`: the session's `stateSince` right after the
+   *   interrupt moved it to `waiting-input`; `null` otherwise. The transition runs before the driver's answer, and an
+   *   `escape` the driver refused or could not send (the pause, a start dialog, a failed send) leaves the dialog
+   *   standing: the card goes back on its decision while herdr still reports the pane `blocked` and the session has
+   *   not moved since, instead of standing sendable until the driver shows its card again. A dialog answered at the
+   *   desk in the meantime does not bring it back: herdr `idle` on `waiting-input` changes neither the state nor
+   *   `stateSince`, and nothing else would clear the card.
    */
-  trackInterrupt(id: string, delivered: Promise<boolean>): Promise<boolean> {
+  trackInterrupt(id: string, delivered: Promise<boolean>, fromCard: string | null = null): Promise<boolean> {
     const tracked: Promise<boolean> = delivered.then(
-      (sent) => this.#settleInterrupt(id, tracked, sent),
+      (sent) => this.#settleInterrupt(id, tracked, sent, fromCard),
       (err: unknown) => {
         /*
          * Kontrakt mówi, że odmowy lecą SYNCHRONICZNIE, więc odrzucona obietnica to
@@ -88,7 +101,7 @@ export class InterruptWindows {
          * gorszym kłamstwem niż `delivered: 'no'`.
          */
         this.#port.logger?.(`interrupt ${id}: ${describeError(err)}`);
-        return this.#settleInterrupt(id, tracked, false);
+        return this.#settleInterrupt(id, tracked, false, fromCard);
       },
     );
     this.#interruptsInFlight.set(id, tracked);
@@ -96,11 +109,25 @@ export class InterruptWindows {
   }
 
   /** Rozstrzygnięcie: zamyka okno „w locie", a dostarczony klawisz otwiera debounce. */
-  #settleInterrupt(id: string, tracked: Promise<boolean>, sent: boolean): boolean {
+  #settleInterrupt(id: string, tracked: Promise<boolean>, sent: boolean, fromCard: string | null): boolean {
     if (this.#interruptsInFlight.get(id) !== tracked) return sent;
     this.#interruptsInFlight.delete(id);
     if (sent) this.#lastInterruptAtMs.set(id, this.#port.now());
+    else if (fromCard !== null) this.#cardBack(id, fromCard);
     return sent;
+  }
+
+  /**
+   * The card of an interrupt not delivered goes back on its decision: same session, driver and state since then, and
+   * herdr still reports the pane `blocked`.
+   */
+  #cardBack(id: string, since: string): void {
+    const session = this.#port.sessions.get(id);
+    if (session === undefined || session.driver === null || !this.#port.herdrBlocked.has(id)) return;
+    if (session.state !== 'waiting-input' || session.stateSince !== since) return;
+    if (this.#port.applyTransition(session, { type: 'agent-blocked' })) {
+      this.#port.logger?.(`interrupt ${id}: not delivered, the card is back on its decision`);
+    }
   }
 
   /** Zeruje OBA okna przerwania tej sesji — nowa tura i zniknięcie karty. */

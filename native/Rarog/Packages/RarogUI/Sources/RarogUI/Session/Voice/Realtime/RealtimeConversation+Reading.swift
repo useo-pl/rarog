@@ -187,7 +187,7 @@ extension RealtimeConversation {
       guard id.hasPrefix(Self.readingPrefix) else { return false }
       readingFinished(id)
     case let .failed(failure):
-      guard case let .stream(id, _, _) = failure, id.hasPrefix(Self.readingPrefix) else { return false }
+      guard case let .stream(id, _, _, _) = failure, id.hasPrefix(Self.readingPrefix) else { return false }
       handlers.diagnostic(.speechError(code: failure.logCode))
       // The stream ended early, so its audio is a floor; its `finished` follows.
       readings.active[id]?.notRead = failure.isStreamLimit ? .streamLimit : .failed

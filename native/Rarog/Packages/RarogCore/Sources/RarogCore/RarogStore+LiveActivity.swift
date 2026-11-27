@@ -86,6 +86,8 @@ struct LiveActivityRuntime {
   /// wierzch bywa więcej (Centrum sterowania, przełącznik apek), więc linia idzie najwyżej raz na ``ageTraceGap``.
   var ageTracedAt: Date?
   static let ageTraceGap: TimeInterval = 15 * 60
+  /// The store clock when the scene last left the background (`RarogStore+LiveActivityTrace`).
+  var foregroundAt: Date?
   /// Po wylogowaniu albo bez kanału wszystkie aktywności już zakończone (nie pytamy systemu przy każdej
   /// ramce); zdejmuje go powrót warunków (zalogowanie z kanałem).
   var cleared = false
@@ -191,6 +193,7 @@ extension RarogStore {
     case let .content(id, shown):
       // Push nie budzi zapisu: tu licznik zapisów cofniętych i push z okna zapisu w locie.
       guard id == liveRuntime.activityId else { return }
+      traceLiveActivityContent(shown.state)
       notePushDuringWrite(shown)
       noteLiveActivityContent(id, shown.state)
     }
@@ -248,6 +251,7 @@ extension RarogStore {
   /// w `client.log`, jak stara jest treść żywego kafla.
   func liveActivityScenePhaseChanged(from previous: ScenePhase, to next: ScenePhase) {
     if next == .background { stopQuietWatch() }
+    if previous == .background, next != .background { traceLiveActivityForeground(scene: next) }
     if previous != .active, next == .active {
       liveRuntime.startRefused = false
       traceDisplayedLiveActivityAge()

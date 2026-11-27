@@ -205,8 +205,8 @@ extension SessionViewController {
       state: store.state, sessionId: sessionId, login: store.loginEpoch, enabled: store.voiceAgent.enabled,
       sonioxAllowed: store.dictation.sonioxAllowed,
       selected: navigation == nil ? sessionId : navigation?.selectedSessionId,
-      background: UIApplication.shared.applicationState == .background,
-      keepsInBackground: store.voiceAgent.lockedPhoneTrial.keeps(running: voiceAgentChrome.session?.isReady == true),
+      background: TranscriptAppPhase.isBackground(),
+      keepsInBackground: store.voiceAgent.background.keeps(running: voiceAgentChrome.session?.isReady == true),
       fieldShown: !composer.isHidden)
     #if DEBUG
     if ScriptedVoiceAgent.isOn { input.enabled = true }

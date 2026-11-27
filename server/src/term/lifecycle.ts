@@ -10,7 +10,7 @@
 import { createHash } from 'node:crypto';
 import { isPopupRole, TERM_ID_LENGTH, TERM_ROLES, TERM_SLOTS_MAX } from '@rarog/shared';
 import type { TermRole } from '@rarog/shared';
-import { parsePaneLabel } from '../herdr/provenance.ts';
+import { paneLabelTermId } from '../herdr/provenance.ts';
 
 /**
  * Tożsamość terminala: `sha256(realpath(cwd))` (slot 1) albo `sha256(realpath(cwd) + NUL + N)`
@@ -80,16 +80,15 @@ export function matchTermId(id: string, realCwd: string): TermIdentity | null {
 }
 
 /**
- * Etykieta PANELU (`rarog-term <id>`) → tożsamość terminala TEGO katalogu albo `null`.
+ * Etykieta PANELU (`rt:<id>`) → tożsamość terminala TEGO katalogu albo `null`.
  *
  * `null` dla etykiety spoza wzorca (`parsePaneLabel`), etykiety panelu Claude i identyfikatora,
  * który nie jest hashem tej ścieżki przy żadnym slocie ani roli. Czysta: czyta tylko napis
  * i ścieżkę, niczego nie rozwiązuje na dysku.
  */
 export function matchTermLabel(label: string | null | undefined, realCwd: string): TermIdentity | null {
-  const provenance = parsePaneLabel(label);
-  if (provenance?.kind !== 'term') return null;
-  return matchTermId(provenance.value, realCwd);
+  const id = paneLabelTermId(label);
+  return id === null ? null : matchTermId(id, realCwd);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,9 @@
 /**
- * `rarog doctor`: the PR status line (`docs/pull-requests.md`). It looks for `gh` the way the server does (the closed
- * directory list, `~/` from the service environment that `buildServeEnv` gives), then runs
- * `gh auth status --active --no-refresh --hostname github.com` with the same closed environment as the server's reads.
+ * `rarog doctor`: the PR status line (`docs/pull-requests.md`). Session cards list only PRs whose author GitHub
+ * confirms through the `gh` login, so without `gh` in the closed directory list and a login they show no PRs. It
+ * looks for `gh` the way the server does (the closed directory list, `~/` from the service environment that
+ * `buildServeEnv` gives), then runs `gh auth status --active --no-refresh --hostname github.com` with the same closed
+ * environment as the server's reads.
  *
  * `RAROG_PR_STATUS=0` = info; the demo and its review mode (`RAROG_DEMO`, as `bootstrap/pr-status.ts` decides) = info
  * about the fixed state source, no lookup; no `gh` = warn with a fix; not logged in, a `gh` too old for the check's
@@ -34,14 +36,16 @@ export interface PrStatusLineInput {
 const LOGIN = `gh auth login --hostname ${GH_HOST}`;
 const CHECK = `gh ${GH_AUTH_ARGV.join(' ')}`;
 const CHECK_FLAGS = GH_AUTH_ARGV.filter((arg) => arg === '--active' || arg === '--no-refresh').join(' ');
+/** Without GitHub's answer no linked PR is confirmed as the user's, so the cards list none. */
+const NO_PRS = ', so session cards show no PRs';
 
 /** The line for given facts; no process, no disk. */
 export function prStatusLineOf(input: PrStatusLineInput): PrStatusDoctorLine {
-  if (input.flag.trim() === '0') return { verdict: 'info', text: `PR status: off (${PR_STATUS_ENV}=0)` };
+  if (input.flag.trim() === '0') return { verdict: 'info', text: `PR status: off (${PR_STATUS_ENV}=0)${NO_PRS}` };
   if (input.gh === null) {
     return {
       verdict: 'warn',
-      text: `PR status: gh not found in ${(input.directories ?? GH_DIRECTORIES).join(', ')}, so PRs show no state`,
+      text: `PR status: gh not found in ${(input.directories ?? GH_DIRECTORIES).join(', ')}${NO_PRS}`,
       repair: `install the GitHub CLI (gh) in one of these directories, run ${LOGIN} and restart the server,`
         + ` or set ${PR_STATUS_ENV}=0 in config.json`,
     };
@@ -50,7 +54,7 @@ export function prStatusLineOf(input: PrStatusLineInput): PrStatusDoctorLine {
   if (input.auth === 'not-logged-in') {
     return {
       verdict: 'warn',
-      text: `PR status: ${input.gh} is not logged in to ${GH_HOST}, so PRs show no state`,
+      text: `PR status: ${input.gh} is not logged in to ${GH_HOST}${NO_PRS}`,
       repair: `${LOGIN} as the user the service runs as; the server picks it up within 30 min, without a restart`,
     };
   }

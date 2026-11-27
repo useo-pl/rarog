@@ -6,7 +6,8 @@
  * import `manager.ts`.
  */
 import type { DriverEvent } from '../drivers/types.ts';
-import { holdsOwedDone } from '../herdr/background/work.ts';
+import { holdsOwedDone, stuckWaits } from '../herdr/background/work.ts';
+import type { StuckWaits } from '../herdr/background/work.ts';
 import type { SessionPrStatus } from './pr-status-link.ts';
 import type { Session } from './session.ts';
 
@@ -20,7 +21,18 @@ export interface ConversationListsPort {
   readonly emitSessionChanged: (session: Session) => void;
   /** Background silence without a turn end for the push scheduler (`NotifierLike.quiet`). */
   readonly quiet: (sessionId: string) => void;
+  /** The waits of every task list swap for the stalled wait alarm (`StalledWaitListener`). */
+  readonly stuckWaits: (session: Session, waits: StuckWaits) => void;
   readonly prStatus: Pick<SessionPrStatus, 'applyList' | 'clear'>;
+}
+
+/**
+ * The stalled wait alarm as the manager sees it: `notify/stalled-wait.ts` behind the session facts assembled in
+ * `bootstrap/push.ts`. `forget` goes on the roads that drop the session or its conversation outside a list swap.
+ */
+export interface StalledWaitListener {
+  readonly stuckWaits: ConversationListsPort['stuckWaits'];
+  readonly forget: (sessionId: string) => void;
 }
 
 export function applyConversationList(
@@ -40,8 +52,14 @@ export function applyConversationList(
       const tasks = event.tasks.length > 0 ? event.tasks : undefined;
       if (tasks === undefined && session.backgroundTasks === undefined) return;
       const held = holdsOwedDone(session.backgroundTasks);
+      const waits = stuckWaits(session.state, session.backgroundTasks, tasks);
       session.backgroundTasks = tasks;
       port.emitSessionChanged(session);
+      /*
+       * The stalled wait alarm on every swap, also without an edge: the alarm drops its tries and its memory of waits
+       * that left the list. Before `quiet`, on the same swap; the alarm never touches the owed "done".
+       */
+      port.stuckWaits(session, waits);
       /*
        * Cisza w tle bez końca tury: lista przestała wstrzymywać
        * zaległe „gotowe" — skończyła się praca albo komenda subagenta w postoju. Raz na przejście,
@@ -68,7 +86,7 @@ export function applyConversationList(
 
     // Pull requesty sesji: reguła artefaktów, lista i jej stan na GitHubie w `pr-status-link.ts`.
     case 'pull-requests':
-      port.prStatus.applyList(session, event.pullRequests);
+      port.prStatus.applyList(session, event.pullRequests, event.windowStart);
       return;
 
     /*

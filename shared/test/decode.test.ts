@@ -240,6 +240,30 @@ describe('ścieżka szybka — ramka zgodna ze ścisłym kontraktem', () => {
       .toStrictEqual({ id: 'a1', kind: 'agent', description: 'Przegląd' });
   });
 
+  /*
+   * The wait stage: an additive enum field with a `DEGRADATIONS` entry. Every stage passes strictly, a missing field
+   * is "no known wait", an unknown string drops only that field (the strict producer schema rejects it), and `null` or
+   * a number rejects the frame in the rejection table below. A client from before the field cuts it off.
+   */
+  it('backgroundTasks.ownCommandWait: every stage passes strictly; no field too; "later" drops the field only', () => {
+    const agent = {
+      id: 'a1', kind: 'agent', waitingSince: AT, ownTasks: [{ id: 'b2', command: 'sleep 9', startedAt: AT }],
+    };
+    const without = setAt(FRAMES.changed, '/session/backgroundTasks/0', agent);
+    expect(decodeServerEvent(without)).toStrictEqual({ event: without, degradations: [] });
+    for (const stage of ['short', 'long', 'stuck']) {
+      const frame = setAt(without, '/session/backgroundTasks/0/ownCommandWait', stage);
+      expect(decodeServerEvent(frame)).toStrictEqual({ event: frame, degradations: [] });
+    }
+    const later = setAt(without, '/session/backgroundTasks/0/ownCommandWait', 'later');
+    expect(parseServerEvent(later)).toBeNull();
+    expect(decodeServerEvent(later)).toStrictEqual({
+      event: without, degradations: [{ path: '/session/backgroundTasks/0/ownCommandWait', value: 'later' }],
+    });
+    expect(backgroundTaskSchema.omit({ ownCommandWait: true }).parse({ ...agent, ownCommandWait: 'stuck' }))
+      .toStrictEqual(agent);
+  });
+
   it('notice.outcome „waiting” (postój subagenta) przechodzi ściśle, bez degradacji', () => {
     const frame = setAt(
       setAt(FRAMES.notice, '/message/notice', { kind: 'agent', outcome: 'waiting', name: 'Przegląd' }),
@@ -394,6 +418,10 @@ const CASES: Record<keyof typeof DEGRADATIONS, DegradationCase[]> = {
   'backgroundTasks.kind': [
     { frame: FRAMES.changed, path: '/session/backgroundTasks/0/kind',
       result: { path: '/session/backgroundTasks/0/kind', value: UNSUPPORTED } },
+  ],
+  'backgroundTasks.ownCommandWait': [
+    { frame: FRAMES.changed, path: '/session/backgroundTasks/0/ownCommandWait',
+      result: { path: '/session/backgroundTasks/0/ownCommandWait', remove: true } },
   ],
   'message.role': [
     { frame: FRAMES.message, path: '/message/role', result: { path: '/message/role', value: 'system' } },
@@ -738,6 +766,9 @@ describe('odrzucenia — uszkodzony kształt dalej daje null', () => {
     // PR status: only an unknown string degrades; `null` and a number reject the frame.
     ['pullRequests.state: null', setAt(FRAMES.changed, '/session/pullRequests/0/state', null)],
     ['pullRequests.state: a number', setAt(FRAMES.changed, '/session/pullRequests/0/state', 7)],
+    // Wait stage: only an unknown string degrades; `null` and a number reject the frame.
+    ['backgroundTasks.ownCommandWait: null', setAt(FRAMES.changed, '/session/backgroundTasks/0/ownCommandWait', null)],
+    ['backgroundTasks.ownCommandWait: a number', setAt(FRAMES.changed, '/session/backgroundTasks/0/ownCommandWait', 2)],
     // Inbox heads: only an unknown string drops a head; a broken head still rejects the whole list.
     ['inbox-heads: kind null', setAt(FRAMES.inboxHeads, '/heads/1/kind', null)],
     ['inbox-heads: kind a number', setAt(FRAMES.inboxHeads, '/heads/1/kind', 3)],

@@ -4,6 +4,7 @@
  */
 import { BOX_EDGE_PATTERN, OPTION_BOX_GLYPH_PATTERN, OPTION_LINE_PATTERN } from './options.ts';
 import type { ScreenOption } from './options.ts';
+import { gutterText } from './option-run.ts';
 import { HORIZONTAL_RULE_PATTERN } from './region.ts';
 import { isReviewScreen } from './review.ts';
 import { SCREEN_SIGNATURES } from './signatures.ts';
@@ -157,7 +158,7 @@ export function questionFrom(
       header = tab;
       continue;
     }
-    lines.push(line);
+    lines.push(gutterText(line));
   }
   return { header, question: lines.join('\n').trim() };
 }

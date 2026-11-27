@@ -16,7 +16,7 @@ import { deflateSync } from 'node:zlib';
 import { dataUrlBytes } from '@rarog/shared';
 import type {
   Block, DiffFileList, DiffFilePatch, EffortLevel, MessageAttachment, ResumableSession, SessionArtifact,
-  PullRequestState, SessionDiff, SessionPullRequest, SessionScheduledTask, SessionState, TranscriptNotice,
+  PullRequestState, SessionDiff, SessionScheduledTask, SessionState, TranscriptNotice,
 } from '@rarog/shared';
 import { foreign, say } from '@rarog/shared/sentences';
 import type { ServerSentence } from '@rarog/shared/sentences';
@@ -26,10 +26,11 @@ import { toolCallSemantics, writeDiffText } from '../drivers/tool-text.ts';
 import type { InternalBlock } from '../drivers/types.ts';
 import { createArtifactsTracker } from '../herdr/background/artifacts.ts';
 import { noticeFromText } from '../herdr/background/notice.ts';
-import { sessionPullRequests } from '../herdr/background/pull-requests.ts';
+import { CLI_SHAPES } from '../herdr/background/cli-shapes.ts';
+import { parsePullRequestUrl, pullRequestLinks } from '../herdr/background/pull-requests.ts';
 import { createScheduledTasksTracker } from '../herdr/background/scheduled-tasks.ts';
 import type {
-  DemoArtifactPublication, DemoContent, DemoProjectKey, DemoPullRequestCall, DemoSeedKit,
+  DemoArtifactPublication, DemoContent, DemoProjectKey, DemoPullRequestLink, DemoPullRequests, DemoSeedKit,
 } from './content/types.ts';
 
 /** Katalog-korzeń projektów demo (allow-lista `GET /api/projects` w trybie demo). */
@@ -261,7 +262,7 @@ function seedKit(content: DemoContent, now: number): DemoSeedKit {
       { kind: 'image', name: '', bytes: 0, mime: 'image/png', file: BRIDGE_GONE_FILE },
     ],
     chartImage: (alt) => ({ type: 'image', dataUrl: demoImages().chart, alt }),
-    pullRequests: (calls) => pullRequestsOfCalls(now, calls),
+    pullRequests: (links) => pullRequestsOfLinks(now, links),
     artifacts: (publications) => artifactsOfPublications(now, publications),
   };
 }
@@ -424,51 +425,87 @@ export function demoPullRequestStates(content: DemoContent): ReadonlyMap<string,
   ]);
 }
 
+/** The `gh` login of the demo's fixed GitHub: the author of every demo PR. It stays in the server's memory. */
+export const DEMO_GITHUB_LOGIN = 'demo';
+
 /**
- * Pull requesty sterowanego scenariusza odbioru `pull-requests` (`scenarios.ts`): PR z `--title` utworzony
- * 2 h temu, PR z `--fill` (bez tytułu) sprzed doby i PR z `--draft` sprzed ponad dwóch dób (stan `draft` z mapy
- * {@link demoPullRequestStates}), najnowszy pierwszy. Listę składa z wpisów pliku rozmowy (wywołanie
- * `Bash` i jego wynik) ta sama funkcja co czytnik na produkcji (`sessionPullRequests`), więc zmiana rozpoznania wyjdzie
- * też w demo. Repozytoria są syntetyczne.
+ * Time of the first entry of every demo conversation and creation time of every demo PR on the demo's fixed GitHub
+ * (the epoch): only the window check reads it, so the demo lists do not depend on the server's uptime.
  */
-export function demoPullRequests(now: number): SessionPullRequest[] {
-  return pullRequestsOfCalls(now, [
-    {
-      command: `gh pr create --draft --title "${DEMO_PULL_REQUESTS.draftTitle}"`, output: DEMO_PULL_REQUESTS.draft,
-      agoMs: 50 * 60 * MIN,
-    },
-    {
-      command: 'git push -u origin docs-csv && gh pr create --fill',
-      output: `\nCreating pull request for docs-csv into main in acme/widget-docs\n\n${DEMO_PULL_REQUESTS.bare}`,
-      agoMs: 26 * 60 * MIN,
-    },
-    {
-      command: `gh pr create --title "${DEMO_PULL_REQUESTS.title}" --body "Exports notes as CSV."`,
-      output: DEMO_PULL_REQUESTS.titled, agoMs: 2 * 60 * MIN,
-    },
+const DEMO_CONVERSATION_START_MS = 0;
+
+/** One demo PR as the fixed GitHub answers it (`FixedPullRequest` in `pr-status/source.ts`). */
+interface DemoGitHubPullRequest {
+  readonly author: string;
+  readonly createdAtMs: number;
+  readonly state?: PullRequestState;
+  readonly title?: string;
+}
+
+/**
+ * The demo's fixed GitHub (`bootstrap/pr-status.ts`): every demo PR, authored by {@link DEMO_GITHUB_LOGIN}, with the
+ * state of {@link demoPullRequestStates} and the title its card shows (the bare PR has neither).
+ *
+ * The demo has no GitHub clock: every PR counts as created at {@link DEMO_CONVERSATION_START_MS}, the time of the
+ * first entry of every demo conversation ({@link pullRequestsOfLinks}). A conversation lists a PR only when it was
+ * created at or after that entry, so the demo PRs stay on their lists however long the server runs.
+ */
+export function demoGitHub(
+  content: DemoContent,
+): { readonly viewer: string; readonly prs: ReadonlyMap<string, DemoGitHubPullRequest> } {
+  const states = demoPullRequestStates(content);
+  const titles = new Map<string, string>([
+    [DEMO_PULL_REQUESTS.titled, DEMO_PULL_REQUESTS.title],
+    [DEMO_PULL_REQUESTS.draft, DEMO_PULL_REQUESTS.draftTitle],
+    ...content.pullRequestTitles ?? [],
+  ]);
+  const urls = new Set([DEMO_PULL_REQUESTS.bare, ...states.keys(), ...titles.keys()]);
+  const prs = new Map([...urls].map((url): [string, DemoGitHubPullRequest] => {
+    const state = states.get(url);
+    const title = titles.get(url);
+    return [url, {
+      author: DEMO_GITHUB_LOGIN, createdAtMs: DEMO_CONVERSATION_START_MS,
+      ...(state === undefined ? {} : { state }), ...(title === undefined ? {} : { title }),
+    }];
+  }));
+  return { viewer: DEMO_GITHUB_LOGIN, prs };
+}
+
+/**
+ * Linked PRs of the controlled `pull-requests` scenario (`scenarios.ts`): the titled PR linked 2 h ago, the bare one
+ * a day ago and the draft over two days ago, newest first. The set goes through the production reader rule
+ * ({@link pullRequestsOfLinks}); titles and states come from the demo's fixed GitHub ({@link demoGitHub}).
+ * The repositories are synthetic.
+ */
+export function demoPullRequests(now: number): DemoPullRequests {
+  return pullRequestsOfLinks(now, [
+    { url: DEMO_PULL_REQUESTS.draft, agoMs: 50 * 60 * MIN },
+    { url: DEMO_PULL_REQUESTS.bare, agoMs: 26 * 60 * MIN },
+    { url: DEMO_PULL_REQUESTS.titled, agoMs: 2 * 60 * MIN },
   ]);
 }
 
 /**
- * PR list of a demo conversation: each call becomes a `Bash` call entry and its result entry in the shape of the
- * conversation file, and the production reader (`sessionPullRequests`) builds the list from them.
+ * Linked PRs of a demo conversation: a first entry at {@link DEMO_CONVERSATION_START_MS}, then each link as a link
+ * entry in the shape of the conversation file; the production rule ({@link pullRequestLinks}) builds the set and the
+ * window. The card shows the PRs the demo's fixed GitHub ({@link demoGitHub}) gives the demo login as author, with its titles.
  */
-function pullRequestsOfCalls(now: number, calls: readonly DemoPullRequestCall[]): SessionPullRequest[] {
+function pullRequestsOfLinks(now: number, links: readonly DemoPullRequestLink[]): DemoPullRequests {
   const iso = (agoMs: number): string => new Date(now - agoMs).toISOString();
-  return sessionPullRequests(calls.flatMap(({ command, output, agoMs }, index) => {
-    const id = `demo-pr-${String(index)}`;
-    return [
-      JSON.stringify({
-        type: 'assistant', timestamp: iso(agoMs + 5000),
-        message: { role: 'assistant', content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }] },
-      }),
-      JSON.stringify({
-        type: 'user', timestamp: iso(agoMs),
-        message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: output }] },
-        toolUseResult: { stdout: output, stderr: '', interrupted: false, isImage: false },
-      }),
-    ];
-  }));
+  const LINK = CLI_SHAPES.prLink.literals;
+  const start = new Date(DEMO_CONVERSATION_START_MS).toISOString();
+  const read = pullRequestLinks([
+    JSON.stringify({ type: 'user', timestamp: start, message: { role: 'user', content: 'demo' } }),
+    ...links.map(({ url, agoMs }) => {
+      const pr = parsePullRequestUrl(url);
+      return JSON.stringify({
+        type: LINK.type, sessionId: 'demo', [LINK.number]: pr?.number, [LINK.url]: url, [LINK.repository]: pr?.repo,
+        timestamp: iso(agoMs),
+      });
+    }),
+  ]);
+  const pullRequests = read.linked;
+  return read.windowStart === null ? { pullRequests } : { pullRequests, windowStart: read.windowStart };
 }
 
 /**

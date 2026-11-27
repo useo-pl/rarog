@@ -270,14 +270,17 @@ struct FileSearchRunnerTests {
       git: nil, mode: .all, index: .ready(FileSearchIndex(paths: [long], truncated: false, maxBytes: 1)))
     let start = ContinuousClock.now
     runner.submit(slow)
-    // The main actor stays free while the expression runs: this loop keeps turning.
+    // The main actor stays free while the expression runs: this loop still turns once the run has started. A run on
+    // the main actor would hold it for the whole budget and leave no turn after the first milliseconds. The count of
+    // turns and the run's length depend on the load of the parallel test run, so neither is a bound here.
     var turns = 0
-    while runner.latest == nil, turns < 1000 {
+    var turnsDuringRun = 0
+    while runner.latest == nil, turns < 5000 {
       turns += 1
+      if ContinuousClock.now - start > .milliseconds(50) { turnsDuringRun += 1 }
       try? await Task.sleep(for: .milliseconds(2))
     }
     #expect(runner.latest?.outcome == .tooSlow)
-    #expect(ContinuousClock.now - start < .seconds(2))
-    #expect(turns > 10, "the main actor kept turning during the run")
+    #expect(turnsDuringRun > 0, "the main actor kept turning during the run")
   }
 }

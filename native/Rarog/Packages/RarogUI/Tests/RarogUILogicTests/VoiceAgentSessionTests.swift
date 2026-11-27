@@ -1038,7 +1038,7 @@ struct VoiceAgentSessionTests {
     #expect(UICopy.voiceAgentStatus(.closed(.fieldHidden)) == UICopy.voiceAgentClosed(.fieldHidden))
   }
 
-  // Catches a start in the background that the locked-phone trial lets through: the engine would open the
+  // Catches a start in the background that the host's keep lets through: the engine would open the
   // microphone with the app in the background and no tap on screen.
   @Test("a start in the background is refused also when the host keeps a ready conversation: no audio, no key")
   func backgroundStartWithTrial() async {

@@ -5,7 +5,7 @@
  * The first blocks check the manifest against the screens only, without the card decision or the layer 2 rule, so the
  * manifest stays independent of the code it judges. What they check:
  *
- * - every `.txt` screen of the corpus has exactly one entry, and the split is 55 layer 2, 250 consents, 57 forms
+ * - every `.txt` screen of the corpus has exactly one entry, and the split is 60 layer 2, 250 consents, 57 forms
  *   and 43 non-dialogs;
  * - the class agrees with the measured class where one exists (capture header `cliDialog`, control-set `waitingFor`);
  * - 74 digit pairs, each label standing verbatim on the screen line with that digit (wrapped labels line by line), and
@@ -15,7 +15,7 @@
  * - the coverage table of the layer 2 plan (today, with the card step, after the terminal dialogs) follows from the
  *   entries.
  *
- * The last block runs `layer2Verdict` on every screen and compares it with the manifest: 405 verdicts plus 4 with a
+ * The last block runs `layer2Verdict` on every screen and compares it with the manifest: 410 verdicts plus 4 with a
  * key confirmation, no digit button outside the pairs, no card on the 43 non-dialogs.
  */
 import { readFileSync, readdirSync } from 'node:fs';
@@ -121,17 +121,17 @@ function keyOfLabel(label: string): DialogKey | null {
 const verdictsOf = (entry: Entry): Verdict[] => [entry.v2, ...(entry.v2Confirmed ? [entry.v2Confirmed] : [])];
 
 describe('layer 2 truth manifest: corpus and split', () => {
-  it('one entry per corpus screen: 405 screens, no entry without a screen', () => {
+  it('one entry per corpus screen: 410 screens, no entry without a screen', () => {
     expect(manifest.version).toBe(1);
-    expect(CORPUS).toHaveLength(405);
+    expect(CORPUS).toHaveLength(410);
     expect(Object.keys(manifest.screens).sort()).toEqual(CORPUS);
   });
 
-  it('split: 55 layer 2, 250 consents, 57 forms, 43 non-dialogs', () => {
+  it('split: 60 layer 2, 250 consents, 57 forms, 43 non-dialogs', () => {
     const count = (category: Category): number => entries.filter(([, entry]) => entry.category === category).length;
     expect({
       layer2: count('layer2'), consent: count('consent'), form: count('form'), nonDialog: count('non-dialog'),
-    }).toEqual({ layer2: 55, consent: 250, form: 57, nonDialog: 43 });
+    }).toEqual({ layer2: 60, consent: 250, form: 57, nonDialog: 43 });
   });
 
   it('class per category: consents permission or sandbox, forms input, non-dialogs none', () => {
@@ -289,13 +289,13 @@ describe('layer 2 truth manifest: expected verdicts', () => {
       .toBe(true);
   });
 
-  it('today: 13 with buttons, 22 unreadable, 17 without a transcript entry, 3 terminal-only', () => {
+  it('today: 14 with buttons, 26 unreadable, 17 without a transcript entry, 3 terminal-only', () => {
     const today: Record<string, number> = {};
     for (const [, entry] of layer2) today[entry.today ?? 'missing'] = (today[entry.today ?? 'missing'] ?? 0) + 1;
-    expect(today).toEqual({ buttons: 13, unreadable: 22, 'no-jsonl': 17, 'terminal-only': 3 });
+    expect(today).toEqual({ buttons: 14, unreadable: 26, 'no-jsonl': 17, 'terminal-only': 3 });
   });
 
-  it('coverage table: today 13/13, with the card step 35/43, after terminal dialogs 39/47', () => {
+  it('coverage table: today 14/14, with the card step 36/44, after terminal dialogs 40/48', () => {
     type State = 'decision' | 'esc-only' | 'none';
     const stateOf = (verdict: Verdict): State => {
       if (verdict.kind === 'none') return 'none';
@@ -310,9 +310,9 @@ describe('layer 2 truth manifest: expected verdicts', () => {
     const withRule = (entry: Entry): State => (entry.today === 'buttons' ? 'decision' : stateOf(entry.v2));
     const afterTerminal = (entry: Entry): State => (entry.v2Confirmed === undefined
       ? withRule(entry) : stateOf(entry.v2Confirmed));
-    expect(row((entry) => (entry.today === 'buttons' ? 'decision' : 'none'))).toEqual([13, 13]);
-    expect(row(withRule)).toEqual([35, 43]);
-    expect(row(afterTerminal)).toEqual([39, 47]);
+    expect(row((entry) => (entry.today === 'buttons' ? 'decision' : 'none'))).toEqual([14, 14]);
+    expect(row(withRule)).toEqual([36, 44]);
+    expect(row(afterTerminal)).toEqual([40, 48]);
     // No screen waits for a plan task and none is `extra-below`. The four wide `/model` pickers are the only
     // `sets-default` screens: their footer says Enter sets the default model for new sessions, and a digit acts as
     // Enter.
@@ -334,6 +334,10 @@ describe('layer 2 truth manifest: expected verdicts', () => {
         ['kontrolny/picker-model-klucz-api-2.1.316.txt', 'sets-default'],
         ['kontrolny/picker-model-klucz-api-2.1.319.txt', 'sets-default'],
         ['kontrolny/picker-model-klucz-api-2.1.322.txt', 'sets-default'],
+        ['kontrolny/importy-zewnetrzne-2.1.332.txt', 'class-unknown'],
+        ['kontrolny/importy-zewnetrzne-dluga-lista-2.1.332.txt', 'class-unknown'],
+        ['kontrolny/importy-zewnetrzne-po-down-2.1.332.txt', 'class-unknown'],
+        ['kontrolny/importy-zewnetrzne-po-zaufaniu-2.1.332.txt', 'class-unknown'],
         ['kontrolny/tryb-bypass-2.1.319.txt', 'class-unknown'],
         ['measured/picker-model-2.1.312-26kol.txt', 'scroll'],
         ['refusals/widok-skills-2.1.310.txt', 'block-no-digits'],
@@ -388,8 +392,8 @@ describe('layer 2 truth manifest: layer2Verdict agrees on every screen', () => {
     }
   });
 
-  it('409 comparisons: 405 screens and 4 with a key confirmation', () => {
-    expect(entries.length + entries.filter(([, entry]) => entry.v2Confirmed !== undefined).length).toBe(409);
+  it('414 comparisons: 410 screens and 4 with a key confirmation', () => {
+    expect(entries.length + entries.filter(([, entry]) => entry.v2Confirmed !== undefined).length).toBe(414);
   });
 
   it('no digit outside the truth: every digit button stands on its screen line with its whole label', () => {

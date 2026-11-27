@@ -235,6 +235,7 @@ describe('routeScreenOf: ekran jako wejście rozdzielacza', () => {
     'dialog-session-paused-2.1.309.txt': 'block',
     // Dialog zaufania bez numerów opcji: parser go nie czyta.
     'dialog-trust-2.1.293.txt': 'none',
+    'dialog-trust-preapproved-2.1.332.txt': 'none',
     'dialog-trust.txt': 'block',
     'ekran-login-2.1.293.txt': 'none',
     'footer-auto-tacka.txt': 'none',

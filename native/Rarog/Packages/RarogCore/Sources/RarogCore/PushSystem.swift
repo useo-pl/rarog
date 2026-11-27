@@ -60,6 +60,16 @@ public protocol BackgroundWork: AnyObject {
   /// `false` = praca bez serwera (kończenie nagrania, dźwięk idzie prosto do dostawcy mowy).
   /// `nil` = system odmówił (czas tła już się skończył) — żądanie idzie i tak, bez gwarancji.
   func begin(_ name: String, needsServer: Bool) -> BackgroundWorkToken?
+  /// Like ``begin(_:needsServer:)``; `expired` learns that the system took the time back before ``end(_:)`` (the
+  /// adapter then closed the work itself). An adapter without that report never calls it (the default below).
+  func begin(_ name: String, needsServer: Bool, expired: (@MainActor () -> Void)?) -> BackgroundWorkToken?
   /// Koniec pracy; uchwyt, któremu system już odebrał czas, adapter zamknął sam (wtedy nic nie robi).
   func end(_ token: BackgroundWorkToken)
+}
+
+extension BackgroundWork {
+  /// An adapter that does not report the system's expiry.
+  public func begin(_ name: String, needsServer: Bool, expired: (@MainActor () -> Void)?) -> BackgroundWorkToken? {
+    begin(name, needsServer: needsServer)
+  }
 }

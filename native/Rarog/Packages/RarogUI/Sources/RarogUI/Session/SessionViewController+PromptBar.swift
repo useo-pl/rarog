@@ -4,10 +4,10 @@ import RarogCore
 import SwiftUI
 import UIKit
 
-// Pasek cytatu promptu: cytuje prompt, którego wynik jest właśnie na ekranie; schowany
-// przy dnie i przy samej górze. Tap otwiera arkusz „Prompty w tej sesji", tap w wiersz skacze do
-// tury i stawia prompt tuż pod paskiem. Przewinięcie śledzi obserwacja `contentOffset` (delegat
-// listy należy do transkryptu). Właściciel: sterowanie sesją.
+// The prompt quote bar: it quotes the prompt whose result is on screen now; hidden at the bottom and at the very top,
+// it slides out from under the header's bottom edge. A tap opens the "Prompts in This Session" popover, a tap on a row
+// jumps to the turn and puts the prompt just under the bar. The scroll is followed by observing `contentOffset` (the
+// list's delegate belongs to the transcript). Owner: session control.
 extension SessionViewController {
   func installPromptBar() {
     let bar = PromptBarView()
@@ -21,8 +21,9 @@ extension SessionViewController {
     let side = transcriptSide()
     let leading = bar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: side)
     let trailing = bar.trailingAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -side)
+    // The top edge on the header's bottom edge: the safe area's top is where the header ends.
     NSLayoutConstraint.activate([
-      bar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 6), leading, trailing,
+      bar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), leading, trailing,
     ])
     turnChrome.promptBar = bar
     turnChrome.promptBarLeading = leading
@@ -32,7 +33,7 @@ extension SessionViewController {
     }
   }
 
-  /// Render (stan) albo przewinięcie (`nil` = stan z magazynu).
+  /// A render (the state) or a scroll (`nil` = the store's state).
   func renderPromptBar(_ state: AppState?) {
     guard let bar = turnChrome.promptBar else { return }
     let state = state ?? store.state
@@ -43,9 +44,13 @@ extension SessionViewController {
     // przesunięciu (koniec wytracania), więc pasek zostałby schowany nad odpiętym transkryptem.
     let atBottom = distanceFromBottom() <= Self.pinThreshold
     let hidden = PromptBar.hidden(pinned: atBottom, offsetFromTop: fromTop, quote: quote)
-    if bar.isHidden != hidden {
-      bar.isHidden = hidden
-      // Pigułka „N nowych" stoi pod paskiem, gdy ten stoi, a pasek zasłania górę listy (`+Reading`).
+    if bar.isShown == hidden {
+      // The "N new" pill stands under the bar while the bar stands, and the bar covers the top of the list
+      // (`+Reading`): both read `isHidden`, which a slide out flips only at its end, so they are asked again then.
+      bar.setShown(!hidden, animated: true) { [weak self] in
+        self?.placeNewPill()
+        self?.scheduleNewPill()
+      }
       placeNewPill()
       scheduleNewPill()
     }
@@ -81,15 +86,15 @@ extension SessionViewController {
     host.popoverPresentationController?.backgroundColor = PromptListView.background
     host.popoverPresentationController?.sourceView = turnChrome.promptBar
     host.popoverPresentationController?.permittedArrowDirections = [.up]
-    // Dymek tak wysoki jak lista (leniwa, więc z liczby wierszy), do wspólnego sufitu dymków.
-    // Wiersz i etykieta rosną z pismem: w piśmie dostępności jeden dwuwierszowy prompt nie mieścił się
-    // w wysokości policzonej dla pisma domyślnego.
+    // The popover as tall as the list (lazy, so from the number of rows), up to the popovers' shared ceiling. The row
+    // (a time line over two lines of the prompt) and the title grow with the text size: at an accessibility size one
+    // two-line prompt did not fit the height computed for the default size.
     host.preferredContentSize = CGSize(
       width: PopoverLayout.idealWidth,
       height: PopoverLayout.promptsHeight(
         rows: entries.count,
-        rowHeight: Fonts.scaled(PopoverLayout.promptRowHeight, relativeTo: .subheadline, traits: traitCollection),
-        header: Fonts.scaled(PopoverLayout.promptHeaderHeight, relativeTo: .subheadline, traits: traitCollection)))
+        rowHeight: Fonts.scaled(PromptListView.rowHeight, relativeTo: .subheadline, traits: traitCollection),
+        header: Fonts.scaled(PromptListView.headerHeight, relativeTo: .headline, traits: traitCollection)))
     if let sheet = host.popoverPresentationController?.adaptiveSheetPresentationController {
       sheet.detents = [.medium(), .large()]
       sheet.prefersGrabberVisible = true
@@ -97,7 +102,8 @@ extension SessionViewController {
     present(host, animated: true)
   }
 
-  /// Skok do tury: prompt tuż pod paskiem. Odpina transkrypt — człowiek czyta wyżej.
+  /// A jump to a turn: the prompt just under the bar (the same 6 pt gap as the "N new" pill). It unpins the transcript:
+  /// the person reads higher up.
   private func jumpToPrompt(_ seq: Int) {
     let prefix = "m\(seq)."
     guard let rowId = dataSource.snapshot().itemIdentifiers.first(where: { $0.hasPrefix(prefix) }),
@@ -108,7 +114,7 @@ extension SessionViewController {
     collectionView.scrollToItem(at: index, at: .top, animated: false)
     collectionView.layoutIfNeeded()
     guard let frame = collectionView.layoutAttributesForItem(at: index)?.frame else { return }
-    let covered = (turnChrome.promptBar?.bounds.height ?? 44) + 12
+    let covered = (turnChrome.promptBar?.bounds.height ?? 44) + CGFloat(NewLineJump.gap)
     setClampedOffset(frame.minY - collectionView.adjustedContentInset.top - covered)
     rememberPosition()
     updateJumpBar()

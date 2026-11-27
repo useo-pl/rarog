@@ -258,7 +258,12 @@ final class VoiceAgentFieldTests: XCTestCase {
     defer { rig.close() }
     try await rig.ready()
     await rig.promptConfirmed("Run")
-    rig.composer.isEditable = false
+    // The server's read-only status, as in the app: a render sets the field from the state, so a flag set by hand
+    // would not hold until the send.
+    try DecisionDockTests.frame(
+      rig.store, #"{"type":"herdr-status","available":true,"agentCount":1,"readOnly":true}"#, source: .global)
+    let locked = await VoiceAgentEvents.waitUntil { !rig.composer.isEditable }
+    XCTAssertTrue(locked, "the field turned read-only")
     let output = await rig.sendByVoice()
     XCTAssertTrue(output.contains("error") && output.contains("read-only"), output)
     XCTAssertEqual(rig.composer.text, "Run")

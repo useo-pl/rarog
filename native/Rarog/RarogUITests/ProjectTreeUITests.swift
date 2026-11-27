@@ -120,8 +120,9 @@ final class ProjectTreeUITests: XCTestCase {
       XCTAssertEqual(glyph.elementType, .button, "\(project): przycisk")
       XCTAssertTrue(wait("value == '\(value)'", glyph), "\(project): \(glyph.value ?? "—")")
       XCTAssertTrue(glyph.isHittable, "\(project): glif klikalny")
-      // Cel 44 pt w pierwszej linii nagłówka, po prawej stronie treści.
-      XCTAssertGreaterThanOrEqual(glyph.frame.width, 44)
+      // Target 44 pt high in the header's first line, right of the content. The header buttons are narrower on
+      // purpose (at least 36 pt, `SessionListMetrics.treeButtonWidth`): the three glyphs stand close at equal gaps.
+      XCTAssertGreaterThanOrEqual(glyph.frame.width, 36)
       XCTAssertGreaterThanOrEqual(glyph.frame.height, 44)
       XCTAssertGreaterThan(glyph.frame.midX, header.frame.midX, "\(project): glif po prawej")
       XCTAssertLessThan(glyph.frame.midY, header.frame.midY + 1, "\(project): glif w pierwszej linii")

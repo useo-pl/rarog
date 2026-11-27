@@ -143,6 +143,72 @@ describe('korpus: dialog zaufania bez cyfr na CLI 2.1.293, 2.1.311, 2.1.314, 2.1
   });
 });
 
+/*
+ * A folder whose settings pre-approve tool permissions adds a warning paragraph to the block (Claude Code 2.1.332):
+ * the line "⚠ This folder pre-approves …:", the permission list, whose first line has a three-space margin (the
+ * shape of an option line), and "These will apply without asking. …". Only inside that paragraph may a line carry
+ * the three-space margin.
+ */
+describe('trust dialog with the pre-approved permissions warning (CLI 2.1.332)', () => {
+  const WARNED = readFileSync(join(FIXTURES, 'dialog-trust-preapproved-2.1.332.txt'), 'utf8');
+  const WARNED_AFTER_DOWN = WARNED.replace(' ❯ No, exit\n   Yes, I trust', '   No, exit\n ❯ Yes, I trust');
+  const LIST = '   Bash(pnpm run build *)';
+  const CLOSER = ' These will apply without asking.';
+
+  it('is recognized as the trust dialog, with the folder and the cursor from the screen', () => {
+    expect(parseTrustArrowDialog(WARNED))
+      .toMatchObject({ folder: FOLDER, cursor: 'no', yesLabel: 'Yes, I trust this folder' });
+    expect(resolveOptions(WARNED, null)).toMatchObject({
+      status: 'no-jsonl', knownDialog: 'trust', options: [],
+      dialogIdentity: { kind: 'confirm', identity: { kind: 'known', id: 'trust' } },
+    });
+  });
+
+  it('has the same fingerprint before and after `down`, and another one for another permission list', () => {
+    const before = parseTrustArrowDialog(WARNED);
+    expect(parseTrustArrowDialog(WARNED_AFTER_DOWN)).toMatchObject({ cursor: 'yes', bodyPrint: before?.bodyPrint });
+    const otherList = parseTrustArrowDialog(WARNED.replace('Bash(pnpm install *)', 'Bash(pnpm publish *)'));
+    expect(otherList?.bodyPrint).toMatch(/^[0-9a-f]{16}$/);
+    expect(otherList?.bodyPrint).not.toBe(before?.bodyPrint);
+    expect(before?.bodyPrint).not.toBe(parseTrustArrowDialog(BEFORE)?.bodyPrint);
+  });
+
+  it('is recognized with the opening line wrapped by a narrower pane', () => {
+    const wrapped = (text: string): string => text.replace(
+      '.claude/settings.json and .claude/settings.local.json:\n   Bash',
+      '.claude/settings.json and\n .claude/settings.local.json:\n   Bash',
+    );
+    expect(wrapped(WARNED)).not.toBe(WARNED);
+    const before = parseTrustArrowDialog(wrapped(WARNED));
+    expect(before).toMatchObject({ folder: FOLDER, cursor: 'no' });
+    expect(parseTrustArrowDialog(wrapped(WARNED_AFTER_DOWN))).toMatchObject({ cursor: 'yes', bodyPrint: before?.bodyPrint });
+  });
+
+  it('gets `down`, then `enter`, with the proof of the card', () => {
+    const expected: TrustStepExpectation = {
+      bodyPrint: parseTrustArrowDialog(WARNED)?.bodyPrint ?? '', folder: FOLDER, cwd: FOLDER, home: '/Users/u', allowDown: true,
+    };
+    expect(nextTrustStep(WARNED, expected)).toMatchObject({ ok: true, key: 'down' });
+    expect(nextTrustStep(WARNED_AFTER_DOWN, { ...expected, allowDown: false })).toMatchObject({ ok: true, key: 'enter' });
+  });
+
+  it.each([
+    ['a three-space line under the warning paragraph', WARNED.replace(' Security guide', '   Maybe later')],
+    ['a three-space line above the warning paragraph', WARNED.replace(" Claude Code'll", "   Claude Code'll")],
+    ['a three-space line past the closing sentence', WARNED.replace(CLOSER, `${CLOSER}\n   Maybe later`)],
+    ['an option label as a permission list line', WARNED.replace(LIST, `   Yes, I trust this folder\n${LIST}`)],
+    ['a numbered option as a permission list line', WARNED.replace(LIST, `   1. Yes\n${LIST}`)],
+    ['`❯` in the permission list', WARNED.replace(LIST, ' ❯ Bash(pnpm run build *)')],
+    ['a blank line inside the warning paragraph', WARNED.replace(LIST, `\n${LIST}`)],
+    ['no closing sentence', WARNED.replace(/ These will apply without asking\..*\n/, '')],
+    ['the permission list without the opening line', WARNED.replace(/ ⚠ This folder pre-approves.*\n/, '')],
+  ])('%s → `null` (a card without a button)', (_, screen) => {
+    expect(screen).not.toBe(WARNED);
+    expect(parseTrustArrowDialog(screen)).toBeNull();
+    expect(parseTrustArrowDialog(screen.replace(' ❯ No, exit\n   Yes, I trust', '   No, exit\n ❯ Yes, I trust'))).toBeNull();
+  });
+});
+
 describe('`trustFolderIs`: folder z dialogu wobec `cwd` sesji', () => {
   it.each([
     ['/Users/u/projekt', '/Users/u/projekt', true],

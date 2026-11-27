@@ -5,8 +5,8 @@ import Testing
 // The voice conversation with Soniox speech (`RealtimeConversation+Speech.swift`): a text session, the answer's text
 // to Soniox, its PCM to playback, the three ends of an answer item (text, synthesis, playback), the speech key before
 // `session.update`, the end on a Soniox failure, the speech lines of `client.log` (the cost counts only text that went
-// out), and speech over the answer: Soniox `cancel` and the item fixed to the heard text (`delete` + `create`), the
-// stream limit. Fakes: `RealtimeHarness`
+// out), and speech over the answer: Soniox `cancel` and the item fixed to the heard text (`delete` + `create`), an
+// error that ends one stream (the stream limit, a request timeout). Fakes: `RealtimeHarness`
 // with `SpeechFakeKeys` and the socket fake `MockSocket`. No test reaches OpenAI or Soniox. Owner: voice agent.
 
 private typealias Harness = RealtimeHarness
@@ -266,7 +266,7 @@ extension RealtimeConversationTests {
     #expect(h.traceLines.last?.hasPrefix("voice-agent: ended speech-failed after") == true)
   }
 
-  @Test("an error frame for a stream ends the conversation too, without a new stream")
+  @Test("another error type on a stream (500 internal_error) ends the conversation, without a new stream")
   func speechStreamErrorEnds() async throws {
     let h = Harness(speech: SpeechFakeKeys())
     await h.ready()
@@ -274,7 +274,7 @@ extension RealtimeConversationTests {
     let stream = try #require(h.speechStreams.first)
     h.speechSocket.reply(encoded(["stream_id": stream, "error_code": 500, "error_type": "internal_error"]))
     #expect(h.conversation.phase == .ended(.speechFailed))
-    #expect(h.traceLines.contains("voice-agent: tts error 500 internal_error"))
+    #expect(h.traceLines.contains { $0.hasPrefix("voice-agent: tts error 500 internal_error (last text ") })
     #expect(h.speechStreams.count == 1)
   }
 
@@ -517,8 +517,10 @@ extension RealtimeConversationTests {
     #expect(h.traceLines.filter { $0 == "voice-agent: tts cancel" }.count == 2)
   }
 
-  @Test("Soniox's stream limit (403 temp_api_key_session_expired): the synthesis ends with the heard text, the talk goes on")
-  func speechStreamLimit() async throws {
+  @Test(
+    "an error that ends one stream (stream limit, request timeout): synthesis ends with the heard text, the talk goes on",
+    arguments: SpeechSample.streamOnlyErrors)
+  func speechStreamOnlyError(code: Int, type: String) async throws {
     let h = Harness(speech: SpeechFakeKeys())
     await h.ready()
     h.utterance()
@@ -529,9 +531,8 @@ extension RealtimeConversationTests {
     h.socket.reply(done("r1"))
     let stream = try #require(h.speechStreams.first)
     h.speechSocket.reply(spokenAudio(stream, "A very"))
-    h.speechSocket.reply(
-      encoded(["stream_id": stream, "error_code": 403, "error_type": "temp_api_key_session_expired"]))
-    #expect(h.traceLines.contains("voice-agent: tts error 403 temp_api_key_session_expired"))
+    h.speechSocket.reply(SpeechSample.error(stream, code: code, type: type))
+    #expect(h.traceLines.contains { $0.hasPrefix("voice-agent: tts error \(code) \(type) (") })
     #expect(h.conversation.phase == .speaking)
     #expect(h.deletedItems.isEmpty)
     h.audio.playedSamples = 7200
@@ -548,9 +549,9 @@ extension RealtimeConversationTests {
   }
 
   @Test(
-    "the stream limit before the item's text ended: its later deltas open no second stream; the fix keeps the heard text",
-    arguments: [false, true])
-  func speechStreamLimitLateDeltas(drainedFirst: Bool) async throws {
+    "a stream-only error before the item's text ended: later deltas open no second stream; the fix keeps the heard text",
+    arguments: SpeechSample.streamOnlyErrors, [false, true])
+  func speechStreamOnlyErrorLateDeltas(error: (code: Int, type: String), drainedFirst: Bool) async throws {
     let h = Harness(speech: SpeechFakeKeys())
     await h.ready()
     h.utterance()
@@ -559,8 +560,7 @@ extension RealtimeConversationTests {
     h.socket.reply(textDelta("r1", item: "m1", "A very long "))
     let stream = try #require(h.speechStreams.first)
     h.speechSocket.reply(spokenAudio(stream, "A very"))
-    h.speechSocket.reply(
-      encoded(["stream_id": stream, "error_code": 403, "error_type": "temp_api_key_session_expired"]))
+    h.speechSocket.reply(SpeechSample.error(stream, code: error.code, type: error.type))
     h.speechSocket.reply(terminated(stream))
     if drainedFirst {
       // The queue drained: the cut item is over and waits for its response.done to be fixed.
@@ -582,6 +582,50 @@ extension RealtimeConversationTests {
     #expect(h.deletedItems == ["m1"])
     #expect(h.assistantItems.map(\.text) == ["A very"])
     #expect(h.conversation.phase == .listening)
+  }
+
+  @Test("a request timeout before any audio: the item is gone from the conversation, the next answer speaks")
+  func speechRequestTimeoutBeforeAudio() async throws {
+    // Bug caught: Soniox's 408 on one stream ends the whole conversation, or an item that never spoke stays in it.
+    let h = Harness(speech: SpeechFakeKeys())
+    await h.ready()
+    h.utterance()
+    h.socket.reply(created("r1"))
+    h.socket.reply(itemAdded("m1", after: "in1"))
+    h.socket.reply(textDelta("r1", item: "m1", "An answer."))
+    h.socket.reply(textDone("r1", item: "m1", "An answer."))
+    let stream = try #require(h.speechStreams.first)
+    h.speechSocket.reply(SpeechSample.error(stream, code: 408, type: "request_timeout"))
+    h.speechSocket.reply(terminated(stream))
+    h.socket.reply(done("r1"))
+    #expect(h.conversation.phase == .listening)
+    #expect(h.deletedItems == ["m1"])
+    #expect(h.assistantItems.isEmpty)
+    h.answer("r2", item: "m2", "Next.")
+    #expect(h.speechStreams.count == 2)
+    #expect(h.speechSockets.count == 1)
+  }
+
+  @Test("a stream error line says how long ago the stream got its last text frame and whether text_end went out")
+  func speechStreamErrorLine() async throws {
+    // Bug caught: the line cannot tell a Soniox fault from a stream the app left without text (Soniox ends a stream
+    // that gets no text for a few seconds without text_end with 408 request_timeout).
+    let h = Harness(speech: SpeechFakeKeys())
+    await h.ready()
+    h.answer("r1", item: "m1", "Hello.")
+    let first = try #require(h.speechStreams.first)
+    h.scheduler.advance(0.5)
+    h.speechSocket.reply(SpeechSample.error(first, code: 408, type: "request_timeout"))
+    #expect(h.traceLines.contains("voice-agent: tts error 408 request_timeout (last text 0.5 s ago, text_end sent)"))
+    h.speechSocket.reply(terminated(first))
+    h.utterance()
+    h.socket.reply(created("r2"))
+    h.socket.reply(itemAdded("m2", after: "in1"))
+    h.socket.reply(textDelta("r2", item: "m2", "Still "))
+    let second = try #require(h.speechStreams.last)
+    h.scheduler.advance(5.4)
+    h.speechSocket.reply(SpeechSample.error(second, code: 408, type: "request_timeout"))
+    #expect(h.traceLines.contains("voice-agent: tts error 408 request_timeout (last text 5.4 s ago, no text_end)"))
   }
 
   // MARK: - Orders placed before the speech

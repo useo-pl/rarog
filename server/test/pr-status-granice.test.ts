@@ -5,8 +5,9 @@
  * - `gh` starts only from `pr-status/gh.ts`: it alone imports `node:child_process` in the directory, and no other
  *   server file sends a GraphQL query.
  * - The directory imports no facade: relative imports stay inside it, plus the variable registry (`config-env.ts`, the
- *   closed `gh` environment list), the scheduler type (`drivers/runtime.ts`, type only) and the address grammar of
- *   the conversation file reader (`herdr/background/pull-requests.ts`, a pure module, one definition of `PR_URL`).
+ *   closed `gh` environment list), the scheduler type (`drivers/runtime.ts`, type only), the address grammar of
+ *   the conversation file reader (`herdr/background/pull-requests.ts`, a pure module, one definition of `PR_URL`) and
+ *   the text helpers (`text.ts`, a pure module: the title from GitHub gets the same cut as other titles).
  * - Callers outside the directory import only its entry, `pr-status/index.ts`, and the module map in its header
  *   names exactly the modules of the directory: no file without an entry, no entry without a file.
  */
@@ -24,6 +25,7 @@ const ENTRY = 'server/src/pr-status/index.ts';
 /** Files outside the directory that its modules may import. */
 const ALLOWED_OUTSIDE = [
   'server/src/config-env.ts', 'server/src/drivers/runtime.ts', 'server/src/herdr/background/pull-requests.ts',
+  'server/src/text.ts',
 ];
 /** Of those, the ones imported as types only. */
 const TYPE_ONLY = ['server/src/drivers/runtime.ts'];

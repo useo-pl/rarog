@@ -492,7 +492,11 @@ export function createLiveActivity(options: LiveActivityOptions): LiveActivityCo
       safeLog(countsLine(sentCounts, track.lastCounts === null, sentAt, now(), urgent, countsOutcomeOf(result)));
       if (result.kind === 'ok') track.lastCounts = sentCounts.key;
     }
-    if (chime !== undefined) safeLog(`live-activity: done chime → ${countsOutcomeOf(result)}`);
+    // `updatedEpoch` of the sent content: the app traces every content it receives with the same number, so the two
+    // logs join on it (did the chime land while the app was already in the foreground).
+    if (chime !== undefined) {
+      safeLog(`live-activity: done chime → ${countsOutcomeOf(result)}, updatedEpoch ${String(timestamp)}`);
+    }
     noteCounters();
     evaluate();
   };

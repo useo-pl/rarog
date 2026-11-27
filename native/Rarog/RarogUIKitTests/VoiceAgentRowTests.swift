@@ -225,6 +225,83 @@ final class VoiceAgentRowTests: XCTestCase {
     XCTAssertTrue(rig.socket.closed)
     XCTAssertEqual(rig.audio.stops, 1)
   }
+
+  /// Catches a conversation at the session screen that its length limit does not end, or that ends without its
+  /// sentence in the row.
+  func testLengthLimitEndsTheConversationWithItsSentence() async throws {
+    let rig = try Rig()
+    defer { rig.close() }
+    try await rig.ready()
+    rig.scheduler.advance(VoiceAgentSession.sessionLimit)
+    XCTAssertEqual(rig.status, UICopy.voiceAgentEnd(.sessionLimit))
+    XCTAssertNil(rig.button.fill)
+    XCTAssertTrue(rig.socket.closed)
+    XCTAssertEqual(rig.audio.stops, 1)
+  }
+
+  // MARK: - Background
+
+  /// Catches a conversation at the session screen that outlives its tile removed while the app is in the
+  /// background: the store's state does not change then, so the screen must follow the background rule itself.
+  func testTileRemovedInTheBackgroundEndsTheConversation() async throws {
+    let rig = try Rig()
+    defer { rig.close() }
+    rig.store.voiceAgent.background.tile(shown: true)
+    let session = try await backgroundReady(rig)
+    rig.store.voiceAgent.background.tile(shown: false)
+    try await expectEndedByBackground(rig, session)
+  }
+
+  /// Catches a device without tiles (an iPad) whose conversation at the session screen ends at an app switch, or
+  /// outlives the screen lock that comes while the app is in the background with no other change.
+  func testWithoutTilesTheLockEndsTheConversation() async throws {
+    let rig = try Rig()
+    defer { rig.close() }
+    let rule = BackgroundRecording(noTiles: true)
+    rig.store.attachVoiceAgent(VoiceAgentSettings(preferences: .memory(), background: rule))
+    rig.store.voiceAgent.acceptConsent()
+    let session = try await backgroundReady(rig)
+    rig.store.voiceAgent.background.screenLocked()
+    try await expectEndedByBackground(rig, session)
+  }
+
+  /// Catches a tile removal that a render waiting behind the screen's render throttle swallows: the conversation
+  /// must end from the rule's change, not wait for a later change of the store.
+  func testTileRemovedWithARenderPendingEndsTheConversation() async throws {
+    let rig = try Rig()
+    defer { rig.close() }
+    rig.store.voiceAgent.background.tile(shown: true)
+    let session = try await backgroundReady(rig)
+    rig.controller.renderNow()
+    rig.controller.scheduleRender()
+    rig.store.voiceAgent.background.tile(shown: false)
+    try await expectEndedByBackground(rig, session)
+  }
+
+  /// A ready conversation, then the app in the background (the screen's own notification) with the rule keeping it.
+  private func backgroundReady(_ rig: Rig) async throws -> VoiceAgentSession {
+    try await rig.ready()
+    let session = try XCTUnwrap(rig.controller.voiceAgentChrome.session)
+    XCTAssertTrue(session.isReady, "the microphone records")
+    TranscriptAppPhase.isBackground = { true }
+    addTeardownBlock { @MainActor in
+      TranscriptAppPhase.isBackground = { UIApplication.shared.applicationState == .background }
+    }
+    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+    try? await Task.sleep(for: .milliseconds(150))
+    XCTAssertTrue(session.isActive, "the background keeps the conversation while the rule keeps it")
+    XCTAssertFalse(rig.socket.closed)
+    XCTAssertEqual(rig.audio.stops, 0)
+    return session
+  }
+
+  private func expectEndedByBackground(_ rig: Rig, _ session: VoiceAgentSession) async throws {
+    let ended = await waitUntil { !session.isActive }
+    XCTAssertTrue(ended, "the rule's change alone ends the conversation")
+    XCTAssertEqual(session.closedBy, .background)
+    XCTAssertTrue(rig.socket.closed)
+    XCTAssertEqual(rig.audio.stops, 1)
+  }
 }
 
 // MARK: - Fakes and events (`VoiceAgentRig.swift`)

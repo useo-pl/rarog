@@ -43,6 +43,7 @@ import { parseOptions } from '../src/herdr/dialogs/screen/parse.ts';
 import { reviewPairsFrom } from '../src/herdr/dialogs/screen/review.ts';
 import { parseImportLine, parseTranscriptTail } from '../src/transcript-import.ts';
 import { echoKey } from '../src/herdr/jsonl-follow.ts';
+import { ownCommandWaitOf } from '../src/herdr/background/work.ts';
 import type { HerdrAgent } from '../src/herdr/types.ts';
 import { demoContentPl } from '../src/demo/content/pl.ts';
 import { AtrapaDrivera, AtrapaNadzorcy } from './helpers/atrapa-sesji.ts';
@@ -487,9 +488,7 @@ const TASKS: BackgroundTask[] = [
     id: 'agent_9b2c', kind: 'agent', agentType: 'Explore', model: 'claude-opus-5-5',
     description: 'Szuka producentów ramek', summary: 'Znalazł 9 producentów.',
     startedAt: '2026-10-03T07:22:00.000Z',
-    // Postój: agent stanął i czeka na własne komendy w tle. Dwa kształty pozycji: z treścią
-    // i startem oraz sam identyfikator. Reduktor wypełnia dziś samo `waitingSince`, `ownTasks`
-    // jeszcze nie — lista jedzie tu prosto do managera, jak każde zdarzenie drivera w tym scenariuszu.
+    // Standby on own commands (one full, one bare id). Wait stage: set below by `ownCommandWaitOf`, as `merge.ts` does.
     waitingSince: '2026-10-03T07:50:00.000Z',
     ownTasks: [
       {
@@ -518,11 +517,11 @@ const ARTIFACTS: SessionArtifact[] = [
 ];
 
 /**
- * Pull requesty sesji `atlas`: z tytułem i bez (`gh pr create --fill`). Lista idzie do managera zdarzeniem
- * drivera `pull-requests`, jak artefakty; drogę z plików rozmowy sprawdza `herdr-pull-requests.test.ts`.
+ * Pull requests of the `atlas` session as the card shows them: with a GitHub title and without one. The driver's
+ * `pull-requests` event carries them without titles, like the linked set of a real conversation (the path from the
+ * conversation file: `herdr-pull-requests.test.ts`); the manager's PR status port answers the facts (author =
+ * the `gh` login, created after the conversation's first entry, the title) and the states of {@link PULL_REQUEST_STATES}.
  * Each GitHub state appears once (`open`, `closed`, `merged`, `draft`) and one PR has no state (not read yet).
- * The driver list carries no state, like a real one: the states come from the fixed map
- * {@link PULL_REQUEST_STATES} through the manager's PR status port, laid over the list when the summary is built.
  */
 const PULL_REQUESTS: SessionPullRequest[] = [
   {
@@ -572,10 +571,16 @@ const PULL_REQUEST_STATES: ReadonlyMap<string, PullRequestState> = new Map<strin
   ['https://github.com/rarog-example/rarog/pull/126', 'draft'],
 ]);
 
-/** The manager's PR status port over the fixed map: the states are known from the start, no tracker, no reads. */
+/** The manager's PR status port over fixed maps: states and facts known from the start, no tracker, no reads. */
 const FIXED_PR_STATUS: PrStatusPort = {
   stateOf: (url) => PULL_REQUEST_STATES.get(url),
+  factsOf: (url) => {
+    const pr = PULL_REQUESTS.find((one) => one.url === url);
+    return pr && { author: 'octo-owner', createdAtMs: Date.parse(pr.createdAt), ...(pr.title && { title: pr.title }) };
+  },
+  viewerLogin: () => 'octo-owner',
   setSessionUrls: () => undefined,
+  setSessionLinks: () => undefined,
   dropSession: () => undefined,
   listen: () => undefined,
 };
@@ -820,9 +825,12 @@ async function produceHerdr(out: Produced, dataDir: string): Promise<void> {
         type: 'usage',
         context: { kind: 'known', tokens: 412_000, limit: 1_000_000, source: 'statusline' },
       },
-      { type: 'background-tasks', tasks: TASKS },
+      { type: 'background-tasks', tasks: TASKS.map((task) => {
+        const wait = ownCommandWaitOf(task, clock);
+        return wait === undefined ? task : { ...task, ownCommandWait: wait };
+      }) },
       { type: 'artifacts', artifacts: ARTIFACTS },
-      { type: 'pull-requests', pullRequests: PULL_REQUESTS },
+      { type: 'pull-requests', pullRequests: PULL_REQUESTS.map(({ title: _t, ...pr }) => pr), windowStart: '2026-10-03T07:00:00Z' },
       { type: 'scheduled-tasks', scheduledTasks: SCHEDULED_TASKS },
     );
     await flush();

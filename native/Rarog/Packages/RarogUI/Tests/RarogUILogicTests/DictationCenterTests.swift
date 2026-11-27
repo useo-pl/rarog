@@ -14,12 +14,19 @@ import Testing
 @MainActor
 private final class Place: DictationHost {
   var microphoneUse: MicrophoneUse?
+  /// What a Send from outside the screens gets from this place.
+  var lockScreenSend: Task<LockScreenSend, Never>?
   private(set) var handedOff = 0
   private(set) var ends = 0
+  private(set) var sends = 0
   private weak var center: DictationCenter?
 
   func handOff() { handedOff += 1 }
   func endFromLockScreen() { ends += 1 }
+  func sendFromLockScreen() -> Task<LockScreenSend, Never>? {
+    sends += 1
+    return lockScreenSend
+  }
   func claimed(by center: DictationCenter) { self.center = center }
   func report() { center?.changed(self) }
 }
@@ -277,5 +284,77 @@ struct DictationCenterTests {
     #expect(rig.center.endFromLockScreen() == nil)
     #expect(rig.voice.phase == .connecting)
     #expect(!rig.backend.traces.contains { $0.hasPrefix("voice-agent: ended") })
+  }
+
+  // Catches a Send from outside the screens that asks a place the microphone already left, keeps asking the holder
+  // only while it reports a use (the second press during the holder's request would start nothing, or a new send), or
+  // hands out an operation of its own instead of the holder's.
+  @Test("a Send from outside the screens is the holder's: its operation, asked also after its use ended; nil without")
+  func sendFromLockScreenAsksTheHolder() async {
+    let empty = DictationCenter()
+    #expect(empty.sendFromLockScreen() == nil)
+
+    let center = DictationCenter()
+    let former = Place()
+    let holder = Place()
+    former.lockScreenSend = Task { .queued }
+    holder.lockScreenSend = Task { .sent }
+    center.claim(former)
+    center.claim(holder)
+    holder.microphoneUse = MicrophoneUse(
+      kind: .dictation, audio: true, openAI: false, soniox: false, phase: .dictating,
+      subject: .session(project: "atlas", name: "demo"))
+    let first = center.sendFromLockScreen()
+    #expect(first == holder.lockScreenSend)
+    holder.microphoneUse = nil
+    #expect(center.sendFromLockScreen() == holder.lockScreenSend, "the recording ended, its send still runs")
+    #expect(holder.sends == 2 && former.sends == 0)
+    #expect(await first?.value == .sent)
+    holder.lockScreenSend = nil
+    #expect(center.sendFromLockScreen() == nil, "the holder has nothing to send")
+  }
+
+  // Catches a Send from outside the screens that ends or sends anything of a voice conversation: only a message
+  // field's dictation sends, and a conversation writes no dictation line.
+  @Test("a ready conversation gets no Send from outside the screens: nil, the conversation goes on, no line")
+  func sendFromLockScreenLeavesAConversation() async {
+    let rig = Conversation()
+    await rig.ready()
+    #expect(rig.center.sendFromLockScreen() == nil)
+    #expect(rig.voice.isActive && rig.voice.isReady)
+    #expect(!rig.backend.traces.contains { $0.hasPrefix("dictation:") || $0.hasPrefix("voice-agent: ended") })
+  }
+
+  // Catches a result the Lock Screen reads wrong: an app command or a refusal shown as sent, a stopped or timed-out
+  // send shown as not sent although its entry waits for "Retry", or a queued message shown as plainly sent.
+  @Test("every result of the field's send maps to what the Lock Screen says; no send is not sent")
+  func lockScreenSendFromTheFieldResult() {
+    let table: [(ComposerSendResult?, LockScreenSend)] = [
+      (.accepted(queued: false), .sent), (.accepted(queued: true), .queued), (.appCommand, .notSent),
+      (.refused(code: "bad-request", message: "No."), .notSent), (.blocked(.decisionPending), .notSent),
+      (.readOnly(reason: "closed"), .notSent), (.notSent, .notSent), (.attachmentsLoading, .notSent),
+      (.attachmentsOverLimit, .notSent), (.unconfirmed, .unconfirmed), (.stopped, .unconfirmed), (nil, .notSent),
+    ]
+    for (result, shown) in table {
+      #expect(LockScreenSend(result) == shown, "\(String(describing: result))")
+    }
+  }
+
+  // Catches a field's send given before the press's operation asks for it (a recording that ends at once) and lost,
+  // which would leave the operation waiting forever, and a second give that replaces the first.
+  @Test("the field's send reaches the operation whether given before or after it asks, and only the first one")
+  func handoverGivesTheFirstSend() async {
+    let early = FieldSendHandover()
+    let sent = Task<ComposerSendResult, Never> { .accepted(queued: false) }
+    early.give(sent)
+    early.give(Task { .notSent })
+    #expect(await early.value() == sent)
+
+    let late = FieldSendHandover()
+    let waiting = Task { await late.value() }
+    await Task.yield()
+    late.give(nil)
+    late.give(sent)
+    #expect(await waiting.value == nil)
   }
 }

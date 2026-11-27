@@ -309,6 +309,8 @@ async function loadHerdr(
         // Dialog zaufania katalogu re-eksekuuje `claude`, a nadzorca musi wiedzieć, że
         // zniknięcie agenta w tym oknie znaczy „wstaje", a nie „zniknął".
         markTrustDialog: () => { ctx.markTrustDialog(); },
+        // A start dialog herdr reads as ready may stand until herdr knows the engine session.
+        startPhase: () => ctx.startPhase(),
         // Zrzuty hooka `PreToolUse` (warstwa 1 uniwersalnej karty): hook pisze, driver czyta
         // — oba przez ten sam `dataDir`. Bez zainstalowanego hooka plików po prostu nie ma
         // i karta powstaje z ekranu (warstwa 2).
@@ -636,7 +638,8 @@ async function main(): Promise<void> {
   const macStats = config.demo ? (await import('./demo/mac.ts')).demoMacStats() : createMacStats();
   // Powiadomienia: obecność, kanał APNs i harmonogram banerów (`bootstrap/push.ts`). Manager powstaje niżej,
   // więc push czyta go przez `managerRef`; sygnał nowej wersji dostaje sink kanału APNs.
-  const { presence, apns, notifier } = createPush(config, { managerRef: () => managerRef, devices, macStats, log });
+  const push = createPush(config, { managerRef: () => managerRef, devices, macStats, log });
+  const { presence, apns, notifier, stalledWait } = push;
   setVersionSink(apns?.sink);
 
   // SDK Claude listy „Ostatnie sesje” raz, przed `listen()`; demo go nie dotyka (`bootstrap/manager.ts`).
@@ -657,6 +660,7 @@ async function main(): Promise<void> {
     ...(consentCycle === null ? {} : { consent: consentManagerPort(consentCycle, consentMode, log) }),
     ...(consentCycle === null ? {} : { consentForgotten: consentForgottenPort(consentCycle, log) }),
     ...(prStatus === null ? {} : { prStatus: prStatus.port }),
+    ...(stalledWait === undefined ? {} : { stalledWait }),
   });
   managerRef = manager;
   /*
@@ -833,8 +837,9 @@ async function main(): Promise<void> {
     // WebSockecie terminala. Powłoki w panelach herdr zostają: giną wyłącznie kontrolery.
     term?.dispose();
     // Timery Live Activity i połączenia HTTP/2 do APNs — bez nich proces i tak wyjdzie (`unref`),
-    // ale grzecznie. The channel closes in its own order (poller, the weekly-limit send in flight, passes, sender).
-    const apnsClosed = apns?.close() ?? Promise.resolve();
+    // ale grzecznie. The stalled wait alarm stops its timers first; the channel closes in its own order (poller, the
+    // weekly-limit send in flight, passes, sender).
+    const apnsClosed = push.close();
     versionWatch?.dispose();
     macStats.close();
     clearInterval(deviceSweep);

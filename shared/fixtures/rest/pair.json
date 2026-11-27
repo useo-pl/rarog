@@ -6,7 +6,7 @@
   "server": {
     "id": "01010101010101010101010101010101",
     "name": "mac-demo",
-    "version": "1.1.1",
+    "version": "1.1.2-beta.1",
     "capabilities": [
       "device-auth",
       "pair",

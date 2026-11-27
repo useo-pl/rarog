@@ -131,6 +131,9 @@ public enum CoreEvent: Sendable, Equatable {
 
   // MARK: Inbox (branches in `Reducer+Inbox`)
   case inbox(InboxEvent)
+
+  // MARK: Check of a long wait (branches in `Reducer+WaitCheck`)
+  case waitCheck(WaitCheckEvent)
 }
 
 /// Skutek uboczny reduktora do wykonania przez magazyn (reduktor sam nie dotyka dysku ani sieci).

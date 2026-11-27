@@ -37,7 +37,7 @@ export interface Reference {
  * w projekcie użytkownika, pliki licencji i zmian w paczkach.
  */
 export const FOREIGN_NAMES: ReadonlySet<string> = new Set([
-  'AGENTS.md', 'CHANGELOG.md', 'CLAUDE.local.md', 'LICENSE.md', 'NOTICE.md', 'SKILL.md',
+  'AGENTS.md', 'CHANGELOG.md', 'CLAUDE.md', 'CLAUDE.local.md', 'LICENSE.md', 'NOTICE.md', 'SKILL.md',
 ]);
 
 const PATH_RE = new RegExp(MD_PATH, 'dg');

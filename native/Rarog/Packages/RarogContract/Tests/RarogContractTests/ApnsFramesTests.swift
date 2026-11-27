@@ -129,8 +129,8 @@ struct ApnsFramesTests {
   static let manifestV3 = manifest(in: directoryV3)
   /// Format 3 banners without the localization-key variant: one per kind.
   static let bannersV3 = [
-    "alert.blocking.v3.json", "alert.device-paired.v3.json", "alert.done.v3.json", "alert.test.v3.json",
-    "alert.version-changed.v3.json", "alert.weekly-limit.v3.json",
+    "alert.blocking.v3.json", "alert.device-paired.v3.json", "alert.done.v3.json", "alert.stalled.v3.json",
+    "alert.test.v3.json", "alert.version-changed.v3.json", "alert.weekly-limit.v3.json",
   ]
   /// Block key of the format 2 banner, which no code produces any more: a rejection case.
   static let legacyBlock = "pilot" // stara-nazwa
@@ -367,6 +367,12 @@ struct ApnsFramesTests {
       titlePl: "🔐 Sparowano nowe urządzenie",
       bodyPl: "iPad·Rarog — jeśli to nie Ty, odepnij je na Macu: rarog devices", sessionId: nil, termId: nil,
       badge: nil, priority: "10"),
+    // A subagent waits over an hour on its own command: a session banner, the subagent's description, no command.
+    ExpectedAlert(
+      frame: "alert.stalled.v3.json", kind: .stalled, title: "⏰ Waiting over 1 h · atlas",
+      body: "Subagent \"Fix the flaky login test\" is waiting on its own command.",
+      titlePl: "⏰ Czeka ponad 1 h · atlas", bodyPl: "Subagent „Fix the flaky login test” czeka na własną komendę.",
+      sessionId: "demo-atlas", termId: nil, badge: 1, priority: "10"),
   ]
 
   @Test("banery formatu 3: po odszyfrowaniu cel tapnięcia i treść z wejść producenta, plakietka i priorytet jawnie")

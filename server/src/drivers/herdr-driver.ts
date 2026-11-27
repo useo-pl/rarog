@@ -43,7 +43,7 @@ import { APPLIED, STALE, refused } from './types.ts';
 import { AsyncEventQueue, systemScheduler } from './runtime.ts';
 import type { Scheduler, TimerHandle } from './runtime.ts';
 import type {
-  HerdrAgentHandle, HerdrAgentStatus, HerdrClient, HerdrEngine, HerdrPaneEvent,
+  HerdrAgentHandle, HerdrAgentStatus, HerdrClient, HerdrEngine, HerdrPaneEvent, HerdrStartPhase,
 } from '../herdr/types.ts';
 import { HerdrOutOfScopeError, reasonOfError } from '../herdr/types.ts';
 import type { FollowEvent, JsonlFollower } from '../herdr/jsonl-follow.ts';
@@ -85,6 +85,7 @@ import type { PromptQueueDeps, PromptQueuePort, SendTicket } from './herdr/promp
 import { QueueTakeBack } from './herdr/queue-take-back.ts';
 import type { QueueTakeBackDeps, QueueTakeBackPort } from './herdr/queue-take-back.ts';
 import { ReturnedPrompt, type ReturnedPromptDeps } from './herdr/returned-prompt.ts';
+import { StartDialogGate, clientNotingScreens } from './herdr/start-dialog-gate.ts';
 import { TurnGuard } from './herdr/turn-guard.ts';
 import type { TurnGuardPort } from './herdr/turn-guard.ts';
 import { FormReserve } from './herdr/form-reserve.ts';
@@ -111,7 +112,7 @@ import {
   HOOK_ANSWER_POLL_MS, HOOK_ANSWER_WAIT_MS, HOOK_PERMISSION_REQUEST_EVENT, MULTI_SELECT_MESSAGE,
   NOTE_NOT_ALLOWED_MESSAGE, NOTE_NO_CHANNEL_MESSAGE, NOTE_WRITE_FAILED_MESSAGE, NO_ANSWER_ON_SCREEN_MESSAGE,
   NO_DIGIT_MESSAGE, PAUSE_ESCAPE_MESSAGE, SCREEN_ANSWER_REARM_DELAYS_MS, SCREEN_CHANGED_MESSAGE, SCREEN_DIALOG_TOOL,
-  TERMINAL_DIALOG_MESSAGE, TERMINAL_ONLY_MESSAGE, affirmativeOption, alwaysOption,
+  START_DIALOG_REFUSED_MESSAGE, TERMINAL_DIALOG_MESSAGE, TERMINAL_ONLY_MESSAGE, affirmativeOption, alwaysOption,
   admittedHook, applyMultiSelectOverride, blockCardRecord, confirmFormSubmit,
   decideCard, dialogShapeOf, measuredConsentHolds,
   evaluationReqId, fallbackSnippet, formSubmitAbortMessage, hookAnnotations, hookAnswerPartialMessage,
@@ -336,6 +337,8 @@ export interface HerdrDriverDeps extends Pick<PromptQueueDeps, 'promptStore'>, P
    * trzyma nadzorca. Brak zależności = natychmiastowe `gone`.
    */
   markTrustDialog?: () => void;
+  /** The launch before herdr knows its engine session (`HerdrAttachContext.startPhase`); absent = never. */
+  startPhase?: () => HerdrStartPhase | null;
   /** Identyfikator sesji Raroga — tylko do dziennika (driver nie zna managera). */
   sessionId?: string;
   /**
@@ -383,9 +386,8 @@ export interface HerdrDriverDeps extends Pick<PromptQueueDeps, 'promptStore'>, P
    */
   tasksPollMs?: number;
   /**
-   * Fabryka czytnika plików rozmowy pod kątem pull requestów (`docs/pull-requests.md`). Piąte źródło:
-   * plik główny i, za zgodą `readAgentFiles`, pliki subagentów i agentów workflow, wszystkie, także po końcu
-   * agenta. Testy podstawiają katalog tymczasowy.
+   * Factory of the main conversation file reader for pull requests (`docs/pull-requests.md`): the linked set and the
+   * conversation window. Tests give a temporary store.
    */
   pullRequestFiles?: (opts: PullRequestFilesReaderOptions) => PullRequestFilesReader;
   /** Odstęp odczytu plików rozmowy pod kątem PR-ów po sygnale (testy skracają). Domyślnie `PULL_REQUESTS_POLL_MS`. */
@@ -813,6 +815,8 @@ export class HerdrDriver implements SessionDriver {
   readonly #screenFallback: ScreenFallback;
   /** The port of the refusals and their audit funnel: `drivers/herdr/refusals.ts`. */
   readonly #refusals: RefusalPort;
+  /** No key or text to a start dialog herdr reads as ready: `drivers/herdr/start-dialog-gate.ts`. */
+  readonly #startGate: StartDialogGate;
   /** The wait behind a command dialog the driver confirmed: `drivers/herdr/command-dialog-settle.ts`. */
   readonly #commandSettle: CommandDialogSettle;
   /** The layer 2 card with buttons (`docs/dialog-card.md`): `drivers/herdr/layer2-card.ts`. */
@@ -851,7 +855,10 @@ export class HerdrDriver implements SessionDriver {
   /** Bieżąca sesja silnika (zmienia ją `/clear`) — potrzebna do `init` z metadanych jsonl. */
   #agentSessionId: string;
 
-  constructor(handle: HerdrAgentHandle, deps: HerdrDriverDeps) {
+  constructor(handle: HerdrAgentHandle, driverDeps: HerdrDriverDeps) {
+    // Field reads with attributes feed the start dialog gate too; the other deps are read through from `driverDeps`.
+    const deps = Object.create(driverDeps, { client: { enumerable: true, value: clientNotingScreens(driverDeps.client,
+      (text) => { if (!this.#disposed) this.#noteStartDialog(text); }) } }) as HerdrDriverDeps;
     this.#deps = deps;
     this.#scheduler = deps.scheduler ?? systemScheduler;
     this.#snippet = deps.snippet ?? fallbackSnippet;
@@ -880,9 +887,16 @@ export class HerdrDriver implements SessionDriver {
     this.#formReserve = new FormReserve({ deps, scheduler: this.#scheduler }, reservePort);
     this.#cliReserve = new CliReserve({ inScope: this.#inScope, form: this.#formReserve }, reservePort);
     this.#refusals = this.#refusalPort();
+    this.#startGate = new StartDialogGate({
+      startPhase: deps.startPhase ?? (() => null),
+      readScreen: () => this.#readDialog(true), system: (text) => { this.#system(text); },
+    });
     this.#commandSettle = new CommandDialogSettle({ pollMs: deps.modelConfirmPollMs ?? MODEL_CONFIRM_POLL_MS }, {
       disposed: () => this.#disposed,
-      readScreen: () => this.#deps.client.readScreen(this.#paneId, 'detection').then((s) => s.text, () => null),
+      readScreen: () => this.#deps.client.readScreen(this.#paneId, 'detection').then((s) => {
+        if (!this.#disposed) this.#noteStartDialog(s.text);
+        return s.text;
+      }, () => null),
       cliHold: () => this.#cliReserve.cliHold, blockedSeq: () => this.#blockedSeq,
       sleep: (ms) => this.#sleep(ms), now: () => this.#scheduler.now(),
     });
@@ -950,10 +964,10 @@ export class HerdrDriver implements SessionDriver {
         cwd: this.#cwd, agentSessionId: handle.agent.agentSessionId,
       })
       : null;
-    // PR-y sesji: ta sama bramka zasięgu; pliki agentów tylko za zgodą `RAROG_AGENT_FILES`.
+    // Session pull requests: the same scope gate, the main file only.
     this.#pullRequests = createPullRequestPollState(this.#inScope
       ? (deps.pullRequestFiles ?? createPullRequestFilesReader)({
-        cwd: this.#cwd, agentSessionId: handle.agent.agentSessionId, subagents: deps.readAgentFiles !== false,
+        cwd: this.#cwd, agentSessionId: handle.agent.agentSessionId,
         // Ten sam plik, który czyta follower: bez drugiego globu po magazynie i z jego relokacją.
         locate: () => this.#follower?.transcriptOffset?.()?.file ?? null,
       })
@@ -1137,6 +1151,9 @@ export class HerdrDriver implements SessionDriver {
     // The wait behind a command dialog the driver confirmed comes before the path: every premise below is read after it.
     const dialogStands = await this.#commandSettle.settle();
     if (this.#disposed) return;
+    // A start dialog takes no message, not even one parked to its end: a fresh read, not only the memory.
+    const startDialog = this.#startGate.inPhase() && await this.#startGate.refuses();
+    if (this.#startDialogHeld(echo, startDialog) || this.#disposed) return;
     /*
      * Panel Claude w trakcie tury (albo z wiadomością, która już czeka, albo zaraz po Enterze takiej wiadomości,
      * którego skutku driver jeszcze nie zna): wklejenie, sprawdzenie i osobny Enter
@@ -1309,6 +1326,7 @@ export class HerdrDriver implements SessionDriver {
       disposed, paneId, agentSessionId, driverHold, consentCardStands, cliWaiting,
       audit: (entry) => { this.#audit(entry); },
       enqueue: (step) => this.#enqueue(step),
+      startDialogStands: () => this.#startGate.refuses(),
     };
   }
 
@@ -1445,6 +1463,19 @@ export class HerdrDriver implements SessionDriver {
     this.#emit({ type: 'echo-refused', token: echo });
   }
 
+  /** No key or text while a start dialog stands (`start-dialog-gate.ts`): the echo back and the sentence. */
+  #startDialogHeld(echo: string | undefined, held = this.#startGate.holds()): boolean {
+    if (!held) return false;
+    this.#refuseEcho(echo);
+    this.#system(START_DIALOG_REFUSED_MESSAGE);
+    return true;
+  }
+
+  /** A decision or an interrupt refused over a start dialog: the sentence, and the card judged again. */
+  #startDialogRefused(why: string): DecisionOutcome {
+    return this.#disposed ? STALE : refuseDecision(this.#refusals, START_DIALOG_REFUSED_MESSAGE, why, 'terminal-only');
+  }
+
   /**
    * Prompt z detekcją zawieszenia.
    *
@@ -1525,6 +1556,7 @@ export class HerdrDriver implements SessionDriver {
 
   /** Jedna próba `prompt` z `wait` + wpis dziennika; błędy inne niż stall lecą do transkryptu. */
   async #promptAttempt(text: string, echo?: string, source?: MessageSource): Promise<'ok' | 'stalled' | 'failed'> {
+    if (this.#startDialogHeld(echo)) return 'failed';
     try {
       await this.#deps.client.prompt(this.#paneId, text, true);
       this.#audit(promptEntry(text, source));
@@ -1567,6 +1599,7 @@ export class HerdrDriver implements SessionDriver {
       return false;
     }
     if (this.#disposed) return false;
+    this.#noteStartDialog(screen);
     return screenHoldsNeedle(screen, text);
   }
 
@@ -1673,6 +1706,10 @@ export class HerdrDriver implements SessionDriver {
             this.#refusals, PAUSE_ESCAPE_MESSAGE, 'Esc na pauzie „Session paused”', 'terminal-only',
           );
         }
+        if (this.#startGate.inPhase() && await this.#startGate.refuses(pause.text)) {
+          this.#shadowKeySent(shadow, false);
+          return this.#startDialogRefused('start dialog: Esc');
+        }
         if (this.#disposed) {
           this.#shadowKeySent(shadow, false);
           return STALE;
@@ -1741,6 +1778,7 @@ export class HerdrDriver implements SessionDriver {
       return step.then((outcome) => outcome ?? STALE);
     }
 
+    if (this.#startGate.holds()) return Promise.resolve(this.#startDialogRefused('start dialog: approve'));
     const active = this.#activeReq;
     if (active === null) return Promise.resolve(STALE);
     /*
@@ -2506,6 +2544,7 @@ export class HerdrDriver implements SessionDriver {
       };
       let verdict = await read(true);
       if (verdict === null) return STALE;
+      if (this.#startGate.holds()) return this.#startDialogRefused('start dialog: trust step');
       if (!verdict.ok) return refuse(verdict.reason);
       const audit = {
         toolName, optionLabel: verdict.dialog.yesLabel,
@@ -3258,12 +3297,17 @@ export class HerdrDriver implements SessionDriver {
        * on the pause stays a refusal (`#pauseBlocksEscape`): before any state change and after the field read above, so
        * no read follows the gate before the key. `refuseDecision` restores the card the manager took at the interrupt.
        */
-      if ((await this.#pauseBlocksEscape()).blocks) {
+      const pause = await this.#pauseBlocksEscape();
+      if (pause.blocks) {
         if (!this.#disposed) {
           refuseDecision(
             this.#refusals, PAUSE_ESCAPE_MESSAGE, 'przerwanie: Esc na pauzie „Session paused”', 'terminal-only',
           );
         }
+        return false;
+      }
+      if (this.#startGate.inPhase() && await this.#startGate.refuses(pause.text)) {
+        this.#startDialogRefused('interrupt: start dialog');
         return false;
       }
       /*
@@ -3785,6 +3829,7 @@ export class HerdrDriver implements SessionDriver {
       this.#screenText = screen.text;
       this.#screenAt = this.#scheduler.now();
       this.#notePause(screen.text);
+      this.#noteStartDialog(screen.text);
       return screen.text;
     } catch {
       // Zrzutu NIE kasujemy: nieudany odczyt to „nie wiem", a stojąca karta ma przeżyć
@@ -3832,6 +3877,15 @@ export class HerdrDriver implements SessionDriver {
     const dialog = parseOptions(text);
     if (dialog === null) return;
     this.#pauseSeq = sessionPausedDialog(dialog) ? this.#blockedSeq : null;
+  }
+
+  /**
+   * A successful `detection` read for the start dialog gate: every dialog read and every read of a gate before a key
+   * or text, so the gate's last synchronous check before the client call judges the newest screen.
+   */
+  #noteStartDialog(text: string): void {
+    // A start dialog standing up after an own answer is the next dialog, not the repaint of the answered one.
+    if (this.#startGate.note(text) && this.#answeredSeq === this.#blockedSeq) this.#blockedSeq += 1;
   }
 
   /** Whether {@link #readDialog} without `force` returns the screen cache instead of reading. */
@@ -3974,12 +4028,7 @@ export class HerdrDriver implements SessionDriver {
       scheduler: this.#scheduler,
       pollMs: this.#tasksPollMs,
       disposed: () => this.#disposed,
-      emit: (tasks) => {
-        this.#emit({ type: 'background-tasks', tasks });
-        // Zmiana listy zadań (start albo koniec agenta, rozkład workflow) bywa jedynym znakiem pracy, gdy plik
-        // główny milczy: agent mógł właśnie utworzyć PR we własnym pliku.
-        this.#schedulePullRequests();
-      },
+      emit: (tasks) => { this.#emit({ type: 'background-tasks', tasks }); },
     };
   }
 
@@ -3988,7 +4037,9 @@ export class HerdrDriver implements SessionDriver {
     return {
       scheduler: this.#scheduler,
       disposed: () => this.#disposed,
-      emit: (pullRequests) => { this.#emit({ type: 'pull-requests', pullRequests }); },
+      emit: ({ linked, windowStart }) => {
+        this.#emit({ type: 'pull-requests', pullRequests: linked, ...(windowStart === null ? {} : { windowStart }) });
+      },
     };
   }
 
@@ -4046,11 +4097,15 @@ export class HerdrDriver implements SessionDriver {
      */
     if (event.type === 'tasks') {
       noteTasks(this.#tasks, this.#tasksDeps, event);
+      return;
+    }
+    // A pull request link entry: only a read signal. Not a sign of file life (no turn watchdog, no send guard).
+    if (event.type === 'pull-request-entry') {
       this.#schedulePullRequests();
       return;
     }
     this.#lastFollowAt = this.#scheduler.now();
-    // Plik główny urósł: PR mógł powstać w nim albo w pliku agenta, który właśnie oddał wynik.
+    // The main file grew: it may hold a PR link entry or the first timed entry (the conversation window).
     this.#schedulePullRequests();
     crons.scheduleScheduledTasks(this.#crons, this.#cronsDeps);
     resetPulseEcho(this.#pulseEcho);
@@ -4503,6 +4558,7 @@ export class HerdrDriver implements SessionDriver {
       : null;
     this.#noHook.cardShown(card, event);
     this.#emit(event);
+    this.#startGate.cardShown();
     this.#auditBlockCard(card.active);
   }
 
@@ -4590,6 +4646,7 @@ export class HerdrDriver implements SessionDriver {
       return false;
     }
     if (this.#disposed) return false;
+    this.#noteStartDialog(text);
     onScreen?.(text);
     const dialog = standingConsentDialog(text);
     await this.#noteConsentDialog(dialog, text);
@@ -4698,7 +4755,7 @@ export class HerdrDriver implements SessionDriver {
     op: SendOp = 'message',
     echo?: string,
   ): Promise<boolean> {
-    if (this.#disposed) return false;
+    if (this.#disposed || this.#startDialogHeld(echo)) return false;
     try {
       await call();
       this.#audit(entry);

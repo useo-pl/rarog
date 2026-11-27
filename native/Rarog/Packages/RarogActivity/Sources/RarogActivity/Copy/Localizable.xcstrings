@@ -1327,6 +1327,24 @@
         }
       }
     },
+    "voiceActivity.phase.notSent" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): the large word beside the glyph when the message sent from the dictation's Send button did not reach the session; the text stays in the app. Also part of the VoiceOver label after a comma. About 16 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not sent"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie wysłano"
+          }
+        }
+      }
+    },
     "voiceActivity.phase.prompt" : {
       "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. A prompt the voice agent showed waits for the user's spoken yes or no. About 20 characters.",
       "extractionState" : "manual",
@@ -1363,6 +1381,42 @@
         }
       }
     },
+    "voiceActivity.phase.sending" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): the large word beside the glyph after the user pressed Send on a dictation, while the message goes to the session; also part of the VoiceOver label after a comma. About 12 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wysyłam…"
+          }
+        }
+      }
+    },
+    "voiceActivity.phase.unconfirmed" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): the large word beside the glyph when the app does not know whether the message sent from the dictation's Send button reached the session. Also part of the VoiceOver label after a comma. About 16 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not confirmed"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie potwierdzono"
+          }
+        }
+      }
+    },
     "voiceActivity.phase.working" : {
       "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): what the recording does, the large word beside the glyph and part of the VoiceOver label after a comma. About 12 characters.",
       "extractionState" : "manual",
@@ -1381,8 +1435,26 @@
         }
       }
     },
+    "voiceActivity.send" : {
+      "comment" : "Voice Live Activity: VoiceOver label of the round up-arrow button beside Stop on a message-field dictation (Lock Screen and expanded Dynamic Island); it ends the dictation and sends the message field to the session. Not shown on screen.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyślij"
+          }
+        }
+      }
+    },
     "voiceActivity.stop" : {
-      "comment" : "Voice Live Activity: button that stops the message-field dictation; the dictated text stays in the field (Lock Screen and expanded Dynamic Island). Its VoiceOver label too. About 10 characters.",
+      "comment" : "Voice Live Activity: VoiceOver label of the round square button that stops the message-field dictation; the dictated text stays in the field (Lock Screen and expanded Dynamic Island). Not shown on screen.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -1413,6 +1485,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wszystkie sesje"
+          }
+        }
+      }
+    },
+    "voiceActivity.subject.checkTheApp" : {
+      "comment" : "Voice Live Activity (Lock Screen and expanded Dynamic Island): the muted line under Not sent or Not confirmed; the text may stand in the message field, a draft or the send queue. Also part of the VoiceOver label after a comma. One line, about 20 characters.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check the app"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprawdź w apce"
           }
         }
       }

@@ -314,6 +314,22 @@ struct ProjectRowsTests {
     #expect(UICopy.tabSpoken(idle, current: false) == "Przejdź do sesji: parser, bezczynna")
   }
 
+  /// Catches a long wait that the reader hears as a plain wait, or not at all: the status word is the idle word, so
+  /// the tone word is the only spoken trace of the warning.
+  @Test("tab of a session with a long wait: the reader hears the long wait's own tone word")
+  func backgroundWaitLongTabSpoken() {
+    let agent = #""seen":true,"backgroundTasks":[{"id":"a","kind":"agent","waitingSince":"2026-10-03T08:00:00.000Z","#
+      + #""ownTasks":[{"id":"a-c","command":"sleep 9999"}],"ownCommandWait":"long"}]"#
+    let long = Sample.session(label: "parser", state: "waiting-input", extra: agent)
+    #expect(long.statusTone == .backgroundWaitLong)
+    let word = UICopy.toneSpoken(.backgroundWaitLong)
+    #expect(word != UICopy.toneSpoken(.backgroundWait) && word != UICopy.toneSpoken(.waiting))
+    for current in [true, false] {
+      let parts = UICopy.tabSpoken(long, current: current).components(separatedBy: ", ")
+      #expect(parts.contains(word) && !parts.contains(UICopy.toneSpoken(.backgroundWait)), "\(current)")
+    }
+  }
+
   @Test("copy: blokada zakładania zdaniem serwera, odmowy, zamknięcie mówi skutek")
   func copy() {
     #expect(UICopy.launchBlocked(nil) == UICopy.launchBlockedFallback)

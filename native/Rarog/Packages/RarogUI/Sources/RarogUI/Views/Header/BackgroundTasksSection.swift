@@ -194,7 +194,10 @@ struct BackgroundTasksRow: View {
   var body: some View {
     switch line {
     case let .task(task):
-      BackgroundTaskRowView(row: task, now: now, frozen: frozen)
+      VStack(alignment: .leading, spacing: 0) {
+        BackgroundTaskRowView(row: task, now: now, frozen: frozen)
+        if let check = task.check { WaitCheckButton(check: check, task: task.id) }
+      }
     case .ownLabel:
       // Dla czytnika niema: każda komenda pod nią mówi pełne zdanie („czeka na: pnpm test, od 21 minut").
       Text(UICopy.ownTasksAwaited)
@@ -317,7 +320,11 @@ private struct BackgroundTaskRowView: View {
           .foregroundStyle(Color(uiColor: Palette.text))
           .fixedSize(horizontal: false, vertical: true)
         // Stan i czas stoją PRZED linią meta: to one mówią, czy agent pracuje i od kiedy.
-        StateLine(parts: status)
+        if let warning = row.warning {
+          BackgroundWaitWarningLine(warning: warning, now: now, since: row.since(now: now), frozen: frozen)
+        } else {
+          StateLine(parts: status)
+        }
         meta
       }
     }
@@ -335,7 +342,8 @@ private struct BackgroundTaskRowView: View {
   @ViewBuilder
   private var mark: some View {
     let mark = BackgroundTaskMark.make(working: row.working, frozen: frozen)
-    let ink = Color(uiColor: Palette.tone(mark.tone))
+    // A long wait on an own command turns the hourglass to the warning's colour, unless the source is out of contact.
+    let ink = Color(uiColor: Palette.tone(frozen ? mark.tone : row.warning?.tone ?? mark.tone))
     if mark.hourglass {
       Image(systemName: "hourglass")
         .appFont(.caption.weight(.semibold))

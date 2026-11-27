@@ -16,30 +16,37 @@ import SwiftUI
 struct ListFilterBar: View {
   let store: RarogStore
   let navigation: RarogNavigation
+  /// The row's width, measured; the segments spread over it when they fit.
+  @State private var width: CGFloat = 0
+  /// The segments' own width, measured; above the row's width the row scrolls.
+  @State private var contentWidth: CGFloat = 0
 
   var body: some View {
     let state = store.state
     let ready = state.sessionsLoaded && !state.sessions.isEmpty
-    // Equal segments across the column, so the row never scrolls; only when even the glyphs do not fit (the largest
-    // accessibility sizes in a narrow column) the row scrolls sideways instead of truncating.
-    ViewThatFits(in: .horizontal) {
-      segments(state, ready: ready, fill: true)
-      ScrollView(.horizontal) { segments(state, ready: ready, fill: false) }
-        .scrollIndicators(.hidden)
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-    }
-    .accessibilityElement(children: .contain)
-    .accessibilityLabel(UICopy.listFilterGroup)
-    .accessibilityIdentifier("list.filter")
+    // One scroll view at every text size: equal segments across the column when they fit, so it does not scroll;
+    // only when even the glyphs do not fit (the largest accessibility sizes in a narrow column) the row scrolls
+    // sideways instead of truncating. Not `ViewThatFits`: swapping the view on a text size change made the Dynamic
+    // Type audit see the counts as partially unsupported. Unclipped while it fits, so the glass's shadow shows.
+    let fits = contentWidth <= width + 0.5
+    ScrollView(.horizontal) { segments(state, ready: ready) }
+      .scrollIndicators(.hidden)
+      .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+      .scrollClipDisabled(fits)
+      .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+      .accessibilityElement(children: .contain)
+      .accessibilityLabel(UICopy.listFilterGroup)
+      .accessibilityIdentifier("list.filter")
   }
 
-  private func segments(_ state: AppState, ready: Bool, fill: Bool) -> some View {
-    HStack(spacing: 0) {
+  private func segments(_ state: AppState, ready: Bool) -> some View {
+    FilterSegmentsLayout(available: width) {
       ForEach(ListFilter.allCases, id: \.self) { filter in
-        segment(filter, count: state.listFilterCount(filter), ready: ready, fill: fill)
+        segment(filter, count: state.listFilterCount(filter), ready: ready)
       }
     }
     .background { FilterGlass(shape: Capsule()) }
+    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { contentWidth = $0 }
   }
 
   /// The gap between the glass's edge and a segment's plate. The segment's target includes it.
@@ -53,13 +60,13 @@ struct ListFilterBar: View {
   /// own tip (`pointerTip`: the system `help` does not show on an iPad). Words did not fit the column without
   /// scrolling. Under the pointer a segment lights like an agent row and a tab: its plate at half opacity
   /// (`HoverTokens.agentRowAlpha`) and the glyph in full text ink.
-  private func segment(_ filter: ListFilter, count: Int, ready: Bool, fill: Bool) -> some View {
+  private func segment(_ filter: ListFilter, count: Int, ready: Bool) -> some View {
     RarogHoverReader(enabled: ready) { hovered in
-      segmentButton(filter, count: count, ready: ready, fill: fill, hovered: hovered)
+      segmentButton(filter, count: count, ready: ready, hovered: hovered)
     }
   }
 
-  private func segmentButton(_ filter: ListFilter, count: Int, ready: Bool, fill: Bool, hovered: Bool) -> some View {
+  private func segmentButton(_ filter: ListFilter, count: Int, ready: Bool, hovered: Bool) -> some View {
     let active = navigation.listFilter == filter
     let label = UICopy.listFilterLabel(filter)
     return Button {
@@ -77,7 +84,7 @@ struct ListFilterBar: View {
       .fixedSize()
       .padding(.horizontal, 10)
       .padding(.vertical, 6)
-      .frame(maxWidth: fill ? .infinity : nil, minHeight: Self.plateHeight)
+      .frame(maxWidth: .infinity, minHeight: Self.plateHeight)
       .background {
         let plate = Color(uiColor: Palette.filterGlassPlate)
         if active {
@@ -125,6 +132,31 @@ struct ListFilterBar: View {
     case .unread: return Palette.tone(.unread)
     case .all, .working: return Palette.text2
     }
+  }
+}
+/// The segments in one row at the widths of `ListFilterSegmentWidths`: spread over `available` when they fit, at their
+/// own widths when they do not (the scroll view around them then scrolls).
+private struct FilterSegmentsLayout: Layout {
+  let available: CGFloat
+
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    let widths = widths(subviews)
+    let height = subviews.map { $0.sizeThatFits(.unspecified).height }.max() ?? 0
+    return CGSize(width: widths.reduce(0, +), height: height)
+  }
+
+  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    var x = bounds.minX
+    for (subview, width) in zip(subviews, widths(subviews)) {
+      subview.place(
+        at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading,
+        proposal: ProposedViewSize(width: width, height: bounds.height))
+      x += width
+    }
+  }
+
+  private func widths(_ subviews: Subviews) -> [CGFloat] {
+    ListFilterSegmentWidths.widths(ideal: subviews.map { $0.sizeThatFits(.unspecified).width }, available: available)
   }
 }
 #endif

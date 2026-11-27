@@ -245,13 +245,13 @@ describe('layer 2 golden file: header and corpus', () => {
 describe('layer 2 golden file against the truth manifest', () => {
   const layer2Screens = Object.keys(manifest).filter((name) => manifest[name]?.category === 'layer2');
 
-  it('coverage with terminal dialogs: 39 of 55 layer 2 screens with a decision card, 47 with Esc alone', () => {
-    expect(layer2Screens).toHaveLength(55);
+  it('coverage with terminal dialogs: 40 of 60 layer 2 screens with a decision card, 48 with Esc alone', () => {
+    expect(layer2Screens).toHaveLength(60);
     const kind = (name: string): Layer2Kind | null => produced.screens[name]?.layer2 ?? null;
     // Today's card with buttons (a known screen dialog, the trust step) counts as a decision card, as in the manifest.
     const decision = layer2Screens.filter((name) => kind(name) === 'choices' || kind(name) === 'existing');
     const escOnly = layer2Screens.filter((name) => kind(name) === 'esc-only');
-    expect([decision.length, decision.length + escOnly.length]).toEqual([39, 47]);
+    expect([decision.length, decision.length + escOnly.length]).toEqual([40, 48]);
     expect(layer2Screens.filter((name) => kind(name) === 'existing'))
       .toEqual(layer2Screens.filter((name) => manifest[name]?.today === 'buttons'));
   });

@@ -156,6 +156,33 @@ struct DecoderRulesTests {
     }
   }
 
+  @Test("`ownCommandWait`: every stage decodes, no field = nil, an unknown stage drops with a degradation, null rejects")
+  func ownCommandWait() throws {
+    func frame(_ extra: String) -> String {
+      #"{"type":"session-changed","session":\#(summary.dropLast()),"backgroundTasks":[{"id":"a1","kind":"agent","#
+        + #""waitingSince":"2026-11-20T10:00:00.000Z","ownTasks":[{"id":"b1"}]\#(extra)}]}}"#
+    }
+    func task(_ extra: String) throws -> (BackgroundTask, [Degradation]) {
+      let decoded = try decode(frame(extra)).get()
+      guard case let .sessionChanged(event) = decoded.event else { throw FixtureError("not session-changed") }
+      return (try #require(event.session.backgroundTasks?.first), decoded.degradations)
+    }
+    for (raw, stage) in [("short", OwnCommandWait.short), ("long", .long), ("stuck", .stuck)] {
+      let (known, degradations) = try task(#","ownCommandWait":"\#(raw)""#)
+      #expect(known.ownCommandWait == stage)
+      #expect(degradations.isEmpty)
+    }
+    let (absent, none) = try task("")
+    #expect(absent.ownCommandWait == nil && none.isEmpty)
+    let (unknown, degradations) = try task(#","ownCommandWait":"later""#)
+    #expect(unknown.ownCommandWait == nil)
+    #expect(unknown.waitingSince == "2026-11-20T10:00:00.000Z" && unknown.ownTasks?.map(\.id) == ["b1"])
+    #expect(degradations == [Degradation(path: "/session/backgroundTasks/0/ownCommandWait", value: "later")])
+    for broken in [#","ownCommandWait":null"#, #","ownCommandWait":2"#] {
+      #expect(throws: EventRejection.self, "\(broken)") { try decode(frame(broken)).get() }
+    }
+  }
+
   @Test("notka: wynik `waiting` (postój subagenta) to znana wartość, bez degradacji")
   func waitingNoticeOutcome() throws {
     let frame = #"""

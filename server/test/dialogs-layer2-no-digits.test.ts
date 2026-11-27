@@ -87,6 +87,10 @@ const LAYER2_BLOCKS: readonly string[] = [
   'kontrolny/auto-bez-kontroli-bash-2.1.322.txt',
   // Bash consent after Enter on "Auto mode can't check actions": the options No and Yes stand without digits.
   'kontrolny/auto-bez-kontroli-bash-po-enter-2.1.322.txt',
+  // Start dialog about external imports of the project memory file: the options No and Yes stand without digits.
+  'kontrolny/importy-zewnetrzne-2.1.332.txt',
+  'kontrolny/importy-zewnetrzne-po-down-2.1.332.txt',
+  'kontrolny/importy-zewnetrzne-po-zaufaniu-2.1.332.txt',
   'kontrolny/picker-effort-2.1.314.txt',
   'kontrolny/picker-effort-2.1.316.txt',
   'kontrolny/picker-effort-2.1.319.txt',

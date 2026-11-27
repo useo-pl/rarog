@@ -182,8 +182,8 @@ struct TranscriptNewPillTests {
 
   @Test("skok: linia 6 pt pod paskiem cytatu; bez promptów i przy samej górze treści pasek się nie zjawi")
   func jumpOffset() {
-    // Głęboko w treści: pas nad linią = pasek 39 pt i dwa odstępy (pasek 6 pt pod górą, linia 6 pt pod nim).
-    #expect(NewLineJump.offset(lineMinY: 2000, insetTop: 24, bar: 39) == 2000 - 24 - 39 - 12)
+    // Deep in the content: the band above the line = the 39 pt bar hanging from the top and the 6 pt gap under it.
+    #expect(NewLineJump.offset(lineMinY: 2000, insetTop: 24, bar: 39) == 2000 - 24 - 39 - 6)
     // Bez promptów paska nie będzie: linia 6 pt pod górą safe area.
     #expect(NewLineJump.offset(lineMinY: 2000, insetTop: 24, bar: nil) == 2000 - 24 - 6)
     // Przy samej górze (przesunięcie od góry < nearTop) pasek zostaje schowany: linia 6 pt pod górą, bez pustego pasa.
@@ -191,7 +191,7 @@ struct TranscriptNewPillTests {
     // Między progami: 6 pt pod górą pasek by się pokazał i zasłonił linię — lista staje tuż przed progiem.
     let between = NewLineJump.offset(lineMinY: 90, insetTop: 24, bar: 39)
     #expect(between + 24 < PromptBar.nearTop, "pasek schowany")
-    #expect(90 - between - 24 >= NewLineJump.gap && 90 - between - 24 < 39 + 12, "linia pod górą, pas krótszy od paska")
+    #expect(90 - between - 24 >= NewLineJump.gap && 90 - between - 24 < 39 + 6, "linia pod górą, pas krótszy od paska")
   }
 
   @Test("fokus czytnika po skoku: pierwszy wiersz treści za linią, nie znacznik godziny")

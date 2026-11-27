@@ -6,10 +6,9 @@
  * payout. Creating the reader, its `repoint`, `relocated` and `close`, and the signals that order a read stay in the
  * facade `drivers/herdr-driver.ts`, because the facade knows the agent handle and follower events.
  */
-import type { SessionPullRequest } from '@rarog/shared';
 import type { Scheduler, TimerHandle } from '../runtime.ts';
-import { PULL_REQUESTS_BACKLOG_MS, pullRequestsSignature } from '../../herdr/background/index.ts';
-import type { PullRequestFilesReader } from '../../herdr/background/index.ts';
+import { PULL_REQUESTS_BACKLOG_MS, pullRequestLinksSignature } from '../../herdr/background/index.ts';
+import type { PullRequestFilesReader, PullRequestLinks } from '../../herdr/background/index.ts';
 
 export interface PullRequestPollState {
   /** Czytnik plików rozmowy pod kątem PR-ów; `null` = panel poza zasięgiem. */
@@ -22,8 +21,9 @@ export interface PullRequestPollState {
   prReading: boolean;
   prAgain: boolean;
   /**
-   * Podpis ostatnio wysłanej listy PR-ów. Start od pustej listy: pusta lista po podpięciu nie wychodzi, bo sesja po
-   * wymianie drivera trzyma listę tylko tej samej rozmowy (inną manager zdejmuje), a PR-y rozmowy nie znikają.
+   * Signature of the links last sent (the linked set and the window). It starts from an empty set: an empty set after
+   * attach does not go out, because the session after a driver swap keeps the links of the same conversation only
+   * (the manager drops another one), and the links of a conversation do not disappear.
    */
   prSent: string;
 }
@@ -32,13 +32,13 @@ export interface PullRequestPollState {
 export interface PullRequestPollDeps {
   readonly scheduler: Scheduler;
   readonly disposed: () => boolean;
-  readonly emit: (pullRequests: readonly SessionPullRequest[]) => void;
+  readonly emit: (links: PullRequestLinks) => void;
 }
 
 export function createPullRequestPollState(
   prReader: PullRequestFilesReader | null, prPollMs: number,
 ): PullRequestPollState {
-  return { prReader, prPollMs, prTimer: null, prReading: false, prAgain: false, prSent: pullRequestsSignature([]) };
+  return { prReader, prPollMs, prTimer: null, prReading: false, prAgain: false, prSent: pullRequestLinksSignature({ linked: [], windowStart: null }) };
 }
 
 /**
@@ -61,7 +61,7 @@ export function schedulePullRequests(
 }
 
 /**
- * Jeden odczyt PR-ów i wypłata listy, gdy różni się od wysłanej (pierwsza idzie zawsze). Zaległość odczytu
+ * One PR read and the payout of the links when they differ from the ones sent (the set or the window). Zaległość odczytu
  * (budżet bajtów) zamawia następny po krótkiej przerwie, bez czekania na sygnał.
  */
 export async function readPullRequests(state: PullRequestPollState, deps: PullRequestPollDeps): Promise<void> {
@@ -78,10 +78,10 @@ export async function readPullRequests(state: PullRequestPollState, deps: PullRe
     stale = read === null;
     if (read === null) return;
     backlog = read.backlog;
-    const signature = pullRequestsSignature(read.pullRequests);
+    const signature = pullRequestLinksSignature(read.links);
     if (signature !== state.prSent) {
       state.prSent = signature;
-      deps.emit(read.pullRequests);
+      deps.emit(read.links);
     }
   } finally {
     state.prReading = false;

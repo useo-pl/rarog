@@ -767,7 +767,7 @@ describe('terminal PTY — killswitche zamykają `pa` tą samą drogą co `in`',
  *
  * Uwaga: start ficzeru (i drugi backend w teście odzyskiwania) puszcza `reconcile` po
  * CAŁYM herdr użytkownika, nie tylko po panelach testu — tak jak produkcja. Panele terminala
- * Raroga w starym formacie (token bez etykiety) dostają wtedy etykietę `rarog-term <id>`, a sieroty
+ * Raroga w starym formacie (token bez etykiety) dostają wtedy etykietę `rt:<kod id>`, a sieroty
  * z etykietą — token. Niczego nie zamyka i nie zakłada (cofnięcie etykiety:
  * `herdr pane rename <pane> --clear`).
  */
@@ -1097,7 +1097,7 @@ describe.skipIf(!HERDR_LIVE)('terminal PTY — backend herdr na ŻYWYM panelu (o
       await sleep(200);
       pane = (await launchClient.listPanes()).find((p) => p.tokens[RAROG_TERM_TOKEN] === opened.id);
     }
-    expect(parsePaneLabel(pane.label)).toEqual({ kind: 'term', value: opened.id });
+    expect(parsePaneLabel(pane.label)).toEqual({ kind: 'term', id: opened.id });
     const paneId = pane.paneId;
     const panesBefore = (await launchClient.listPanes()).length;
 

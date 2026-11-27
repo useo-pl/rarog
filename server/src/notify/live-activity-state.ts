@@ -18,7 +18,8 @@
  * + `waiting-question`, `working` = `starting` + `running` ORAZ sesja po turze, w której coś dalej mieli
  * w tle („pracuje w tle"), `finished` = `waiting-input` z wynikiem nieodebranym (`seen !== true`)
  * i bez pracy w tle. Kafel bez zadań w tle rozjeżdżałby się z listą: lista mówiłaby „3 pracują", a kafel
- * „1 pracuje · 1 skończyła".
+ * „1 pracuje · 1 skończyła". A `waiting-input` session whose subagent is stuck on its own command (`stuckWait`)
+ * counts as waiting only, acknowledged or not, and is not the lead; the silence timer (`isBusy`) ignores it.
  *
  * Sesja wiodąca = NAJDŁUŻEJ czekająca, a gdy nikt nie czeka — najdłużej pracująca. Reguła „najstarszy
  * `stateSince`" jest świadomie stabilna: wiodąca zmienia się tylko wtedy, gdy ta sesja zmienia stan.
@@ -29,10 +30,10 @@
  * przebieg nie wypycha z kafla tego, który już tam stoi.
  *
  * Co z listy zadań liczy się jako praca, rozstrzyga `herdr/background/work.ts` (jedno miejsce reguł,
- * `docs/background-tasks.md`): ten moduł tylko pyta `hasBackgroundWork`, `hasOpenWorkflow` i `workflowsWithRun`.
- * Subagent w postoju (`waitingSince`) pracą nie jest: sesja po turze, której całe tło czeka, nie liczy
- * się do „pracuje", a z wynikiem nieodebranym liczy się do „skończyły" (złota ramka
- * `live-activity.update.waiting-agent.json`).
+ * `docs/background-tasks.md`): ten moduł tylko pyta `hasBackgroundWork`, `hasOpenWorkflow`, `stuckWait`
+ * i `workflowsWithRun`. Subagent w postoju (`waitingSince`) pracą nie jest: sesja po turze, której całe tło czeka,
+ * nie liczy się do „pracuje", a z wynikiem nieodebranym liczy się do „skończyły". Once its wait reaches `stuck`, the
+ * session counts as waiting instead (golden frame `live-activity.update.waiting-agent.json`).
  */
 import type { BackgroundTask, SessionState, SessionSummary, WorkflowRun } from '@rarog/shared';
 import { TERM_ID_RE } from '@rarog/shared';
@@ -41,7 +42,7 @@ import type { LiveActivityContentState } from '@rarog/shared/rest';
 import {
   LIVE_ACTIVITY_SEGMENTS_MAX, LIVE_ACTIVITY_TEXT_MAX, LIVE_ACTIVITY_WORKFLOWS_MAX,
 } from '@rarog/shared/rest';
-import { hasBackgroundWork, hasOpenWorkflow, workflowsWithRun } from '../herdr/background/work.ts';
+import { hasBackgroundWork, hasOpenWorkflow, stuckWait, workflowsWithRun } from '../herdr/background/work.ts';
 import { currentPhase } from './workflow-phase.ts';
 
 type Top = NonNullable<LiveActivityContentState['top']>;
@@ -197,11 +198,15 @@ export function aggregateState(
   const nowSec = Math.floor(nowMs / 1000);
   const waiting = sessions.filter((s) => WAITING.includes(s.state));
   const working = sessions.filter((s) => WORKING.includes(s.state));
-  const background = sessions.filter((s) => QUIET.includes(s.state) && hasBackgroundWork(s.backgroundTasks));
+  // A session after a turn whose subagent is stuck on its own command waits for the owner: it counts once, as waiting.
+  const stuck = sessions.filter((s) => stuckWait(s.state, s.backgroundTasks));
+  const background = sessions.filter((s) => QUIET.includes(s.state) && !stuck.includes(s)
+    && hasBackgroundWork(s.backgroundTasks));
   const finished = sessions.filter(
-    (s) => s.state === 'waiting-input' && s.seen !== true && !hasBackgroundWork(s.backgroundTasks),
+    (s) => s.state === 'waiting-input' && s.seen !== true && !stuck.includes(s) && !hasBackgroundWork(s.backgroundTasks),
   ).length;
-  // Wiodąca bez zmian: sesja „w tle" nie jest celem tapnięcia — jej tura już się skończyła.
+  // Wiodąca bez zmian: sesja „w tle" nie jest celem tapnięcia — jej tura już się skończyła. The same holds for a
+  // stuck session, so it is not a lead candidate.
   const lead = longest(waiting) ?? longest(working);
   const runs = openRuns(sessions);
   const workflows = runs.slice(0, LIVE_ACTIVITY_WORKFLOWS_MAX).map(workflowOf);
@@ -209,7 +214,7 @@ export function aggregateState(
   const limits = extras.limits !== undefined && Object.keys(extras.limits).length > 0 ? extras.limits : undefined;
   const mac = extras.mac !== undefined && Object.keys(extras.mac).length > 0 ? extras.mac : undefined;
   return {
-    waiting: waiting.length,
+    waiting: waiting.length + stuck.length,
     working: working.length + background.length,
     finished,
     ...(lead === undefined ? {} : { top: topOf(lead) }),

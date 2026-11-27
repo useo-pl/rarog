@@ -305,6 +305,7 @@ a `fix:` line, `warn` with a `fix:` line (works, but with a defect), `info` (no 
     for in the server's directory list with `HOME` from the service environment, then
     `gh auth status --active --no-refresh --hostname github.com` with the same closed environment as the server's
     reads: only the active account, the one the reads use, and no token refresh, so the check writes nothing.
+    Session cards list PRs only with `gh` and a login, so the lines without them say that cards show no PRs.
     `RAROG_PR_STATUS=0` is `info`; the demo and its review mode (`RAROG_DEMO=1`) are `info` about the fixed state
     source, with no lookup and no process; no `gh` is `warn` (fix: install the GitHub CLI in one of the directories,
     `gh auth login` and a server restart, or set the flag to `0`); not logged in, or a check that did not finish,
@@ -1140,7 +1141,7 @@ terminal (`Cmd+G` in the app = lazygit).
 `RAROG_HERDR_LAUNCH` and `RAROG_HERDR_SEND` (without them `POST /api/term` returns 409). It creates a tab
 `rarog <slot> · <dir>` visible on the Mac and keeps one state file, `<dataDir>/term-herdr.json` (pane age and
 directory, no content). Accepted costs: shells die with a herdr server restart or update (the pane token comes back
-from the pane label `<tab label> · rarog-term <id>` at start, every 4 h, or on `POST`; a start while herdr is
+from the pane label `<tab label> · rt:<id code>` at start, every 4 h, or on `POST`; a start while herdr is
 unreachable retries every 30 s until herdr answers), one controller at a time
 (a second device takes over), and the pane size follows the last client (forgetting a pane: the runbook in
 `docs/security-model.md`).
@@ -1162,11 +1163,12 @@ changes with an entry in `env` and a restart.
   mosh included (guaranteed since herdr 0.9.1), so Rarog calls it ONLY for a pane on `done`. `0` keeps only the
   local marker. `RAROG_HERDR_SEND=0` turns this path off first.
 - `RAROG_HERDR_TAB_LABELS=1` (default) names herdr tabs AFTER creating them: a Claude tab's label follows the card
-  label (only a single-pane tab with a `rarog-claude` pane; a name set by hand stays), and Claude and terminal tabs
+  label (only a single-pane tab with an `rc:` pane; a name set by hand stays), and Claude and terminal tabs
   without an origin label get Rarog labels. The pane label leads with the tab label and follows it the same way
-  (`<tab label> · rarog-claude …`, `<tab label> · rarog-term <id>`), so herdr's "Go to" window names the pane like
-  its tab; a bare origin label gets the tab label in front. `0` keeps the tab and pane labels from creation and
-  renames nothing.
+  (`<tab label> · rc:…`, `<tab label> · rt:…`), so herdr's "Go to" window names the pane like its tab; a bare
+  origin label gets the tab label in front. `0` keeps the tab and pane labels from creation and renames nothing.
+  The rewrite of old-format pane labels (`… · rarog-claude …`, `… · rarog-term …`) into the current format
+  does not depend on this flag: it runs whenever herdr answers and only `RAROG_HERDR_SEND=0` stops it.
   `RAROG_HERDR_SEND=0` turns off `tab.rename` and `pane.rename`; runbook "Tab name set by Rarog" in
   `docs/security-model.md`.
 - `RAROG_CODEX_STATUS=1` (default) lets `agent === 'codex'` panes into the session list as STATE-ONLY entries: row,
@@ -1184,15 +1186,15 @@ changes with an entry in `env` and a restart.
   high a cost.
 - `RAROG_AGENT_FILES=1` (default) makes the herdr driver read subagent transcripts
   (`<session>/subagents/agent-<id>.jsonl`), so Rarog knows that a subagent in standby resumed on its own and which own
-  tasks it waits for. The same setting lets the session's pull request list read all subagent and workflow agent
-  files (`docs/pull-requests.md`). `0` = a subagent stays waiting after standby until it resumes or ends, with no task
-  list, and the pull request list comes from the main file alone.
-- `RAROG_PR_STATUS=1` (default) asks GitHub for the state of the PRs on the session lists (`open`, `draft`,
-  `merged`, `closed`) with the user's `gh` login for `github.com`, only while an app is connected (`docs/pull-requests.md`,
-  "State on GitHub"). It approves and sends nothing to a pane; it is an outbound channel, described in
-  `security-model.md`, "PR status: the state of session PRs from GitHub". `0` = no tracker, no `gh` call and no
-  `state` field on the wire; any value other than `1` or `0` stops the start. The demo answers from a fixed map
-  and never runs `gh`. `rarog doctor` shows the line "PR status".
+  tasks it waits for. `0` = a subagent stays waiting after standby until it resumes or ends, with no task list. The
+  session's pull request list does not depend on it: it reads the main file only (`docs/pull-requests.md`).
+- `RAROG_PR_STATUS=1` (default) asks GitHub with the user's `gh` login for `github.com`, only while an app is
+  connected, for the author, creation time and title of the PRs linked to the conversations and for the state of
+  the PRs the session lists show (`open`, `draft`, `merged`, `closed`; `docs/pull-requests.md`, "State on GitHub").
+  The lists show only PRs whose author is that login. It approves and sends nothing to a pane; it is an outbound
+  channel, described in `security-model.md`, "PR status: the state of session PRs from GitHub". `0` = no tracker
+  and no `gh` call, so session cards show no PRs; any value other than `1` or `0` stops the start. The demo answers
+  from a fixed map and never runs `gh`. `rarog doctor` shows the line "PR status".
 - `RAROG_INBOX=1` (default) keeps an Inbox card per session (`server/src/inbox/`), sends the card heads to a global
   stream opened with `inbox=1`, serves `GET /api/inbox` and its remove and restore routes, and announces the `inbox`
   capability (`docs/implementation-spec.md`, "Inbox"). It sends nothing to a pane; a removal of a result card

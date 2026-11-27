@@ -142,14 +142,16 @@ own files and only reads the others; an "owner" comment stands at the top of eac
   (`Session/Voice/LockedPhoneMonitor.swift`) reads what records there, holds the server connection and writes its
   `client.log` lines; the app's instance (`LockedPhoneMonitor+Live.swift`) wires the center, the store and the app's
   `TunnelCoordinator.holdForVoice`, and the store's question to the server for its heartbeat stands in
-  `RarogCore/RarogStore+LockedPhone.swift` (`docs/companion.md`, "Locked phone (trial)"). The app target reaches the center
-  only through `AppMicrophone` (`Session/Voice/AppMicrophone.swift`, public): what records, its phase and its
+  `RarogCore/RarogStore+LockedPhone.swift`; the rule it holds by, `BackgroundRecording`, stands in
+  `RarogCore/VoiceAgent/BackgroundRecording.swift` (`docs/companion.md`, "Locked phone"). The app target reaches the
+  center only through `AppMicrophone` (`Session/Voice/AppMicrophone.swift`, public): what records, its phase and its
   subject (`MicrophonePhase`, `MicrophoneSubject` in `Session/Voice/DictationCenter.swift`; the subject carries
-  only a session's project and name), its changes and the end from outside the screens. Its one user is the voice
-  Live Activity's controller in the app, `VoiceActivityController` (`Rarog/VoiceActivityController.swift`: the
-  rules, the ActivityKit adapter behind `VoiceActivitySystem`); the activity's state, copy, views and End intent stand in `RarogActivity`
-  (`VoiceActivity*.swift`, `EndVoiceActivityIntent.swift`), and the `RarogWidgets` extension draws it
-  (`RarogVoiceActivity.swift`).
+  only a session's project and name), its changes, and the end and the Send from outside the screens (the Send's
+  outcome `LockScreenSend` in `Session/Voice/LockScreenSend.swift`). Its one user is the voice Live Activity's
+  controller in the app, `VoiceActivityController` (`Rarog/VoiceActivityController.swift`: the rules, the send from
+  the tile, the ActivityKit adapter behind `VoiceActivitySystem`); the activity's state, copy, views and the intents
+  of its buttons stand in `RarogActivity` (`VoiceActivity*.swift`, `EndVoiceActivityIntent.swift`,
+  `SendDictationActivityIntent.swift`), and the `RarogWidgets` extension draws it (`RarogVoiceActivity.swift`).
 - **Row model:** `TranscriptRows.swift` holds the `TranscriptRow` enum (Swift cannot extend an enum: a new case goes
   at the end) and `build`; messages in `TranscriptRows+Messages`, outbox and cards in `+Tail`; reading rules in
   `ToolRows`, `PromptFolds`, `TranscriptMarkers` and `TranscriptReading`.
@@ -280,7 +282,11 @@ Behavior of the surfaces that the sections above do not describe:
   subagent its own commands (`ownTasks` → `OwnTaskRow`, the command shortened to its tools by `Model/CommandTools`,
   never the whole command; Copy Command takes `rawCommand`), and under a `workflow` task with `run` its section (a
   summary, the phase list, live agents, and a toggle for the finished ones). The layout is ALWAYS the same, without a
-  threshold on the agent count. A waiting subagent has an hourglass and the waiting time from `clockSince`. Without
+  threshold on the agent count. A waiting subagent has an hourglass and the waiting time from `clockSince`; from a
+  long wait on its own command the state line gives way to the warning line (`Views/Header/BackgroundWaitWarningLine`,
+  model `Model/BackgroundWaitWarning`), and the Check button stands under the row (`Views/Header/WaitCheckButton`, message
+  and button model `Model/WaitCheckMessage`; the guard in `RarogCore`: `WaitCheck`, `RarogStore+WaitCheck`,
+  `Reducer+WaitCheck`, `Selectors+WaitCheck`). Without
   contact with the source (`WorkflowRunModel.frozen`) clocks stop and the panel says it shows the last known state.
 - **Inspector (iPad):** `Views/Inspector/InspectorPanel` next to a Claude session screen; rules in
   `Model/Inspector` (`InspectorModel.fits`: a closed panel appears from a column of 920 pt, an open one stays down to
@@ -369,7 +375,7 @@ Behavior of the surfaces that the sections above do not describe:
   that takes the keyboard from another anchor keeps the responder that anchor remembers (the field under the sheet),
   so closing the sheet from a page gives the keyboard back to that field. An anchor coming back into the window
   after a pop keeps the responder it remembered while that one is still on screen, so whoever held the keyboard on
-  the page above (the shortcut recorder's capture view) does not take its place (`SheetKeyboardAnchorTests`). Guard
+  the page above (a shortcut row listening for keys) does not take its place (`SheetKeyboardAnchorTests`). Guard
   `PresentationSourceTests`; tests `AppSheetTests`.
 - **Settings** (`Views/Settings/`, the page state and the routes from outside the sheet in `Model/SettingsPage`):
   `SettingsSheet` is the list and binds the pages with one `navigationDestination(item:)`; the Server, Pairing and
@@ -408,10 +414,10 @@ Behavior of the surfaces that the sections above do not describe:
   state, the footer and the launch actions; each section is an extension in its own file (`NewSessionSheet+Project`,
   `+Start`, `+Conversations`), and the footer while browsing (hint, Cancel, Choose, the warning) is
   `NewSessionChooseBar`.
-- **Prompt bar** (`Session/PromptBarView`, rules in `Model/PromptBar`): looks like the prompt bubble (a full
-  `userPlate` background, no glass, `Radius.block`), the transcript's side margin from the safe area (16 pt in
-  Standard spacing), as wide as its content up to min(column − 2 × that margin, the bubble's cap); the "Prompts in This
-  Session" popover lists the newest first.
+- **Prompt bar** (`Session/PromptBarView`, rules in `Model/PromptBar`): the prompt bubble's plate (a full
+  `userPlate` background, no glass, `Radius.block` on the bottom corners) hanging from the header's edge, the
+  transcript's side margin from the safe area (16 pt in Standard spacing), as wide as its content up to min(column −
+  2 × that margin, the bubble's cap); the "Prompts in This Session" popover is a timeline, newest first.
 - **Global shortcuts** (`Views/RarogCommands`): Cmd+1…9 for sessions and terminals, Cmd+L, Cmd+N, Cmd+Shift+N,
   Cmd+F, Cmd+G, Cmd+B, Cmd+I and the text size Cmd+=, Cmd+- and Cmd+0, published as a scene
   value (`focusedSceneValue`), so the tab number matches what the bar shows. Cmd+1…9 carries the tab id from the
@@ -419,8 +425,9 @@ Behavior of the surfaces that the sections above do not describe:
   accepts one call per 0.3 s (`acceptsPreviousProject`), because the menu can fire it twice in the same millisecond.
 - **Changeable shortcuts** (`Model/AppShortcutSettings`, logic without UIKit; `Views/ShortcutSettings/`): the
   dictation and voice agent combinations chosen on the Settings pages of dictation and the voice agent
-  (`ShortcutPageSection`), stored per device, checked before saving and read by
-  `AppShortcut` (`native/Rarog/docs/rarog-ui.md`, the "Changeable shortcuts" item).
+  (`ShortcutPageSection`), changed in the row (`ShortcutRowEditor`, the row's rules without UIKit;
+  `ShortcutCaptureView`, the key receiver while the row listens), stored per device, checked before saving and read
+  by `AppShortcut` (`native/Rarog/docs/rarog-ui.md`, the "Changeable shortcuts" item).
 - **App text size** (`Model/TextScale`, logic without UIKit; `Views/TextScale/`): the step of Cmd+=, Cmd+- and
   Cmd+0 stored per device, put on the scene by `TextScaleSceneBinding`, the Shift+Cmd+= key on an invisible button
   (`TextScaleAlternateKeys`, at the root and in `SheetHost`) and the Text Size page of Settings

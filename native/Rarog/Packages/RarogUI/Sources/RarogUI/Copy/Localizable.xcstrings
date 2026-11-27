@@ -6428,19 +6428,43 @@
       }
     },
     "composer.voiceNotice.sessionLimit" : {
-      "comment" : "Pole wiadomości › Dyktowanie. Wariant: przypadek sessionLimit.",
+      "comment" : "Message field, note and Inbox reply › Dictation. The recording reached its length limit and stopped. Parameter 1: the limit in minutes (number). Plural by parameter 1.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recording stopped at the 15-minute limit. The text is still in the field."
+            "value" : "Recording stopped at the %lld-minute limit. The text is still in the field."
           }
         },
         "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Limit 15 minut — kończę nagrywanie. Tekst został w polu."
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Limit %lld minut — kończę nagrywanie. Tekst został w polu."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Limit %lld minut — kończę nagrywanie. Tekst został w polu."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Limit %lld minuty — kończę nagrywanie. Tekst został w polu."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Limit %lld minut — kończę nagrywanie. Tekst został w polu."
+                }
+              }
+            }
           }
         }
       }
@@ -8283,6 +8307,24 @@
         }
       }
     },
+    "header.backgroundTaskStuck" : {
+      "comment" : "Session header › Background tasks. VoiceOver of the background pill: a subagent that has waited over an hour on its own command, in the sentence about background tasks: “subagent Research is stuck on a command”. Parameters: 1. kind with description.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is stuck on a command"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wisi na komendzie"
+          }
+        }
+      }
+    },
     "header.backgroundTaskTools" : {
       "comment" : "Nagłówek sesji › Zadania w tle. Czytnik: narzędzia komendy pod opisem zadania: „komenda: pnpm test”. Parametry: 1. narzędzia (skrót komendy z CLI).",
       "extractionState" : "manual",
@@ -8315,6 +8357,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ czeka na własne zadanie"
+          }
+        }
+      }
+    },
+    "header.backgroundTaskWaitingLong" : {
+      "comment" : "Session header › Background tasks. VoiceOver of the background pill: a subagent that has waited over 30 minutes on its own command, in the sentence about background tasks: “subagent Research has been waiting a long time on its own task”. Parameters: 1. kind with description.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has been waiting a long time on its own task"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ długo czeka na własne zadanie"
           }
         }
       }
@@ -10529,6 +10589,168 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tak"
+          }
+        }
+      }
+    },
+    "header.waitCheck" : {
+      "comment" : "Button under a subagent row in the background section (popover and inspector) when the subagent has waited long on its own background command; it sends the main agent a fixed question once. One short word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprawdź"
+          }
+        }
+      }
+    },
+    "header.waitCheckHint" : {
+      "comment" : "VoiceOver hint of the Check button under a subagent that has waited long on its own background command.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asks the main agent whether the subagent's commands are still running."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pyta głównego agenta, czy komendy subagenta jeszcze działają."
+          }
+        }
+      }
+    },
+    "header.waitCheckSent" : {
+      "comment" : "In place of the Check button once the server took the message. %@ = the clock of that moment (21:40 or 9:40 PM). As short as the button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent · %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wysłano · %@"
+          }
+        }
+      }
+    },
+    "header.waitCheckSentSpoken" : {
+      "comment" : "VoiceOver label of the text in place of the Check button once the server took the message. %@ = the clock of that moment.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent to the main agent at %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wysłano do głównego agenta o %@"
+          }
+        }
+      }
+    },
+    "header.waitWarning" : {
+      "comment" : "Session header › Background tasks. Warning line in place of the state line of a subagent that has waited over 30 minutes on its own background commands: “waiting 47m on: pgrep, sleep”. A mark in the warning colour stands before it; the line wraps. Parameters: 1. the short counter since the standby (format.short.*); 2. the tools of its commands, comma-separated.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "waiting %1$@ on: %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "czeka %1$@ na: %2$@"
+          }
+        }
+      }
+    },
+    "header.waitWarning.untimed" : {
+      "comment" : "Session header › Background tasks. The same warning line when the standby time is unknown: “waiting on: pgrep, sleep”. Parameters: 1. the tools of its commands, comma-separated.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "waiting on: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "czeka na: %@"
+          }
+        }
+      }
+    },
+    "header.waitWarningSpoken.long" : {
+      "comment" : "Session header › Background tasks. VoiceOver: the warning line of a subagent that has waited over 30 minutes on its own commands, lowercase fragment after a comma: “waiting a long time on: pgrep, sleep”. Parameters: 1. the tools of its commands, comma-separated.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "waiting a long time on: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "długo czeka na: %@"
+          }
+        }
+      }
+    },
+    "header.waitWarningSpoken.since" : {
+      "comment" : "Session header › Background tasks. VoiceOver: the warning line with the time since the standby: “stuck on: pgrep, sleep, for 1 hour”. Parameters: 1. header.waitWarningSpoken.long or .stuck (text); 2. RelativeTime.spokenSince (text).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, for %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, od %2$@"
+          }
+        }
+      }
+    },
+    "header.waitWarningSpoken.stuck" : {
+      "comment" : "Session header › Background tasks. VoiceOver: the warning line of a subagent that has waited over an hour on its own commands, lowercase fragment after a comma: “stuck on: pgrep, sleep”. Parameters: 1. the tools of its commands, comma-separated.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stuck on: %@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wisi na: %@"
           }
         }
       }
@@ -14875,6 +15097,24 @@
         }
       }
     },
+    "list.stuckOnCommand" : {
+      "comment" : "Session list › a row's state word in place of done or idle: a subagent of the session has waited over an hour on a background command it started itself. Lowercase like the other state words; the clock follows it on the same line.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stuck on a command"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wisi na komendzie"
+          }
+        }
+      }
+    },
     "list.tailnetLabel" : {
       "comment" : "Lista sesji i stopka limitów › Nagłówek listy. „TS · nazwa\" : dwa znaki mówią, czego dotyczy goła nazwa w rogu nagłówka. Parametry: 1. name (tekst).",
       "extractionState" : "manual",
@@ -14943,6 +15183,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "czeka na zadanie w tle"
+          }
+        }
+      }
+    },
+    "list.toneSpoken.backgroundWaitLong" : {
+      "comment" : "Session list › tone word for VoiceOver (colour never stands alone), also after the status word in a session tab's sentence. Case: the agent finished its turn and a subagent has waited over 30 minutes on a background command it started itself. Lowercase fragment after a comma.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "waiting a long time on a background task"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "długo czeka na zadanie w tle"
           }
         }
       }
@@ -22639,38 +22897,20 @@
         }
       }
     },
-    "shortcutSettings.current" : {
-      "comment" : "Ustawienia › Dyktowanie albo Agent głosowy › strona jednego skrótu: etykieta wiersza z obecnym skrótem (wartość to glify, np. ⌥⌘M). Krótko.",
+    "shortcutSettings.changeHint" : {
+      "comment" : "VoiceOver hint of the shortcut in the Keyboard Shortcut section of Settings: a double tap makes the row wait for a key press.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Current"
+            "value" : "Waits for a new shortcut."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obecny"
-          }
-        }
-      }
-    },
-    "shortcutSettings.footer" : {
-      "comment" : "Settings, Dictation and Voice Agent pages: footer under the keyboard shortcut row; a tap on the row opens the page that records a new shortcut.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Works with a hardware keyboard. Tap to record a new shortcut."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Działa z klawiaturą fizyczną. Stuknij, żeby nagrać nowy skrót."
+            "value" : "Czeka na nowy skrót."
           }
         }
       }
@@ -22693,38 +22933,38 @@
         }
       }
     },
-    "shortcutSettings.lead" : {
-      "comment" : "Ustawienia › Dyktowanie albo Agent głosowy › strona jednego skrótu: zdanie nad polem, które czeka na naciśnięcie nowej kombinacji klawiszy.",
+    "shortcutSettings.hint" : {
+      "comment" : "Footer under the Keyboard Shortcut section of the Dictation and Voice Agent pages of Settings, with a hardware keyboard connected.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Press the new shortcut on the keyboard. Esc cancels."
+            "value" : "Tap the shortcut and press a new one on a hardware keyboard. Esc cancels."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naciśnij nowy skrót na klawiaturze. Esc anuluje."
+            "value" : "Stuknij skrót i naciśnij nowy na klawiaturze fizycznej. Esc anuluje."
           }
         }
       }
     },
-    "shortcutSettings.new" : {
-      "comment" : "Ustawienia › Dyktowanie albo Agent głosowy › strona jednego skrótu: etykieta wiersza z właśnie naciśniętym skrótem (wartość to glify). Krótko.",
+    "shortcutSettings.listening" : {
+      "comment" : "Shortcut row on the Dictation and Voice Agent pages of Settings: replaces the shortcut's glyphs while the row waits for a key press. Short, fits a small capsule.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "New"
+            "value" : "Press shortcut…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nowy"
+            "value" : "Naciśnij skrót…"
           }
         }
       }
@@ -22833,24 +23073,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Przywróć domyślny"
-          }
-        }
-      }
-    },
-    "shortcutSettings.save" : {
-      "comment" : "Ustawienia › Dyktowanie albo Agent głosowy › strona jednego skrótu: przycisk, który zapisuje naciśnięty skrót.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save Shortcut"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zapisz skrót"
           }
         }
       }
@@ -25762,13 +25984,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tell the agent what to do. You can put your phone down."
+            "value" : "Tell the agent what to do."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Napisz, co ma zrobić — możesz odłożyć telefon."
+            "value" : "Napisz, co ma zrobić."
           }
         }
       }
@@ -28131,6 +28353,24 @@
         }
       }
     },
+    "voiceAgent.call.end.sessionLimit" : {
+      "comment" : "Voice conversation ended by itself: it reached its length limit of 20 minutes from the tap. Status row under the message field, the Inbox card and the session list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The conversation ended after 20 minutes."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rozmowa zakończona po 20 minutach."
+          }
+        }
+      }
+    },
     "voiceAgent.call.end.speechFailed" : {
       "comment" : "Voice conversation ended: Soniox speech failed during the conversation.",
       "extractionState" : "manual",
@@ -28595,42 +28835,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rozmowa głosowa z agentem o bieżącej sesji Claude Code. Działa na OpenAI z kluczem API ustawionym na serwerze Raroga."
-          }
-        }
-      }
-    },
-    "voiceAgent.lockedTrial.lead" : {
-      "comment" : "One-line footnote under the locked-phone trial switch on the Voice Agent settings page.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A trial for measuring: a conversation or dictation you started keeps running after the phone locks."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Próba do pomiaru: rozpoczęta rozmowa albo dyktowanie trwa po zablokowaniu telefonu."
-          }
-        }
-      }
-    },
-    "voiceAgent.lockedTrial.title" : {
-      "comment" : "Switch label on the Voice Agent settings page; a trial that keeps a voice conversation or dictation running after the phone locks.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keep Talking When Locked (Trial)"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rozmowa po zablokowaniu (próba)"
           }
         }
       }

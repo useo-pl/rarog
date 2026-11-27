@@ -25,9 +25,11 @@ In `docs/`:
 | [distribution.md](distribution.md) | pairing devices, the `rarog` command, installation with `rarog setup` |
 | [dialogs.md](dialogs.md) | how Claude Code dialogs in herdr panes are recognized and answered |
 | [dialog-card.md](dialog-card.md) | card with the literal choices of a CLI dialog (layer 2 flag) |
+| [start-dialogs.md](start-dialogs.md) | start dialogs herdr reads as ready: recognition, card, no key from the phone |
 | [background-tasks.md](background-tasks.md) | background tasks of a session: commands, subagents, workflows |
+| [subagent-long-wait.md](subagent-long-wait.md) | how long a subagent in standby has waited on its own command |
 | [artifacts.md](artifacts.md) | session artifacts (claude.ai pages) read from the transcript |
-| [pull-requests.md](pull-requests.md) | session pull requests (`gh pr create`) read from the conversation files |
+| [pull-requests.md](pull-requests.md) | session pull requests: linked by `pr-link`, the user's own per GitHub |
 | [scheduled-tasks.md](scheduled-tasks.md) | session scheduled tasks (crons from `CronCreate`) read from the main file |
 | [companion.md](companion.md) | the voice agent: server routes, `claude -p` call, secret mask, configuration, security, app |
 | [slash-commands.md](slash-commands.md) | Claude Code slash commands the phone can send, and how Rarog learns which exist |

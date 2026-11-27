@@ -77,6 +77,8 @@ struct ToastLifecycleTests {
     let waits = Waits()
     let toasts = ToastCenter(announcer: Announcer(sink: { _ in }, now: Date.init), wait: waits.wait)
     toasts.offer(signal("s1", .error), state: state(), viewing: "s2")
+    // Each toast starts its clock in its own task: the older clock registers first, so index 0 is the older one.
+    await settle { waits.count == 1 }
     toasts.notice("Powiadomienia działają")
     let newer = try #require(toasts.current)
     await settle { waits.count == 2 }

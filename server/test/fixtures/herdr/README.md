@@ -236,6 +236,12 @@ depends on it.
 - **`dialog-exitplanmode.txt`** (transcribed from a live measurement, with a `⏺ Read(…)` scrollback added on
   purpose): the parser must take `ExitPlanMode` from the closed signature, which matches only the header sentence,
   not `Read` from the `⏺` line. The byte-for-byte capture is `measured/exitplanmode-<version>.txt`.
+- **`dialog-trust-preapproved-2.1.332.txt`** (reconstruction from a refusal dump of a live session in a 139-column
+  pane, Claude Code 2.1.332; neutral folder and permission names of the same lengths): the folder trust dialog
+  without digits with the warning "⚠ This folder pre-approves 10 tool permissions in …:". The first line of the
+  permission list has a three-space margin, the indent of an option line; the list wraps at a space onto the
+  one-space margin and ends with "…, and 2 more". The trust parser recognizes it
+  (`server/test/dialogi-zaufanie-strzalka.test.ts`).
 - **`dialog-exitplanmode-50kol-2.1.331.txt`** (reconstruction from a screenshot of a live failure in a 50-column
   pane, Claude Code 2.1.331; neutral plan text and plan file name): the question wraps after "ready to", so the
   signature sentence "Claude has written up a plan and is ready to execute" spans two lines, and the footer breaks
@@ -355,7 +361,7 @@ and draws a barred sentence about the path outside the working directories above
 
 ## `kontrolny/`: control set of dialog blocks
 
-Dialog block shapes from the live CLI (Claude Code 2.1.314 to 2.1.330) and `manifest.json`, which describes each
+Dialog block shapes from the live CLI (Claude Code 2.1.314 to 2.1.332) and `manifest.json`, which describes each
 shape, plus three captures outside the directory (the pickers in `measured/` and
 `refusals/zaufanie-bez-cyfr-2.1.311.txt`); fields: `docs/dialogs.md`, "Control set". The measurement session had
 its own `HOME` and config directory and a fake API for the model, so the account is an API key
@@ -363,8 +369,11 @@ its own `HOME` and config directory and a fake API for the model, so the account
 and any other prompt with `ok` (except the `Bash` marker of the ultracode measurement). Shapes: the trust dialog
 (also after `down`, with `❯` on "Yes, I trust this folder"), `/usage`, a question form, the `/model` picker,
 "Switch model?" (also after `/model <alias>`, under rules with and without the effort indicator), the `/effort`
-slider (also with ultracode on and right after `/effort status`) and the start dialog of
-`--permission-mode bypassPermissions`. The `zgoda-bash-…` and `zgoda-edit-…` captures are consent dialogs (Claude
+slider (also with ultracode on and right after `/effort status`), the start dialog of
+`--permission-mode bypassPermissions` and the start dialog "Allow external CLAUDE.md file imports?"
+(`importy-zewnetrzne-…`: the project memory file imports `../shared/notes.md`; also after `down`, with a list of
+15 imports in a low pane, and after the trust dialog of a project without trust; each dismissed with `Esc`). The
+`zgoda-bash-…` and `zgoda-edit-…` captures are consent dialogs (Claude
 Code 2.1.319, 2.1.321 and 2.1.328, 119-column pane; the `zgoda-bash-dangerous-rm-sredni-…`, `-telefon-…` and
 `-waski-…` captures 99, 62 and 57 columns) from a session on a separate herdr server: the fake API answers the marked
 prompt with fixed tool calls (the commands of the root `*.command.json` files, or a harmless command with the same
@@ -602,6 +611,17 @@ zeros.
   "Standby-only turn: no `done` push". It keeps everything the task reducer and the turn accounting read; the subagent
   files add content-free time entries next to gaps over 20 s, so each wake keeps its exact time. Not covered: the
   follower, the manager and the herdr grace period.
+
+A reconstruction sits next to them:
+
+- **`tasks/endless-wait-loop-2.1.332/`** (reconstruction, neutral content, line shapes copied from
+  `tasks/measured/postoj-2.1.296.jsonl`): a main file (`main.jsonl`) and one subagent file. The subagent starts its
+  tests in the shell background, then waits on them with `until ! pgrep -f 'vitest run'; do sleep 30; done` as its own
+  background command, and stops in standby about ten minutes after its start. The loop never ends, because `pgrep -f` also matches
+  the loop's own shell, so no end of the command ever reaches either file.
+  `server/test/herdr-background-merge-wait.test.ts` replays it against `docs/subagent-long-wait.md`, "Stage and clock":
+  the wait stage goes `short`, `long`, `stuck` on the clock from the standby, and the agent never goes dormant. Not
+  covered: a wake, a second standby and the follower.
 
 ## Files without their own section
 

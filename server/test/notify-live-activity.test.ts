@@ -1017,7 +1017,7 @@ describe('sterownik — dźwięk „skończył”', () => {
     expect(chime.request.headers['apns-expiration']).toBe(String(NOW_S + 1 + LIVE_ACTIVITY_CHIME_TTL_MS / 1000));
     expect(aps(chime)).toMatchObject({ event: 'update', alert: CHIME_ALERT });
     expect(stateOf(chime)).toEqual({ ...stateOf(h.sent[0] as Sent), updatedEpoch: NOW_S + 1 });
-    expect(h.logs).toContain('live-activity: done chime → delivered');
+    expect(h.logs).toContain(`live-activity: done chime → delivered, updatedEpoch ${String(NOW_S + 1)}`);
     // Dźwięk doręczył też treść: ta sama treść nie wychodzi drugi raz.
     await h.clock.advance(LIVE_ACTIVITY_THROTTLE_MS * 2);
     expect(h.sent).toHaveLength(2);
@@ -1102,7 +1102,7 @@ describe('sterownik — dźwięk „skończył”', () => {
     expect(h.controller.chime()).toBe(1);
     await h.clock.advance(0);
     const failedAt = (chimesOf(h)[0] as Sent).at;
-    expect(h.logs).toContain('live-activity: done chime → failed');
+    expect(h.logs).toContainEqual(expect.stringMatching(/^live-activity: done chime → failed, updatedEpoch \d+$/));
     await h.clock.advance(LIVE_ACTIVITY_RETRY_MS);
     const retry = h.sent.at(-1) as Sent;
     expect(retry.at).toBe(failedAt + LIVE_ACTIVITY_RETRY_MS);
@@ -1191,7 +1191,7 @@ describe('sterownik — dźwięk „skończył”', () => {
     expect(h.controller.cancelChimes()).toBe(0);
     releaseChime({ kind: 'ok' });
     await h.clock.advance(0);
-    expect(h.logs).toContain('live-activity: done chime → delivered');
+    expect(h.logs).toContainEqual(expect.stringMatching(/^live-activity: done chime → delivered, updatedEpoch \d+$/));
   });
 
   it('dwa urządzenia niezależnie: każde własne zlecenie, własna przerwa i własny wynik', async () => {
@@ -1206,7 +1206,7 @@ describe('sterownik — dźwięk „skończył”', () => {
     expect(h.controller.chime()).toBe(1);
     await h.clock.advance(0);
     expect(chimesOf(h).map((s) => s.token)).toEqual([UPDATE_1, UPDATE_3]);
-    expect(h.logs).toContain('live-activity: done chime → failed');
+    expect(h.logs).toContainEqual(expect.stringMatching(/^live-activity: done chime → failed, updatedEpoch \d+$/));
     // Porażka drugiego nie rusza pierwszego; po minucie (ponowienie drugiego) oba grają znowu.
     h.respond = () => ({ kind: 'ok' });
     await h.clock.advance(LIVE_ACTIVITY_RETRY_MS);

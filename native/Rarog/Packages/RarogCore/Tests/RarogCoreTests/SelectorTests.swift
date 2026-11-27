@@ -272,3 +272,106 @@ struct SelectorTests {
     #expect(state.sessions["herdr-w1-p1"]?.isUnsupported == false)
   }
 }
+
+// A subagent waiting on its own command (`ownCommandWait`): the row's tone, rank and filter segments in each session
+// state. Catches a stuck session outside Needs You, a session in a turn leaving Working, a phantom agent (`done`,
+// `resumable`) raising its row, an error covered by the stuck wait, `short` changing the row, a received result with
+// a `long` wait missing its warning tone, and the warning tone taking an unread result, a rank or a segment.
+extension SelectorTests {
+  struct WaitCase: Sendable, CustomTestStringConvertible {
+    let name: String
+    let state: String
+    var seen = false
+    /// The stage the server sent on the waiting subagent; `nil` = no field.
+    let wait: String?
+    /// A live command next to the waiting subagent.
+    var command = false
+    /// A monitor next to the waiting subagent.
+    var monitor = false
+    /// The stage of a second waiting subagent on the same list; `nil` = none.
+    var second: String? = nil
+    let tone: StatusTone
+    let rank: Int
+    /// Segments the session belongs to, besides All.
+    let segments: Set<ListFilter>
+    var testDescription: String { name }
+  }
+
+  static let waitCases: [WaitCase] = [
+    WaitCase(name: "short, unread result", state: "waiting-input", wait: "short", tone: .unread, rank: 1,
+             segments: [.unread]),
+    WaitCase(name: "short, received result", state: "waiting-input", seen: true, wait: "short", tone: .backgroundWait,
+             rank: 3, segments: []),
+    WaitCase(name: "long, unread result", state: "waiting-input", wait: "long", tone: .unread, rank: 1,
+             segments: [.unread]),
+    WaitCase(name: "long, received result", state: "waiting-input", seen: true, wait: "long",
+             tone: .backgroundWaitLong, rank: 3, segments: []),
+    WaitCase(name: "long next to a monitor, received", state: "waiting-input", seen: true, wait: "long", monitor: true,
+             tone: .backgroundWaitLong, rank: 3, segments: []),
+    WaitCase(name: "long next to a short wait, received", state: "waiting-input", seen: true, wait: "long",
+             second: "short", tone: .backgroundWaitLong, rank: 3, segments: []),
+    WaitCase(name: "short next to a stuck wait, received", state: "waiting-input", seen: true, wait: "short",
+             second: "stuck", tone: .waiting, rank: 0, segments: [.needsYou]),
+    WaitCase(name: "long in a turn", state: "running", wait: "long", tone: .working, rank: 2, segments: [.working]),
+    WaitCase(name: "long, phantom agent of a done session", state: "done", wait: "long", tone: .backgroundWait,
+             rank: 4, segments: []),
+    WaitCase(name: "long, phantom agent of a resumable session", state: "resumable", wait: "long",
+             tone: .backgroundWait, rank: 1, segments: []),
+    WaitCase(name: "stuck, unread result", state: "waiting-input", wait: "stuck", tone: .waiting, rank: 0,
+             segments: [.needsYou]),
+    WaitCase(name: "stuck, received result", state: "waiting-input", seen: true, wait: "stuck", tone: .waiting,
+             rank: 0, segments: [.needsYou]),
+    WaitCase(name: "stuck next to a live command, received", state: "waiting-input", seen: true, wait: "stuck",
+             command: true, tone: .waiting, rank: 0, segments: [.needsYou]),
+    WaitCase(name: "stuck next to a live command, unread", state: "waiting-input", wait: "stuck", command: true,
+             tone: .waiting, rank: 0, segments: [.needsYou]),
+    WaitCase(name: "long next to a live command, received", state: "waiting-input", seen: true, wait: "long",
+             command: true, tone: .working, rank: 2, segments: [.working]),
+    WaitCase(name: "stuck in a turn", state: "running", wait: "stuck", tone: .working, rank: 2, segments: [.working]),
+    WaitCase(name: "stuck while starting", state: "starting", wait: "stuck", tone: .working, rank: 2,
+             segments: [.working]),
+    WaitCase(name: "stuck at a permission", state: "waiting-permission", wait: "stuck", tone: .waiting, rank: 0,
+             segments: [.needsYou]),
+    WaitCase(name: "stuck at a question", state: "waiting-question", wait: "stuck", tone: .waiting, rank: 0,
+             segments: [.needsYou]),
+    WaitCase(name: "stuck with an error", state: "error", wait: "stuck", tone: .failed, rank: 1, segments: [.needsYou]),
+    WaitCase(name: "stuck at the plan limit", state: "limit-reached", wait: "stuck", tone: .failed, rank: 1,
+             segments: [.needsYou]),
+    WaitCase(name: "stuck after an interrupted turn", state: "interrupted", wait: "stuck", tone: .waiting, rank: 1,
+             segments: [.needsYou]),
+    WaitCase(name: "long at a permission", state: "waiting-permission", wait: "long", tone: .waiting, rank: 0,
+             segments: [.needsYou]),
+    WaitCase(name: "long with an error", state: "error", wait: "long", tone: .failed, rank: 1, segments: [.needsYou]),
+    WaitCase(name: "stuck, phantom agent of a done session", state: "done", wait: "stuck", tone: .backgroundWait,
+             rank: 4, segments: []),
+    WaitCase(name: "stuck, phantom agent of a resumable session", state: "resumable", wait: "stuck",
+             tone: .backgroundWait, rank: 1, segments: []),
+    WaitCase(name: "standby without a field", state: "waiting-input", seen: true, wait: nil, tone: .backgroundWait,
+             rank: 3, segments: []),
+  ]
+
+  @Test("a subagent's wait on its own command: tone, rank and filter segments of the row", arguments: waitCases)
+  func ownCommandWaitRow(_ sample: WaitCase) throws {
+    let agent = agentTask(
+      "agent_w", waitingSince: "2026-10-03T07:00:00.000Z", ownTask: "until false; do sleep 30; done", wait: sample.wait)
+    var list = [agent]
+    if sample.command { list.append(workflowTask("bash_1", run: false, kind: "command")) }
+    if sample.monitor { list.append(#"{"id":"monitor_1","kind":"monitor","description":"server log"}"#) }
+    if let second = sample.second {
+      list.append(agentTask(
+        "agent_v", waitingSince: "2026-10-03T06:00:00.000Z", ownTask: "until false; do sleep 60; done", wait: second))
+    }
+    let tasks = #","backgroundTasks":[\#(list.joined(separator: ","))]"#
+    let state = try state([
+      Frames.summary("s", state: sample.state, extra: (sample.seen ? #","seen":true"# : "") + tasks),
+    ])
+    let session = try #require(state.sessions["s"])
+    #expect(session.statusTone == sample.tone, "tone")
+    #expect(session.listRank == sample.rank, "rank")
+    #expect(state.listOrderRank(session) == sample.rank, "rank in the list order")
+    let segments = Set(ListFilter.allCases.filter { $0 != .all && state.listFilterContains($0, session) })
+    #expect(segments == sample.segments, "filter segments")
+    #expect(state.freshResult(session) == sample.segments.contains(.unread), "the dot pulses only in Unread")
+    if sample.tone == .backgroundWaitLong { #expect(sample.tone.isCalm, "a long wait counts as calm, like silence") }
+  }
+}

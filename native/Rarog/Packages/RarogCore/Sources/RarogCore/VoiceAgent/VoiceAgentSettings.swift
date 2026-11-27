@@ -12,7 +12,8 @@ import Observation
 //   given and withdrawn apart from the consent above. Its text adds to the voice agent's, so the mode runs only
 //   with both (`sessionsAllowed`); the conversation at a session needs only the consent above.
 // - Soniox reading speed from `speechSpeeds`; it applies from the next conversation.
-// - The locked-phone trial switch (`LockedPhoneTrial`, its own key) stands on the same settings page.
+// - Whether a running conversation or dictation survives the background (`BackgroundRecording`) rides along: device
+//   state, not a choice, and nothing of it is stored.
 // Ekran: `RarogUI/Views/VoiceAgent/`.
 
 /// Ustawienia agenta głosowego na tym urządzeniu.
@@ -43,26 +44,27 @@ public final class VoiceAgentSettings {
   public var sessionsAllowed: Bool { enabled && sessionsEnabled }
   /// Soniox reading speed (`speed` of the start frame), one of ``speechSpeeds``.
   public private(set) var speechSpeed: Double
-  /// The locked-phone trial switch of this device (its own key, off by default).
-  public let lockedPhoneTrial: LockedPhoneTrial
+  /// Whether a running conversation or dictation survives the background on this device (``BackgroundRecording``):
+  /// the device's state, not a choice, kept here because every reader of the voice settings needs it.
+  public let background: BackgroundRecording
 
   /// Reading speeds the page offers. Soniox takes 0.7–1.3, 1.0 normal; the owner asked only for faster reading.
   public static let speechSpeeds: [Double] = [1.0, 1.1, 1.2, 1.3]
   public static let defaultSpeechSpeed = 1.0
 
-  public init(preferences: VoiceAgentPreferences, lockedPhoneTrial: LockedPhoneTrial = .memory()) {
+  public init(preferences: VoiceAgentPreferences, background: BackgroundRecording = BackgroundRecording()) {
     self.preferences = preferences
-    self.lockedPhoneTrial = lockedPhoneTrial
+    self.background = background
     enabled = preferences.consent == Self.consentVersion
     sessionsEnabled = preferences.sessionsConsent == Self.sessionsConsentVersion
     speechSpeed =
       preferences.speechSpeed.flatMap { Self.speechSpeeds.contains($0) ? $0 : nil } ?? Self.defaultSpeechSpeed
   }
 
-  /// Apka: preferencje w `UserDefaults`.
-  public static func live(defaults: UserDefaults) -> VoiceAgentSettings {
+  /// Apka: preferencje w `UserDefaults`; `noTiles`: the device shows no Live Activity tiles (``BackgroundRecording``).
+  public static func live(defaults: UserDefaults, noTiles: Bool = false) -> VoiceAgentSettings {
     VoiceAgentSettings(
-      preferences: VoiceAgentPreferences(defaults: defaults), lockedPhoneTrial: .live(defaults: defaults))
+      preferences: VoiceAgentPreferences(defaults: defaults), background: BackgroundRecording(noTiles: noTiles))
   }
 
   /// Testy i tryb testów UI: preferencje w pamięci.

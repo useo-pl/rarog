@@ -313,6 +313,14 @@ extension RarogStore {
     pushRuntime.background?.begin(name, needsServer: needsServer)
   }
 
+  /// Like ``beginBackgroundWork(_:needsServer:)``; `expired` learns that the system took the time back before
+  /// ``endBackgroundWork(_:)``, which is then without effect.
+  public func beginBackgroundWork(
+    _ name: String, needsServer: Bool, expired: @escaping @MainActor () -> Void
+  ) -> BackgroundWorkToken? {
+    pushRuntime.background?.begin(name, needsServer: needsServer, expired: expired)
+  }
+
   /// Koniec pracy; po wygaśnięciu (zadanie zamknął adapter) bez skutku.
   public func endBackgroundWork(_ token: BackgroundWorkToken?) {
     guard let token else { return }

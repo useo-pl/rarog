@@ -12,8 +12,9 @@ import SwiftUI
 /// zmiana sieci, raport awarii, powiadomienia (delegat apki, adres `rarog://`), praca w tle zbiorcza Live Activity
 /// (ActivityKit przez `LiveActivityController`) i renderer terminala (SwiftTerm z `RarogTerminal`). Ekrany mieszkają
 /// w `RarogUI`, stan i reguły w `RarogCore`. Scena i zmiana sieci idą najpierw do koordynatora, potem do magazynu.
-/// The scene then goes to the locked-phone monitor (`LockedPhoneMonitor`). The voice Live Activity
-/// (`VoiceActivityController`) follows the app's microphone under the locked-phone trial.
+/// The scene then goes to the background rule of a running recording (`BackgroundRecording`, with the screen lock
+/// from the protected-data signal), the locked-phone monitor (`LockedPhoneMonitor`) and the voice Live Activity
+/// (`VoiceActivityController`), which follows the app's microphone and handles its Stop (End) and Send buttons.
 @main
 struct RarogApp: App {
   /// Token APNs i powiadomienia: `AppDelegate` → `PushInbox` → magazyn.
@@ -23,7 +24,7 @@ struct RarogApp: App {
   @State private var tunnel: TunnelCoordinator
   /// The locked-phone monitor: the server connection held for what records, and its `client.log` lines.
   @State private var lockedPhone: LockedPhoneMonitor
-  /// The voice Live Activity of the locked-phone trial and the handler of its End button.
+  /// The voice Live Activity of what records and the handlers of its End and Send buttons.
   @State private var voiceActivity: VoiceActivityController
   @State private var network = NetworkMonitor()
   @State private var diagnostics: CrashDiagnostics
@@ -67,12 +68,16 @@ struct RarogApp: App {
     store.attachDictation(AppEnvironment.dictation())
     // Agent głosowy: zgoda i głos na tym urządzeniu; klucz OpenAI i model ma serwer.
     store.attachVoiceAgent(AppEnvironment.voiceAgent())
-    // After the voice agent settings: the monitor reads the trial switch from them.
+    // After the voice agent settings: the monitor reads the background rule from them.
     let lockedPhone = LockedPhoneMonitor.live(store: store) { [tunnel] on in tunnel.holdForVoice(on) }
-    // Also after the voice agent settings (the trial switch); ends the voice activities left from an earlier process.
+    // Also after the voice agent settings (the background rule); ends the voice activities left from an earlier
+    // process.
     let voiceActivity = VoiceActivityController.live(store: store)
     voiceActivity.start()
-    EndVoiceActivityIntent.handler = { [voiceActivity] in await voiceActivity.endFromLiveActivity() }
+    EndVoiceActivityIntent.handler = { [voiceActivity] id in await voiceActivity.endFromLiveActivity(activityID: id) }
+    SendDictationActivityIntent.handler = { [voiceActivity] id in
+      await voiceActivity.sendFromLiveActivity(activityID: id)
+    }
     #if DEBUG
     // Testy UI przeciw demo: serwer demo nie ma kanału APNs, a baner „Włącz" i push próbny trzeba przeklikać.
     if ProcessInfo.processInfo.environment[AppEnvironment.testPushKey] == "1" { store.simulateApnsChannelForUITests() }
@@ -127,12 +132,21 @@ struct RarogApp: App {
           tunnel.protectedDataBecameAvailable()
           store.protectedDataBecameAvailable()
         }
+        // The screen locks (the signal comes only with a passcode set): on a device without Live Activity tiles a
+        // recording kept in the background ends.
+        .onReceive(
+          NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)
+        ) { _ in
+          store.voiceAgent.background.screenLocked()
+        }
     }
     .onChange(of: scenePhase) { _, phase in
       let next = RarogCore.ScenePhase(phase)
       tunnel.scene(next)
       store.setScenePhase(next)
+      store.voiceAgent.background.scene(next)
       lockedPhone.scene(next)
+      voiceActivity.scene(next)
     }
     .commands { RarogCommands(store: store) }
   }

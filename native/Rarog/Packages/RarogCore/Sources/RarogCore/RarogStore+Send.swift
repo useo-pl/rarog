@@ -17,6 +17,14 @@ extension RarogStore {
   /// „Wyślij": wpis z plikami treści na dysk PRZED pierwszym bajtem, potem żądanie.
   /// Sam załącznik bez tekstu to poprawna wiadomość.
   public func send(text: String, attachments: [OutgoingAttachment] = [], to sessionId: String) async -> SendOutcome {
+    await send(text: text, attachments: attachments, to: sessionId, entryId: UUID())
+  }
+
+  /// `send` under an entry id the caller fixed before its first `await`: the Check of a long wait reserves its wait
+  /// under that id (`RarogStore+WaitCheck`), so the echo that may come before the 202 already names its entry.
+  func send(
+    text: String, attachments: [OutgoingAttachment] = [], to sessionId: String, entryId: UUID
+  ) async -> SendOutcome {
     let login = currentLogin
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty || !attachments.isEmpty else { return .empty }
@@ -24,7 +32,7 @@ extension RarogStore {
     // Zdjęcia przed plikami: tak liczy serwer (skrót idempotencji, wizytówki echa) i tak stoją nad polem.
     let ordered = attachments.filter { $0.kind == .image } + attachments.filter { $0.kind == .file }
     var entry = OutboxEntry(
-      sessionId: sessionId, text: trimmed,
+      id: entryId, sessionId: sessionId, text: trimmed,
       attachments: ordered.map { attachment in
         OutboxEntry.Attachment(
           name: attachment.kind == .image ? "" : attachment.name, bytes: attachment.bytes,

@@ -63,6 +63,28 @@ struct DiagnosticsTraceTests {
     #expect(reporter.pending.filter { $0.hasPrefix("ordinary") }.count == ContractReporter.traceCap, "nor the reverse")
   }
 
+  // Navigation lines can spend the shared 20 within minutes of the window's start; under that budget every return
+  // line for the rest of the hour would be dropped.
+  @Test("return lines and Live Activity content lines pass a spent shared budget, and neither starves the other")
+  func foregroundAndContentBudgets() {
+    let reporter = ContractReporter()
+    for index in 0..<ContractReporter.traceCap + 5 { reporter.recordTrace("ordinary \(index)", now: now) }
+    reporter.recordTrace("return line", budget: .foreground, now: now)
+    #expect(reporter.pending.last == "return line")
+    for index in 0..<ContractReporter.liveActivityContentTraceCap + 5 {
+      reporter.recordTrace("content \(index)", budget: .liveActivityContent, now: now)
+    }
+    #expect(reporter.pending.filter { $0.hasPrefix("content") }.count == ContractReporter.liveActivityContentTraceCap)
+    reporter.recordTrace("return after content", budget: .foreground, now: now)
+    #expect(reporter.pending.last == "return after content")
+    for index in 0..<ContractReporter.foregroundTraceCap + 5 {
+      reporter.recordTrace("return \(index)", budget: .foreground, now: now)
+    }
+    #expect(reporter.pending.filter { $0.hasPrefix("return") }.count == ContractReporter.foregroundTraceCap)
+    reporter.recordTrace("ordinary after", now: now)
+    #expect(!reporter.pending.contains("ordinary after"), "the shared budget stays spent")
+  }
+
   @Test("the end line of a conversation passes after the voice agent budget is spent")
   func voiceAgentEndOutsideBudget() {
     let reporter = ContractReporter()

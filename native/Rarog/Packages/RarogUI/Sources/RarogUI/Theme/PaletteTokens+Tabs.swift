@@ -154,8 +154,10 @@ public enum TabTokens {
   /// Krycie znaku stanu (`StateGlyph.mark`) nad tłem paska albo płytką. Przydymiona zieleń jest już
   /// przygaszona w samym kolorze: w 70 % dawałaby w jasnym ~2,15:1, poniżej 3:1 dla elementu stanu, więc jej znak
   /// stoi kryjąco także u siostry (`PaletteContrastTests`).
+  /// The long wait's mark is the only sign without color that tells it from a decision; the waiting color at 70 % keeps
+  /// about 2.9:1 in the light theme, below 3:1, so its mark is opaque on a sibling too.
   public static func markAlpha(_ tone: StatusTone, current: Bool) -> Alpha {
-    current || tone == .backgroundWait ? .opaque : siblingMarkAlpha
+    current || tone == .backgroundWait || tone == .backgroundWaitLong ? .opaque : siblingMarkAlpha
   }
 
   /// Kolor `top` w kryciu `alpha` na `bottom`, w obu motywach.

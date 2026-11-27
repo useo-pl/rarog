@@ -24,15 +24,15 @@
  *                  o usunięciu (notka harnessu, ten sam parser co meldunek zadania) → lista adresów
  *                  z tytułem i czasem. Nie zadanie w tle: stoi tu, bo meldunek jedzie tym samym
  *                  nośnikiem, a jego słowa trzyma ten sam rejestr. Opis: `docs/artifacts.md`.
- * - `pull-requests.ts` — CZYSTE: pull requesty sesji. Wywołanie `Bash` z poleceniem `gh pr create`
- *                  i linia wyniku z adresem PR → lista adresów z repo, numerem, czasem i tytułem. Nie
- *                  zadanie w tle: stoi tu obok artefaktów, bo czyta te same pliki rozmowy i jedzie tą samą
- *                  drogą do apki. Opis: `docs/pull-requests.md`.
+ * - `pull-requests.ts` — PURE: pull requests linked to the conversation. The CLI's link entry with a GitHub
+ *                  PR URL → the linked set (URL, repo, number, first entry time), and the window's lower bound.
+ *                  Not a background task: it lives here because the registry holds its CLI words. Which
+ *                  linked PRs a card shows: `sessions/pr-status-link.ts`. Description: `docs/pull-requests.md`.
  * - `scheduled-tasks.ts` — PURE: the session's scheduled tasks (crons). `CronCreate`, `CronDelete` and `CronList`
  *                  results, the run line and the carry attachment → the list of armed tasks; also the prefilter for
  *                  raw lines. Not a background task: it lives here because the registry holds its CLI words.
- * - `pull-request-files.ts` — czytnik plików rozmowy pod kątem PR-ów: plik główny, pliki
- *                  subagentów i agentów workflow, wszystkie, przyrostowo, z prefiltrem i budżetem bajtów.
+ * - `pull-request-files.ts` — the reader of the main conversation file for pull requests: incrementally,
+ *                  with a prefilter and a byte budget; the linked set and the window of one conversation.
  * - `scheduled-task-file.ts` — the reader of the main conversation file for the scheduled tasks:
  *                  incrementally, with the tracker's prefilter, the list rebuilt from zero on truncation.
  * - `incremental-read.ts` — one incremental read of one conversation file: offset, chunks, byte
@@ -90,7 +90,8 @@ export { scanMainFileBefore } from './main-scan.ts';
 export type { MainScanOptions, MainScanResult } from './main-scan.ts';
 export { artifactsSignature, createArtifactsTracker } from './artifacts.ts';
 export type { ArtifactFact, ArtifactsTracker } from './artifacts.ts';
-export { pullRequestsSignature } from './pull-requests.ts';
+export { isPullRequestLinkEntry, pullRequestLinksSignature } from './pull-requests.ts';
+export type { PullRequestLinks } from './pull-requests.ts';
 export { createScheduledTasksTracker } from './scheduled-tasks.ts';
 export type { ScheduledTasksTracker } from './scheduled-tasks.ts';
 export {

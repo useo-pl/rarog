@@ -17,7 +17,8 @@ import RarogContract
 // Czy lista zadań w tle jest pracą, żaden z nich nie rozstrzyga sam: pytają `BackgroundTaskRules`
 // (`BackgroundTaskRules.swift`, jedno miejsce tych reguł) i tylko składają odpowiedź ze stanem sesji.
 // Subagent w postoju pracą nie jest: sesja po turze, której całe tło czeka, liczy się do
-// „skończyły", nie do „pracuje" (złota ramka `live-activity.update.waiting-agent.json`).
+// „skończyły", nie do „pracuje" (złota ramka `live-activity.update.waiting-agent.json`). Once its wait reaches
+// `stuck` (`BackgroundTaskRules.stuckWait`), the session counts as waiting instead; the silence timer ignores it.
 //
 // Prywatność: z sesji wchodzą WYŁĄCZNIE stany (do
 // liczników), `seen`, id sesji i `termId`. Nigdy `waitingFor`, `activity`, `lastSummary`, etykieta ani
@@ -104,17 +105,16 @@ enum LiveActivityInput {
   /// coś mieli w tle („pracuje w tle"; reguła `BackgroundTaskRules.hasBackgroundWork`), `finished` = po
   /// turze z nieodebranym wynikiem (`seen != true`, lustro `isFinished` PWA) i bez pracy w tle; wiodąca =
   /// najdłużej czekająca, a bez czekających — najdłużej pracująca w turze (stabilna: zmienia się dopiero, gdy
-  /// TA sesja zmieni stan).
+  /// TA sesja zmieni stan). A session after a turn with a subagent stuck on its own command
+  /// (`BackgroundTaskRules.stuckWait`) counts once, as waiting, and is not the lead: its turn is over.
+  /// Counters come from ``matches(_:_:)``, so the number and its jump target never disagree.
   static func aggregate(_ sessions: [SessionSummary], now: Date) -> LiveActivityContentState {
-    let waiting = sessions.filter { waitingStates.contains($0.state) }
-    let working = sessions.filter { workingStates.contains($0.state) }
-    let background = sessions.count(where: {
-      quietStates.contains($0.state) && BackgroundTaskRules.hasBackgroundWork($0.backgroundTasks)
-    })
-    let finished = sessions.count(where: { matches($0, .finished) })
-    let lead = longest(waiting) ?? longest(working)
+    let lead = longest(sessions.filter { waitingStates.contains($0.state) })
+      ?? longest(sessions.filter { workingStates.contains($0.state) })
     return LiveActivityContentState(
-      waiting: waiting.count, working: working.count + background, finished: finished,
+      waiting: sessions.count(where: { matches($0, .waiting) }),
+      working: sessions.count(where: { matches($0, .working) }),
+      finished: sessions.count(where: { matches($0, .finished) }),
       top: lead.map(top(of:)),
       updatedEpoch: Int(now.timeIntervalSince1970.rounded(.down)))
   }
@@ -131,16 +131,19 @@ enum LiveActivityInput {
   }
 
   /// Sesja liczy się do licznika `kind` (i jest celem jego liczby na kaflu, ``AppState/firstSession(_:)``).
-  /// „Coś jeszcze mieli w tle" to `BackgroundTaskRules.hasBackgroundWork`, jak w ``aggregate(_:now:)``.
+  /// „Coś jeszcze mieli w tle" to `BackgroundTaskRules.hasBackgroundWork`, jak w ``aggregate(_:now:)``. A stuck wait
+  /// after a turn (`BackgroundTaskRules.stuckWait`) makes the session waiting and takes it out of the other two.
   static func matches(_ session: SessionSummary, _ kind: SessionJump) -> Bool {
+    let stuck = BackgroundTaskRules.stuckWait(session.state, session.backgroundTasks)
     switch kind {
     case .waiting:
-      waitingStates.contains(session.state)
+      return waitingStates.contains(session.state) || stuck
     case .working:
-      workingStates.contains(session.state)
-        || (quietStates.contains(session.state) && BackgroundTaskRules.hasBackgroundWork(session.backgroundTasks))
+      return workingStates.contains(session.state)
+        || (quietStates.contains(session.state) && !stuck
+          && BackgroundTaskRules.hasBackgroundWork(session.backgroundTasks))
     case .finished:
-      session.state == .waitingInput && session.seen != true
+      return session.state == .waitingInput && session.seen != true && !stuck
         && !BackgroundTaskRules.hasBackgroundWork(session.backgroundTasks)
     }
   }

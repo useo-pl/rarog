@@ -21,7 +21,8 @@ import Foundation
 //   those fixes went out. Such an order ends with its `response.created` (the response is cancelled, above) or with
 //   the `activeResponse` error (the server never creates it; the active response's `response.done` follows). At a
 //   `response.done` its fixes go out before the held order and before the retry after `activeResponse`.
-// - The stream limit (`SonioxSpeech.Failure.isStreamLimit`) fixes the item to what Soniox said once it played out.
+// - An error that ends one stream (`SonioxSpeech.Failure.endsStreamOnly`: the stream limit, a request timeout) fixes
+//   the item to what Soniox said once it played out.
 //   Its later deltas go nowhere, also after it played out, so no second stream speaks it from the start.
 // - `client.log` gets no text: the fixes themselves are not logged.
 
@@ -71,7 +72,7 @@ extension RealtimeConversation {
     tts.previous[item] = previous
   }
 
-  /// `response.done`: an interrupted response gets its fixes; any other only for items the stream limit cut.
+  /// `response.done`: an interrupted response gets its fixes; any other only for items a stream-only error cut.
   func fixAtDone(_ response: String) {
     if tts.toFix.contains(response) {
       fix(response)

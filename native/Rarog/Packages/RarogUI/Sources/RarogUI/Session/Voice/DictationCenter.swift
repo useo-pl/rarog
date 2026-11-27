@@ -4,10 +4,10 @@ import RarogContract
 // The app's one microphone: the places that record (the message field, `ComposerDictation`; a project note,
 // `NoteDictation`) and the voice conversation (`VoiceAgentSession`) take it over from each other through
 // `DictationCenter`. The center also reports what records (`use`, read from the host itself: what lives, what it
-// does now and what it is about), tells its observers of every claim and of every change a host reports, and ends
-// what records as the user's own end does (`endFromLockScreen()`); the locked-phone monitor (`LockedPhoneMonitor`)
-// and the voice Live Activity (through `AppMicrophone`) use them. No UIKit here, so the rule also runs in the macOS
-// tests. Owner: dictation.
+// does now and what it is about), tells its observers of every claim and of every change a host reports, ends what
+// records as the user's own end does (`endFromLockScreen()`) and sends a message-field dictation as Send during it
+// does (`sendFromLockScreen()`); the locked-phone monitor (`LockedPhoneMonitor`) and the voice Live Activity (through
+// `AppMicrophone`) use them. No UIKit here, so the rule also runs in the macOS tests. Owner: dictation.
 
 /// What records on the app's microphone and what of it lives, from the host itself. A host reports a use only
 /// while it runs: a conversation past its readiness gate, a message-field dictation whose microphone opened; a start
@@ -89,10 +89,14 @@ protocol DictationHost: AnyObject {
   /// Mikrofon przechodzi gdzie indziej: hipoteza staje się tekstem, nagranie w dół od razu.
   func handOff()
   /// What this host records; `nil` while it does not run (ended, a start that still prepares, or a host the
-  /// locked-phone trial does not keep, such as a note).
+  /// background never keeps, such as a note).
   var microphoneUse: MicrophoneUse? { get }
   /// End as the user's own end does (the second tap, the end button); called only while ``microphoneUse`` is set.
   func endFromLockScreen()
+  /// End the recording as Send during it does and send what the field holds then; a second call while that send runs
+  /// gets the same operation, also after the recording ended. `nil`: nothing to send (the default: a conversation, a
+  /// note).
+  func sendFromLockScreen() -> Task<LockScreenSend, Never>?
   /// The center that holds this host. A host that reports a use calls ``DictationCenter/changed(_:)`` at each
   /// change of it, and at its deinit.
   func claimed(by center: DictationCenter)
@@ -101,6 +105,7 @@ protocol DictationHost: AnyObject {
 extension DictationHost {
   var microphoneUse: MicrophoneUse? { nil }
   func endFromLockScreen() {}
+  func sendFromLockScreen() -> Task<LockScreenSend, Never>? { nil }
   func claimed(by center: DictationCenter) {}
 }
 
@@ -143,6 +148,14 @@ final class DictationCenter {
     guard let active, let use = active.microphoneUse else { return nil }
     active.endFromLockScreen()
     return use.kind
+  }
+
+  /// Ends a message-field dictation as Send during it does and sends its field; `nil` = nothing to send (nothing
+  /// records, a conversation). The holder answers itself, not its use: a second call while its send runs, also after
+  /// its recording ended, gets the same operation. No screen of the app calls it: it is the entry for a Send button
+  /// outside the app's screens.
+  func sendFromLockScreen() -> Task<LockScreenSend, Never>? {
+    active?.sendFromLockScreen()
   }
 
   private func notify() {

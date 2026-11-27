@@ -381,6 +381,22 @@ struct LegacyDecoderTests {
           + #""messageRef":{"code":"rest.session-not-found"}}"#))
     #expect(body.error == "not-found" && body.message == "That session doesn't exist." && body.reason == nil)
   }
+
+  @Test("old app × wait stage: a task with `ownCommandWait`, known or unknown, decodes as before, without the field")
+  func waitStageUnknownToOldApp() throws {
+    let session = #""id":"s","cwd":"/x","title":"t","state":"waiting-input","stateSince":"a","createdAt":"a","#
+      + #""lastActivityAt":"a""#
+    let task = #"{"id":"a1","kind":"agent","waitingSince":"2026-11-20T10:00:00.000Z","ownTasks":[{"id":"b1"}]"#
+    // `null` and `2` reject in today's type, so they also prove that the old summary decodes the frozen task type.
+    for stage in [#""stuck""#, #""later""#, "null", "2"] {
+      let decoded = try JSONDecoder().decode(
+        OldApp.SessionSummary.self,
+        from: Self.json(#"{\#(session),"backgroundTasks":[\#(task),"ownCommandWait":\#(stage)}]}"#))
+      let old = try #require(decoded.backgroundTasks?.first)
+      #expect(old.id == "a1" && old.kind == .agent && old.waitingSince == "2026-11-20T10:00:00.000Z", "\(stage)")
+      #expect(old.ownTasks?.map(\.id) == ["b1"], "\(stage)")
+    }
+  }
 }
 
 extension JSONValue {

@@ -268,11 +268,20 @@ enum DemoServer {
   }
 
   /// Element listy (wiersz agenta albo nagłówek projektu) przewinięty cały w widoczną część listy.
+  ///
+  /// Without the element in the tree the list is flung blind toward its end until the element shows up or the list
+  /// stops moving, then back toward its start the same way. A fixed number of flings is not enough: in the largest
+  /// text the rows are several hundred points tall and the visible part of the list a few hundred at most, so the
+  /// last projects of the tree lay beyond six flings.
   @MainActor
   static func revealElement(_ app: XCUIApplication, _ element: XCUIElement) -> XCUIElement {
     let list = app.descendants(matching: .any)["session.list"].firstMatch
-    var blind = 0
-    for _ in 0..<18 {
+    var adjustments = 0
+    var flings = 0
+    var up = true
+    var still = 0
+    var ends = 0
+    while adjustments < 8, flings < 40, ends < 2 {
       if element.exists, element.isHittable {
         let visible = visibleListArea(app, list)
         let frame = element.frame
@@ -283,13 +292,32 @@ enum DemoServer {
           : frame.midY > visible.minY && frame.midY < visible.maxY
         if shown { return element }
         scroll(app, list: list, within: visible, by: shift(frame, into: visible, fits: fits))
+        adjustments += 1
         continue
       }
-      guard blind < 12 else { break }
-      fling(app, within: freeListArea(app, list), up: blind < 6)
-      blind += 1
+      let before = listPosition(app)
+      fling(app, within: freeListArea(app, list), x: dragX(list), up: up)
+      flings += 1
+      // Two flings in a row without movement: the end of the list (one may start on a control that just appeared).
+      still = listPosition(app) == before ? still + 1 : 0
+      if still == 2 {
+        up.toggle()
+        still = 0
+        ends += 1
+      }
     }
     return element
+  }
+
+  /// Where the list stands: the identifier and top edge of the first row or project header in the tree. The same
+  /// value before and after a fling means the list did not move, so it reached its end in that direction.
+  @MainActor
+  private static func listPosition(_ app: XCUIApplication) -> String {
+    let first = app.descendants(matching: .any).matching(NSPredicate(
+      format: "identifier BEGINSWITH 'project.' OR (identifier BEGINSWITH 'session.' AND identifier != 'session.list')"
+    )).firstMatch
+    guard first.exists else { return "" }
+    return "\(first.identifier) \(first.frame.minY)"
   }
 
   /// Część listy, której nie zakrywa pasek nawigacji ani dolna wstawka (limity).
@@ -304,26 +332,36 @@ enum DemoServer {
     }
     for id in ["list.usage"] {
       let inset = app.descendants(matching: .any)[id].firstMatch
-      if inset.exists, inset.frame.minX < frame.maxX, inset.frame.minY > frame.midY {
+      // The footer card stands at the bottom; in the largest text in landscape it starts above the list's middle.
+      if inset.exists, inset.frame.minX < frame.maxX, inset.frame.midY > frame.midY {
         bottom = min(bottom, inset.frame.minY)
       }
     }
     return CGRect(x: frame.minX, y: top, width: frame.width, height: max(0, bottom - top))
   }
 
-  /// The visible part of the list without the controls that float over its rows: the filter capsule and Inbox at the
-  /// top, the jump pills at either end. A drag that starts on one of them does not move the list, and the pill
-  /// "1 session below" stands right above the footer, where a fling across the visible part starts.
+  /// Where a drag on the list lands horizontally: 16 pt from the list's leading edge, in the column of the tree
+  /// guide. The jump pills are narrower than the list and centered, so they leave this column free; in the largest
+  /// text in landscape they cover almost the whole height of the visible list.
+  @MainActor
+  private static func dragX(_ list: XCUIElement) -> CGFloat {
+    list.frame.minX + 16
+  }
+
+  /// The visible part of the list in the drag column (`dragX`) without the controls that float over its rows there:
+  /// the filter capsule and Inbox at the top, the jump pills at either end. A drag that starts on one of them does not
+  /// move the list.
   @MainActor
   private static func freeListArea(_ app: XCUIApplication, _ list: XCUIElement) -> CGRect {
     let visible = visibleListArea(app, list)
+    let x = dragX(list)
     var top = visible.minY
     var bottom = visible.maxY
     for id in ["list.filter", "list.inbox", "list.jump.above", "list.jump.below"] {
       let control = app.descendants(matching: .any)[id].firstMatch
       guard control.exists else { continue }
       let frame = control.frame
-      guard frame.minX < visible.maxX, frame.maxX > visible.minX, frame.maxY > top, frame.minY < bottom else { continue }
+      guard frame.minX <= x, frame.maxX >= x, frame.maxY > top, frame.minY < bottom else { continue }
       if frame.midY < visible.midY {
         top = max(top, frame.maxY)
       } else {
@@ -343,13 +381,20 @@ enum DemoServer {
   /// Przewinięcie na ślepo (wiersza nie ma jeszcze w drzewie) rzutem wewnątrz widocznej części listy. Gest od
   /// środka całego elementu listy przy dużym piśmie zaczyna się na karcie PROJEKTY
   /// i przewija projekty zamiast agentów.
+  ///
+  /// The finger lands inside `free` and travels 400 pt, past `free` when it is shorter (once the drag moves the list,
+  /// the finger may cross the filters or the footer): in the largest text in landscape the free part is about 200 pt
+  /// and a row about 400 pt tall.
   @MainActor
-  private static func fling(_ app: XCUIApplication, within visible: CGRect, up: Bool) {
+  private static func fling(_ app: XCUIApplication, within free: CGRect, x: CGFloat, up: Bool) {
     let origin = app.coordinate(withNormalizedOffset: .zero)
-    let low = origin.withOffset(CGVector(dx: visible.midX, dy: visible.maxY - 24))
-    let high = origin.withOffset(CGVector(dx: visible.midX, dy: visible.minY + 24))
-    let (start, end) = up ? (low, high) : (high, low)
-    start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0)
+    let window = app.frame
+    let margin = min(24, free.height / 4)
+    let from = up ? free.maxY - margin : free.minY + margin
+    let to = up ? max(window.minY + 40, from - 400) : min(window.maxY - 40, from + 400)
+    origin.withOffset(CGVector(dx: x, dy: from)).press(
+      forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: to)), withVelocity: .slow,
+      thenHoldForDuration: 0)
   }
 
   /// Dokładne przeciągnięcie palcem wewnątrz widocznej części, z przytrzymaniem na końcu (bez
@@ -359,7 +404,12 @@ enum DemoServer {
     let limit = max(40, visible.height / 2 - 24)
     let step = max(-limit, min(limit, delta))
     let origin = app.coordinate(withNormalizedOffset: .zero)
-    let start = origin.withOffset(CGVector(dx: list.frame.midX, dy: visible.midY - step / 2))
+    // A drag that starts on a floating control (filters, jump pill) does not move the list: the finger lands in the
+    // drag column, and at the edge of its free part when the middle of the visible list is covered there.
+    let free = freeListArea(app, list)
+    var y = visible.midY - step / 2
+    if y < free.minY + 4 || y > free.maxY - 4 { y = step > 0 ? free.minY + 8 : free.maxY - 8 }
+    let start = origin.withOffset(CGVector(dx: dragX(list), dy: y))
     start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: step)),
                 withVelocity: .slow, thenHoldForDuration: 0.3)
   }

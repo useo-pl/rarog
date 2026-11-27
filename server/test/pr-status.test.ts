@@ -17,8 +17,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { Scheduler, TimerHandle } from '../src/drivers/runtime.ts';
 import {
   FAILURE_PAUSE_MS, GH_ARGV, GH_DIRECTORIES, GH_OUTPUT_CAP_BYTES, GH_TIMEOUT_MS, NEW_URL_DELAY_MS, OPEN_REFRESH_MS,
-  PR_BATCH_MAX, PR_STATUS_ENV_PASSTHROUGH, RATE_LIMIT_PAUSE_MAX_MS, UNKNOWN_REFRESH_MS, buildQueryBody, createFixedPrStateSource,
-  createGhSource, createPrStatusTracker, findGh, ghCandidates, ghEnv, parsePrUrl, readGhOutput,
+  PR_BATCH_MAX, PR_STATUS_ENV_PASSTHROUGH, PR_TITLE_MAX, RATE_LIMIT_PAUSE_MAX_MS, UNKNOWN_REFRESH_MS, buildQueryBody,
+  createFixedPrStateSource, createGhSource, createPrStatusTracker, findGh, ghCandidates, ghEnv, parsePrUrl, prTitle,
+  readGhOutput,
 } from '../src/pr-status/index.ts';
 import type { PrReadResult, PrRef, PrStateSource, PrStatusTracker } from '../src/pr-status/index.ts';
 
@@ -30,6 +31,19 @@ const SHORT_TIMEOUT_MS = 2_000;
 
 const url = (n: number, repo = 'widget'): string => `https://github.com/acme/${repo}/pull/${n}`;
 const key = (n: number, repo = 'widget'): string => `acme/${repo}#${n}`;
+/** `createdAt` of the fake's default PR object. */
+const CREATED = '2026-11-12T17:00:00Z';
+
+/** A successful read of `prs` with the given states, no titles, no facts (`error`) and no viewer login. */
+function statesOnly(prs: readonly PrRef[], state: (pr: PrRef) => PullRequestState | null): PrReadResult {
+  return {
+    ok: true,
+    states: new Map(prs.map((pr) => [pr.url, state(pr)])),
+    titles: new Map(),
+    facts: new Map(prs.map((pr) => [pr.url, { kind: 'error' } as const])),
+    viewer: null,
+  };
+}
 
 /** Timers fire only when the test moves the clock; `now()` is wall time (the tracker compares it with `resetAt`). */
 class ManualScheduler implements Scheduler {
@@ -98,7 +112,10 @@ interface Stand {
   readonly sched: ManualScheduler;
   readonly tracker: PrStatusTracker;
   readonly lines: string[];
+  /** URLs of every change notification that named URLs (sorted). */
   readonly changes: string[][];
+  /** How many change notifications said the `gh` login changed. */
+  viewerChanges(): number;
   calls(): Call[];
   started(): { pid: number }[];
   scenario(list: Scenario[]): void;
@@ -141,8 +158,13 @@ function stand(list: Scenario[], opts: { withGh?: boolean; timeoutMs?: number; s
   const sched = new ManualScheduler();
   const lines: string[] = [];
   const changes: string[][] = [];
+  let viewerChanges = 0;
   const tracker = createPrStatusTracker({
-    source, scheduler: sched, log: (line) => { lines.push(line); }, onChange: (urls) => { changes.push([...urls].sort()); },
+    source, scheduler: sched, log: (line) => { lines.push(line); },
+    onChange: (change) => {
+      if (change.urls.size > 0) changes.push([...change.urls].sort());
+      if (change.viewerChanged) viewerChanges += 1;
+    },
   });
 
   const settle = async (): Promise<boolean> => {
@@ -165,6 +187,7 @@ function stand(list: Scenario[], opts: { withGh?: boolean; timeoutMs?: number; s
   };
   return {
     dir, sched, tracker, lines, changes,
+    viewerChanges: () => viewerChanges,
     calls: () => readJsonl<Call>('calls.jsonl'),
     started: () => readJsonl<{ pid: number }>('started.jsonl'),
     scenario: writeScenario,
@@ -249,9 +272,11 @@ describe('gh source: program, environment and query', () => {
     const prs = [parsePrUrl(url(7)), parsePrUrl(url(9, 'gadget'))] as PrRef[];
     const body = JSON.parse(buildQueryBody(prs)) as Body;
     expect(body.variables).toEqual({ o0: 'acme', r0: 'widget', n0: 7, o1: 'acme', r1: 'gadget', n1: 9 });
+    const fields = 'state isDraft title createdAt author{login}';
     expect(body.query).toBe('query($o0:String!,$r0:String!,$n0:Int!,$o1:String!,$r1:String!,$n1:Int!)'
-      + '{p0:repository(owner:$o0,name:$r0){pullRequest(number:$n0){state isDraft}} '
-      + 'p1:repository(owner:$o1,name:$r1){pullRequest(number:$n1){state isDraft}} rateLimit{remaining resetAt}}');
+      + `{p0:repository(owner:$o0,name:$r0){pullRequest(number:$n0){${fields}}} `
+      + `p1:repository(owner:$o1,name:$r1){pullRequest(number:$n1){${fields}}} `
+      + 'viewer{login} rateLimit{remaining resetAt}}');
     expect(body.query).not.toMatch(/acme|widget|gadget/);
   });
 
@@ -312,6 +337,94 @@ describe('readGhOutput: stdout decides, whatever the exit code', () => {
       data: { p0: { pullRequest: { state: 'OPEN' } }, rateLimit: { remaining: 0, resetAt: '2026-11-12T18:30:00Z' } },
     }));
     expect(exhausted.ok && exhausted.limitReached).toEqual({ resetAt: Date.parse('2026-11-12T18:30:00Z') });
+  });
+});
+
+describe('prTitle: a title from GitHub as the list may show it', () => {
+  it('drops control characters, trims, keeps at most 120 UTF-16 code units; empty or not a string is no title', () => {
+    expect(PR_TITLE_MAX).toBe(120);
+    expect(prTitle('\tAdd CSV\u0007 export\u2028\r\n')).toBe('Add CSV export');
+    expect(prTitle('x'.repeat(PR_TITLE_MAX + 5))).toBe('x'.repeat(PR_TITLE_MAX));
+    // A cut inside a surrogate pair leaves a replacement character, not half a character.
+    expect(prTitle(`${'x'.repeat(PR_TITLE_MAX - 1)}\u{1F600}`)).toBe(`${'x'.repeat(PR_TITLE_MAX - 1)}�`);
+    for (const none of [' \u0000 ', '', 42, null, undefined, { text: 'x' }]) expect(prTitle(none), String(none)).toBeUndefined();
+  });
+});
+
+describe('readGhOutput: facts per address', () => {
+  const prs = [parsePrUrl(url(1)), parsePrUrl(url(2)), parsePrUrl(url(3))] as PrRef[];
+  const createdAtMs = Date.parse(CREATED);
+  const found = (author = 'octo-owner'): unknown => ({ kind: 'found', author, createdAtMs });
+  const pr = (fields: Record<string, unknown> = {}): Record<string, unknown> => ({
+    pullRequest: {
+      state: 'OPEN', isDraft: false, title: 'Add CSV export', createdAt: CREATED, author: { login: 'octo-owner' }, ...fields,
+    },
+  });
+  const viewer = { login: 'octo-owner' };
+  const read = (answer: Record<string, unknown>, list: readonly PrRef[] = prs): PrReadResult =>
+    readGhOutput({ code: 1, stdout: JSON.stringify(answer), stderr: '', failure: null }, list);
+  const factsOf = (result: PrReadResult, list: readonly PrRef[] = prs): unknown[] =>
+    (result.ok ? list.map((one) => result.facts.get(one.url)) : ['not ok']);
+
+  it('author and creation time present: found, with the sanitised title and the viewer login', () => {
+    const result = read({ data: {
+      p0: pr(), p1: pr({ author: { login: 'ghost' }, title: ' Fix\u0000 import ' }), p2: pr({ title: 42 }), viewer,
+    } });
+    expect(result.ok && result.viewer).toBe('octo-owner');
+    expect(factsOf(result)).toEqual([found(), found('ghost'), found()]);
+    expect(result.ok && [...result.titles]).toEqual([[url(1), 'Add CSV export'], [url(2), 'Fix import']]);
+  });
+
+  it('the measured not-found shapes are missing: no PR with the number, no visible repository', () => {
+    const result = read({
+      data: { p0: { pullRequest: null }, p1: null, p2: pr(), viewer },
+      errors: [
+        { type: 'NOT_FOUND', path: ['p0', 'pullRequest'], message: 'Could not resolve to a PullRequest with the number of 1.' },
+        { type: 'NOT_FOUND', path: ['p1'], message: "Could not resolve to a Repository with the name 'acme/widget'." },
+      ],
+    });
+    expect(factsOf(result)).toEqual([{ kind: 'missing' }, { kind: 'missing' }, found()]);
+    expect(result.ok && [...result.states.values()]).toEqual([null, null, 'open']);
+  });
+
+  it('any other error on the alias path is an error, also next to a not-found error or beside a whole PR object', () => {
+    const result = read({
+      data: { p0: null, p1: pr(), p2: { pullRequest: null }, viewer },
+      errors: [
+        { type: 'FORBIDDEN', path: ['p0'], message: 'Resource not accessible' },
+        { type: 'NOT_FOUND', path: ['p1', 'pullRequest', 'author'], message: 'Could not resolve' },
+        { type: 'NOT_FOUND', path: ['p2', 'pullRequest'], message: 'Could not resolve' },
+        { type: 'FORBIDDEN', path: ['p2', 'pullRequest'], message: 'Resource not accessible' },
+        { type: 'INTERNAL', path: ['viewer'], message: 'ignored for the aliases' },
+        { type: 'INTERNAL', message: 'no path' },
+      ],
+    });
+    expect(factsOf(result)).toEqual([{ kind: 'error' }, { kind: 'error' }, { kind: 'error' }]);
+    // The state reads the PR object as before, whatever the errors say.
+    expect(result.ok && result.states.get(url(2))).toBe('open');
+  });
+
+  it('incomplete facts are an error: alias missing or null without a not-found error, no author, no creation time', () => {
+    const list = [1, 2, 3, 4, 5, 6, 7].map((n) => parsePrUrl(url(n))) as PrRef[];
+    const result = read({ data: {
+      p1: null, p2: { pullRequest: null }, p3: pr({ author: null }), p4: pr({ author: {} }), p5: pr({ author: { login: '' } }),
+      p6: pr({ createdAt: 'yesterday' }), viewer,
+    } }, list);
+    expect(factsOf(result, list)).toEqual(Array(7).fill({ kind: 'error' }));
+    expect(result.ok && result.states.get(url(4))).toBe('open');
+    expect(result.ok && result.titles.get(url(4))).toBe('Add CSV export');
+  });
+
+  it.each([
+    ['missing', {}], ['null', { viewer: null }], ['without a login', { viewer: {} }], ['with an empty login', { viewer: { login: '' } }],
+  ])('`viewer` %s: an error for every address of the answer, the states stay', (_name, top) => {
+    const result = read({
+      data: { p0: pr(), p1: pr({ state: 'MERGED' }), p2: { pullRequest: null }, ...top },
+      errors: [{ type: 'NOT_FOUND', path: ['p2', 'pullRequest'], message: 'Could not resolve' }],
+    });
+    expect(result.ok && result.viewer).toBeNull();
+    expect(factsOf(result)).toEqual([{ kind: 'error' }, { kind: 'error' }, { kind: 'error' }]);
+    expect(result.ok && [...result.states.values()]).toEqual(['open', 'merged', null]);
   });
 });
 
@@ -615,6 +728,247 @@ describe('tracker against the fake gh', () => {
   });
 });
 
+describe('facts: one-time verification of linked URLs against the fake gh', () => {
+  const createdAtMs = Date.parse(CREATED);
+
+  it('a URL without facts: one query for author, creation time, title and login; found → no second query', async () => {
+    const s = stand([{}]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS - 1);
+    expect(s.calls()).toHaveLength(0);
+    await s.tick(1);
+    expect(s.calls()).toHaveLength(1);
+    const { query } = bodyOf(s.calls()[0] as Call);
+    expect(query).toContain('pullRequest(number:$n0){state isDraft title createdAt author{login}}');
+    expect(query).toContain(' viewer{login} ');
+    expect(s.tracker.factsOf(url(1))).toEqual({ author: 'octo-owner', createdAtMs, title: 'Change 1' });
+    expect(s.tracker.viewerLogin()).toBe('octo-owner');
+    // A candidate never enters the state map.
+    expect(s.tracker.stateOf(url(1))).toBeUndefined();
+    expect(s.changes).toEqual([[url(1)]]);
+    expect(s.viewerChanges()).toBe(1);
+
+    s.tracker.setSessionLinks('s2', [url(1)]);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    await tickInSteps(s, 2 * UNKNOWN_REFRESH_MS, 5 * MIN);
+    expect(s.calls()).toHaveLength(1);
+    expect(s.sched.pending).toBe(0);
+  });
+
+  it('a rejected candidate (another author) is not refreshed: after 5 min and after 30 min still one query', async () => {
+    const s = stand([{ states: { [key(1)]: { author: { login: 'someone-else' } } } }]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.tracker.factsOf(url(1))?.author).toBe('someone-else');
+    await tickInSteps(s, OPEN_REFRESH_MS);
+    expect(s.calls()).toHaveLength(1);
+    await tickInSteps(s, UNKNOWN_REFRESH_MS);
+    expect(s.calls()).toHaveLength(1);
+    expect(s.tracker.stateOf(url(1))).toBeUndefined();
+  });
+
+  it('`data.p0 = null` with another error on path p0: error, nothing stored, no pause, asked again after 30 min', async () => {
+    const s = stand([{ repoErrors: { [key(1)]: 'FORBIDDEN' } }, {}]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.calls()).toHaveLength(1);
+    expect(s.tracker.factsOf(url(1))).toBeUndefined();
+    expect(s.changes).toEqual([]);
+    await tickInSteps(s, UNKNOWN_REFRESH_MS - MIN);
+    expect(s.calls()).toHaveLength(1);
+    await tickInSteps(s, MIN);
+    expect(s.calls()).toHaveLength(2);
+    expect(s.tracker.factsOf(url(1))?.author).toBe('octo-owner');
+    expect(s.lines).toEqual([]);
+  });
+
+  it.each([
+    ['no PR with that number', { states: { [key(1)]: null } }],
+    ['no visible repository', { repoErrors: { [key(1)]: 'NOT_FOUND' } }],
+  ])('%s: missing, nothing stored, asked again after 30 min', async (_name, first) => {
+    const s = stand([first, {}]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1), url(2)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.calls().map(keysOf)).toEqual([[key(1), key(2)]]);
+    expect(s.tracker.factsOf(url(1))).toBeUndefined();
+    expect(s.tracker.factsOf(url(2))?.author).toBe('octo-owner');
+    await tickInSteps(s, UNKNOWN_REFRESH_MS - MIN);
+    expect(s.calls()).toHaveLength(1);
+    await tickInSteps(s, MIN);
+    expect(s.calls().map(keysOf)).toEqual([[key(1), key(2)], [key(1)]]);
+    expect(s.tracker.factsOf(url(1))?.author).toBe('octo-owner');
+  });
+
+  it('no `viewer.login`: an error for the whole batch, the states still apply', async () => {
+    const s = stand([{ viewer: null }, {}]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionUrls('s1', [url(1)]);
+    s.tracker.setSessionLinks('s1', [url(1), url(2)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.calls().map(keysOf)).toEqual([[key(1), key(2)]]);
+    expect(s.tracker.stateOf(url(1))).toBe('open');
+    expect(s.tracker.factsOf(url(1))).toBeUndefined();
+    expect(s.tracker.factsOf(url(2))).toBeUndefined();
+    expect(s.tracker.viewerLogin()).toBeNull();
+    expect(s.viewerChanges()).toBe(0);
+    await tickInSteps(s, UNKNOWN_REFRESH_MS, 5 * MIN);
+    expect(keysOf(s.calls().at(-1) as Call)).toContain(key(2));
+    expect(s.tracker.factsOf(url(2))?.author).toBe('octo-owner');
+    expect(s.tracker.viewerLogin()).toBe('octo-owner');
+  });
+
+  it('a URL merged in the state map without facts: one facts query, then nothing', async () => {
+    const s = stand([{ states: { [key(1)]: 'MERGED' }, viewer: null }, { states: { [key(1)]: 'MERGED' } }]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionUrls('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.tracker.stateOf(url(1))).toBe('merged');
+    expect(s.tracker.factsOf(url(1))).toBeUndefined();
+    s.tracker.setSessionLinks('s2', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.calls().map(keysOf)).toEqual([[key(1)], [key(1)]]);
+    expect(s.tracker.factsOf(url(1))).toEqual({ author: 'octo-owner', createdAtMs, title: 'Change 1' });
+    expect(s.tracker.stateOf(url(1))).toBe('merged');
+    await tickInSteps(s, 2 * UNKNOWN_REFRESH_MS, 5 * MIN);
+    expect(s.calls()).toHaveLength(2);
+    expect(s.sched.pending).toBe(0);
+  });
+
+  it('a visible PR whose title changes on GitHub: the state refresh brings the new title', async () => {
+    const s = stand([
+      { states: { [key(1)]: { title: 'Add CSV export' } } }, { states: { [key(1)]: { title: 'Add CSV and JSON export' } } },
+    ]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    s.tracker.setSessionUrls('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    // Due for its state and for its facts at once: one alias.
+    expect(s.calls().map(keysOf)).toEqual([[key(1)]]);
+    expect(s.tracker.factsOf(url(1))?.title).toBe('Add CSV export');
+    await s.tick(OPEN_REFRESH_MS);
+    expect(s.calls()).toHaveLength(2);
+    expect(s.tracker.factsOf(url(1))).toEqual({ author: 'octo-owner', createdAtMs, title: 'Add CSV and JSON export' });
+    expect(s.changes).toEqual([[url(1)], [url(1)]]);
+  });
+
+  it('author and creation time stay as first read; a later answer changes only the title', async () => {
+    const s = stand([{}, { states: { [key(1)]: { author: { login: 'someone-else' }, createdAt: '2026-11-12T17:30:00Z' } } }]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionUrls('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    await s.tick(OPEN_REFRESH_MS);
+    expect(s.calls()).toHaveLength(2);
+    expect(s.tracker.factsOf(url(1))).toEqual({ author: 'octo-owner', createdAtMs, title: 'Change 1' });
+    expect(s.changes).toEqual([[url(1)]]);
+  });
+
+  it('no gh in the directory list: the queue waits, nothing stored, zero calls', async () => {
+    const s = stand([{}], { withGh: false });
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    await tickInSteps(s, 60 * MIN, 5 * MIN);
+    expect(s.calls()).toHaveLength(0);
+    expect(s.tracker.factsOf(url(1))).toBeUndefined();
+    expect(s.tracker.viewerLogin()).toBeNull();
+    expect(s.lines).toHaveLength(1);
+  });
+
+  it.each([
+    ['not logged in', { stdout: '', stderr: 'To get started with GitHub CLI, please run:  gh auth login\n', exit: 4 }, FAILURE_PAUSE_MS],
+    ['a GitHub rate limit', {
+      stdout: JSON.stringify({ errors: [{ type: 'RATE_LIMITED', message: 'API rate limit exceeded' }] }), exit: 1,
+    }, RATE_LIMIT_PAUSE_MAX_MS],
+    ['a failed call', { stdout: 'not json', stderr: 'HTTP 502', exit: 1 }, FAILURE_PAUSE_MS],
+  ])('%s: the queue waits out the pause (a new URL too), nothing stored, then one query', async (_name, failure, pauseMs) => {
+    const s = stand([failure, {}]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.calls()).toHaveLength(1);
+    expect(s.tracker.factsOf(url(1))).toBeUndefined();
+    expect(s.tracker.viewerLogin()).toBeNull();
+    s.tracker.setSessionLinks('s2', [url(2)]);
+    await tickInSteps(s, pauseMs - MIN);
+    expect(s.calls()).toHaveLength(1);
+    await tickInSteps(s, MIN);
+    expect(s.calls().map(keysOf)).toEqual([[key(1)], [key(1), key(2)]]);
+    expect(s.tracker.factsOf(url(1))?.author).toBe('octo-owner');
+    expect(s.tracker.factsOf(url(2))?.author).toBe('octo-owner');
+  });
+
+  it('zero connected clients: no verification; a client reads the queue at once', async () => {
+    const s = stand([{}]);
+    s.tracker.setSessionLinks('s1', [url(1)]);
+    await tickInSteps(s, 60 * MIN, 10 * MIN);
+    expect(s.calls()).toHaveLength(0);
+    s.tracker.setClientConnected(true);
+    await s.drain();
+    expect(s.calls()).toHaveLength(1);
+    expect(s.tracker.factsOf(url(1))?.author).toBe('octo-owner');
+  });
+
+  it('the linked set of a session replaces the previous one; a dropped session takes its candidates along', async () => {
+    const s = stand([{ states: { [key(2)]: null } }]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionLinks('s1', [url(1), url(9, 'gadget')]);
+    s.tracker.setSessionLinks('s1', [url(2), 'https://example.com/acme/widget/pull/3']);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.calls().map(keysOf)).toEqual([[key(2)]]);
+    expect(s.tracker.factsOf(url(2))).toBeUndefined();
+    s.tracker.dropSession('s1');
+    await tickInSteps(s, 2 * UNKNOWN_REFRESH_MS, 5 * MIN);
+    expect(s.calls()).toHaveLength(1);
+    expect(s.sched.pending).toBe(0);
+  });
+
+  it('candidates fill a batch after the state refreshes: 50 visible + 1 candidate → two calls, the visible first', async () => {
+    const s = stand([{}]);
+    s.tracker.setClientConnected(true);
+    const visible = Array.from({ length: PR_BATCH_MAX }, (_, i) => url(i + 1));
+    s.tracker.setSessionLinks('s1', [url(1, 'gadget')]);
+    s.tracker.setSessionUrls('s1', visible);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.calls().map(keysOf)).toEqual([visible.map((_, i) => key(i + 1)), [key(1, 'gadget')]]);
+  });
+
+  it('a different gh login: a notification without URLs; the same login again: none', async () => {
+    const s = stand([{}, {}, { viewer: 'octo-work' }]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionUrls('s1', [url(1)]);
+    await s.tick(NEW_URL_DELAY_MS);
+    expect(s.viewerChanges()).toBe(1);
+    await s.tick(OPEN_REFRESH_MS);
+    expect(s.viewerChanges()).toBe(1);
+    await s.tick(OPEN_REFRESH_MS);
+    expect(s.tracker.viewerLogin()).toBe('octo-work');
+    expect(s.viewerChanges()).toBe(2);
+    expect(s.changes).toEqual([[url(1)]]);
+  });
+
+  it('the gh login, authors and titles never reach the log', async () => {
+    const s = stand([
+      { states: { [key(2)]: { author: { login: 'someone-else' } } }, repoErrors: { [key(3)]: 'FORBIDDEN' } },
+      { stdout: '', stderr: 'octo-owner Change 1', exit: 1 },
+      { rateLimit: { remaining: 0, resetAt: new Date(T0 + 50 * MIN).toISOString() } },
+    ]);
+    s.tracker.setClientConnected(true);
+    s.tracker.setSessionUrls('s1', [url(1)]);
+    s.tracker.setSessionLinks('s1', [url(1), url(2), url(3)]);
+    await tickInSteps(s, OPEN_REFRESH_MS + FAILURE_PAUSE_MS + MIN, 5 * MIN);
+    expect(s.calls()).toHaveLength(3);
+    expect(s.tracker.viewerLogin()).toBe('octo-owner');
+    expect(s.lines).toEqual([
+      'pr-status: gh call failed (error) for 1 PR, paused for 30 min',
+      expect.stringMatching(/^pr-status: GitHub rate limit reached, paused for \d+ min$/),
+    ]);
+    for (const line of s.lines) expect(line).not.toMatch(/octo-owner|someone-else|Change \d|acme|widget/);
+  });
+});
+
 describe('tracker: never throws', () => {
   it('a throwing callback and a rejecting source do not stop the rhythm', async () => {
     let reads = 0;
@@ -622,7 +976,7 @@ describe('tracker: never throws', () => {
       read: (prs) => {
         reads += 1;
         if (reads === 1) return Promise.reject(new Error('acme/widget gho_SAMPLE'));
-        return Promise.resolve({ ok: true, states: new Map(prs.map((pr) => [pr.url, 'open' as const])) });
+        return Promise.resolve(statesOnly(prs, () => 'open'));
       },
     };
     const s = stand([{}], { source });
@@ -641,28 +995,55 @@ describe('tracker: never throws', () => {
 });
 
 describe('fixed source (demo, review mode, frame producer)', () => {
-  it('answers from its map, no state for other URLs', async () => {
-    const source = createFixedPrStateSource(new Map<string, PullRequestState>([[url(1), 'merged']]));
-    const result = await source.read([parsePrUrl(url(1)), parsePrUrl(url(2))] as PrRef[]);
-    expect(result).toEqual({ ok: true, states: new Map([[url(1), 'merged'], [url(2), null]]) });
+  const createdAtMs = Date.parse(CREATED);
+  const prs = new Map([
+    [url(1), { author: 'octo-owner', createdAtMs, state: 'merged' as const, title: 'Add CSV export' }],
+    [url(3), { author: 'someone-else', createdAtMs }],
+  ]);
+
+  it('answers from its map: state, title, author and creation time; other URLs are missing', async () => {
+    const source = createFixedPrStateSource({ viewer: 'octo-owner', prs });
+    const result = await source.read([parsePrUrl(url(1)), parsePrUrl(url(2)), parsePrUrl(url(3))] as PrRef[]);
+    expect(result).toEqual({
+      ok: true,
+      states: new Map([[url(1), 'merged'], [url(2), null], [url(3), null]]),
+      titles: new Map([[url(1), 'Add CSV export']]),
+      facts: new Map([
+        [url(1), { kind: 'found', author: 'octo-owner', createdAtMs }],
+        [url(2), { kind: 'missing' }],
+        [url(3), { kind: 'found', author: 'someone-else', createdAtMs }],
+      ]),
+      viewer: 'octo-owner',
+    });
+  });
+
+  it('without a viewer login it answers like GitHub without `viewer.login`: states, but no facts', async () => {
+    const result = await createFixedPrStateSource({ viewer: null, prs }).read([parsePrUrl(url(1))] as PrRef[]);
+    expect(result.ok && result.states.get(url(1))).toBe('merged');
+    expect(result.ok && result.facts.get(url(1))).toEqual({ kind: 'error' });
+    expect(result.ok && result.viewer).toBeNull();
   });
 
   it('drives the tracker like gh does', async () => {
-    const source = createFixedPrStateSource(new Map<string, PullRequestState>([[url(1), 'merged']]));
+    const source = createFixedPrStateSource({ viewer: 'octo-owner', prs });
     const s = stand([{}], { source, withGh: false });
     s.tracker.setClientConnected(true);
     s.tracker.setSessionUrls('demo', [url(1), url(2)]);
     await s.tick(NEW_URL_DELAY_MS);
     expect(s.tracker.stateOf(url(1))).toBe('merged');
     expect(s.tracker.stateOf(url(2))).toBeUndefined();
+    expect(s.tracker.factsOf(url(1))).toEqual({ author: 'octo-owner', createdAtMs, title: 'Add CSV export' });
+    expect(s.tracker.viewerLogin()).toBe('octo-owner');
     expect(s.changes).toEqual([[url(1)]]);
     expect(s.calls()).toHaveLength(0);
   });
 });
 
 describe('tracker: a read in flight', () => {
-  /** A source whose reads stay open until the test answers them (every PR `open`). */
-  function heldSource(): { source: PrStateSource; reads: string[][]; answer(): Promise<void> } {
+  /** A source whose reads stay open until the test answers them (by default every PR `open`, without facts). */
+  function heldSource(
+    answerOf: (prs: readonly PrRef[]) => PrReadResult = (prs) => statesOnly(prs, () => 'open'),
+  ): { source: PrStateSource; reads: string[][]; answer(): Promise<void> } {
     const reads: string[][] = [];
     const waiting: Array<() => void> = [];
     return {
@@ -671,7 +1052,7 @@ describe('tracker: a read in flight', () => {
         read: (prs) => {
           reads.push(prs.map((pr) => pr.url));
           return new Promise((resolve) => {
-            waiting.push(() => { resolve({ ok: true, states: new Map(prs.map((pr) => [pr.url, 'open' as const])) }); });
+            waiting.push(() => { resolve(answerOf(prs)); });
           });
         },
       },
@@ -690,7 +1071,7 @@ describe('tracker: a read in flight', () => {
     const sched = new ManualScheduler();
     const changes: string[][] = [];
     const tracker = createPrStatusTracker({
-      source: held.source, scheduler: sched, log: () => {}, onChange: (urls) => { changes.push([...urls]); },
+      source: held.source, scheduler: sched, log: () => {}, onChange: (change) => { changes.push([...change.urls]); },
     });
     tracker.setClientConnected(true);
     tracker.setSessionUrls('s1', [url(1)]);
@@ -726,6 +1107,37 @@ describe('tracker: a read in flight', () => {
     tracker.setSessionUrls('s3', [url(3)]);
     await held.answer();
     expect(sched.pending).toBe(0);
+    expect(sched.fireNext(sched.t + UNKNOWN_REFRESH_MS * 4)).toBe(false);
+    expect(held.reads).toHaveLength(1);
+    tracker.close();
+  });
+
+  it('a session dropped during a verification: the late answer still fills the memory, nothing is asked again', async () => {
+    const createdAtMs = Date.parse(CREATED);
+    const held = heldSource((prs) => ({
+      ...statesOnly(prs, () => 'open'),
+      titles: new Map(prs.map((pr) => [pr.url, 'Add CSV export'])),
+      facts: new Map(prs.map((pr) => [pr.url, { kind: 'found', author: 'octo-owner', createdAtMs } as const])),
+      viewer: 'octo-owner',
+    }));
+    const sched = new ManualScheduler();
+    const changes: { urls: string[]; viewerChanged: boolean }[] = [];
+    const tracker = createPrStatusTracker({
+      source: held.source, scheduler: sched, log: () => {},
+      onChange: (change) => { changes.push({ urls: [...change.urls], viewerChanged: change.viewerChanged }); },
+    });
+    tracker.setClientConnected(true);
+    tracker.setSessionLinks('s1', [url(1)]);
+    expect(sched.fireNext(sched.t + NEW_URL_DELAY_MS)).toBe(true);
+    expect(held.reads).toEqual([[url(1)]]);
+
+    tracker.dropSession('s1');
+    await held.answer();
+    expect(tracker.factsOf(url(1))).toEqual({ author: 'octo-owner', createdAtMs, title: 'Add CSV export' });
+    expect(tracker.stateOf(url(1))).toBeUndefined();
+    expect(changes).toEqual([{ urls: [url(1)], viewerChanged: true }]);
+
+    tracker.setSessionLinks('s2', [url(1)]);
     expect(sched.fireNext(sched.t + UNKNOWN_REFRESH_MS * 4)).toBe(false);
     expect(held.reads).toHaveLength(1);
     tracker.close();

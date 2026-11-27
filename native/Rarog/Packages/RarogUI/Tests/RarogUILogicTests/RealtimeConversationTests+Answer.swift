@@ -116,8 +116,9 @@ extension RealtimeConversationTests {
     release?.resume()
   }
 
-  @Test("the stream limit cut the item: the answer does not count as whole")
-  func streamLimitIsNotWhole() async throws {
+  @Test("an error that ends one stream cut the item: the answer does not count as whole",
+    arguments: SpeechSample.streamOnlyErrors)
+  func streamOnlyErrorIsNotWhole(code: Int, type: String) async throws {
     let h = Harness(speech: SpeechFakeKeys())
     await h.ready()
     h.utterance()
@@ -125,8 +126,7 @@ extension RealtimeConversationTests {
     h.say("r1", item: "m1", pcm: Data(count: 4800))
     h.socket.reply(RealtimeSample.done("r1"))
     let stream = try #require(h.streamOf["m1"])
-    h.speechSocket.reply(
-      SpeechSample.encoded(["stream_id": stream, "error_code": 403, "error_type": "temp_api_key_session_expired"]))
+    h.speechSocket.reply(SpeechSample.error(stream, code: code, type: type))
     h.audio.playedSamples = h.audio.queuedSamples
     try #require(h.audio.handlers).drained()
     #expect(h.conversation.phase == .listening)

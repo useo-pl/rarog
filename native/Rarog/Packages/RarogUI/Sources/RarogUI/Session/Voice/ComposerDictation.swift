@@ -1,4 +1,5 @@
 #if os(iOS)
+import Observation
 import RarogCore
 import UIKit
 
@@ -17,9 +18,14 @@ import UIKit
 ///   zmiana pola z kodu ekranu (tekst oddany po odmowie wysyłki, szkic, prompt po Esc) — inaczej
 ///   następny token nadpisałby ją wartością sprzed zmiany (`VoiceFieldBinding`).
 /// - Send during a recording, or while it finishes, ends it and waits for the last words, then sends the whole text.
-/// - The background, a conversation and a locked field end the recording; its text stays in the field. With the
-///   locked-phone trial on, the background keeps a recording whose microphone opened (`LockedPhoneTrial`): its text
-///   keeps landing in this field, which is the session's draft. Closing the screen and a takeover of the microphone
+///   A Send from outside the app's screens (`sendFromLockScreen`, a Live Activity's button) takes the same way, with
+///   the screen's send (`onLockScreenSend`) and the login of the press; its task gives how it ended
+///   (`LockScreenSend`) once the field's draft is on disk, and writes `dictation: live activity send <result>`.
+/// - The background, a conversation and a locked field end the recording; its text stays in the field. The
+///   background keeps a recording whose microphone opened while `BackgroundRecording` says so (on a phone its tile
+///   stands, on a device without tiles the screen has not locked): its text keeps landing in this field, which is the
+///   session's draft, and the tile removed or the lock while the app stays in the background ends it then. A
+///   recording that already finishes keeps its own end. Closing the screen and a takeover of the microphone
 ///   turn the hypothesis into text, and the durable draft gets the field's state (`persistDraftNow` of the screen:
 ///   the field IS the draft, so no second copy is appended).
 /// - Every end of a recording of this field writes the durable draft once the last words are in the field: the
@@ -33,6 +39,10 @@ import UIKit
 ///   away with its screen mid-recording writes `hand-off`.
 @MainActor
 final class ComposerDictation: DictationHost {
+  /// A message-field recording lasts at most this many seconds, below the server's limit
+  /// (`VoiceRecorder.Deps.sessionCeiling`). A note's and an Inbox reply's recording keep the server's.
+  static let sessionCeiling: TimeInterval = 600
+
   private weak var composer: ComposerView?
   private weak var store: RarogStore?
   /// The session of this message field (`install`).
@@ -73,6 +83,11 @@ final class ComposerDictation: DictationHost {
   private var observers: [any NSObjectProtocol] = []
   /// The app is in the background: between its background and foreground notifications.
   private var inBackground = false
+  /// The background rule's inputs are watched for the recording kept in the background (`watchBackgroundRule`).
+  private var watchingRule = false
+  /// The Send from outside the screens that runs: the recording it ended, its task and the handover of the field's
+  /// send to that task.
+  private var lockScreenSend: (recording: Int, task: Task<LockScreenSend, Never>, handover: FieldSendHandover)?
 
   init(services: VoiceServices = .current) {
     self.services = services
@@ -85,6 +100,8 @@ final class ComposerDictation: DictationHost {
     // Ekran zniknął bez `leave` — mikrofon i strumień nie mogą żyć dłużej niż on.
     recorder?.cancel()
     finishBackgroundWork()
+    // A Send from outside the screens that still waits for the last words gets no send: its task ends as not sent.
+    lockScreenSend?.handover.give(nil)
     // The recorder's view no longer reaches this field, so the center learns the end here.
     microphoneCenter?.changed(self)
   }
@@ -100,6 +117,10 @@ final class ComposerDictation: DictationHost {
 
   /// The mic (and ⌥⌘M) during a voice agent conversation: mute or unmute it (`SessionViewController+VoiceAgent`).
   var onConversationMic: (@MainActor () -> Void)?
+
+  /// The screen's send of the field for a Send from outside the screens, with the login of the press, registered as
+  /// the field's last send (`SessionViewController+Voice`); `nil` = no screen sends this field.
+  var onLockScreenSend: (@MainActor (ComposerSendLogin) -> Task<ComposerSendResult, Never>?)?
 
   /// Skrót dyktowania i mikrofon: zaczyna (albo pyta o trasę), gdy pole przyjmuje tekst; kończy zawsze.
   /// During a voice agent conversation they mute it, also with a read-only field.
@@ -238,6 +259,35 @@ final class ComposerDictation: DictationHost {
     recorder.stop()
   }
 
+  /// Ends the recording as Send during it does and, once the last words are in the field, sends the field through the
+  /// screen (`onLockScreenSend`) with the login and the interface of this moment: a pairing or a server that changes
+  /// meanwhile gets nothing. The task gives the result once the field's draft is on disk (`draftOnDisk`: the send
+  /// emptied the field, and a refusal gives the text back), then writes its line. A second call while it runs, also
+  /// after the recording ended, gets the same task. `nil`: nothing of this field to send (no recording whose
+  /// microphone opened, no screen behind the field), or a Send of the screen already waits for the last words.
+  func sendFromLockScreen() -> Task<LockScreenSend, Never>? {
+    if let running = lockScreenSend, running.recording == recording { return running.task }
+    guard let recorder, recorder.microphoneOpened, !sendWaiting, let store, let send = onLockScreenSend else {
+      return nil
+    }
+    let login = ComposerSendLogin(store)
+    ending = ending ?? DictationEndTrace.liveActivitySend
+    // The background time comes before the stop, while the open microphone still keeps the app running.
+    if inBackground { holdFinalization() }
+    let handover = FieldSendHandover()
+    waitForLastWords(recorder) { handover.give(send(login)) }
+    let id = recording
+    let task = Task { @MainActor [weak self, weak store, draftOnDisk] in
+      let result = LockScreenSend(await handover.value()?.value)
+      await draftOnDisk?()
+      store?.trace(result.traceLine, budget: .voiceAgent)
+      if let self, self.lockScreenSend?.recording == id { self.lockScreenSend = nil }
+      return result
+    }
+    lockScreenSend = (id, task, handover)
+    return task
+  }
+
   func claimed(by center: DictationCenter) { microphoneCenter = center }
 
   // MARK: - Nagranie
@@ -252,10 +302,12 @@ final class ComposerDictation: DictationHost {
     recording += 1
     let id = recording
     let services = services
+    var deps = services.recorder(
+      engine, mint: { [weak self] in await self?.mint() ?? .stop("") },
+      trace: { [weak self] line in self?.store?.trace(line) })
+    deps.sessionCeiling = Self.sessionCeiling
     let recorder = VoiceRecorder(
-      deps: services.recorder(
-        engine, mint: { [weak self] in await self?.mint() ?? .stop("") },
-        trace: { [weak self] line in self?.store?.trace(line) }),
+      deps: deps,
       handlers: .init(
         view: { [weak self] view in
           guard let self, self.recording == id else { return }
@@ -327,15 +379,20 @@ final class ComposerDictation: DictationHost {
       return
     }
     ending = ending ?? "send"
-    // Send ends the recording like a second mic tap and waits for the last words (at most the finalization limit),
-    // so the message carries the whole sentence and no late word lands in the emptied field.
     guard !sendWaiting else { return }
+    waitForLastWords(recorder) { send?() }
+  }
+
+  /// Ends the recording like a second mic tap and runs `send` once the last words are in the field (at most the
+  /// finalization limit), so the message carries the whole sentence and no late word lands in the emptied field. One
+  /// send waits at a time (`sendWaiting`).
+  private func waitForLastWords(_ recorder: VoiceRecorder, then send: @escaping @MainActor () -> Void) {
     // The waiter goes in before `stop()`: a recording with no stream yet (asking for the microphone permission) ends
     // synchronously, and a waiter added after that would miss this end and fire at the next recording's.
     sendWaiting = true
     idleWaiters.append { [weak self] in
       self?.sendWaiting = false
-      send?()
+      send()
     }
     if recorder.view.phase != .finalizing { recorder.stop() }
   }
@@ -351,18 +408,45 @@ final class ComposerDictation: DictationHost {
 
   private func enteredBackground() {
     inBackground = true
-    guard let recorder, recorder.active else { return }
-    // With the locked-phone trial on, a recording whose microphone opened goes on: its text keeps landing in this
-    // field. A recording still preparing ends as with the trial off, so its microphone never opens in the background.
-    if store?.voiceAgent.lockedPhoneTrial.keeps(running: recorder.microphoneOpened) == true {
-      // One that already finishes gets the background time for its last words.
-      if recorder.view.phase == .finalizing { holdFinalization() }
+    applyBackgroundRule()
+  }
+
+  /// The background rule for this field's recording, at the background and at every change of the rule's inputs
+  /// while the app stays there. A recording whose microphone opened goes on while the rule keeps it: its text keeps
+  /// landing in this field. A recording still preparing ends, so its microphone never opens in the background.
+  private func applyBackgroundRule() {
+    guard inBackground, let recorder, recorder.active else { return }
+    // One that already finishes (a second tap, Send, an end from the Lock Screen, silence, the limit) keeps its own
+    // end and gets the background time for its last words; its tile may go away meanwhile.
+    if recorder.view.phase == .finalizing {
+      holdFinalization()
+      return
+    }
+    if store?.voiceAgent.background.keeps(running: recorder.microphoneOpened) == true {
+      watchBackgroundRule()
       return
     }
     // Zejście w tło kończy nagranie; finalizacja dostaje chwilę w tle, tekst zostaje w polu.
     holdFinalization()
     ending = ending ?? "background"
     recorder.interrupt()
+  }
+
+  /// While the recording is kept in the background, the next change of the rule's inputs (the tile, the lock) applies
+  /// the rule again. The change comes before the new value is in place, so the rule runs on the next main-actor turn.
+  private func watchBackgroundRule() {
+    guard !watchingRule, let background = store?.voiceAgent.background else { return }
+    watchingRule = true
+    let owner = WeakOwner(self)
+    withObservationTracking {
+      _ = background.keeps(running: true)
+    } onChange: {
+      Task { @MainActor in
+        guard let self = owner.value as? ComposerDictation else { return }
+        self.watchingRule = false
+        self.applyBackgroundRule()
+      }
+    }
   }
 
   /// Background time for the finalization of this field's recording and the draft write after it; one at a time,

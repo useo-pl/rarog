@@ -192,7 +192,7 @@ final class CommandSuggestionsKeysTests: XCTestCase {
 
     init(
       state: String, height: CGFloat = 874, pills: Bool = false, drafts: ComposerDrafts = ComposerDrafts(),
-      announcer: Announcer = .shared
+      announcer: Announcer = .shared, voice: VoiceServices = .current
     ) throws {
       let log = CallLog()
       calls = log
@@ -217,7 +217,8 @@ final class CommandSuggestionsKeysTests: XCTestCase {
          {"seq":1,"role":"assistant","at":"2026-10-17T10:00:00.000Z","blocks":[{"type":"text","text":"Gotowe."}]}],
          "pendingPermissions":[],"pendingQuestions":[]}
         """#, source: .session("s1"))
-      controller = SessionViewController(store: store, sessionId: "s1", drafts: drafts, announcer: announcer)
+      controller = SessionViewController(
+        store: store, sessionId: "s1", drafts: drafts, announcer: announcer, voice: voice)
       if pills { controller.installComposerPills(navigation: RarogNavigation(prefs: MemoryPreferences())) }
       window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: height))
       window.rootViewController = controller
@@ -290,6 +291,8 @@ final class CallLog: @unchecked Sendable {
     var holdSends = false
     /// The send fails with this error instead of 202 (a refusal, a lost network).
     var sendFailure: TransportError?
+    /// The 202 says the message waits in the CLI queue (`queued: true`).
+    var sendQueued = false
     /// The `operationId` of every queue take-back.
     var takeBacks: [UUID] = []
     /// The take-back's answer: a JSON body or an error; `nil` = nothing was queued (`{"items":[]}`).
@@ -336,7 +339,8 @@ extension UIKitTransport {
         calls.record { $0.sends.append(text) }
         while calls.read(\.holdSends) { try? await Task.sleep(for: .milliseconds(10)) }
         if let failure = calls.read(\.sendFailure) { throw failure }
-        return nil
+        guard calls.read(\.sendQueued) else { return nil }
+        return try? JSONDecoder().decode(MessageAccepted.self, from: Data(#"{"ok":true,"queued":true}"#.utf8))
       },
       onInterrupt: { sessionId throws(TransportError) in
         calls.record { $0.interrupts.append(sessionId) }

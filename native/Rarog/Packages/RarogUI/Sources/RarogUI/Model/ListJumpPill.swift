@@ -29,13 +29,13 @@ public enum ListJumpPill {
     case failed
     case unread
 
-    /// `nil` for working, quiet and waiting on a background task.
+    /// `nil` for working, quiet and waiting on a background task, also a long wait (only a warning).
     public init?(_ tone: StatusTone) {
       switch tone {
       case .waiting: self = .waiting
       case .failed: self = .failed
       case .unread: self = .unread
-      case .working, .quiet, .backgroundWait: return nil
+      case .working, .quiet, .backgroundWait, .backgroundWaitLong: return nil
       }
     }
   }
@@ -179,6 +179,15 @@ public enum ListJumpPill {
 
     return Result(
       above: side(above, target: aboveTarget, rows: rows), below: side(below, target: belowTarget, rows: rows))
+  }
+
+  /// The pills of `result` may stand: together, the sides that have a pill cover at most half of the visible part
+  /// (`visibleHeight`, under the filter row and above the footer card). Otherwise both go together, so a finger always
+  /// finds rows to drag: at the largest text in landscape a pill is about 125 pt tall and almost as wide as the list,
+  /// and a drag that starts on it does not scroll. The count stays; only the drawing waits for room.
+  public static func fits(_ result: Result, pillHeights: PillHeights, visibleHeight: CGFloat) -> Bool {
+    let covered = (result.above == nil ? 0 : pillHeights.above) + (result.below == nil ? 0 : pillHeights.below)
+    return covered <= visibleHeight / 2
   }
 
   /// A row is on screen when at least half of the smaller of two heights, the row's and the visible part's, lies in

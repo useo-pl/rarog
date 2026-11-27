@@ -344,6 +344,8 @@ async function setup(
 
   await supervisor.ready;
   await flush();
+  // The pane label migration reads `pane.list` once at start; the counter measures what a test does after.
+  if (opts.launchClient instanceof FakeLaunchClient) opts.launchClient.listPanesCalls = 0;
   const result: Setup = {
     supervisor, client, transport, scheduler, lifecycle, drivers: drivers.attached, clock, audit,
     logs,
@@ -2510,10 +2512,9 @@ describe('etykieta taba w herdr idzie za etykietą karty', () => {
     expect(tabRenames(launchClient)).toEqual(['pierwsza', 'druga']);
   });
 
-  it('panel `rarog-claude` i agent `rarog-<6 hex>` — nazwanie idzie, potwierdzenie po etykiecie panelu', async () => {
+  it('panel z etykietą Claude i agent `rarog-<6 hex>` — nazwanie idzie, potwierdzenie po etykiecie panelu', async () => {
     const { s, launchClient, agent, key } = await withTab({
       agent: namedAgentAt(0, `${HERDR_NAME_PREFIX}-abc123`),
-      paneLabel: `${HERDR_NAME_PREFIX}-claude ${KEY16} ${labelTrace(OLD)}`,
     });
 
     s.supervisor.syncTabLabel?.(key, 'nowa');
@@ -2526,12 +2527,10 @@ describe('etykieta taba w herdr idzie za etykietą karty', () => {
   });
 
   it('panel z INNYM kluczem po odczycie taba → bez zapisu', async () => {
-    const { s, launchClient, agent, key } = await withTab({
-      paneLabel: `${HERDR_NAME_PREFIX}-claude ${KEY16} ${labelTrace(OLD)}`,
-    });
+    const { s, launchClient, agent, key } = await withTab();
     launchClient.onGetTab = () => {
       const pane = launchClient.panes[0];
-      if (pane !== undefined) pane.label = `${HERDR_NAME_PREFIX}-claude cafebabecafebabe ${labelTrace(OLD)}`;
+      if (pane !== undefined) pane.label = claudePaneLabel('cafebabecafebabe', labelTrace(OLD));
     };
 
     s.supervisor.syncTabLabel?.(key, 'nowa');
@@ -2564,7 +2563,7 @@ describe('etykieta taba w herdr idzie za etykietą karty', () => {
     expect(launchClient.tabReads).toBe(0);
   });
 
-  it('Codex — nigdy, nawet z etykietą `rarog-claude` na panelu', async () => {
+  it('Codex — nigdy, nawet z etykietą Claude na panelu', async () => {
     const { s, launchClient, key } = await withTab({ agent: codexAt(0) });
 
     s.supervisor.syncTabLabel?.(key, 'nowa');

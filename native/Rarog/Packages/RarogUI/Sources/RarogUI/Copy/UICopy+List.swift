@@ -32,6 +32,9 @@ extension UICopy {
   /// The state word of a received result the voice agent picked up (`SessionSummary.seenBy`).
   public static var discussedByVoice: String { L("list.discussedByVoice") }
   public static var backgroundWork: String { L("list.backgroundWork") }
+  /// The state word of a session after a turn whose subagent is stuck on its own command
+  /// (`BackgroundTaskRules.stuckWait`).
+  public static var stuckOnCommand: String { L("list.stuckOnCommand") }
 
   /// Słowo stanu — po ludzku, nigdy nazwą z protokołu (`STATE_LABELS`).
   public static func stateLabel(_ state: SessionState) -> String {
@@ -64,6 +67,7 @@ extension UICopy {
     case .unread: L("list.toneSpoken.unread")
     case .quiet: L("list.toneSpoken.quiet")
     case .backgroundWait: L("list.toneSpoken.backgroundWait")
+    case .backgroundWaitLong: L("list.toneSpoken.backgroundWaitLong")
     }
   }
 

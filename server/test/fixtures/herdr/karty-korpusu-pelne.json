@@ -9,10 +9,10 @@
     "input": "decideCard: blockedSeq 1, answeredSeq -1, active null, decided null, canRetry false, hookAnswersEnabled true; karta bez przycisków przez screenDialogCard bez klasy CLI"
   },
   "summary": {
-    "screens": 399,
-    "cards": 399,
+    "screens": 404,
+    "cards": 404,
     "buttons": 276,
-    "noButtons": 123
+    "noButtons": 128
   },
   "screens": {
     "composer-empty-2.1.258.ansi.txt": {
@@ -1599,6 +1599,23 @@
       "blockVisible": false,
       "card": "80de920b21af888cf9545d07bb7e9db25c78ff210907867c2787fd98ef3ace06"
     },
+    "dialog-trust-preapproved-2.1.332.txt": {
+      "action": "screen-dialog",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:082360e808a5",
+      "toolName": "dialog:trust",
+      "knownDialog": "trust",
+      "dialogKind": null,
+      "options": [],
+      "reason": null,
+      "audit": null,
+      "diagnosis": null,
+      "excerpt": null,
+      "bodyPrint": "563018756830ed8b",
+      "screenPrint": null,
+      "blockVisible": false,
+      "card": "604e800ef70b0b8aaff8df7255803a0db6ee041c3a05005e4bd5e104129f9217"
+    },
     "dialog-trust.txt": {
       "action": "screen-dialog",
       "event": "screen-dialog",
@@ -1749,6 +1766,106 @@
       "screenPrint": null,
       "blockVisible": false,
       "card": "4fd7ad6ecdc251153df7f1fc34ccd78a6c886dd4808f8e0f0c7e614dd1d5fa0d"
+    },
+    "kontrolny/importy-zewnetrzne-2.1.332.txt": {
+      "action": "screen-dialog",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:f1f37793f9fe",
+      "toolName": "dialog",
+      "knownDialog": null,
+      "dialogKind": null,
+      "options": [],
+      "reason": "unreadable",
+      "audit": "unreadable",
+      "diagnosis": {
+        "mismatchReason": null,
+        "headerVisible": null,
+        "optionCount": 0,
+        "dialogTitle": null
+      },
+      "excerpt": {
+        "sha256": "e9bfd43caed9b57f7766b90f07658f13184b83bb0aa5b581010c650c6a3f78f6",
+        "lines": 15
+      },
+      "bodyPrint": null,
+      "screenPrint": null,
+      "blockVisible": false,
+      "card": "2eb3fa2dc826851ad8fcccae10a6359382330158b0d5208a2d04402c0f27b821"
+    },
+    "kontrolny/importy-zewnetrzne-dluga-lista-2.1.332.txt": {
+      "action": "screen-dialog",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:30db357025d1",
+      "toolName": "dialog",
+      "knownDialog": null,
+      "dialogKind": null,
+      "options": [],
+      "reason": "unreadable",
+      "audit": "unreadable",
+      "diagnosis": {
+        "mismatchReason": null,
+        "headerVisible": null,
+        "optionCount": 0,
+        "dialogTitle": null
+      },
+      "excerpt": {
+        "sha256": "ef29617cec039ff53d9d5568e0e533b3cbac944dca227a0054fd86e150916c58",
+        "lines": 15
+      },
+      "bodyPrint": null,
+      "screenPrint": null,
+      "blockVisible": false,
+      "card": "ea033678eb6ed168b409d96d0dd6aa99d2220b8ee84705241213d7ceb4a2fce6"
+    },
+    "kontrolny/importy-zewnetrzne-po-down-2.1.332.txt": {
+      "action": "screen-dialog",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:f1f37793f9fe",
+      "toolName": "dialog",
+      "knownDialog": null,
+      "dialogKind": null,
+      "options": [],
+      "reason": "unreadable",
+      "audit": "unreadable",
+      "diagnosis": {
+        "mismatchReason": null,
+        "headerVisible": null,
+        "optionCount": 0,
+        "dialogTitle": null
+      },
+      "excerpt": {
+        "sha256": "c9bd3d3610ae179d3a75748a2312efe311b96d9efd84d2dd4f18fe4748c36c9d",
+        "lines": 15
+      },
+      "bodyPrint": null,
+      "screenPrint": null,
+      "blockVisible": false,
+      "card": "e087ad427866a78e42b3730ae44f0b06951825c35f9bf42b1aec49d1ea75cef6"
+    },
+    "kontrolny/importy-zewnetrzne-po-zaufaniu-2.1.332.txt": {
+      "action": "screen-dialog",
+      "event": "screen-dialog",
+      "reqId": "screen:1:f:f1f37793f9fe",
+      "toolName": "dialog",
+      "knownDialog": null,
+      "dialogKind": null,
+      "options": [],
+      "reason": "unreadable",
+      "audit": "unreadable",
+      "diagnosis": {
+        "mismatchReason": null,
+        "headerVisible": null,
+        "optionCount": 0,
+        "dialogTitle": null
+      },
+      "excerpt": {
+        "sha256": "019f040f886aff452baeccd945108a031cc29c61cfc5b027d244d1871eac6a7f",
+        "lines": 15
+      },
+      "bodyPrint": null,
+      "screenPrint": null,
+      "blockVisible": false,
+      "card": "1e708a122bdbb25b2335dc59671f0b800643ea05276162f5d7f9553f4ea192a8"
     },
     "kontrolny/pauza-2.1.322.txt": {
       "action": "card",

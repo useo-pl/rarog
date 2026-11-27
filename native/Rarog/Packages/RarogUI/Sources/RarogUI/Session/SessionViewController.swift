@@ -102,7 +102,7 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
   /// A path in inline code opens the session file. Owner: `+FileOpen`.
   let fileChrome = TranscriptFileChrome()
   /// Dyktowanie w polu wiadomości. Właściciel: `+Voice` (`Session/Voice/`).
-  let dictation = ComposerDictation()
+  let dictation: ComposerDictation
   /// The voice conversation of this screen. Owner: `+VoiceAgent` (`Session/Voice/Realtime/`).
   let voiceAgentChrome = VoiceAgentChrome()
   /// Dymek o innej sesji nad promptem. Właściciel: `+Toast`.
@@ -141,11 +141,16 @@ final class SessionViewController: UIViewController, UICollectionViewDelegate {
   /// Najwyżej ~16 przebudów na sekundę przy strumieniu delt (plan: throttle 60 ms).
   private let minRenderInterval: TimeInterval = 0.06
 
-  init(store: RarogStore, sessionId: String, drafts: ComposerDrafts, announcer: Announcer = .shared) {
+  /// `voice`: the dictation's microphone, speech and clock; tests give fakes.
+  init(
+    store: RarogStore, sessionId: String, drafts: ComposerDrafts, announcer: Announcer = .shared,
+    voice: VoiceServices = .current
+  ) {
     self.store = store
     self.sessionId = sessionId
     self.drafts = drafts
     self.announcer = announcer
+    dictation = ComposerDictation(services: voice)
     super.init(nibName: nil, bundle: nil)
   }
 

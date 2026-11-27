@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { NOTIFY_KIND_TITLE } from '@rarog/shared/notify-copy';
 import {
-  MESSAGE_MAX_CHARS, TOPIC_MAX_CHARS, buildContent, buildTestContent, buildWeeklyLimitContent, flatten, isSessionless,
-  topicFor,
+  MESSAGE_MAX_CHARS, TOPIC_MAX_CHARS, buildContent, buildStalledContent, buildTestContent, buildWeeklyLimitContent,
+  flatten, isSessionless, stalledTopicFor, topicFor,
 } from '../src/notify/content.ts';
 import type { NotifyKind } from '../src/notify/policy.ts';
 import { foreign } from '@rarog/shared/sentences';
@@ -217,5 +217,47 @@ describe('weekly limit push (`weekly-limit`): account window, no session', () =>
     expect(buildWeeklyLimitContent(97, RESET, now)?.topic).toBe(buildWeeklyLimitContent(100, RESET, now + 1000)?.topic);
     expect(buildWeeklyLimitContent(97, RESET, now)?.topic).not.toBe(buildWeeklyLimitContent(97, other, now)?.topic);
     expect(buildWeeklyLimitContent(97, RESET, now)?.topic.length).toBeLessThanOrEqual(TOPIC_MAX_CHARS);
+  });
+});
+
+describe('stalled wait push (`stalled`): a subagent waits over an hour on its own command', () => {
+  const ATLAS = 'demo-atlas';
+  const build = (extra: Partial<Parameters<typeof buildStalledContent>[0]> = {}) => buildStalledContent({
+    project: 'atlas', label: 'login flow', sessionId: ATLAS, agent: 'Fix the flaky login test', ...extra,
+  });
+
+  it('title and body carry sentence codes; the body names the subagent, never a command', () => {
+    const c = build({ termId: '0123456789abcdef', badge: 1 });
+    expect(c).toMatchObject({ kind: 'stalled', sessionId: ATLAS, termId: '0123456789abcdef', badge: 1 });
+    expect(c.titleRef).toEqual({ code: 'push.title.stalled', args: ['atlas'] });
+    expect(c.bodyRef).toEqual({ code: 'push.detail.stalled', args: ['Fix the flaky login test'] });
+    expect(c.body).toContain('Fix the flaky login test');
+    expect(isSessionless(c)).toBe(false);
+  });
+
+  it('its own collapse key: not the session topic (it would replace a decision banner), stable per session', () => {
+    const c = build();
+    expect(c.topic).not.toBe(topicFor(ATLAS));
+    expect(c.topic).toBe(stalledTopicFor(ATLAS));
+    expect(build({ agent: 'Another subagent', label: 'other' }).topic).toBe(c.topic);
+    expect(stalledTopicFor('demo-willow')).not.toBe(c.topic);
+    expect(c.topic.length).toBeLessThanOrEqual(TOPIC_MAX_CHARS);
+    expect(c.topic).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+
+  it('urgent and one hour in APNs: the state lasts, so a late alarm is still true', () => {
+    expect(build()).toMatchObject({ urgency: 'high', ttl: 3600 });
+  });
+
+  it('a long description is flattened and clipped before the sentence, so the body keeps its code', () => {
+    const c = build({ agent: `**Refactor** ${'the session list '.repeat(20)}` });
+    expect(c.body.length).toBeLessThanOrEqual(MESSAGE_MAX_CHARS);
+    expect(c.bodyRef?.code).toBe('push.detail.stalled');
+    expect(c.body).not.toContain('**');
+  });
+
+  it('no description: the session label, then the kind fallback', () => {
+    expect(build({ agent: undefined }).bodyRef).toEqual({ code: 'push.body.label', args: ['login flow'] });
+    expect(build({ agent: '  ', label: undefined }).bodyRef).toEqual({ code: 'push.body.fallback.stalled' });
   });
 });

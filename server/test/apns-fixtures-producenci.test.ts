@@ -33,11 +33,13 @@ import type { BackgroundTask } from '@rarog/shared';
 import type { ApnsRequest } from '../src/notify/apns-payload.ts';
 import { apnsAlertRequestE2e, apnsLiveActivityRequest } from '../src/notify/apns-payload.ts';
 import {
-  buildContent, buildDevicePairedContent, buildTestContent, buildVersionContent, buildWeeklyLimitContent, topicFor,
+  buildContent, buildDevicePairedContent, buildStalledContent, buildTestContent, buildVersionContent,
+  buildWeeklyLimitContent, stalledTopicFor, topicFor,
 } from '../src/notify/content.ts';
 import { LIVE_ACTIVITY_CHIME_TTL_MS } from '../src/notify/live-activity.ts';
 import { aggregateState } from '../src/notify/live-activity-state.ts';
 import { createPushSealer } from '../src/notify/push-crypto.ts';
+import { ownCommandWaitOf } from '../src/herdr/background/work.ts';
 import { createManager } from '../src/sessions/manager.ts';
 import { makeSummary } from './fake-manager.ts';
 import { foreign } from '@rarog/shared/sentences';
@@ -117,6 +119,11 @@ describe('złote ramki APNs: producenci → pliki', () => {
     const weekly = buildWeeklyLimitContent(97, WEEKLY_RESET, NOW);
     if (weekly === undefined) throw new Error('weekly-limit: no content');
     producedV3.set('alert.weekly-limit.v3.json', alert(weekly, 0x16));
+    // A subagent waits over an hour on its own command (`stalled`): a session kind with its own collapse key, the
+    // subagent's description in the text, never the command. An app that does not know this kind reads it as no kind.
+    producedV3.set('alert.stalled.v3.json', alert(buildStalledContent({
+      project: 'atlas', label: 'login flow', sessionId: 'demo-atlas', agent: 'Fix the flaky login test', badge: 1,
+    }), 0x17));
 
     // Live Activity — stan z seedów demo (2 czekają, 2 pracują, wiodąca zgoda) z kompletem pól spoza
     // listy sesji: limity planu i obciążenie Maca (kafel v2).
@@ -177,11 +184,17 @@ describe('złote ramki APNs: producenci → pliki', () => {
     // subagent z wynikiem nieodebranym liczy się do „skończyły", z wynikiem odebranym do niczego,
     // a czekający obok komendy i subagent pracujący (bez `waitingSince`) do „pracuje". Żadna nie jest
     // celem tapnięcia: `top` to sesja czekająca na decyzję albo pracująca w turze.
-    const waitingAgent = (id: string): BackgroundTask => ({
-      id, kind: 'agent', description: 'Shared views of panel sections', agentType: 'general-purpose',
-      startedAt: startedAt(3_600_000), waitingSince: startedAt(1_080_000),
-      ownTasks: [{ id: 'bjvzo6rnl', command: 'until grep -q TEST log.txt; do sleep 5; done' }],
-    });
+    // Two more sessions after a turn have a subagent stuck on its own command for over an hour, one unacknowledged and
+    // one acknowledged next to a live command: each counts once, as waiting, and neither is the tap target.
+    const waitingAgent = (id: string, standbyMs = 1_080_000): BackgroundTask => {
+      const task: BackgroundTask = {
+        id, kind: 'agent', description: 'Shared views of panel sections', agentType: 'general-purpose',
+        startedAt: startedAt(standbyMs + 2_520_000), waitingSince: startedAt(standbyMs),
+        ownTasks: [{ id: 'bjvzo6rnl', command: 'until grep -q TEST log.txt; do sleep 5; done' }],
+      };
+      const stage = ownCommandWaitOf(task, NOW);
+      return stage === undefined ? task : { ...task, ownCommandWait: stage };
+    };
     produced.set('live-activity.update.waiting-agent.json', live(aggregateState([
       makeSummary({
         id: 'demo-rarog', title: 'rarog', state: 'waiting-input', stateSince: startedAt(1_080_000),
@@ -202,6 +215,17 @@ describe('złote ramki APNs: producenci → pliki', () => {
         id: 'demo-willow', title: 'willow', state: 'waiting-input', stateSince: startedAt(300_000),
         backgroundTasks: [
           { id: 'agent_r1', kind: 'agent', description: 'przegląd logu', startedAt: startedAt(240_000) },
+        ],
+      }),
+      makeSummary({
+        id: 'demo-stuck', title: 'demo', state: 'waiting-input', stateSince: startedAt(5_400_000),
+        backgroundTasks: [waitingAgent('agent_s1', 5_400_000)],
+      }),
+      makeSummary({
+        id: 'demo-atlas-api', title: 'atlas-api', state: 'waiting-input', stateSince: startedAt(4_200_000),
+        seen: true, backgroundTasks: [
+          waitingAgent('agent_s2', 4_200_000),
+          { id: 'c2', kind: 'command', command: 'pnpm dev', startedAt: startedAt(4_500_000) },
         ],
       }),
     ], NOW), 'update', 'low'));
@@ -285,6 +309,16 @@ describe('złote ramki APNs: producenci → pliki', () => {
     expect(weekly?.headers['apns-expiration']).toBe(String(NOW_S + 86400));
     expect(weekly?.headers['apns-collapse-id']).toBe(topicFor(`rarog:weekly-limit:${WEEKLY_RESET}`));
     expect(weekly?.headers['apns-priority']).toBe('10');
+  });
+
+  it('stalled wait: one hour in APNs, urgent, own collapse key, thread of the session', () => {
+    const stalled = producedV3.get('alert.stalled.v3.json') as
+      { headers: Record<string, string>; payload: { aps: Record<string, unknown> } } | undefined;
+    expect(stalled?.headers['apns-expiration']).toBe(String(NOW_S + 3600));
+    expect(stalled?.headers['apns-priority']).toBe('10');
+    expect(stalled?.headers['apns-collapse-id']).toBe(stalledTopicFor('demo-atlas'));
+    expect(stalled?.headers['apns-collapse-id']).not.toBe(topicFor('demo-atlas'));
+    expect(stalled?.payload.aps['thread-id']).toBe(topicFor('demo-atlas'));
   });
 
   it.each(Object.keys(manifestV3).sort())('%s = to, co dziś produkuje kod (odśwież: RAROG_FIXTURES_WRITE=1)', (name) => {

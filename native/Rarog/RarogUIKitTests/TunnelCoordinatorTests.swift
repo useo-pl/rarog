@@ -164,7 +164,7 @@ final class TunnelCoordinatorTests: XCTestCase {
     XCTAssertEqual(Set(rig.system.stopped).count, 20, "każde zadanie zamknięte dokładnie raz")
   }
 
-  // MARK: - Voice hold (locked-phone trial)
+  // MARK: - Voice hold (a recording kept in the background)
   // Without a hold the grace cases above hold as they are.
 
   /// Catches a hold that does not keep the generation past the 8 s grace (the server connection of a locked phone

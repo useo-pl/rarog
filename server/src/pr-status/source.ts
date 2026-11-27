@@ -1,13 +1,14 @@
 /**
- * The contract between the PR status tracker and a state source: a PR reference parsed from its address, the result
- * of one read, and the fixed-map source used where no process may start (demo, review mode, frame producer).
+ * The contract between the PR status tracker and a GitHub source: a PR reference parsed from its address, the result
+ * of one read (state, title and facts per address, the `gh` login), and the fixed-map source used where no process
+ * may start (demo, review mode, frame producer).
  *
  * Nothing here starts a process or touches the disk; `gh.ts` is the only source that does.
  */
 import type { PullRequestState } from '@rarog/shared';
 import { PR_URL } from '../herdr/background/pull-requests.ts';
 
-/** One PR as the source asks about it; `url` is the key of the state map. */
+/** One PR as the source asks about it; `url` is the key of the state map and of the facts memory. */
 export interface PrRef {
   readonly url: string;
   readonly owner: string;
@@ -16,23 +17,40 @@ export interface PrRef {
 }
 
 /**
- * Why a whole read gave no states. `missing-gh` turns the status off until restart, `rate-limited` pauses until
+ * Why a whole read gave no answers. `missing-gh` turns the status off until restart, `rate-limited` pauses until
  * `resetAt`, every other failure pauses for the fixed failure pause.
  */
 export type PrReadFailure = 'missing-gh' | 'not-logged-in' | 'timeout' | 'output-cap' | 'error' | 'rate-limited';
+
+/**
+ * What one answer says about the author and the creation time of one PR:
+ * - `found`: both present, and the answer carries the `gh` login;
+ * - `missing`: GitHub says the PR or its repository does not exist for this login (it does not tell the two apart);
+ * - `error`: anything else (another error on the alias, incomplete facts, an answer without the `gh` login).
+ */
+export type PrFactsRead =
+  | { readonly kind: 'found'; readonly author: string; readonly createdAtMs: number }
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'error' };
 
 export type PrReadResult =
   | {
     readonly ok: true;
     /** Every asked URL: its state, or `null` for no state (PR not found, unknown value). */
     readonly states: ReadonlyMap<string, PullRequestState | null>;
+    /** The asked URLs whose answer had a title, sanitised (`prTitle` in `gh.ts`). */
+    readonly titles: ReadonlyMap<string, string>;
+    /** Every asked URL: author and creation time, or why not. */
+    readonly facts: ReadonlyMap<string, PrFactsRead>;
+    /** The login of the `gh` account (`viewer.login`), `null` when the answer has none. Never logged or sent. */
+    readonly viewer: string | null;
     /** Present when GitHub said no points are left: pause until `resetAt` (epoch ms, `null` = unknown). */
     readonly limitReached?: { readonly resetAt: number | null };
   }
   | { readonly ok: false; readonly failure: Exclude<PrReadFailure, 'rate-limited'> }
   | { readonly ok: false; readonly failure: 'rate-limited'; readonly resetAt: number | null };
 
-/** Where states come from. `read` never rejects; a call that cannot finish answers with a failure. */
+/** Where answers come from. `read` never rejects; a call that cannot finish answers with a failure. */
 export interface PrStateSource {
   read(prs: readonly PrRef[], signal?: AbortSignal): Promise<PrReadResult>;
 }
@@ -49,12 +67,38 @@ export function parsePrUrl(url: string): PrRef | null {
   return { url, owner, repo, number: Number(number) };
 }
 
-/** A source that answers from a fixed map and never starts a process. URLs outside the map have no state. */
-export function createFixedPrStateSource(states: ReadonlyMap<string, PullRequestState>): PrStateSource {
+/** One PR of a fixed source: what GitHub would answer about it. */
+export interface FixedPullRequest {
+  readonly author: string;
+  readonly createdAtMs: number;
+  /** Missing = no state. */
+  readonly state?: PullRequestState;
+  readonly title?: string;
+}
+
+/** Everything a fixed source answers: the `gh` login and the PRs it knows. */
+export interface FixedGitHub {
+  /** `null` answers like GitHub without `viewer.login`: states and titles, but no facts. */
+  readonly viewer: string | null;
+  readonly prs: ReadonlyMap<string, FixedPullRequest>;
+}
+
+/** A source that answers from a fixed map and never starts a process. URLs outside the map are `missing`. */
+export function createFixedPrStateSource(github: FixedGitHub): PrStateSource {
   return {
-    read: (prs) => Promise.resolve({
-      ok: true,
-      states: new Map(prs.map((pr) => [pr.url, states.get(pr.url) ?? null])),
-    }),
+    read: (prs) => {
+      const states = new Map<string, PullRequestState | null>();
+      const titles = new Map<string, string>();
+      const facts = new Map<string, PrFactsRead>();
+      for (const { url } of prs) {
+        const pr = github.prs.get(url);
+        states.set(url, pr?.state ?? null);
+        if (pr?.title !== undefined) titles.set(url, pr.title);
+        if (pr === undefined) facts.set(url, { kind: 'missing' });
+        else if (github.viewer === null) facts.set(url, { kind: 'error' });
+        else facts.set(url, { kind: 'found', author: pr.author, createdAtMs: pr.createdAtMs });
+      }
+      return Promise.resolve({ ok: true, states, titles, facts, viewer: github.viewer });
+    },
   };
 }

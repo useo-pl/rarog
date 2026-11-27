@@ -1,12 +1,13 @@
 /**
  * Which numbered run is the option list (`screen/option-run.ts`): the run above the key footer, not a numbered list in
- * the dialog body. Cases from the workflow approval captures (CLI 2.1.322) and synthetic screens for the fail-closed
- * edges; description: `docs/dialogs.md`, "Dialog block".
+ * the dialog body, and not a numbered line behind the question gutter. Cases from the workflow approval captures
+ * (CLI 2.1.322) and synthetic screens for the fail-closed edges; description: `docs/dialogs.md`, "Dialog block".
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { readBlock } from '../src/herdr/dialogs/layer2/read-block.ts';
+import { routeScreenOf } from '../src/herdr/dialogs/router.ts';
 import { parseOptions } from '../src/herdr/dialogs/screen/parse.ts';
 import { resolveOptions } from '../src/herdr/dialogs/screen/resolve.ts';
 
@@ -21,6 +22,77 @@ function dialog(options: readonly string[], body: readonly string[] = ['  1. Fir
   return [RULE, ' Run it?', '', '  Steps:', ...body, '', '  Plain text under the list.', '', ...options, '',
     '  Esc to cancel · Tab to amend'].join('\n');
 }
+
+/**
+ * A question form whose question wraps, each of its lines behind a `│` gutter (the geometry of the fixture
+ * `dialog-askuserquestion-multiq-pytanie-w-ramce.txt`). `wrapped` is the line of the question that the wrap starts
+ * with a digit and a dot.
+ */
+function gutterForm(wrapped: string): string {
+  const wide = '─'.repeat(83);
+  return [
+    '', '  Searched for 1 pattern, ran 3 shell commands', wide, ' ☐ Counter', '',
+    '│ The review found one thing the older app shows differently: the counter on the',
+    '│ tile. The server counts a stalled session as waiting, the app does not, so the',
+    '│ app overwrites the number with its own and the next push from the server restores',
+    `│ ${wrapped}`,
+    '│ opens the session. Do you accept this difference for the older app?',
+    '',
+    '❯ 1. Accept (Recommended)',
+    '     No entry stays in the review and the release goes on. The case is rare and',
+    '     goes away with the next app update.',
+    '  2. Block the release',
+    '     The review ends with a verdict that stops the release until the server',
+    '     counts the session the way the older app does.',
+    '  3. Type something.',
+    wide,
+    '  4. Chat about this',
+    '',
+    'Enter to select · ↑/↓ to navigate · Esc to cancel',
+    `${'─'.repeat(59)} [A] App review ─`,
+    '',
+  ].join('\n');
+}
+
+describe('option run: a numbered line behind the question gutter', () => {
+  const labels = ['Accept (Recommended)', 'Block the release', 'Type something.', 'Chat about this'];
+
+  it('a wrapped question line that repeats an option digit stays question text; the form keeps its options', () => {
+    const screen = gutterForm('1. The banner is drawn correctly and a tap on it');
+    const parsed = parseOptions(screen);
+    expect(parsed?.kind).toBe('question');
+    expect(parsed?.options.map((option) => [option.digit, option.label]))
+      .toEqual(labels.map((label, i) => [String(i + 1), label]));
+    expect(parsed?.options[0]?.description).toContain('No entry stays in the review');
+    expect(parsed?.question?.header).toBe('Counter');
+    expect(parsed?.question?.question).toContain('restores\n1. The banner is drawn correctly and a tap on it\nopens');
+    expect(parsed?.question?.question).not.toContain('│');
+    expect(parsed?.bodyPrint).not.toBeNull();
+    expect(routeScreenOf(screen)).toBe('form');
+    const resolution = resolveOptions(screen, { toolName: 'AskUserQuestion' });
+    expect(resolution.status).toBe('ok');
+    if (resolution.status !== 'ok') throw new Error('unreachable');
+    expect([...resolution.digitByLabel]).toEqual(labels.map((label, i) => [label, String(i + 1)]));
+  });
+
+  it('a wrapped question line with the next free digit does not become a fifth option', () => {
+    const parsed = parseOptions(gutterForm('5. The banner is drawn correctly and a tap on it'));
+    expect(parsed?.options.map((option) => option.digit)).toEqual(['1', '2', '3', '4']);
+    expect(parsed?.question?.question).toContain('\n5. The banner is drawn correctly and a tap on it\n');
+  });
+
+  it('a numbered question line indented behind the gutter goes on the card without the gutter', () => {
+    const parsed = parseOptions(gutterForm('  1. The banner is drawn correctly and a tap on it'));
+    expect(parsed?.options.map((option) => option.digit)).toEqual(['1', '2', '3', '4']);
+    expect(parsed?.question?.question).toContain('\n1. The banner is drawn correctly and a tap on it\n');
+  });
+
+  it('options inside a frame with both edges are still read', () => {
+    const screen = ['╭──────────────────╮', '│ Apply changes?   │', '│                  │', '│ ❯ 1. Yes         │',
+      '│   2. No          │', '╰──────────────────╯'].join('\n');
+    expect(digits(screen)).toEqual(['1', '2']);
+  });
+});
 
 describe('option run: a numbered list in the dialog body', () => {
   it('phase summary: options 1–3, the phase list stays in the card text', () => {

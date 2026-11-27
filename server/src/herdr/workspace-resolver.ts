@@ -41,7 +41,7 @@
  */
 import path from 'node:path';
 import { matchTermId } from '../term/lifecycle.ts';
-import { parsePaneLabel, projectKey, sanitizePaneTitle } from './provenance.ts';
+import { claudeKeyMatches, parsePaneLabel, provenanceTermId, sanitizePaneTitle } from './provenance.ts';
 import type { PaneProvenance } from './provenance.ts';
 import type { HerdrPaneInfo, HerdrWorkspaceInfo } from './types.ts';
 
@@ -98,9 +98,9 @@ export function isWithin(child: string, parent: string): boolean {
 
 /** Etykieta pochodzenia jest etykietą Raroga dla katalogu `dir` (hash z tej ścieżki). */
 function labelBelongsTo(provenance: PaneProvenance, dir: string): boolean {
-  return provenance.kind === 'claude'
-    ? provenance.value === projectKey(dir)
-    : matchTermId(provenance.value, dir) !== null;
+  if (provenance.kind === 'claude') return claudeKeyMatches(provenance, dir);
+  const id = provenanceTermId(provenance);
+  return id !== null && matchTermId(id, dir) !== null;
 }
 
 /**

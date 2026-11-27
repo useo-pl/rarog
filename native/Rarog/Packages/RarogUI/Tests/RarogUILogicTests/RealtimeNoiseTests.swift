@@ -27,6 +27,9 @@ private func started(ms: Int?) -> String {
   return SpeechSample.encoded(event)
 }
 
+/// What the VAD counts in `audio_end_ms - audio_start_ms` beyond the speech: the prefix padding and the silence.
+private let vadPaddingMs = RealtimeInstructions.prefixPaddingMs + RealtimeInstructions.silenceMs
+
 private func stopped(ms: Int?) -> String {
   var event: [String: Any] = ["type": "input_audio_buffer.speech_stopped", "item_id": "in2"]
   if let ms { event["audio_end_ms"] = ms }
@@ -309,14 +312,14 @@ struct RealtimeNoiseTests {
 
   // MARK: - Speech length by the VAD's times
 
-  @Test("VAD times say 0.9 s of speech (1000 → 2700 ms), its end 100 ms after the start → the cut now, the utterance answered")
+  @Test("VAD times say 0.9 s of speech, its end 100 ms after the start → the cut now, the utterance answered")
   func longSpeechByTimesCuts() async throws {
     let h = Harness()
     await h.answerPlaying()
     let orders = h.socket.sent("response.create").count
     h.socket.reply(started(ms: 1000))
     h.scheduler.advance(0.1)
-    h.socket.reply(stopped(ms: 2700))
+    h.socket.reply(stopped(ms: 1000 + vadPaddingMs + 900))
     #expect(h.audio.clears == 1)
     #expect(h.audio.playbackVolume == 1)
     #expect(h.ids("response.cancel", "response_id") == ["r1"])
@@ -332,14 +335,14 @@ struct RealtimeNoiseTests {
     #expect(h.audio.clears == 1)
   }
 
-  @Test("VAD times say 0.2 s of speech (1000 → 2000 ms) → noise as before")
+  @Test("VAD times say 0.2 s of speech → noise as before")
   func shortSpeechByTimesNoise() async throws {
     let h = Harness()
     await h.answerPlaying()
     let orders = h.socket.sent("response.create").count
     h.socket.reply(started(ms: 1000))
     h.scheduler.advance(0.1)
-    h.socket.reply(stopped(ms: 2000))
+    h.socket.reply(stopped(ms: 1000 + vadPaddingMs + 200))
     #expect(h.audio.clears == 0)
     #expect(h.audio.playbackVolume == 1)
     #expect(h.diagnostics.contains(.noiseIgnored))
@@ -431,8 +434,7 @@ struct RealtimeNoiseTests {
     #expect(RealtimeServerEvent.parse(started(ms: nil)) == .speechStarted(itemId: "in2", audioStartMs: nil))
     #expect(RealtimeServerEvent.parse(stopped(ms: 2700)) == .speechStopped(audioEndMs: 2700))
     #expect(RealtimeServerEvent.parse(stopped(ms: nil)) == .speechStopped(audioEndMs: nil))
-    let padding = RealtimeInstructions.prefixPaddingMs + RealtimeInstructions.silenceMs
-    let length = try #require(RealtimeBargeIn.speechLength(startMs: 1000, endMs: 1000 + padding + 400))
+    let length = try #require(RealtimeBargeIn.speechLength(startMs: 1000, endMs: 1000 + vadPaddingMs + 400))
     #expect(abs(length - 0.4) < 0.000_1)
     #expect(RealtimeBargeIn.speechLength(startMs: nil, endMs: 2700) == nil)
     #expect(RealtimeBargeIn.speechLength(startMs: 1000, endMs: nil) == nil)

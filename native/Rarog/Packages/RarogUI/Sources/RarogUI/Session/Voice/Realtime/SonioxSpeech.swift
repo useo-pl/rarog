@@ -38,10 +38,19 @@ final class SonioxSpeech {
     static let production = Timing()
   }
 
+  /// What the client had sent on a stream when Soniox reported an error on it, for `client.log`: Soniox ends a stream
+  /// that gets no text frame for a few seconds without `text_end` with 408 `request_timeout`.
+  struct StreamText: Sendable, Equatable {
+    /// Seconds on the scheduler's clock since the last text frame of the stream went out; `nil`: none went out.
+    var sinceText: TimeInterval?
+    /// The frame with `text_end: true` went out on the stream.
+    var textEnd: Bool
+  }
+
   /// Why speech failed. `stream` ends one utterance; the others end the client.
   enum Failure: Sendable, Equatable {
     /// An error frame for the utterance's stream (`request_timeout`, `temp_api_key_session_expired`, …).
-    case stream(utterance: String, code: Int, type: String)
+    case stream(utterance: String, code: Int, type: String, text: StreamText)
     /// The key was refused again after a new one (401 `unauthenticated`).
     case unauthenticated
     /// The key cannot be sent (not a `snx_temp_` key), or a new key was already too close to its expiry.
@@ -52,7 +61,10 @@ final class SonioxSpeech {
     /// A code for `client.log`, without the server's message.
     var logCode: String {
       switch self {
-      case let .stream(_, code, type): "\(code) \(type)"
+      case let .stream(_, code, type, text):
+        "\(code) \(type) (last text "
+          + (text.sinceText.map { String(format: "%.1f s ago", $0) } ?? "none")
+          + (text.textEnd ? ", text_end sent)" : ", no text_end)")
       case .unauthenticated: "401 unauthenticated"
       case .invalidKey: "invalid-key"
       case let .connection(code?, type): "\(code) \(type ?? "-")"
@@ -63,7 +75,15 @@ final class SonioxSpeech {
     /// The stream ran past the key's `max_session_duration_seconds` (Soniox docs: 403
     /// `temp_api_key_session_expired`; the connection stays open). Matched on the type, not on the code.
     var isStreamLimit: Bool {
-      if case let .stream(_, _, type) = self { return type == "temp_api_key_session_expired" }
+      if case let .stream(_, _, type, _) = self { return type == "temp_api_key_session_expired" }
+      return false
+    }
+
+    /// An error that ends one stream and leaves the conversation going: the stream limit, or a backend call past its
+    /// deadline (Soniox docs: 408 `request_timeout`, "Retry the request"; the connection stays open). The rest of the
+    /// stream's text is not sent again. Matched on the type, not on the code.
+    var endsStreamOnly: Bool {
+      if case let .stream(_, _, type, _) = self { return isStreamLimit || type == "request_timeout" }
       return false
     }
   }
@@ -91,6 +111,9 @@ final class SonioxSpeech {
     var reported = 0
     var ended = false
     var hadAudio = false
+    /// Scheduler time of the last text frame on the current stream, and whether its `text_end` went out.
+    var lastTextAt: TimeInterval?
+    var textEndSent = false
   }
 
   private var config: SonioxSpeechConfig
@@ -156,6 +179,7 @@ final class SonioxSpeech {
       queue[index].sent += text
       queue[index].sentCount += text.count
       sendText(text, stream: stream)
+      noteText(index, end: false)
       reportSent(index)
     } else {
       queue[index].pending += text
@@ -175,6 +199,7 @@ final class SonioxSpeech {
     queue[index].ended = true
     if let stream = queue[index].stream {
       send(SonioxSpeechFrame.text(stream: stream, "", end: true))
+      noteText(index, end: true)
     } else {
       pump()
     }
@@ -335,8 +360,20 @@ final class SonioxSpeech {
     streams[stream] = queue[0].id
     send(SonioxSpeechFrame.start(stream: stream, config: config))
     sendText(text, stream: stream)
+    queue[0].lastTextAt = nil
+    queue[0].textEndSent = false
+    if !text.isEmpty { noteText(0, end: false) }
     reportSent(0)
-    if queue[0].ended { send(SonioxSpeechFrame.text(stream: stream, "", end: true)) }
+    if queue[0].ended {
+      send(SonioxSpeechFrame.text(stream: stream, "", end: true))
+      noteText(0, end: true)
+    }
+  }
+
+  /// A text frame of the utterance at `index` went out now (`end`: the one with `text_end`).
+  private func noteText(_ index: Int, end: Bool) {
+    queue[index].lastTextAt = scheduler.now
+    if end { queue[index].textEndSent = true }
   }
 
   /// The utterance on `stream` is over: out of the queue, `finished` to the caller, the next one starts.
@@ -379,7 +416,10 @@ final class SonioxSpeech {
       return
     }
     if let stream, let utterance {
-      emit(.failed(.stream(utterance: utterance, code: code, type: type)))
+      let sent = queue.first { $0.id == utterance }
+      let text = StreamText(
+        sinceText: sent?.lastTextAt.map { scheduler.now - $0 }, textEnd: sent?.textEndSent ?? false)
+      emit(.failed(.stream(utterance: utterance, code: code, type: type, text: text)))
       // The stream may still answer until its `terminated`; until then it holds the slot.
       drain(stream)
       finish(stream: stream)

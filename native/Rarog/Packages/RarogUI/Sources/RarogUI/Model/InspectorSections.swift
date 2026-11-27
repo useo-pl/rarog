@@ -175,16 +175,16 @@ public enum ArtifactRows {
   }
 }
 
-/// Pull request created in the session's current conversation (`docs/pull-requests.md`): `gh pr create` of
-/// the main agent, a subagent or a workflow agent. The row follows the artifact grammar: the first line is the
-/// `--title`, without it the `owner/repo#n` reference; under it the GitHub state label when the server knows it,
+/// Pull request of the session's current conversation (`docs/pull-requests.md`): linked by a `pr-link` entry,
+/// authored by the `gh` login. The row follows the artifact grammar: the first line is the GitHub title,
+/// without it the `owner/repo#n` reference; under it the GitHub state label when the server knows it,
 /// then the reference (when the first line is the title), how long ago and the creation time.
 public struct PullRequestRow: Sendable, Equatable, Identifiable {
   /// Surowy adres z serwera — tożsamość wiersza, także gdy adres nie przeszedł gramatyki.
   public let id: String
   /// „acme/widget#42”.
   public let ref: String
-  /// Tytuł z `--title`; `nil` = polecenie go nie podało dosłownie.
+  /// Tytuł z GitHuba; `nil` = serwer go nie przysłał.
   public let title: String?
   /// GitHub state from the server; `nil` = unknown, and the row reads as it did before states existed.
   public let state: PullRequestState?

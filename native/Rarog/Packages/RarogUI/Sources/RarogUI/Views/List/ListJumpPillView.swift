@@ -10,6 +10,9 @@ import SwiftUI
 /// on the list: "below" its touch frame on the footer card, "above" at the top edge of the list (under the banners
 /// and the filter segments). The pill changes neither the list's insets nor its
 /// margins. Its measured frame goes back to the tracker: its height decides which rows on screen it covers.
+/// When the pills would cover more than half of the visible list (`ListJumpPill.fits`), the counted pill stays in the
+/// layout, so its height keeps being measured, but it is not drawn, takes no touch and is not in the accessibility
+/// tree: a drag there scrolls the list.
 struct ListJumpPillView: View {
   let tracker: ListJumpPillTracker
   let direction: ListJumpPill.Direction
@@ -17,20 +20,27 @@ struct ListJumpPillView: View {
 
   var body: some View {
     let side = direction == .below ? tracker.result.below : tracker.result.above
+    let shown = side != nil && tracker.fits
     ZStack {
       if let side {
-        ListJumpPillButton(side: side, direction: direction) {
+        let button = ListJumpPillButton(side: side, direction: direction) {
           tracker.jump(direction, reduceMotion: reduceMotion)
         }
         .onGeometryChange(for: CGRect.self) { proxy in proxy.frame(in: .global) } action: { frame in
           tracker.measured(direction, frame: frame)
         }
-        .transition(.opacity)
+        // `hidden()` keeps the layout, and so the measurement, but takes the pill out of drawing, touches and the
+        // accessibility tree: VoiceOver and UI automation do not find a pill that gave way.
+        if shown {
+          button.transition(.opacity)
+        } else {
+          button.hidden()
+        }
       }
     }
     // The 44 pt touch frame already leaves air around the lower capsule: no extra gap, or it would double.
     .padding(.horizontal, SessionListMetrics.plateEdge * 2)
-    .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: side == nil)
+    .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: shown)
   }
 }
 

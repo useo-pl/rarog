@@ -5,8 +5,9 @@ import SwiftUI
 import UIKit
 
 // The message field and the send: one send operation of the field with attachments and a typed result
-// (`sendField`, `ComposerSendResult`) for ↑ and the voice conversation, recovery of text and attachments after a
-// refusal (`MessageSendRecovery`, shared with the Inbox reply), "Retry" and the cells of queue entries.
+// (`sendField`, `ComposerSendResult`) for ↑, the voice conversation and a Send from outside the screens (`+Voice`),
+// recovery of text and attachments after a refusal (`MessageSendRecovery`, shared with the Inbox reply), "Retry" and
+// the cells of queue entries.
 // Owner: send.
 extension SessionViewController {
   func buildComposer() {
@@ -155,12 +156,17 @@ extension SessionViewController {
 
   // MARK: - Akcje
 
-  /// One send of the message field, for ↑ and for the voice conversation's `send_prompt` (`+VoiceAgent`). The checks
-  /// and the taking of the text and the attachments run before the first `await`, so a second call finds the field
-  /// already empty; the task gives the typed result (`ComposerSendResult`). It never stops a running turn. `byVoice`:
-  /// the login of the moment the field is taken must still hold when the request starts.
+  /// One send of the message field, for ↑, for the voice conversation's `send_prompt` (`+VoiceAgent`) and for a Send
+  /// from outside the screens (`+Voice`). The checks and the taking of the text and the attachments run before the
+  /// first `await`, so a second call finds the field already empty; the task gives the typed result
+  /// (`ComposerSendResult`). It never stops a running turn. `byVoice`: the login of the moment the field is taken must
+  /// still hold when the request starts. `login`: the login of an earlier moment instead (the press of a Send from
+  /// outside the screens), which must hold already when the field is taken: otherwise nothing runs and the field
+  /// stays as it is.
   @discardableResult
-  func sendField(byVoice: Bool = false) -> Task<ComposerSendResult, Never> {
+  func sendField(byVoice: Bool = false, login pressed: ComposerSendLogin? = nil) -> Task<ComposerSendResult, Never> {
+    // Before anything else, an app command included: nothing of this field runs for another pairing or server.
+    if let pressed, pressed != ComposerSendLogin(store) { return Self.finished(.notSent) }
     // Start agenta: tekst zostaje w polu, wiersz aktywności nad polem mówi, że wyśle się po gotowości.
     guard composer.isEditable, composer.canSend else {
       // A fixed name, not the sentence under the field: the voice conversation passes it to OpenAI.
@@ -184,10 +190,10 @@ extension SessionViewController {
     // text that comes back to the field is the user's (`+VoiceAgent`).
     let voiceAgent = voiceAgentSendMark()
     voiceAgentTakePrompt()
-    // A voice send keeps the login and the interface (the space of the server) of the moment it takes the field: a
-    // pairing or a server that changes before the request starts gets nothing (`giveBack`). ↑ is not checked: the
-    // user sends what the screen shows.
-    let login = byVoice ? (epoch: store.loginEpoch, interface: store.interfaceEpoch) : nil
+    // A voice send keeps the login and the interface (the space of the server) of the moment it takes the field, or
+    // of its press: a pairing or a server that changes before the request starts gets nothing (`giveBack`). ↑ is not
+    // checked: the user sends what the screen shows.
+    let login = pressed ?? (byVoice ? ComposerSendLogin(store) : nil)
     // Okno „Wyślij" po wysyłce PRZED czyszczeniem pola: puste pole przy pracującej turze dałoby od razu Stop.
     // Tap w pustym polu okna nie odnawia — drugi tap podwójnego „Wyślij" nie przedłuża go bez końca.
     if ComposerPrimaryAction.opensGrace(rawText: raw, attachments: attachments.count) { noteSent() }

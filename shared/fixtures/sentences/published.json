@@ -1958,6 +1958,12 @@
       "retired": null
     },
     {
+      "code": "push.body.fallback.stalled",
+      "args": [],
+      "en": "A subagent is waiting on its own command.",
+      "retired": null
+    },
+    {
       "code": "push.body.label",
       "args": [
         {
@@ -2028,6 +2034,17 @@
       "code": "push.chime.title",
       "args": [],
       "en": "Agent finished",
+      "retired": null
+    },
+    {
+      "code": "push.detail.stalled",
+      "args": [
+        {
+          "name": "agent",
+          "kind": "text"
+        }
+      ],
+      "en": "Subagent \"{agent}\" is waiting on its own command.",
       "retired": null
     },
     {
@@ -2146,6 +2163,17 @@
         }
       ],
       "en": "❓ Question · {project}",
+      "retired": null
+    },
+    {
+      "code": "push.title.stalled",
+      "args": [
+        {
+          "name": "project",
+          "kind": "text"
+        }
+      ],
+      "en": "⏰ Waiting over 1 h · {project}",
       "retired": null
     },
     {

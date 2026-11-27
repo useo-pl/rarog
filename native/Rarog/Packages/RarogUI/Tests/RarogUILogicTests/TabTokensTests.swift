@@ -24,7 +24,7 @@ struct TabTokensTests {
   /// Kropka wiersza listy sesji to `Palette.tone` (`SessionRow`), czyli `PaletteTokens.tone` w pełnym kryciu.
   @Test("kafelek każdego stanu poza ciszą: kolor kropki z listy sesji, cyfra `onState`, półgruba")
   func coloredKeys() {
-    for tone in [StatusTone.working, .unread, .waiting, .failed] {
+    for tone in [StatusTone.working, .unread, .waiting, .failed, .backgroundWaitLong] {
       let look = TabTokens.key(tone)
       #expect(look.fill == PaletteTokens.tone(tone), "\(tone): kolor kropki listy")
       #expect(look.ink == PaletteTokens.onState, "\(tone)")
@@ -53,7 +53,7 @@ struct TabTokensTests {
   @Test("kwadracik: cisza neutralnie jak kafelek, każdy inny stan w kolorze kropki listy")
   func squares() {
     #expect(TabTokens.square(.quiet) == TabTokens.SquareLook(color: TabTokens.neutralInk, alpha: TabTokens.keyNeutralAlpha))
-    for tone in [StatusTone.working, .unread, .waiting, .failed, .backgroundWait] {
+    for tone in [StatusTone.working, .unread, .waiting, .failed, .backgroundWait, .backgroundWaitLong] {
       #expect(TabTokens.square(tone) == TabTokens.SquareLook(color: PaletteTokens.tone(tone), alpha: .opaque), "\(tone)")
     }
   }
@@ -73,7 +73,7 @@ struct TabTokensTests {
 
   @Test("znak przed etykietą nie zależy od stanu: szerokość zakładki nie skacze przy zmianie tonu")
   func markIgnoresTone() {
-    for tone in [StatusTone.quiet, .working, .unread, .waiting, .failed, .backgroundWait] {
+    for tone in [StatusTone.quiet, .working, .unread, .waiting, .failed, .backgroundWait, .backgroundWaitLong] {
       let tab = ProjectTabModel(
         id: "t", kind: .session, target: .session("s1"), label: "t", tone: tone, current: false, spoken: "t")
       #expect(tab.mark(digit: nil) == .square, "\(tone)")

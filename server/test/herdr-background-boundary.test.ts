@@ -143,7 +143,7 @@ describe('katalog zadań w tle: moduły czyste nie sięgają po dysk', () => {
   ]
     .map((name) => `server/src/herdr/background/${name}`);
   const DISK = [
-    'agent-file.ts', 'incremental-read.ts', 'main-scan.ts', 'pull-request-files.ts', 'satellite.ts', 'workflow-run.ts',
+    'agent-file.ts', 'incremental-read.ts', 'main-scan.ts', 'satellite.ts', 'workflow-run.ts',
   ]
     .map((name) => `server/src/herdr/background/${name}`);
 
@@ -227,7 +227,6 @@ describe('rejestr kształtów CLI: literał stoi w JEDNYM pliku', () => {
     'summaryKinds.agent', 'summaryKinds.monitorEnd',
     'taskDescription.command', 'taskDescription.description',
     'taskOutput.status', 'taskOutput.task',
-    'notification.outputDir', 'notification.outputExtension',
     'taskStart.agentId',
     'taskStop.message',
     'taskTools.agent', 'taskTools.bash', 'taskTools.task', 'taskTools.workflow',
@@ -337,6 +336,9 @@ describe('co jest pracą: listę zadań liczy tylko `work.ts`', () => {
     // Czy agent w postoju czeka na własną komendę, mówi
     // `waitingOnOwnCommand` w `work.ts`. Listy komend agenta wywołujący nie czytają.
     { what: 'odczyt własnych komend subagenta', pattern: /\bownTasks\b/ },
+    // How long a subagent has waited on its own command, and what follows from it, answers `work.ts`; callers do not
+    // read the wait stage field.
+    { what: 'reading the wait stage of a subagent', pattern: /\bownCommandWait\b/ },
   ];
 
   const hits = (code: string): string[] =>
@@ -362,6 +364,8 @@ describe('co jest pracą: listę zadań liczy tylko `work.ts`', () => {
       'const waiting = tasks.every((task) => task.waitingSince !== undefined);',
       'const own = (agent.ownTasks?.length ?? 0) > 0;',
       "...(tasks.some((t) => t.ownTasks) ? { waitingOnOwnCommand: true } : {}),",
+      "if (task.ownCommandWait === 'stuck') this.#config.notifier?.stalled(session.id);",
+      'const { ownCommandWait } = agent;',
     ];
     for (const line of OLD) expect(hits(line), `wzorce nie łapią: ${line}`).not.toEqual([]);
   });
@@ -385,6 +389,11 @@ describe('co jest pracą: listę zadań liczy tylko `work.ts`', () => {
       ': entry.owedRelease && look.waitingOnOwnCommand',
       'const held = holdsOwedDone(session.backgroundTasks);',
       'if (held && !holdsOwedDone(tasks)) this.#config.notifier?.quiet(session.id);',
+      'const stage = ownCommandWaitOf(task, deps.scheduler.now());',
+      'const key = waitKey(task);',
+      'const waits = stuckWaits(session.state, session.backgroundTasks, tasks);',
+      'port.stuckWaits(session, waits);',
+      'stuckWaits: (session, waits) => { this.#config.stalledWait?.stuckWaits(session, waits); },',
     ];
     for (const line of FINE) expect(hits(line), `fałszywy alarm: ${line}`).toEqual([]);
   });

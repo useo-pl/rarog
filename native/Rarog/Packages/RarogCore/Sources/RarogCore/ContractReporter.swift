@@ -34,7 +34,24 @@ final class ContractReporter {
   /// Tunnel and stream connection lines per ``traceWindow`` (``TraceBudget/connectivity``), apart from ``traceCap``:
   /// navigation lines spend the shared 20 within minutes, and a drop the owner just saw must still reach the log.
   static let connectivityTraceCap = 60
+  /// Lines of leaving the background (the session screen's return line, the Live Activity foreground line) per
+  /// ``traceWindow`` (``TraceBudget/foreground``), apart from ``traceCap``: navigation lines spend the shared 20 within
+  /// minutes, and a return must still reach the log. Two lines per return, up to about 100 returns in an hour.
+  static let foregroundTraceCap = 240
+  /// Live Activity content lines per ``traceWindow`` (``TraceBudget/liveActivityContent``), apart from
+  /// ``foregroundTraceCap``: one per content the system hands the app, about 150 per device in the busiest hour, so a
+  /// busy hour does not drop the return lines.
+  static let liveActivityContentTraceCap = 240
   static let traceWindow: TimeInterval = 3600
+  /// The server's ceiling for one `POST /api/client-log` body (`CLIENT_LOG_MAX_REQUEST_BYTES` in
+  /// `server/src/client-log.ts`, read by the test): a bigger body is refused whole.
+  static let serverRequestLimit = 64 * 1024
+  /// Encoded event bytes one body carries at most: half the server's ceiling, which leaves room for what the server
+  /// adds to each line (`receivedAt`, the client tag) and for the body around the events.
+  static let batchBytes = serverRequestLimit / 2
+  /// A longer line goes cut to its first characters, so one line always fits a body (a character takes at most 6
+  /// bytes as a JSON escape) and never blocks the queue.
+  static let maxLineCharacters = 2000
   /// Prefiks linii nieobsłużonego błędu — jedzie z poziomem `error`.
   static let problemPrefix = "błąd: "
 
@@ -95,6 +112,8 @@ final class ContractReporter {
   private var appTraces = TraceWindow()
   private var voiceAgentTraces = TraceWindow()
   private var connectivityTraces = TraceWindow()
+  private var foregroundTraces = TraceWindow()
+  private var liveActivityContentTraces = TraceWindow()
 
   func record(_ lines: [String], owner: Owner = .current) {
     guard let stamp = stamp(owner) else { return }
@@ -116,6 +135,9 @@ final class ContractReporter {
       case .voiceAgent: voiceAgentTraces.admit(cap: Self.voiceAgentTraceCap, window: Self.traceWindow, now: now)
       case .voiceAgentEnd: true
       case .connectivity: connectivityTraces.admit(cap: Self.connectivityTraceCap, window: Self.traceWindow, now: now)
+      case .foreground: foregroundTraces.admit(cap: Self.foregroundTraceCap, window: Self.traceWindow, now: now)
+      case .liveActivityContent:
+        liveActivityContentTraces.admit(cap: Self.liveActivityContentTraceCap, window: Self.traceWindow, now: now)
       }
     guard admitted else { return }
     append(line, stamp, deduplicated: false)
@@ -201,6 +223,8 @@ final class ContractReporter {
 
   /// Wysyła bufor partiami, aż się opróżni: linia dopisana w trakcie wysyłki jedzie następną
   /// partią, nie czeka na kolejną ramkę. Porażka zostawia linie w buforze na następną próbę.
+  /// A batch holds the oldest lines up to ``batchBytes`` encoded, so no body passes the server's ceiling; a failed
+  /// batch keeps itself and every later line in the queue.
   /// `send` goes to the server of the current ``recipient``: the caller reads its transport in the same step as this
   /// call starts. A batch holds only lines stamped with the recipient's key. After a ``retire()`` or ``rekey(_:)``
   /// during a send the loop ends and leaves the queue alone.
@@ -212,17 +236,37 @@ final class ContractReporter {
     defer { if flushing == recipient { flushing = nil } }
     let at = ISOTime.string(now)
     while armed, recipient == self.recipient {
-      let batch = entries.filter { $0.stamp == .server(key) }
-      guard !batch.isEmpty else { return }
-      let body = ClientLogBody(events: batch.map { entry in
-        ClientLogBody.Event(
-          at: at, level: entry.line.hasPrefix(Self.problemPrefix) ? "error" : "debug", msg: entry.line)
-      })
+      let queued = entries.filter { $0.stamp == .server(key) }
+      guard !queued.isEmpty else { return }
+      let (batch, events) = Self.firstBatch(queued, at: at)
+      let body = ClientLogBody(events: events)
       guard await send(body), recipient == self.recipient else { return }
       let sent = Set(batch.map(\.id))
       entries.removeAll { sent.contains($0.id) }
       reported.formUnion(batch.map(\.line))
     }
+  }
+
+  /// The oldest queued entries whose events fit ``batchBytes`` encoded, at least one, with their events. A queue
+  /// gathered without a connection can pass the server's ceiling, and a refused body would come back whole at every
+  /// flush; split, each body goes and leaves the queue on success.
+  private static func firstBatch(_ queued: [Entry], at: String) -> ([Entry], [ClientLogBody.Event]) {
+    let encoder = JSONEncoder()
+    var batch: [Entry] = []
+    var events: [ClientLogBody.Event] = []
+    var bytes = 0
+    for entry in queued {
+      let event = ClientLogBody.Event(
+        at: at, level: entry.line.hasPrefix(problemPrefix) ? "error" : "debug",
+        msg: String(entry.line.prefix(maxLineCharacters)))
+      // The comma between events counts too.
+      let cost = ((try? encoder.encode(event).count) ?? batchBytes) + 1
+      if !batch.isEmpty, bytes + cost > batchBytes { break }
+      batch.append(entry)
+      events.append(event)
+      bytes += cost
+    }
+    return (batch, events)
   }
 
   /// The stamp of a line recorded now for `owner`; `nil` = the line is dropped.
@@ -321,6 +365,10 @@ public enum TraceBudget: Sendable, Equatable {
   case voiceAgentEnd
   /// Tunnel and stream connection lines: ``ContractReporter/connectivityTraceCap`` per hour.
   case connectivity
+  /// Lines of leaving the background: ``ContractReporter/foregroundTraceCap`` per hour.
+  case foreground
+  /// Live Activity content lines: ``ContractReporter/liveActivityContentTraceCap`` per hour.
+  case liveActivityContent
 }
 
 /// Count of traces in the current window of one budget.

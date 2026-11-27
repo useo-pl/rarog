@@ -1,6 +1,6 @@
 /**
  * Pane labels with a leading description: every reader accepts both the bare format
- * (`rarog-claude <key> <trace>`, `rarog-term <id>`) and `<description> · rarog-…`.
+ * (`rc:<key code><trace code>`, `rt:<id code>`) and `<description> · rc:…`, `<description> · rt:…`.
  *
  * These tests pin the reading side: the parser, the supervisor's tab label sync (its write gate
  * compares against the label it READ) and terminal pane recovery. The writing side is pinned in
@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.ts';
+import { keyCodeOf } from '../src/herdr/label-code.ts';
 import {
   claudePaneLabel, labelTrace, parsePaneLabel, termPaneLabel,
 } from '../src/herdr/provenance.ts';
@@ -23,17 +24,20 @@ import type { TabLabelHarness } from './helpers/supervisor-tab-label-harness.ts'
 
 const KEY = 'abababababababab';
 const TRACE = '89abcdef';
+const CLAUDE = claudePaneLabel(KEY, TRACE);
+const TERM = termPaneLabel(KEY);
+const OF_CLAUDE = { kind: 'claude', keyCode: keyCodeOf(KEY), trace: TRACE };
 
 describe('parsePaneLabel — bare and described formats', () => {
-  const cases: [string, ReturnType<typeof parsePaneLabel>][] = [
-    [`rarog-claude ${KEY} ${TRACE}`, { kind: 'claude', value: KEY, trace: TRACE }],
-    [`PR-y · rarog-claude ${KEY} ${TRACE}`, { kind: 'claude', value: KEY, trace: TRACE }],
-    [`rarog-term ${KEY}`, { kind: 'term', value: KEY }],
-    [`rarog 2 · atlas · rarog-term ${KEY}`, { kind: 'term', value: KEY }],
-    [`x · rarog-term ${KEY} · rarog-claude ${KEY} ${TRACE}`, { kind: 'claude', value: KEY, trace: TRACE }],
-    [`foo rarog-term ${KEY}`, null],
-    [`  · rarog-term ${KEY}`, null],
-    [`Opis · rarog-claude ${KEY.toUpperCase()} ${TRACE}`, null],
+  const cases: [string, Readonly<Record<string, string>> | null][] = [
+    [CLAUDE, OF_CLAUDE],
+    [`PR-y · ${CLAUDE}`, OF_CLAUDE],
+    [TERM, { kind: 'term', id: KEY }],
+    [`rarog 2 · atlas · ${TERM}`, { kind: 'term', id: KEY }],
+    [`x · ${TERM} · ${CLAUDE}`, OF_CLAUDE],
+    [`foo ${TERM}`, null],
+    [`  · ${TERM}`, null],
+    [`Opis · ${CLAUDE.toUpperCase()}`, null],
   ];
   for (const [label, expected] of cases) {
     it(`${JSON.stringify(label)} → ${expected === null ? 'null' : expected.kind}`, () => {
@@ -41,17 +45,17 @@ describe('parsePaneLabel — bare and described formats', () => {
     });
   }
 
-  it('a description does not loosen the suffix: separators and hex stay exact', () => {
+  it('a description does not loosen the suffix: separators and the code stay exact', () => {
     const foreign = [
-      ` · rarog-term ${KEY}`,
-      `a ·rarog-term ${KEY}`,
-      `a· rarog-term ${KEY}`,
-      `a · rarog-term ${KEY} `,
-      `a · rarog-term ${KEY}0`,
-      `a · rarog-claude ${KEY}`,
-      `a · rarog-claude ${KEY} ${TRACE} extra`,
-      `a · Rarog-term ${KEY}`,
-      `a\nb · rarog-term ${KEY}`,
+      ` · ${TERM}`,
+      `a ·${TERM}`,
+      `a· ${TERM}`,
+      `a · ${TERM} `,
+      `a · ${TERM}0`,
+      `a · ${CLAUDE.slice(0, -7)}`,
+      `a · ${CLAUDE} extra`,
+      `a · R${TERM.slice(1)}`,
+      `a\nb · ${TERM}`,
     ];
     for (const label of foreign) expect(parsePaneLabel(label), JSON.stringify(label)).toBeNull();
   });
@@ -152,7 +156,7 @@ describe('supervisor tab label sync reads a described Claude pane label', () => 
   });
 });
 
-describe('terminal pane recovery reads a described `rarog-term` label', () => {
+describe('terminal pane recovery reads a described `rt:` label', () => {
   const CWD = '/Users/testowy/Projects/atlas';
   const ID = termIdFor(CWD, 2);
   const dirs: string[] = [];
@@ -184,7 +188,7 @@ describe('terminal pane recovery reads a described `rarog-term` label', () => {
     paneId, tabId: `${paneId}t`, workspaceId: 'w1', cwd: CWD, tokens: {}, label,
   });
 
-  it('`rarog 2 · atlas · rarog-term <id>` without a token → the token comes back', async () => {
+  it('`rarog 2 · atlas · rt:<id>` without a token → the token comes back', async () => {
     const herdr = new RecordingHerdr();
     const label = `rarog 2 · atlas · ${termPaneLabel(ID)}`;
     herdr.addPane(paneWith('w1:p1', label));

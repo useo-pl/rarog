@@ -33,7 +33,8 @@ struct BackgroundTasksPanel: View {
   var body: some View {
     let state = store.state
     let tasks = state.sessions[sessionId]?.backgroundTasks ?? []
-    let lines = BackgroundPanel.lines(tasks, choices: state.sessionControls.models ?? [], expansion: expansion)
+    let lines = BackgroundPanel.lines(
+      tasks, in: state.sessions[sessionId]?.state, choices: state.sessionControls.models ?? [], expansion: expansion)
     let finished = FinishedTasks.rows(state.transcripts[sessionId]?.messages ?? [])
     BackgroundClock(store: store, sessionId: sessionId) { now, frozen in
       ScrollView {
@@ -79,6 +80,7 @@ struct BackgroundTasksPanel: View {
     // Dymek rośnie do treści z sufitem; arkusz telefonu bierze wysokość z detentu (`PopoverLayout`).
     .popoverLayout(
       contentHeight: contentHeight, footerHeight: openInPanel == nil ? 0 : footerHeight, ceiling: ceiling)
+    .environment(\.waitCheckScope, WaitCheckScope(store: store, sessionId: sessionId))
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("header.background.panel")
     .onChange(of: BackgroundPanel.currentKeys(tasks), initial: true) { _, keys in

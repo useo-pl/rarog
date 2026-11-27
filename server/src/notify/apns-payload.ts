@@ -9,7 +9,7 @@
  *
  * - nagłówki: `apns-push-type: alert`, `apns-topic` (temat wpisu urządzenia — podaje go wołający),
  *   `apns-priority` 10 dla spraw pilnych i 5 dla „gotowe", `apns-collapse-id` = `topic` treści
- *   (koalescencja per sesja),
+ *   (koalescencja per sesja; the stalled wait alarm has its own key, `stalledTopicFor`),
  *   `apns-expiration` = CZAS ABSOLUTNY w sekundach epoki (`teraz + ttl`), nie TTL.
  *
  * Baner jest zawsze szyfrowany ({@link apnsAlertRequestE2e}), w formacie 3: wpis, który go nie
@@ -17,8 +17,8 @@
  *
  * - `aps` DOKŁADNIE `{alert: tekst zastępczy, mutable-content: 1, sound: 'default', badge?, thread-id?}` (tekst
  *   zastępczy {@link RELAY_ALERT_PLACEHOLDER}, a dla wpisu z deklaracją `locKeys` jego klucze katalogu apki
- *   {@link ALERT_PLACEHOLDER_KEYS}; `thread-id` = klucz koalescencji `content.topic`, tylko przy rodzajach
- *   sesji — grupowanie w Centrum powiadomień);
+ *   {@link ALERT_PLACEHOLDER_KEYS}; `thread-id` = `topicFor(sessionId)`, tylko przy rodzajach
+ *   sesji — grupowanie w Centrum powiadomień, so the stalled wait alarm stays in its session's group);
  * - JEDEN blok POZA `aps`: {@link APNS_RAROG_BLOCK} `{v: 3, kid, n, c}` z treścią zaszyfrowaną kluczem urządzenia
  *   (`push-crypto.ts`);
  * - tekst jawny `{kind, title?, titleRef?, body?, bodyRef?, sessionId?, termId?, exp}` (`exp` = `apns-expiration`)
@@ -36,7 +36,7 @@
 import type { LiveActivityContentState } from '@rarog/shared/rest';
 import { RELAY_ALERT_PLACEHOLDER } from '@rarog/shared/relay';
 import type { SentenceCode, SentenceRef } from '@rarog/shared/sentences';
-import { isSessionless } from './content.ts';
+import { isSessionless, topicFor } from './content.ts';
 import type { PushContent } from './content.ts';
 import { PUSH_PLAINTEXT_MAX_BYTES } from './push-crypto.ts';
 import type { DevicePushKey, PushSealer } from './push-crypto.ts';
@@ -211,6 +211,7 @@ export function apnsAlertRequestE2e(content: PushContent, options: ApnsAlertE2eO
   const exp = expirationOf(content, options.nowMs);
   const plaintext = fitTexts(content, PUSH_PLAINTEXT_MAX_BYTES, (texts) => plaintextJson(content, exp, texts));
   const envelope = options.sealer.seal(options.key, plaintext);
+  const sessionId = sessionIdOf(content);
   const aps = badgeOnly(content)
     ? badgeAps(content)
     : {
@@ -218,8 +219,9 @@ export function apnsAlertRequestE2e(content: PushContent, options: ApnsAlertE2eO
       'mutable-content': 1,
       sound: 'default',
       ...badgeAps(content),
-      // Klucz koalescencji (skrót id sesji), ta sama wartość co jawny `apns-collapse-id` — nie surowe id.
-      ...(sessionIdOf(content) === undefined ? {} : { 'thread-id': content.topic }),
+      // Hash of the session id, never the raw id: one group per session in the Notification Center. Equal to
+      // `apns-collapse-id` for every session kind except the stalled wait alarm, which has its own collapse key.
+      ...(sessionId === undefined ? {} : { 'thread-id': topicFor(sessionId) }),
     };
   const body = JSON.stringify({ aps, [APNS_RAROG_BLOCK]: { v: APNS_RAROG_BLOCK_VERSION, ...envelope } });
   if (bytes(body) > APNS_PAYLOAD_MAX_BYTES) return undefined;

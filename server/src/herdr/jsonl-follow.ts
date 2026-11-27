@@ -60,7 +60,7 @@ import {
   compactPostTokensFrom, compactPreTokensFrom, createUsageTracker, isMainCompactBoundary, usageFrom,
 } from './jsonl-usage.ts';
 import {
-  artifactsSignature, createArtifactsTracker, createBackgroundTasksTracker, scanMainFileBefore,
+  artifactsSignature, createArtifactsTracker, createBackgroundTasksTracker, isPullRequestLinkEntry, scanMainFileBefore,
 } from './background/index.ts';
 import { emptyCarry, takeLines } from './background/jsonl-lines.ts';
 import { toolActivity, toolEndActivity, toolInputsByName } from './jsonl-activity.ts';
@@ -118,6 +118,8 @@ export const ARTIFACTS_RESCAN_LOG = 'artifact scan after a file truncation or sk
 export const ARTIFACTS_RESCAN_SKIPPED_LOG = 'artifacts before the file truncation or skip are not visible';
 /** Okno batchowania emisji — 100 ms wystarczy telefonowi, a ratuje SSE przy 17 panelach. */
 export const FOLLOW_BATCH_MS = 100;
+/** Events without content: they do not take the last place of a batch from the activity indicator. */
+const CONTENTLESS: ReadonlySet<string> = new Set(['turn-input', 'echo-dropped', 'pull-request-entry']);
 /** Siatka bezpieczeństwa: `fs.watch` gubi zdarzenia na części systemów plików. */
 export const FOLLOW_STAT_TICK_MS = 2_000;
 /** Plik jeszcze nie istnieje: gęsty poll przez pierwszą minutę… */
@@ -366,7 +368,12 @@ export type FollowEvent =
    */
   | { type: 'relocated'; path: string; dir: string }
   /** Plik transkryptu nie powstaje — treści nie będzie i użytkownik ma to wiedzieć. */
-  | { type: 'error'; reason: 'no-transcript' };
+  | { type: 'error'; reason: 'no-transcript' }
+  /**
+   * A pull request link entry in the live tail: only the fact, for the driver's PR read (`pull-request-files.ts`). The
+   * entry gives no message, so without this nothing would order the read. Never forwarded to the manager.
+   */
+  | { type: 'pull-request-entry' };
 
 /** Pamięć zamknięć wątku głównego z followera ({@link JsonlFollower.closedToolUses}). */
 export interface ClosedToolUses {
@@ -2140,6 +2147,7 @@ class Follower implements JsonlFollower {
       // wiadomością nie jest, ale turę wywołuje — manager ma o nim wiedzieć.
       if (isHiddenTurnInput(raw)) this.#push({ type: 'turn-input' });
       else if (isMainCompactBoundary(raw)) this.#push({ type: 'turn-input', kind: 'compaction' });
+      else if (isPullRequestLinkEntry(raw)) this.#push({ type: 'pull-request-entry' });
       return;
     }
     const message = entry.message;
@@ -2759,7 +2767,7 @@ class Follower implements JsonlFollower {
     let last = events.length - 1;
     // Zdarzenia bez treści (wejście tury, wypadnięty wpis echa) nie odbierają wskaźnikowi aktywności
     // miejsca ostatniego w partii.
-    while (last >= 0 && (events[last]?.type === 'turn-input' || events[last]?.type === 'echo-dropped')) last -= 1;
+    while (last >= 0 && CONTENTLESS.has(events[last]?.type ?? '')) last -= 1;
     for (let i = 0; i < events.length; i += 1) {
       const event = events[i];
       if (event === undefined) continue;

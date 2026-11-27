@@ -75,7 +75,7 @@ private final class Fields: VoiceAgentInboxField {
 @MainActor
 private final class Rig {
   let backend = FakeVoiceAgentBackend()
-  let settings = VoiceAgentSettings.memory()
+  let settings: VoiceAgentSettings
   let center = DictationCenter()
   let device = VoiceAgentFakeDevice()
   let clock = ManualScheduler()
@@ -86,7 +86,9 @@ private final class Rig {
   private(set) var target: String?
   private(set) var owner: VoiceAgentInboxConversation!
 
-  init() {
+  /// `noTiles`: a device that shows no Live Activity tiles (an iPad); otherwise a phone.
+  init(noTiles: Bool = false) {
+    settings = VoiceAgentSettings(preferences: .memory(), background: BackgroundRecording(noTiles: noTiles))
     var state = appState(
       [session("A", label: "Alpha"), session("B", label: "Birch"),
        session("D", label: "Dunes", state: "waiting-permission")],
@@ -645,19 +647,29 @@ struct VoiceAgentInboxTests {
     #expect(rig.target == nil)
   }
 
-  // Catches a card conversation that the background still ends with the locked-phone trial on (the trial would do
-  // nothing at the Inbox), or one the background keeps with the trial off.
-  @Test(
-    "the background ends a ready card conversation with the trial off and keeps it with the trial on",
-    arguments: [false, true])
-  func backgroundWithTrial(on: Bool) async throws {
+  // Catches a card conversation that its length limit does not end, or that ends without its sentence.
+  @Test("the conversation of a card ends at its length limit with its sentence, and the voice target goes")
+  func sessionLimit() async throws {
     let rig = Rig()
-    rig.settings.lockedPhoneTrial.set(on)
+    try await rig.ready("A")
+    rig.device.scheduler.advance(VoiceAgentSession.sessionLimit)
+    #expect(await eventually { !rig.owner.isActive })
+    #expect(rig.owner.indicator == .ended(.sessionLimit))
+    #expect(rig.target == nil)
+  }
+
+  // Catches a card conversation that the background ends while its tile stands (the tile would do nothing at the
+  // Inbox), or one the background keeps on a phone without its tile.
+  @Test(
+    "on a phone the background keeps a ready card conversation only while its tile stands", arguments: [false, true])
+  func backgroundFollowsTheTile(tile: Bool) async throws {
+    let rig = Rig()
+    rig.settings.background.tile(shown: tile)
     try await rig.ready("A")
     rig.place.background = true
     rig.owner.observe()
     try? await Task.sleep(for: .milliseconds(20))
-    if on {
+    if tile {
       #expect(rig.owner.isActive && rig.owner.session?.isActive == true && rig.target == "A")
       #expect(!rig.device.socket.closed && rig.device.audio.stops == 0)
     } else {
@@ -666,12 +678,31 @@ struct VoiceAgentInboxTests {
     }
   }
 
-  // Catches a start that the trial lets through in the background, or a start waiting for its snapshot that it keeps:
+  // Catches a card conversation that outlives its tile removed while the app is in the background, or one that the
+  // lock does not end on a device without tiles: the owner must follow both without any other change.
+  @Test("the tile removed in the background, or the lock without tiles, ends a ready card conversation at once")
+  func backgroundRuleChangesInTheBackground() async throws {
+    for noTiles in [false, true] {
+      let rig = Rig(noTiles: noTiles)
+      rig.settings.background.tile(shown: !noTiles)
+      try await rig.ready("A")
+      rig.place.background = true
+      rig.owner.observe()
+      try? await Task.sleep(for: .milliseconds(20))
+      #expect(rig.owner.isActive, "noTiles \(noTiles): kept in the background")
+      if noTiles { rig.settings.background.screenLocked() } else { rig.settings.background.tile(shown: false) }
+      #expect(await eventually { !rig.owner.isActive }, "noTiles \(noTiles)")
+      #expect(rig.owner.indicator == .closed(.background))
+      #expect(rig.device.socket.closed && rig.device.audio.stops > 0)
+    }
+  }
+
+  // Catches a start that the tile lets through in the background, or a start waiting for its snapshot that it keeps:
   // the microphone would open with the app in the background.
-  @Test("with the trial on the background ends a start that waits for its snapshot and refuses a new one; no audio")
-  func backgroundStartWithTrial() async throws {
+  @Test("with the tile up the background ends a start that waits for its snapshot and refuses a new one; no audio")
+  func backgroundStartWithTile() async throws {
     let rig = Rig()
-    rig.settings.lockedPhoneTrial.set(true)
+    rig.settings.background.tile(shown: true)
     rig.owner.toggle(try rig.card("A"))
     rig.place.background = true
     rig.owner.observe()

@@ -49,18 +49,21 @@ private final class ServerProbe {
 @MainActor
 private final class MonitorHarness {
   let clock = ManualScheduler()
-  let trial = LockedPhoneTrial.memory()
+  /// The rule of the background: the running recording's tile and, on a device without tiles, the lock.
+  let rule: BackgroundRecording
   let microphone = MicrophoneUseBox()
   let probe = ServerProbe()
   var holds: [Bool] = []
   var lines: [String] = []
   private(set) var monitor: LockedPhoneMonitor!
 
-  init(trialOn: Bool = true) {
-    trial.set(trialOn)
+  /// `tile`: the running recording's tile stands; `noTiles`: a device that shows no tiles (an iPad).
+  init(tile: Bool = true, noTiles: Bool = false) {
+    rule = BackgroundRecording(noTiles: noTiles)
+    rule.tile(shown: tile)
     monitor = LockedPhoneMonitor(
       LockedPhoneMonitor.Parts(
-        trial: trial, use: { [microphone] in microphone.use }, scheduler: clock,
+        background: rule, use: { [microphone] in microphone.use }, scheduler: clock,
         holdServer: { [weak self] in self?.holds.append($0) },
         serverAnswers: { [probe] in await probe.ask() },
         trace: { [weak self] in self?.lines.append($0) }))
@@ -173,7 +176,7 @@ struct LockedPhoneMonitorTests {
   }
 
   // Catches a hold that outlives what it was taken for: the tunnel would keep the server connection of a locked
-  // phone open after the conversation or dictation ended, or after the user switched the trial off.
+  // phone open after the conversation or dictation ended.
   @Test("the hold is taken while something runs and released when it ends, also when its host goes away")
   func holdFollowsTheRecording() async {
     let harness = MonitorHarness()
@@ -194,25 +197,48 @@ struct LockedPhoneMonitorTests {
     #expect(gone.holds == [true, false])
   }
 
-  // Catches a switch turned off that leaves the server connection held and the heartbeat writing.
-  @Test("the trial switched off while held releases the hold at the next heartbeat or change, and the heartbeat stops")
-  func trialSwitchedOff() async {
-    let background = MonitorHarness()
-    background.microphone.set(conversation)
-    background.lock()
-    background.trial.set(false)
-    await background.elapse(30)
-    #expect(background.holds == [true, false])
-    #expect(background.heartbeats.isEmpty && background.probe.calls == 0)
-    await background.elapse(90)
-    #expect(background.heartbeats.isEmpty && background.probe.calls == 0)
+  // Catches a hold without the tile: on a phone the server connection would stay held for a recording the
+  // background ends, or for one whose tile the user removed.
+  @Test("on a phone the hold stands only while the running recording's tile stands")
+  func holdFollowsTheTile() async {
+    let harness = MonitorHarness(tile: false)
+    harness.microphone.set(conversation)
+    #expect(harness.holds.isEmpty, "no tile, no hold")
+    harness.rule.tile(shown: true)
+    await dictationSettle()
+    #expect(harness.holds == [true], "the tile went up")
+    harness.rule.tile(shown: false)
+    await dictationSettle()
+    #expect(harness.holds == [true, false], "the tile removed releases it without any other change")
+  }
 
-    let foreground = MonitorHarness()
-    foreground.microphone.set(conversation)
-    foreground.trial.set(false)
-    foreground.lock()
-    #expect(foreground.holds == [true, false], "released at the scene change")
-    #expect(foreground.lines == ["voice-agent: background, trial off"])
+  // Catches a tile removed in the background that leaves the server connection held and the heartbeat writing.
+  @Test("the tile removed while held in the background releases the hold, and the heartbeat stops")
+  func tileRemovedInBackground() async {
+    let harness = MonitorHarness()
+    harness.microphone.set(conversation)
+    harness.lock()
+    harness.rule.tile(shown: false)
+    await harness.elapse(30)
+    #expect(harness.holds == [true, false])
+    #expect(harness.heartbeats.isEmpty && harness.probe.calls == 0)
+    await harness.elapse(90)
+    #expect(harness.heartbeats.isEmpty && harness.probe.calls == 0)
+  }
+
+  // Catches a device without tiles where the monitor drops the server connection at an app switch (a conversation's
+  // tools would lose the server) or keeps it after the screen lock.
+  @Test("without tiles the hold stands in the background until the lock, with its heartbeat")
+  func noTilesHoldUntilTheLock() async {
+    let harness = MonitorHarness(tile: false, noTiles: true)
+    harness.microphone.set(dictation)
+    harness.lock()
+    await harness.elapse(30)
+    #expect(harness.holds == [true] && harness.heartbeats.count == 1)
+    harness.rule.screenLocked()
+    await harness.elapse(60)
+    #expect(harness.holds == [true, false], "the lock releases it")
+    #expect(harness.heartbeats.count == 1, "and the heartbeat stops")
   }
 
   // Catches a monitor that releases a running hold when the app comes back (a second lock would start without it) or
@@ -231,8 +257,8 @@ struct LockedPhoneMonitorTests {
   // Catches lines, holds or server questions with nothing recording: the monitor would measure and hold the
   // connection for every lock of the phone.
   @Test("with nothing recording: no line, no hold, no server question", arguments: [true, false])
-  func nothingRuns(trialOn: Bool) async {
-    let harness = MonitorHarness(trialOn: trialOn)
+  func nothingRuns(tile: Bool) async {
+    let harness = MonitorHarness(tile: tile)
     harness.lock()
     await harness.elapse(120)
     harness.unlock()
@@ -240,19 +266,18 @@ struct LockedPhoneMonitorTests {
     #expect(harness.lines.isEmpty && harness.holds.isEmpty && harness.probe.calls == 0)
   }
 
-  // Catches scene lines that miss the trial's state, a line at the `inactive` step of a lock, and a trial off that
-  // still holds the connection or writes heartbeats.
-  @Test("scene lines say the trial's state; with the trial off only the scene lines", arguments: [true, false])
-  func sceneLines(trialOn: Bool) async {
-    let harness = MonitorHarness(trialOn: trialOn)
+  // Catches scene lines that carry more than where the app went, a line at the `inactive` step of a lock, and a
+  // recording without its tile that still holds the connection or writes heartbeats.
+  @Test("scene lines say only where the app went; without the tile only the scene lines", arguments: [true, false])
+  func sceneLines(tile: Bool) async {
+    let harness = MonitorHarness(tile: tile)
     harness.microphone.set(dictation)
     harness.lock()
     await harness.elapse(90)
     harness.unlock()
-    let state = trialOn ? "on" : "off"
     let scenes = harness.lines.filter { !$0.contains(" s: ") }
-    #expect(scenes == ["dictation: background, trial \(state)", "dictation: foreground, trial \(state)"])
-    if trialOn {
+    #expect(scenes == ["dictation: background", "dictation: foreground"])
+    if tile {
       #expect(harness.holds == [true] && harness.heartbeats.count == 3)
     } else {
       #expect(harness.holds.isEmpty && harness.heartbeats.isEmpty && harness.probe.calls == 0)
@@ -277,6 +302,6 @@ struct LockedPhoneMonitorTests {
     #expect(harness.heartbeats.count == 1, "a repeat evaluation does not restart the heartbeat's 30 s")
     await harness.elapse(30)
     #expect(harness.holds == [true])
-    #expect(harness.lines.filter { !$0.contains(" s: ") } == ["voice-agent: background, trial on"])
+    #expect(harness.lines.filter { !$0.contains(" s: ") } == ["voice-agent: background"])
   }
 }

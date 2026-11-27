@@ -38,12 +38,13 @@ import { createHerdrAuditLog } from './audit.ts';
 import type { HerdrAuditLog, RestartReason } from './audit.ts';
 import { createHerdrClient, createHerdrLaunchClient } from './client.ts';
 import { createHiddenStore, sessionIdFor } from './identity.ts';
+import { createLabelMigration, isLegacyPaneLabel } from './label-migration.ts';
 import type { HiddenStore } from './identity.ts';
 import { createSendThrottle } from './commands/index.ts';
 import type { SendSlotOptions, SendThrottle } from './commands/index.ts';
 import {
-  claudePaneLabel, labelTrace, parsePaneLabel, projectKey, realProjectPath, sanitizePaneTitle,
-  sanitizeTabLabel,
+  claudePaneLabelFrom, claudeTraceMatches, labelTrace, newClaudeProvenance, parsePaneLabel,
+  realProjectPath, sanitizePaneTitle, sanitizeTabLabel,
 } from './provenance.ts';
 import type { PaneProvenance } from './provenance.ts';
 import type { RefusalDumper } from './dialogs/refusals.ts';
@@ -63,7 +64,7 @@ import type {
   HerdrAgent, HerdrAgentHandle, HerdrAgentInfo, HerdrAgentStatus, HerdrClient,
   HerdrLaunchClient,
   HerdrLaunchHandle, HerdrLaunchRegistration, HerdrLaunchRequest, HerdrLaunchResult,
-  HerdrLauncher, HerdrLifecycleEvent, HerdrPaneEvent, HerdrPaneInfo,
+  HerdrLauncher, HerdrLifecycleEvent, HerdrPaneEvent, HerdrPaneInfo, HerdrStartPhase,
   HerdrSupervisor, HerdrTabInfo,
 } from './types.ts';
 
@@ -210,6 +211,8 @@ export interface HerdrAttachContext {
    * nadzorca ogłaszał `gone`, a karta sesji zamykała się sekundę przed powrotem panelu.
    */
   markTrustDialog(): void;
+  /** The launch before herdr knows its engine session (`HerdrStartPhase`); `null` once the agent is on a list. */
+  startPhase(): HerdrStartPhase | null;
   yoloRoots: readonly string[];
   sendEnabled: boolean;
   /**
@@ -247,6 +250,10 @@ export interface HerdrLauncherSeam {
    */
   paneLabelled(key: string): void;
   readScreen(paneId: string): Promise<string>;
+  /** A start dialog's answer brought the session id: refresh the pane now, not at the next resync. */
+  sessionAppeared(paneId: string): void;
+  /** The launch entry `key` is still held without its agent seen on a list (and the supervisor lives). */
+  launchHeld(key: string): boolean;
   logger(message: string): void;
 }
 
@@ -360,6 +367,8 @@ interface AgentEntry {
    * panelu — z tą różnicą, że kończy się powrotem tego samego `pane_id` i `agent_session`.
    */
   trustSeenAt: number;
+  /** The start dialog of the launch result (`HerdrLaunchResult.startDialog`); `null` without one. */
+  startDialog: HerdrStartPhase['startDialog'];
   /** Dialog zgody CLI widziany przy ostatnim odczyte ekranu; zdarzenie leci na ZMIANĘ. */
   consentDialog: ScreenConsentDialogId | null;
   /** Czy manager ma podpięty driver (tylko wtedy `re-attached` ma sens). */
@@ -438,7 +447,7 @@ interface AgentEntry {
  * Stan synchronizacji etykiety taba z kartą JEDNEGO klucza — wyłącznie RAM.
  *
  * Trwałym śladem „tę etykietę taba nadał Rarog" jest skrót w etykiecie PANELU
- * (`rarog-claude <klucz> <ślad>`), nie ten obiekt: on tylko skleja serię zmian w jedną
+ * (`rc:<klucz><ślad>`), nie ten obiekt: on tylko skleja serię zmian w jedną
  * i pamięta, co ten proces zrobił, żeby zgubiona odpowiedź nie robiła z własnej etykiety ręcznej.
  */
 interface TabLabelState {
@@ -568,6 +577,8 @@ export function createHerdrSupervisor(
         readScreen: async (paneId: string): Promise<string> => (
           (await client.readScreen(paneId, 'detection')).text
         ),
+        sessionAppeared: (paneId: string): void => { void refreshPane(paneId); },
+        launchHeld: (key: string): boolean => !disposed && agents.get(key)?.seenInList === false,
         logger: log,
       })
       : undefined);
@@ -611,6 +622,10 @@ export function createHerdrSupervisor(
   let refreshTimer: TimerHandle | null = null;
   let disposed = false;
   let unavailable = false;
+  /** Old-format pane labels → the current format, over the whole `pane.list` whenever herdr answers. */
+  const labelMigration = launchClient === null ? null : createLabelMigration({
+    client: launchClient, writable: () => config.sendEnabled && !transport.status().readOnly, log,
+  });
   /** Status recheck after a dialog answer, so a lost `idle` push does not leave the card standing until the resync. */
   const answerRecheck = createAnswerRecheck({ scheduler, refresh: (paneId) => refreshPane(paneId), log });
   /** The client every driver gets: the same as `client`, with the recheck after each accepted dialog answer. */
@@ -662,6 +677,7 @@ export function createHerdrSupervisor(
   const markAvailable = (): void => {
     if (!unavailable) return;
     unavailable = false;
+    labelMigration?.requestPass();
     log('herdr: available again');
     lifecycle.push({ type: 'available' });
   };
@@ -818,12 +834,12 @@ export function createHerdrSupervisor(
    *
    * Rarog nazywa tab WYŁĄCZNIE gdy: lokator to agent `claude` (Codex nigdy), tab jest
    * jednopanelowy (`tab.get`, za każdym razem — panel mógł zostać przeniesiony albo tab
-   * podzielony), a panel nosi etykietę pochodzenia `rarog-claude <klucz> <ślad>`. Bieżąca etykieta
+   * podzielony), a panel nosi etykietę pochodzenia `rc:<klucz><ślad>`. Bieżąca etykieta
    * taba jest „Raroga", gdy jej skrót równa się śladowi z etykiety panelu (trwałe — przeżywa
    * restart Raroga i herdr) albo gdy ten proces sam ją tam zostawił (`written`, RAM). Każda inna
    * = nadana ręcznie i NIETKNIĘTA — liczone przy każdym przebiegu od nowa, bez „ręcznej na zawsze".
    *
-   * The pane label leads with the tab label (`<tab label> · rarog-claude <key> <trace>`): with
+   * The pane label leads with the tab label (`<tab label> · rc:<key><trace>`): with
    * Rarog's tab label it carries that label's trace, with a name given by hand it carries that
    * name and the old trace. The pane label it already has = no write.
    *
@@ -880,6 +896,8 @@ export function createHerdrSupervisor(
     let provenance: PaneProvenance | null = parsePaneLabel(pane.label);
     // Panel terminala Raroga (ktoś odpalił `claude` w powłoce z Raroga): jego tab nazywa terminal.
     if (provenance?.kind === 'term') return 'done';
+    // An old-format label is rewritten by the label migration alone; the sync comes back after it.
+    if (isLegacyPaneLabel(pane.label)) return 'retry';
     if (provenance === null) {
       // Etykieta człowieka (niepusta, spoza wzorców Raroga) — panel cudzy, migracja też nie.
       if (pane.label !== null && pane.label.trim() !== '') return 'done';
@@ -901,21 +919,21 @@ export function createHerdrSupervisor(
     let expectedLabel = pane.label;
     if (provenance === null) {
       if (!isLegacyClaudeTabLabel(tab.label, [entry.agent.cwd, pane.cwd])) return 'done';
-      const project = projectKey(await realProjectPath(entry.agent.cwd));
+      const fresh = newClaudeProvenance(await realProjectPath(entry.agent.cwd), tab.label);
       if (!(await confirmPane(client, paneId, tab.tabId, pane.label))) {
         log(`herdr: pane ${paneId} changed before the label migration — skipping`);
         return interrupted() ?? 'retry';
       }
       const beforeMigration = interrupted();
       if (beforeMigration !== null) return beforeMigration;
-      const migrated = claudePaneLabel(project, labelTrace(tab.label), tab.label);
+      const migrated = claudePaneLabelFrom(fresh, tab.label, 'keep');
       try {
         await client.renamePane(paneId, migrated);
       } catch (err) {
         return writeFailed(err, `label migration of pane ${paneId} failed`);
       }
       log(`herdr: migration — pane ${paneId} got a provenance label (tab ${tab.tabId})`);
-      provenance = { kind: 'claude', value: project, trace: labelTrace(tab.label) };
+      provenance = fresh;
       expectedLabel = migrated;
     }
     const owned = provenance;
@@ -942,7 +960,7 @@ export function createHerdrSupervisor(
     };
 
     /** The pane label Rarog's own tab label calls for: the card label first, its trace last. */
-    const targetLabel = claudePaneLabel(owned.value, labelTrace(target), target);
+    const targetLabel = claudePaneLabelFrom(owned, target, 'fresh');
     /** Nowy ślad po etykiecie, którą Rarog zostawił na tabie; `settled` tylko po udanym zapisie. */
     const writeTrace = async (): Promise<TabLabelOutcome> => {
       const failed = await writePane(targetLabel, 'the tab label trace');
@@ -962,7 +980,7 @@ export function createHerdrSupervisor(
       }
       return await writeTrace();
     }
-    const ours = labelTrace(tab.label) === owned.trace || tab.label === state.written;
+    const ours = claudeTraceMatches(owned, tab.label) || tab.label === state.written;
     if (!ours) {
       logTabLabelOnce(`manual|${key}|${tab.tabId}|${labelTrace(tab.label)}`,
         `herdr: tab ${tab.tabId} named by hand — the card label does not overwrite it`);
@@ -971,7 +989,7 @@ export function createHerdrSupervisor(
        * shows it instead of hashes. The trace stays the old one: it proves Rarog's own tab
        * label, and the name given by hand must not pass for Rarog's on the next card change.
        */
-      const manual = claudePaneLabel(owned.value, owned.trace, tab.label);
+      const manual = claudePaneLabelFrom(owned, tab.label, 'keep');
       if (ownLabel === manual) return 'done';
       return await writePane(manual, 'the hand-given tab name') ?? 'done';
     }
@@ -1259,6 +1277,7 @@ export function createHerdrSupervisor(
       lastModeReadAt: 0,
       sentAt: 0,
       trustSeenAt: 0,
+      startDialog: null,
       consentDialog: null,
       // Wpis z `agent.list` zapala flagę od razu; rejestracja launchera zostaje na `false`,
       // dopóki agent naprawdę nie pokaże się na liście.
@@ -1299,7 +1318,7 @@ export function createHerdrSupervisor(
       agentSessionId: reg.agentSessionId,
       // Launcher zakłada WYŁĄCZNIE panele Claude (`agent.start(kind: 'claude')`) — Codex
       // z klienta jest poza zakresem. Panel launchera nie jest terminalem Raroga (własny tab
-      // z etykietą `rarog-claude`), więc tokenu terminala nie ma.
+      // z etykietą `rc:`), więc tokenu terminala nie ma.
       engine: 'claude',
       termId: null,
       cwd: reg.cwd,
@@ -1683,6 +1702,7 @@ export function createHerdrSupervisor(
       return;
     }
     markAvailable();
+    void labelMigration?.run();
     /*
      * Skład map zmienił się W TRAKCIE odczytu (równoległy resync coś odkrył, `closeTab`
      * coś zdjął): ta migawka `agent.list` jest starsza od rejestru, więc pętla `forget`
@@ -2005,6 +2025,13 @@ export function createHerdrSupervisor(
             entry.agent.agentSessionId = result.agentSessionId;
             bySession.set(result.agentSessionId, key);
           }
+          /*
+           * The launch result is one unordered `agent.get` read from before `ready` settled. An agent the supervisor
+           * has seen on a list since then has fresher state in order: a start dialog read right before its answer would
+           * put a ready pane back to `blocked` and hold the start prompt until the next resync.
+           */
+          if (entry.seenInList) return { ...result, key };
+          entry.startDialog = result.startDialog ?? null;
           entry.agent.interactiveReady = result.interactiveReady;
           /*
            * Status ZAOBSERWOWANY przez launcher — jedyna droga, którą `blocked` dialogu
@@ -2271,6 +2298,7 @@ export function createHerdrSupervisor(
         markTrustDialog: () => {
           entry.trustSeenAt = now();
         },
+        startPhase: (): HerdrStartPhase | null => (entry.seenInList ? null : { startDialog: entry.startDialog }),
         yoloRoots: config.yoloRoots,
         sendEnabled: config.sendEnabled,
         ...(entry.knownContextLimit === undefined
@@ -2300,6 +2328,7 @@ export function createHerdrSupervisor(
       if (resyncTimer !== null) scheduler.clearTimeout(resyncTimer);
       if (refreshTimer !== null) scheduler.clearTimeout(refreshTimer);
       answerRecheck.dispose();
+      labelMigration?.dispose();
       for (const key of [...tabLabels.keys()]) dropTabLabel(key);
       subscription?.close();
       subscription = null;

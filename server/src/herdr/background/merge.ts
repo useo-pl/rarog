@@ -30,6 +30,7 @@
 import type { AgentOwnTask, BackgroundTask, WorkflowRun } from '@rarog/shared';
 import type { Scheduler, TimerHandle } from '../../drivers/runtime.ts';
 import type { AgentFileFacts, AgentFileReader } from './agent-file.ts';
+import { ownCommandWaitOf } from './work.ts';
 import type { WorkflowRunReader } from './workflow-run.ts';
 
 /**
@@ -299,8 +300,11 @@ function refreshDormant(state: TasksState, now: number, fresh: ReadonlySet<strin
  *   nie ma na liście);
  * - wynik odczytu, który wrócił po zmianie `waitingSince`, niczego nie psuje: czas wpisu jest
  *   faktem o pliku i zestawia się z BIEŻĄCYM postojem, nie z tym sprzed odczytu.
+ *
+ * The wait stage (`ownCommandWait`) is set last, on the copy, from the view after the wake and the own commands:
+ * `ownCommandWaitOf` in `work.ts` decides, with the clock of this emission (`now`).
  */
-function agentView(state: TasksState, task: BackgroundTask): BackgroundTask {
+function agentView(state: TasksState, task: BackgroundTask, now: number): BackgroundTask {
   const facts = state.agents.get(task.id);
   if (facts === undefined) return task;
   // Chwile, nie napisy. Nieczytelny czas daje `NaN`, a każde porównanie z nim jest fałszem: agent
@@ -312,16 +316,19 @@ function agentView(state: TasksState, task: BackgroundTask): BackgroundTask {
   if (woken) delete view.waitingSince;
   // Własne komendy widać także pod agentem, który pracuje: to dalej jego otwarte zadania.
   if (own.length > 0) view.ownTasks = own;
+  const wait = ownCommandWaitOf(view, now);
+  if (wait !== undefined) view.ownCommandWait = wait;
   return view;
 }
 
 /**
  * Zadania followera z nakładkami tam, gdzie je znamy. Reszta jedzie bez zmian; agent uśpiony
  * (`state.dormant`) nie jedzie wcale. Funkcja samego stanu: uśpienie liczy `emitChanged`.
+ * `now` is the clock of the emission; only the wait stage of an agent reads it.
  */
-export function mergedTasks(state: TasksState): BackgroundTask[] {
+export function mergedTasks(state: TasksState, now: number): BackgroundTask[] {
   return state.raw.flatMap((task): BackgroundTask[] => {
-    if (task.kind === 'agent') return state.dormant.has(task.id) ? [] : [agentView(state, task)];
+    if (task.kind === 'agent') return state.dormant.has(task.id) ? [] : [agentView(state, task, now)];
     const run = task.runId === undefined ? undefined : state.runs.get(task.runId)?.run;
     return [run === undefined ? task : { ...task, run }];
   });
@@ -334,10 +341,14 @@ export function mergedTasks(state: TasksState): BackgroundTask[] {
  * zdarzenie `tasks` z samym `ended`), a odczyt pliku subagenta co tick przynosi nowy czas wpisu,
  * który zwykle niczego w liście nie zmienia. Manager po każdej liście rozsyła `session-changed`,
  * więc powtórka tej samej listy byłaby pustą ramką do każdego klienta.
+ *
+ * The compared list carries the wait stage, so a threshold passed between two ticks changes the JSON and goes out on
+ * the first tick after it, with no change in any file.
  */
 function emitChanged(state: TasksState, deps: TasksDeps, fresh: ReadonlySet<string> = NO_FRESH): void {
-  refreshDormant(state, deps.scheduler.now(), fresh);
-  const merged = mergedTasks(state);
+  const now = deps.scheduler.now();
+  refreshDormant(state, now, fresh);
+  const merged = mergedTasks(state, now);
   const json = JSON.stringify(merged);
   if (json === state.sent) return;
   state.sent = json;

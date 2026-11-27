@@ -26,6 +26,13 @@ export const TERMINAL_DIALOG_MESSAGE = say('dialogs.terminal-dialog');
  * celowo, żeby go zmierzyć (mechanizm bezpieczeństwa modelu) — driver go więc nie wysyła.
  */
 export const PAUSE_ESCAPE_MESSAGE = say('dialogs.pause-escape');
+/**
+ * A Claude Code start dialog herdr reads as ready: the card's sentence for the external imports dialog (the answer is
+ * kept for the project for good) and for an unknown one, and the refusal of a key or text sent to either.
+ */
+export const START_DIALOG_IMPORTS_MESSAGE = say('dialogs.start-dialog.imports');
+export const START_DIALOG_UNKNOWN_MESSAGE = say('dialogs.start-dialog.unknown');
+export const START_DIALOG_REFUSED_MESSAGE = say('dialogs.start-dialog.refused');
 /** Odpowiedź z nieświeżej karty: dialog na ekranie jest już inny niż ten, w który tapnięto. */
 export const STALE_DECISION_MESSAGE = say('dialogs.stale-decision');
 /**

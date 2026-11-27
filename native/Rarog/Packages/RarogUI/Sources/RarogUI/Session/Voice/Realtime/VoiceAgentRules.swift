@@ -72,8 +72,8 @@ struct VoiceAgentWatch: Sendable, Equatable {
     var enabled: Bool
     var selected: String?
     var background: Bool
-    /// The background keeps this conversation: the locked-phone trial is on and the conversation runs past its
-    /// readiness gate (`LockedPhoneTrial.keeps(running:)` with `VoiceAgentSession.isReady`). A start is never kept.
+    /// The background keeps this conversation: it runs past its readiness gate and the background rule keeps it
+    /// (`BackgroundRecording.keeps(running:)` with `VoiceAgentSession.isReady`). A start is never kept.
     var keepsInBackground: Bool
     /// The message field of the session screen is on screen. The status row and the button live in it, so
     /// without it the microphone would run without a visible indicator.

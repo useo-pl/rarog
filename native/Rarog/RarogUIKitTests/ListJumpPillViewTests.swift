@@ -201,6 +201,34 @@ final class ListJumpPillViewTests: XCTestCase {
     try snapshot(s.window, "list-jump-below")
   }
 
+  /// The largest text in a short window (an iPad in landscape): a pill about as tall as half the visible list would
+  /// leave no room to drag, so it goes while its count stays; back at the regular size in a tall window it returns.
+  /// While hidden, the pill keeps being measured, so the height that brings it back is the new one, not the tall one.
+  func testPillGivesWayAtLargestTextInShortWindow() throws {
+    let (last, project) = try Self.lastAgent()
+    let s = try rig { store in
+      try Self.change(store, last, project, minute: 3, state: "waiting-permission")
+    }
+    defer { s.close() }
+    XCTAssertNotNil(s.tracker.result.below, "precondition: a pill below")
+    XCTAssertTrue(s.tracker.fits, "a one-line pill over a phone-tall list stands")
+    let host = try XCTUnwrap(s.window.rootViewController)
+    let frame = s.window.frame
+    s.window.frame = CGRect(x: 0, y: 0, width: frame.width, height: 760)
+    host.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+    ProjectTreeListTests.spin()
+    let pill = try XCTUnwrap(s.tracker.belowPillFrame).height
+    let visible = s.visible.bottom - s.visible.top
+    XCTAssertGreaterThan(pill, visible / 2, "precondition: the pill would cover more than half of \(visible) pt")
+    XCTAssertNotNil(s.tracker.result.below, "the count stays")
+    XCTAssertFalse(s.tracker.fits, "a \(pill) pt pill over \(visible) pt of list goes")
+    s.window.frame = frame
+    host.traitOverrides.preferredContentSizeCategory = .large
+    ProjectTreeListTests.spin()
+    XCTAssertLessThan(try XCTUnwrap(s.tracker.belowPillFrame).height, pill, "measured again while hidden")
+    XCTAssertTrue(s.tracker.fits, "regular text in a tall window: the pill comes back")
+  }
+
   /// The fixture's last agent row (the fourth agent, minute 3, of the last project) and its project.
   private static func lastAgent() throws -> (id: String, project: String) {
     let store = try ProjectTreeListTests.store()

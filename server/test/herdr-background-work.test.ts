@@ -8,10 +8,10 @@
  * (`waitingSince`) przestał być pracą wszędzie poza blokadą restartu.
  */
 import { describe, expect, it } from 'vitest';
-import type { BackgroundTask } from '@rarog/shared';
+import type { BackgroundTask, SessionState } from '@rarog/shared';
 import {
-  hasBackgroundWork, hasOpenWorkflow, holdsOwedDone, onlyWaitingAgents, tasksBlockRestart, tasksHoldingDonePush,
-  waitingOnOwnCommand, workflowsWithRun,
+  WAIT_LONG_MS, WAIT_STUCK_MS, hasBackgroundWork, hasOpenWorkflow, holdsOwedDone, onlyWaitingAgents, ownCommandWaitOf,
+  stuckWait, stuckWaits, tasksBlockRestart, tasksHoldingDonePush, waitKey, waitingOnOwnCommand, workflowsWithRun,
 } from '../src/herdr/background/work.ts';
 
 const AT = '2026-10-10T06:00:00.000Z';
@@ -228,5 +228,160 @@ describe('zadania w tle: reguły pracy nad jedną listą (work.ts)', () => {
 
   it('lista przebiegów na kaflu nie zależy od czekających subagentów', () => {
     expect(workflowsWithRun([waitingAgent, workflowFlying, workflowNoRun]).map(({ task }) => task.id)).toEqual(['w3']);
+  });
+});
+
+/*
+ * The wait stage of a subagent in standby on its own command (`ownCommandWait`): the age counts from `waitingSince`
+ * on the server clock, and the field exists exactly when the agent waits on a known own command. The own command and
+ * the agent started long before the standby, so a rule that took the age from either start would show `long` at once.
+ */
+describe('wait stage of a subagent on its own command (`ownCommandWaitOf`, `waitKey`)', () => {
+  const STANDBY = '2026-11-20T10:00:00.000Z';
+  const at = (ms: number): number => Date.parse(STANDBY) + ms;
+  const HOURS = 3_600_000;
+  const standing: BackgroundTask = {
+    id: 'a7', kind: 'agent', description: 'Final tests', startedAt: '2026-11-20T07:00:00.000Z', waitingSince: STANDBY,
+    ownTasks: [{ id: 'b0000007', command: "until ! pgrep -f 'vitest run'; do sleep 30; done",
+      startedAt: '2026-11-20T08:00:00.000Z' }],
+  };
+  const { ownTasks: _own, ...noCommand } = standing;
+  void _own;
+  const { waitingSince: _since, ...woken } = standing;
+  void _since;
+
+  it.each([
+    { name: 'right at the standby', task: standing, age: 0, stage: 'short' },
+    { name: 'one second before the long threshold', task: standing, age: WAIT_LONG_MS - 1_000, stage: 'short' },
+    { name: 'at the long threshold', task: standing, age: WAIT_LONG_MS, stage: 'long' },
+    { name: 'one second before the stuck threshold', task: standing, age: WAIT_STUCK_MS - 1_000, stage: 'long' },
+    { name: 'at the stuck threshold', task: standing, age: WAIT_STUCK_MS, stage: 'stuck' },
+    { name: 'hours after the stuck threshold', task: standing, age: 9 * HOURS, stage: 'stuck' },
+    { name: 'standby without a known own command, 2 h', task: noCommand, age: 2 * HOURS, stage: undefined },
+    { name: 'own command finished (empty list), 2 h', task: { ...standing, ownTasks: [] }, age: 2 * HOURS,
+      stage: undefined },
+    { name: 'agent woke, its command still runs, 2 h', task: woken, age: 2 * HOURS, stage: undefined },
+    { name: 'the fields on a task of another kind', task: { ...standing, kind: 'command' as const }, age: 2 * HOURS,
+      stage: undefined },
+    // No proof of a long wait: an unreadable start or a clock behind the standby never escalates.
+    { name: 'unreadable `waitingSince`', task: { ...standing, waitingSince: 'soon' }, age: 2 * HOURS, stage: 'short' },
+    { name: 'clock behind the standby', task: standing, age: -2 * HOURS, stage: 'short' },
+  ])('$name → $stage', ({ task, age, stage }) => {
+    expect(ownCommandWaitOf(task, at(age))).toBe(stage);
+  });
+
+  it('the stages keep their order: the long threshold comes before the stuck one', () => {
+    expect(WAIT_LONG_MS).toBeGreaterThan(0);
+    expect(WAIT_STUCK_MS).toBeGreaterThan(WAIT_LONG_MS);
+  });
+
+  it('`waitKey`: one wait keeps its key across emissions, a new standby gets another, no field gives none', () => {
+    const emitted = (task: BackgroundTask, age: number): BackgroundTask => {
+      const stage = ownCommandWaitOf(task, at(age));
+      return stage === undefined ? task : { ...task, ownCommandWait: stage };
+    };
+    const first = waitKey(emitted(standing, 0));
+    expect(first).toBeDefined();
+    const later = { ...standing, ownTasks: [...standing.ownTasks ?? [], { id: 'b0000008' }] };
+    expect(waitKey(emitted(later, WAIT_STUCK_MS))).toBe(first);
+    const again = { ...standing, waitingSince: new Date(at(2 * HOURS)).toISOString() };
+    expect(waitKey(emitted(again, 2 * HOURS))).not.toBe(first);
+    expect(waitKey(emitted(noCommand, 2 * HOURS))).toBeUndefined();
+    expect(waitKey(standing), 'a list without the field carries no wait').toBeUndefined();
+    expect(waitKey({ ...standing, id: 'a8', ownCommandWait: 'short' })).not.toBe(first);
+  });
+});
+
+/*
+ * The edge of the stalled wait alarm (`stuckWaits`): the same wait (key) was below `stuck` on the previous list of the
+ * session and is `stuck` on the new one. A missing field before (first list after a Rarog restart or a driver swap,
+ * an agent before its file was read) is no edge, so a restart never repeats the alarm. A session in `done` or
+ * `resumable` (phantom agent) gives no edge and nothing at `stuck`, while its waits keep their keys.
+ */
+describe('edge of the stalled wait alarm (`stuckWaits`)', () => {
+  const STANDBY = '2026-11-20T10:00:00.000Z';
+  const base: BackgroundTask = {
+    id: 'a7', kind: 'agent', description: 'Final tests', waitingSince: STANDBY,
+    ownTasks: [{ id: 'b0000007', command: 'until false; do sleep 30; done' }],
+  };
+  const other: BackgroundTask = { ...base, id: 'a8', description: 'Lint' };
+  const at = (task: BackgroundTask, stage: BackgroundTask['ownCommandWait']): BackgroundTask =>
+    (stage === undefined ? task : { ...task, ownCommandWait: stage });
+  const { ownTasks: _own, ...bare } = base;
+  void _own;
+  const key = waitKey(at(base, 'short'));
+  const otherKey = waitKey(at(other, 'short'));
+  const newly = (state: SessionState, before: readonly BackgroundTask[] | undefined,
+    after: readonly BackgroundTask[] | undefined): (string | undefined)[] =>
+    stuckWaits(state, before, after).newly.map((wait) => wait.key);
+
+  it.each([
+    { name: '`long` → `stuck`', before: [at(base, 'long')], edge: true },
+    { name: '`short` → `stuck` (a sleeping Mac skips `long`)', before: [at(base, 'short')], edge: true },
+    { name: '`stuck` → `stuck`', before: [at(base, 'stuck')], edge: false },
+    { name: 'no list before (first list)', before: undefined, edge: false },
+    { name: 'agent before its file was read', before: [bare], edge: false },
+    { name: 'another standby of the same agent',
+      before: [{ ...at(base, 'long'), waitingSince: '2026-11-20T09:00:00.000Z' }], edge: false },
+  ])('$name: edge $edge', ({ before, edge }) => {
+    expect(newly('waiting-input', before, [at(base, 'stuck')])).toEqual(edge ? [key] : []);
+  });
+
+  it.each(['waiting-input', 'running', 'starting', 'waiting-permission', 'waiting-question', 'error', 'limit-reached',
+    'interrupted'] as const)('state %s gives the edge', (state) => {
+    expect(newly(state, [at(base, 'long')], [at(base, 'stuck')])).toEqual([key]);
+  });
+
+  it.each(['done', 'resumable'] as const)('state %s (phantom agent): no edge, nothing at `stuck`, keys stay', (state) => {
+    const waits = stuckWaits(state, [at(base, 'long')], [at(base, 'stuck')]);
+    expect(waits.newly).toEqual([]);
+    expect(waits.stuckKeys).toEqual([]);
+    expect(waits.waitKeys).toEqual([key]);
+  });
+
+  it('two agents on the edge in one list: both, in list order, with their descriptions', () => {
+    const waits = stuckWaits('waiting-input', [at(base, 'long'), at(other, 'short')],
+      [at(other, 'stuck'), at(base, 'stuck')]);
+    expect(waits.newly).toEqual([
+      { key: otherKey, agentId: 'a8', description: 'Lint' },
+      { key, agentId: 'a7', description: 'Final tests' },
+    ]);
+  });
+
+  it('`stuckKeys` and `waitKeys` name the waits of the new list by stage', () => {
+    const waits = stuckWaits('waiting-input', [at(base, 'stuck')], [at(base, 'stuck'), at(other, 'long'), bare]);
+    expect(waits.newly).toEqual([]);
+    expect(waits.stuckKeys).toEqual([key]);
+    expect(waits.waitKeys).toEqual([key, otherKey]);
+    expect(stuckWaits('running', [at(base, 'stuck')], undefined)).toEqual({ newly: [], stuckKeys: [], waitKeys: [] });
+  });
+});
+
+/*
+ * The Live Activity counter "waiting" for a session with a stuck wait (`stuckWait`): only a session after a turn
+ * (`waiting-input`) counts, because a session at a decision already waits, one in a turn works, and a session in `done`
+ * or `resumable` has a phantom agent. The stage is read from the field only.
+ */
+describe('Live Activity counter of a stuck wait (`stuckWait`)', () => {
+  const agent: BackgroundTask = {
+    id: 'a7', kind: 'agent', waitingSince: '2026-11-20T10:00:00.000Z',
+    ownTasks: [{ id: 'b0000007', command: 'until false; do sleep 30; done' }],
+  };
+  const at = (stage: BackgroundTask['ownCommandWait']): BackgroundTask => ({ ...agent, ownCommandWait: stage });
+
+  it.each([
+    { name: '`stuck`', tasks: [at('stuck')], waits: true },
+    { name: '`stuck` next to a command and a monitor', tasks: [command, monitor, at('stuck')], waits: true },
+    { name: '`long`', tasks: [at('long')], waits: false },
+    { name: '`short`', tasks: [at('short')], waits: false },
+    { name: 'standby without the field', tasks: [agent], waits: false },
+    { name: 'no list', tasks: undefined, waits: false },
+  ])('after a turn, $name: $waits', ({ tasks, waits }) => {
+    expect(stuckWait('waiting-input', tasks)).toBe(waits);
+  });
+
+  it.each(['running', 'starting', 'waiting-permission', 'waiting-question', 'error', 'limit-reached', 'interrupted',
+    'done', 'resumable'] as const)('state %s: false', (state) => {
+    expect(stuckWait(state, [at('stuck')])).toBe(false);
   });
 });

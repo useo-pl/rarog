@@ -10,7 +10,7 @@
  * Klient herdr jest fake'iem z licznikami — testy nie dotykają gniazda i nie zależą od
  * uruchomionego herdr (w sandboksie `listen` na unix socketcie i tak dostaje EPERM).
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { foreign } from '@rarog/shared/sentences';
 import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -20,6 +20,7 @@ import {
 } from '../src/herdr/launcher.ts';
 import { createProjectPlacement } from '../src/herdr/project-workspace.ts';
 import type { ProjectPlacement } from '../src/herdr/project-workspace.ts';
+import { keyCodeOf } from '../src/herdr/label-code.ts';
 import { claudePaneLabel, labelTrace, parsePaneLabel, projectKey } from '../src/herdr/provenance.ts';
 import type { HerdrLaunchProbe, HerdrLaunchRegistration } from '../src/herdr/launcher.ts';
 // `HerdrUntrustedCwdError` nie jest już rzucany przez launcher (brak zaufania to
@@ -27,7 +28,7 @@ import type { HerdrLaunchProbe, HerdrLaunchRegistration } from '../src/herdr/lau
 import { HerdrUnavailableError } from '../src/herdr/socket.ts';
 import { HerdrError, HerdrGoneError, HerdrLaunchTimeoutError } from '../src/herdr/types.ts';
 import type {
-  HerdrCreateTabParams, HerdrCreateWorkspaceParams, HerdrLaunchClient, HerdrPaneInfo,
+  HerdrCreateTabParams, HerdrCreateWorkspaceParams, HerdrLaunchClient, HerdrLaunchResult, HerdrPaneInfo,
   HerdrPaneMetadataParams, HerdrPaneProcess, HerdrStartAgentParams, HerdrWorkspaceInfo,
 } from '../src/herdr/types.ts';
 
@@ -97,6 +98,7 @@ interface FakeCalls {
   renameTab: { tabId: string; label: string }[];
   closeTab: string[];
   screenReads: number;
+  probeReads: number;
   /** Panele, o których procesy pytał launcher (`pane.process_info`). */
   processReads: string[];
   /** Kolejność metod tworzących — krok 6 ma iść PO `agent.start`, a `tab.rename` przed nim. */
@@ -115,8 +117,8 @@ interface FakeOptions {
   /** Zamek projektu; domyślnie własny na każdy `setup` (pamięć nie przecieka między testami). */
   placement?: ProjectPlacement;
   trusted?: boolean;
-  /** Kolejne odpowiedzi `agent.get`; ostatnia powtarza się w nieskończoność. */
-  probes?: readonly HerdrLaunchProbe[];
+  /** Kolejne odpowiedzi `agent.get` (`Error` = rzut); ostatnia powtarza się w nieskończoność. */
+  probes?: readonly (HerdrLaunchProbe | Error)[];
   probeError?: unknown;
   startAgentError?: unknown;
   /** Ile pierwszych wywołań `agent.start` ma paść na `startAgentError`. */
@@ -125,6 +127,10 @@ interface FakeOptions {
   renamePaneError?: unknown;
   renameTabError?: unknown;
   screenText?: string;
+  /** Successive screen reads (an `Error` is thrown); the last repeats. Absent = `screenText`. */
+  screens?: readonly (string | Error)[];
+  /** The supervisor still holds the launch entry (`launchHeld`); absent = always. */
+  held?: () => boolean;
   sessionId?: string;
   readyTimeoutMs?: number;
   envClear?: readonly string[];
@@ -142,6 +148,8 @@ interface Fake {
   /** Sygnały `paneLabelled`: klucz i metody tworzące, które poszły PRZED nim. */
   labelled: { key: string; after: string[] }[];
   names: string[];
+  /** Supervisor refreshes asked for after a start dialog (`sessionAppeared`), with the clock at the call. */
+  refreshed: { paneId: string; at: number }[];
   clock(): number;
 }
 
@@ -153,8 +161,9 @@ function setup(opts: FakeOptions = {}): Fake {
   const sessionId = opts.sessionId ?? '11111111-2222-4333-8444-555555555555';
   const calls: FakeCalls = {
     listPanes: 0, listWorkspaces: 0, createTab: [], createWorkspace: [], startAgent: [], metadata: [],
-    renamePane: [], renameTab: [], closeTab: [], screenReads: 0, processReads: [], order: [],
+    renamePane: [], renameTab: [], closeTab: [], screenReads: 0, probeReads: 0, processReads: [], order: [],
   };
+  const refreshed: { paneId: string; at: number }[] = [];
   const logs: string[] = [];
   const registrations: HerdrLaunchRegistration[] = [];
   const labelled: { key: string; after: string[] }[] = [];
@@ -259,9 +268,11 @@ function setup(opts: FakeOptions = {}): Fake {
     placement: opts.placement ?? createProjectPlacement(),
     trust: { isTrusted: async (): Promise<boolean> => opts.trusted !== false },
     async probeAgent(): Promise<HerdrLaunchProbe> {
+      calls.probeReads += 1;
       if (opts.probeError !== undefined) throw opts.probeError;
       const probe = probes[Math.min(probeIndex, probes.length - 1)];
       probeIndex += 1;
+      if (probe instanceof Error) throw probe;
       return probe ?? READY;
     },
     registerLaunch(reg: HerdrLaunchRegistration): string {
@@ -273,8 +284,15 @@ function setup(opts: FakeOptions = {}): Fake {
     },
     async readScreen(): Promise<string> {
       calls.screenReads += 1;
-      return opts.screenText ?? '';
+      const screens = opts.screens ?? [];
+      const next = screens[Math.min(calls.screenReads, screens.length) - 1];
+      if (next instanceof Error) throw next;
+      return next ?? opts.screenText ?? '';
     },
+    sessionAppeared(paneId: string): void {
+      refreshed.push({ paneId, at: clock });
+    },
+    launchHeld: (): boolean => opts.held?.() ?? true,
     now: (): number => clock,
     sleep: async (ms: number): Promise<void> => {
       clock += ms;
@@ -288,7 +306,7 @@ function setup(opts: FakeOptions = {}): Fake {
   });
 
   return {
-    launcher, calls, logs, registrations, labelled, names, clock: (): number => clock,
+    launcher, calls, logs, registrations, labelled, names, refreshed, clock: (): number => clock,
   };
 }
 
@@ -560,7 +578,7 @@ describe('launch — etykieta pochodzenia panelu', () => {
   /** Klucz projektu z fixture'a: katalogu nie ma na dysku, więc realpath oddaje ścieżkę. */
   const KNOWN_KEY = projectKey(KNOWN_CWD);
 
-  it('po `agent.start` nadaje panelowi `<tytuł> · rarog-claude <klucz> <ślad>`, a tytuł idzie bez tokenów',
+  it('po `agent.start` nadaje panelowi `<tytuł> · rc:<kod klucza><kod śladu>`, a tytuł idzie bez tokenów',
     async () => {
       const f = setup();
       await (await f.launcher.launch({ cwd: KNOWN_CWD })).ready;
@@ -571,7 +589,7 @@ describe('launch — etykieta pochodzenia panelu', () => {
         { paneId: 'w9:p9', label: claudePaneLabel(KNOWN_KEY, labelTrace('demo'), 'demo') },
       ]);
       expect(parsePaneLabel(f.calls.renamePane[0]?.label)).toEqual({
-        kind: 'claude', value: KNOWN_KEY, trace: labelTrace('demo'),
+        kind: 'claude', keyCode: keyCodeOf(KNOWN_KEY), trace: labelTrace('demo'),
       });
       /*
        * Token `rarog` (z TTL 24 h) przestał istnieć: własność mówi nazwa agenta, pochodzenie —
@@ -1109,6 +1127,117 @@ describe('launch — panel na dialogu', () => {
     });
     const handle = await f.launcher.launch({ cwd: KNOWN_CWD });
     await expect(handle.ready).rejects.toThrow(HerdrLaunchTimeoutError);
+  });
+});
+
+describe('launch — a start dialog herdr reads as ready (`idle`, `interactive_ready`, no session id)', () => {
+  const uuid = '11111111-2222-4333-8444-555555555555';
+  const pending: HerdrLaunchProbe = {
+    agentSessionId: '', status: 'unknown', interactiveReady: null, launchPending: true,
+  };
+  const standing: HerdrLaunchProbe = { agentSessionId: '', status: 'idle', interactiveReady: true };
+  const ready: HerdrLaunchProbe = { agentSessionId: uuid, status: 'idle', interactiveReady: true };
+  const screen = (file: string): string => readFileSync(join(import.meta.dirname, 'fixtures', 'herdr', file), 'utf8');
+  const IMPORTS = screen('kontrolny/importy-zewnetrzne-2.1.332.txt');
+  /** `n` samples of a standing start screen (250 ms apart), then the session id. */
+  const standingFor = (n: number): HerdrLaunchProbe[] => [...Array.from({ length: n }, () => standing), ready];
+  const start = async (opts: FakeOptions): Promise<{ f: Fake; result: HerdrLaunchResult }> => {
+    const f = setup({ sessionId: uuid, ...opts });
+    return { f, result: await (await f.launcher.launch({ cwd: KNOWN_CWD })).ready };
+  };
+  const flushTurns = async (): Promise<void> => {
+    for (let i = 0; i < 20; i += 1) await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+  };
+
+  it.each([
+    'kontrolny/importy-zewnetrzne-2.1.332.txt', 'kontrolny/importy-zewnetrzne-po-down-2.1.332.txt',
+    'kontrolny/importy-zewnetrzne-dluga-lista-2.1.332.txt',
+  ])('%s after `launch_pending` → `blocked` with the imports dialog on the first ready sample', async (file) => {
+    const { f, result } = await start({
+      probes: [pending, pending, standing], screens: [screen(file)], held: () => false,
+    });
+    expect(result).toMatchObject({
+      status: 'blocked', interactiveReady: false, startDialog: { id: 'external-imports' },
+    });
+    expect([f.calls.probeReads, f.calls.screenReads, f.calls.closeTab]).toEqual([3, 1, []]);
+  });
+
+  it('an empty prompt field (slow `SessionStart`) waits past 8 s and ends ready with the session id', async () => {
+    const field = screen('composer-region-empty-2.1.283.ansi.txt');
+    const { result } = await start({ probes: standingFor(40), screens: [field] });
+    expect(result).toMatchObject({ status: 'idle', interactiveReady: true, agentSessionId: uuid });
+    expect(result.startDialog).toBeUndefined();
+  });
+
+  it('a render without the prompt field that changes on every read keeps waiting past 8 s', async () => {
+    const screens = Array.from({ length: 40 }, (_, i) => `Claude Code\nLoading ${String(i)}`);
+    const { result } = await start({ probes: standingFor(40), screens });
+    expect(result).toMatchObject({ status: 'idle', interactiveReady: true });
+    expect(result.startDialog).toBeUndefined();
+  });
+
+  it.each([[1, 'idle', undefined], [32, 'idle', undefined], [33, 'blocked', null]] as const)(
+    '%i equal reads 250 ms apart without the prompt field and the imports block → %s',
+    async (n, status, id) => {
+      const screens = ['Claude Code\nLoading plugins'];
+      const { result } = await start({ probes: standingFor(n), screens, held: () => false });
+      expect(result.status).toBe(status);
+      expect(result.startDialog?.id).toBe(id);
+    },
+  );
+
+  it('a failed screen read keeps polling as today and never counts as a dialog', async () => {
+    const { result } = await start({ probes: standingFor(40), screens: [new Error('read failed')] });
+    expect(result).toMatchObject({ status: 'idle', interactiveReady: true });
+    expect(result.startDialog).toBeUndefined();
+  });
+
+  it('a cold start under `launch_pending` is not read: the shell line standing past 8 s is no dialog', async () => {
+    const probes = [...Array.from({ length: 40 }, () => pending), ready];
+    const { f, result } = await start({ probes, screens: ['$ claude'] });
+    expect(result).toMatchObject({ status: 'idle', interactiveReady: true });
+    expect(f.calls.screenReads).toBe(0);
+  });
+
+  it.each([
+    'kontrolny/zaufanie-2.1.319.txt', 'kontrolny/tryb-bypass-2.1.319.txt', 'dialog-resume-summary-2.1.258.txt',
+  ])('%s: herdr reports `blocked`, the launcher returns what it does today without a screen read', async (file) => {
+    const { f, result } = await start({
+      probes: [pending, { agentSessionId: '', status: 'blocked', interactiveReady: true }], screens: [screen(file)],
+    });
+    expect(result).toMatchObject({ status: 'blocked', interactiveReady: false });
+    expect(result.startDialog).toBeUndefined();
+    await flushTurns();
+    expect([f.calls.screenReads, f.refreshed]).toEqual([0, []]);
+  });
+
+  it('the session id after the answer → one supervisor refresh within seconds, then the watch stops', async () => {
+    const { f } = await start({ probes: standingFor(4), screens: [IMPORTS] });
+    await vi.waitFor(() => { expect(f.refreshed).toHaveLength(1); });
+    await flushTurns();
+    expect(f.refreshed.map((r) => r.paneId)).toEqual(['w9:p9']);
+    expect((f.refreshed[0]?.at ?? Infinity) - 1_000_000).toBeLessThanOrEqual(5_000);
+    expect(f.calls.probeReads).toBe(5);
+  });
+
+  it.each([
+    ['the pane goes', { probes: [standing, new HerdrGoneError(foreign('agent_not_found')), ready] }, 2],
+    ['the supervisor no longer holds the launch', { probes: standingFor(1), held: () => false }, 1],
+  ] as const)('the watch stops without a refresh when %s', async (_name, opts, probeReads) => {
+    const { f } = await start({ screens: [IMPORTS], ...opts });
+    await flushTurns();
+    expect(f.refreshed).toEqual([]);
+    expect(f.calls.probeReads).toBe(probeReads);
+  });
+
+  it('no session id for minutes → the watch ends without a refresh and leaves it to the resync', async () => {
+    const { f } = await start({ probes: [standing], screens: [IMPORTS] });
+    await flushTurns();
+    const reads = f.calls.probeReads;
+    await flushTurns();
+    expect(f.calls.probeReads).toBe(reads);
+    expect(reads).toBeGreaterThan(60);
+    expect(f.refreshed).toEqual([]);
   });
 });
 

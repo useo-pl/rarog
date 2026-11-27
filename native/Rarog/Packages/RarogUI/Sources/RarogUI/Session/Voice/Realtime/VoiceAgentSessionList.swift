@@ -43,7 +43,7 @@ enum VoiceAgentListState: String, Sendable, CaseIterable {
       // A still blue dot: marked unread by hand, or a frozen row (stale data) whose result nobody has taken.
       let marked = session.markedUnseen == true || state.turnControl.manualUnread.contains(session.id)
       return marked ? .markedUnread : .finished
-    case .quiet, .backgroundWait:
+    case .quiet, .backgroundWait, .backgroundWaitLong:
       guard session.state == .waitingInput, session.resultSeen else { return .other }
       return session.seenBy == .voiceAgent ? .seenByVoice : .seen
     }

@@ -21,7 +21,8 @@ import UIKit
 /// In the stack, coming back from a session or terminal centers the last opened row once when none of it is on
 /// screen (`TreeReturnScroll`).
 /// A pill at the bottom or top edge says how many rows that need the human stand below or above the visible part and
-/// scrolls to the nearest (`ListJumpPillTracker`, `ListJumpPillView`).
+/// scrolls to the nearest (`ListJumpPillTracker`, `ListJumpPillView`); the pills give way when together they would
+/// cover more than half of the visible list (`ListJumpPill.fits`).
 /// Ręczne zwinięcie albo rozwinięcie jednego projektu nie przewija: nagłówek stoi, a wiersze
 /// rosną albo znikają pod nim (`TreeToggleGesture.project`).
 struct SessionListView: View {
@@ -83,6 +84,14 @@ struct SessionListView: View {
     // The pills float over the list inside its safe area: under the filter segments and banners, over the footer card.
     .overlay(alignment: .top) { ListJumpPillView(tracker: jumpPill, direction: .above) }
     .overlay(alignment: .bottom) { ListJumpPillView(tracker: jumpPill, direction: .below) }
+    // The visible list is where the pills float: the list without its safe area (the bar, the filter row and banners
+    // above, the footer card below). Rotation, the text size and a taller card change it; the pills then check again
+    // whether they leave room to drag (`ListJumpPill.fits`).
+    .onGeometryChange(for: CGFloat.self) { proxy in
+      max(0, proxy.size.height - proxy.safeAreaInsets.top - proxy.safeAreaInsets.bottom)
+    } action: { height in
+      jumpPill.visibleListChanged(height)
+    }
     // Tytuł zostaje dla przełącznika okien; widoczny jest „AGENCI (N)" w jednym wierszu paska z „łączę…"
     // i „Nową sesją". Bez dużego tytułu pasek ma stałą wysokość: zwijanie przy przewijaniu haczyło.
     .navigationTitle(UICopy.listTitle(count: state.sessions.count))

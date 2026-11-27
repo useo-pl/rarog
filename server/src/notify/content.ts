@@ -46,6 +46,7 @@ const FALLBACK_BODY = {
   done: 'push.body.fallback.done',
   error: 'push.body.fallback.error',
   limit: 'push.body.fallback.limit',
+  stalled: 'push.body.fallback.stalled',
 } as const satisfies Readonly<Record<NotifyKind, SentenceCode>>;
 
 /**
@@ -56,20 +57,23 @@ const FALLBACK_BODY = {
  * z Maca albo sesja poszła dalej), więc dostarczanie ich po godzinie byłoby powiadamianiem
  * o stanie, którego nie ma. „Gotowe" starzeje się wolniej — wynik czeka w transkrypcie.
  */
-const TTL_SECONDS: Readonly<Record<NotifyClass, number>> = {
+const TTL_SECONDS: Readonly<Record<NotifyClass | 'stalled', number>> = {
   blocking: 600,
   failure: 600,
   done: 3600,
+  // A subagent stuck on its own command stays stuck: an alarm delivered an hour late still tells the truth.
+  stalled: 3600,
 };
 
 /**
  * `high` = dostarcz natychmiast (`apns-priority: 10`), `normal` = system może poczekać na lepszy
  * moment baterii (`5`).
  */
-const URGENCY: Readonly<Record<NotifyClass, PushUrgency>> = {
+const URGENCY: Readonly<Record<NotifyClass | 'stalled', PushUrgency>> = {
   blocking: 'high',
   failure: 'high',
   done: 'normal',
+  stalled: 'high',
 };
 
 export type PushUrgency = 'high' | 'normal';
@@ -208,6 +212,15 @@ export function topicFor(sessionId: string): string {
   return createHash('sha256').update(sessionId).digest('base64url').slice(0, TOPIC_MAX_CHARS);
 }
 
+/**
+ * Collapse key of the stalled wait alarm of one session ({@link buildStalledContent}): a hash like {@link topicFor},
+ * stable per session, but never the session topic, so the alarm does not replace a pending decision banner of the
+ * same session and a later decision banner does not replace the alarm.
+ */
+export function stalledTopicFor(sessionId: string): string {
+  return topicFor(`rarog:stalled:${sessionId}`);
+}
+
 /** Tekst z opcjonalnym kodem zdania — wynik składania tytułu albo treści. */
 interface Sentence {
   readonly text: string;
@@ -310,6 +323,47 @@ export function buildContent(input: ContentInput): PushContent {
     topic: topicFor(input.sessionId),
     urgency: URGENCY[input.cls],
     ttl: TTL_SECONDS[input.cls],
+    ...(input.badge === undefined ? {} : { badge: input.badge }),
+  };
+}
+
+/** Facts of a stalled wait alarm: the session and the description of the subagent, never its command. */
+export interface StalledContentInput {
+  /** Projekt (`basename(cwd)`). */
+  readonly project: string;
+  /** Session label; the body falls back to it when the subagent has no description. */
+  readonly label?: string;
+  readonly sessionId: string;
+  /** `SessionSummary.termId`: the tap goes to the Rarog terminal of the panel. */
+  readonly termId?: string;
+  /** The subagent's description (`BackgroundTask.description`), the agent's own text. */
+  readonly agent?: string;
+  /** Plakietka na ikonie; patrz {@link PushContentBase.badge}. */
+  readonly badge?: number;
+}
+
+/**
+ * Push `stalled`: a subagent of the session has waited over an hour on a background command it started itself. The
+ * title has the project (`push.title.stalled`), the body names the subagent by its description
+ * (`push.detail.stalled`, flattened and clipped before `say()`, so the body keeps its code), without a description the
+ * session label or `push.body.fallback.stalled`. Never the command: the lock screen is readable by bystanders
+ * (`docs/security-model.md`, "Push notifications"). Urgent, one hour in APNs, with its own collapse key
+ * ({@link stalledTopicFor}); the tap opens the session like any session banner.
+ */
+export function buildStalledContent(input: StalledContentInput): PushContent {
+  const agent = input.agent === undefined ? '' : oneLine(input.agent);
+  const body = agent === ''
+    ? bodyFor('stalled', undefined, input.label)
+    : fitBody((a) => say('push.detail.stalled', { agent: a }), agent);
+  return {
+    kind: 'stalled',
+    sessionId: input.sessionId,
+    ...(input.termId === undefined ? {} : { termId: input.termId }),
+    ...titleFields(sentence(say(NOTIFY_KIND_TITLE.stalled, { project: input.project }))),
+    ...bodyFields(body),
+    topic: stalledTopicFor(input.sessionId),
+    urgency: URGENCY.stalled,
+    ttl: TTL_SECONDS.stalled,
     ...(input.badge === undefined ? {} : { badge: input.badge }),
   };
 }

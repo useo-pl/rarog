@@ -18,9 +18,9 @@ struct DegradationTableTests {
     let swift = Set(DegradationKey.allCases.map(\.rawValue))
     #expect(swift.subtracting(fromManifest).sorted() == [], "klucze tylko w Swift")
     #expect(fromManifest.subtracting(swift).sorted() == [], "klucze DEGRADATIONS bez odpowiednika w Swift")
-    // 36 = the size of `DEGRADATIONS` today (the last one: a closed folder with an unknown state,
+    // 37 = the size of `DEGRADATIONS` (the last one: a closed folder with an unknown state,
     // `folder-access.block`). A new entry in TS = a new one here.
-    #expect(swift.count == 36)
+    #expect(swift.count == 37)
   }
 
   @Test("każda wartość zapasowa daje się zbudować w typie pola")

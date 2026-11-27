@@ -94,6 +94,7 @@ struct NewSessionSheet: View {
       // Achromatycznie: menu i „Zmień” bez systemowego błękitu — przyciski wyróżnia kontrast, nie
       // kolor akcentu (`docs/design.md` „Core principle”).
       .tint(Color(uiColor: Palette.text))
+      .toggleStyle(.appSwitch)
       .disabled(requesting)
       .safeAreaInset(edge: .bottom, spacing: 0) { footer }
     }

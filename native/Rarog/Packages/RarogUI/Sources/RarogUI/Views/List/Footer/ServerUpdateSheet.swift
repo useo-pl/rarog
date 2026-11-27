@@ -82,7 +82,7 @@ struct ServerUpdateSheet: View {
     .padding(.leading, 12)
     .padding(.vertical, 2)
     .background(
-      RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color(uiColor: Palette.codeBlockFill)))
+      RoundedRectangle.inner.fill(Color(uiColor: Palette.codeBlockFill)))
   }
 }
 #endif

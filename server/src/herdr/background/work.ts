@@ -17,6 +17,11 @@
  * - licznik „pracuje" kafla      → `hasBackgroundWork`:    zadanie „żywe" (`liveTask`);
  * - zegar ciszy kafla (`isBusy`) → `hasOpenWorkflow`:      tylko otwarty przebieg workflow;
  * - lista przebiegów na kaflu    → `workflowsWithRun`:     workflow z odczytanym rozkładem.
+ * - wait stage of a subagent on its own command → `ownCommandWaitOf` (the only reader of the clock; `merge.ts` sets
+ *   the `ownCommandWait` field with it), thresholds `WAIT_LONG_MS` and `WAIT_STUCK_MS`, key of one wait `waitKey`.
+ * - Live Activity counter "waiting" of a session after a turn → `stuckWait`: a wait at `stuck` on its list;
+ * - edge of the stalled wait alarm → `stuckWaits`: a wait that reached `stuck` between two lists of the session
+ *   (`conversation-lists.ts` asks at every list swap, `notify/stalled-wait.ts` delivers).
  *
  * CZEKAJĄCY SUBAGENT NIE JEST PRACĄ. Subagent z `waitingSince` skończył turę
  * i stoi, bo czeka na własną komendę w tle; bywa tak godzinami. Jedna definicja „czeka" stoi
@@ -33,10 +38,16 @@
  * (`RarogCore/BackgroundTaskRules.swift`, te same nazwy funkcji) — opis obu stron:
  * `docs/background-tasks.md`.
  */
-import type { BackgroundTask, WorkflowRun } from '@rarog/shared';
+import type { BackgroundTask, OwnCommandWait, SessionState, WorkflowRun } from '@rarog/shared';
 
 /** Lista z sesji: brak pola znaczy „nic nie leci", dokładnie jak pusta lista. */
 type Tasks = readonly BackgroundTask[] | undefined;
+
+/** From this age of a wait on an own command (`waitingSince` to now) the stage is `long`. */
+export const WAIT_LONG_MS = 30 * 60_000;
+
+/** From this age of a wait on an own command the stage is `stuck`. */
+export const WAIT_STUCK_MS = 60 * 60_000;
 
 /**
  * Subagent w POSTOJU: rodzaj `agent` z polem `waitingSince`. Skończył turę i czeka na własne
@@ -91,6 +102,101 @@ export function tasksHoldingDonePush(tasks: Tasks): number {
  */
 export function waitingOnOwnCommand(tasks: Tasks): boolean {
   return (tasks ?? []).some((task) => waitingAgent(task) && (task.ownTasks?.length ?? 0) > 0);
+}
+
+/**
+ * One task: a subagent in standby ({@link waitingAgent}) with a known open own command (`ownTasks` not empty), the
+ * same condition as {@link waitingOnOwnCommand} for a single task.
+ */
+function waitsOnOwnCommand(task: BackgroundTask): boolean {
+  return waitingAgent(task) && (task.ownTasks?.length ?? 0) > 0;
+}
+
+/**
+ * The wait stage of one task (`BackgroundTask.ownCommandWait`) at `nowMs`, or `undefined` when the task does not wait
+ * on a known own command ({@link waitsOnOwnCommand}).
+ *
+ * The age runs from `waitingSince`, not from the start of the command or the agent: a command meant to run long (a dev
+ * server started before the standby) must not count, and a new standby starts a new wait. This is the only rule that
+ * reads the clock; `merge.ts` calls it on every emission, so the list goes out again on the first tick past a
+ * threshold. An unreadable `waitingSince` or a clock behind it gives `short`: no proof of a long wait.
+ */
+export function ownCommandWaitOf(task: BackgroundTask, nowMs: number): OwnCommandWait | undefined {
+  if (!waitsOnOwnCommand(task)) return undefined;
+  const age = nowMs - Date.parse(task.waitingSince ?? '');
+  if (age >= WAIT_STUCK_MS) return 'stuck';
+  if (age >= WAIT_LONG_MS) return 'long';
+  return 'short';
+}
+
+/**
+ * Opaque key of one wait: the agent and the start of its standby. Present only on a task that carries
+ * `ownCommandWait`, so it names the same wait across emissions while the stage grows, and a wake followed by a new
+ * standby gives a new key. Callers compare keys and never read the two fields themselves.
+ */
+export function waitKey(task: BackgroundTask): string | undefined {
+  if (task.ownCommandWait === undefined || !waitingAgent(task)) return undefined;
+  return JSON.stringify([task.id, task.waitingSince]);
+}
+
+/** One wait on the edge of the alarm: its key, its agent and the agent's description (never the command). */
+export interface StuckWait {
+  readonly key: string;
+  readonly agentId: string;
+  readonly description?: string;
+}
+
+/** The waits of one list swap, for the stalled wait alarm. */
+export interface StuckWaits {
+  /** Waits on the edge, in list order. */
+  readonly newly: readonly StuckWait[];
+  /** Keys at `stuck` now. */
+  readonly stuckKeys: readonly string[];
+  /** Every wait on the new list, any stage. */
+  readonly waitKeys: readonly string[];
+}
+
+/** A session that ended (`done`) or waits for a resume: an agent still on its list is a phantom for the rules. */
+function phantomState(state: SessionState): boolean {
+  return state === 'done' || state === 'resumable';
+}
+
+/**
+ * Live Activity counter "waiting": a session after a turn (`waiting-input`) whose list has a wait at `stuck`. Such a
+ * session counts as waiting, not as finished or working, and is not the tap target (`aggregateState` in
+ * `notify/live-activity-state.ts`). Other states keep their own counter: a decision already waits, a turn works, and
+ * `done` or `resumable` has a phantom agent. The stage is read from the field only (`ownCommandWaitOf` set it).
+ */
+export function stuckWait(state: SessionState, tasks: Tasks): boolean {
+  return state === 'waiting-input' && (tasks ?? []).some((task) => task.ownCommandWait === 'stuck');
+}
+
+/**
+ * The edge of the stalled wait alarm between two lists of one session: a wait whose key was below `stuck` on `before`
+ * and is `stuck` on `after`. `short` → `stuck` is an edge (a sleeping Mac can skip `long`); a key absent from
+ * `before`, or without a stage there (first list after a Rarog restart or a driver swap, an agent before its file was
+ * read), is not, so a restart never repeats the alarm. Any session state gives the edge except a phantom one (`done`,
+ * `resumable`), which also has nothing at `stuck`; its waits keep their keys in `waitKeys`.
+ */
+export function stuckWaits(state: SessionState, before: Tasks, after: Tasks): StuckWaits {
+  const below = new Set((before ?? []).flatMap((task) => {
+    const key = waitKey(task);
+    return key !== undefined && task.ownCommandWait !== 'stuck' ? [key] : [];
+  }));
+  const waitKeys: string[] = [];
+  const stuckKeys: string[] = [];
+  const newly: StuckWait[] = [];
+  for (const task of after ?? []) {
+    const key = waitKey(task);
+    if (key === undefined) continue;
+    waitKeys.push(key);
+    if (task.ownCommandWait !== 'stuck' || phantomState(state)) continue;
+    stuckKeys.push(key);
+    if (below.has(key)) {
+      newly.push({ key, agentId: task.id, ...(task.description === undefined ? {} : { description: task.description }) });
+    }
+  }
+  return { newly, stuckKeys, waitKeys };
 }
 
 /**
@@ -158,6 +264,8 @@ function openWorkflow(task: BackgroundTask): boolean {
  * Kafel Live Activity, licznik „pracuje": na liście jest zadanie, które jeszcze mieli
  * ({@link liveTask}). Sesja po turze, której wszystkie zadania to czekający subagenci, do
  * „pracuje" się nie liczy; z nieodebranym wynikiem liczy się do „skończyły".
+ * Exception: a session after a turn with a wait at `stuck` ({@link stuckWait}) counts as waiting, neither as working
+ * nor as finished.
  */
 export function hasBackgroundWork(tasks: Tasks): boolean {
   return (tasks ?? []).some(liveTask);

@@ -1,8 +1,8 @@
 #if os(iOS)
 import SwiftUI
 
-// Chip of a choice in a horizontally scrolling row. Used by: the recent project row of the "New Session" sheet and
-// the model and effort rows of the "Model and Effort" sheet.
+// Chip of a choice in a row. Used by: the recent project row of the "New Session" sheet (scrolls sideways) and the
+// model and effort rows of the "Model and Effort" sheet (flow into lines).
 
 /// Recent project pill like `.dir-recent .pill` in the PWA: `surface` background, muted ink and a thin outline;
 /// the chosen project has an outline and ink text (`aria-pressed` in the PWA).

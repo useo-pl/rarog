@@ -14,8 +14,8 @@ import UIKit
 final class TurnChrome {
   /// Odroczony zapis szkicu po przerwie od ostatniej zmiany pola (`+Drafts`).
   var draftSave: Task<Void, Never>?
-  /// The last Send of the field from its button or key: the end of a dictation recording waits for it
-  /// (`dictationEndWait`).
+  /// The last Send of the field from its button or key, or from outside the screens: the end of a dictation recording
+  /// waits for it (`dictationEndWait`).
   var fieldSend: Task<ComposerSendResult, Never>?
   /// Stan zapisany i stan, na który czeka odliczanie — zapis tylko przy zmianie (`+Drafts`).
   var draftSchedule = DraftSaveSchedule()

@@ -38,12 +38,14 @@ private final class Told {
 @MainActor
 private final class Rig {
   let backend = FakeVoiceAgentBackend()
-  let settings = VoiceAgentSettings.memory()
+  let settings: VoiceAgentSettings
   let center = DictationCenter()
   let device = VoiceAgentFakeDevice()
   private(set) var owner: VoiceAgentSessionsConversation!
 
-  init(consented: Bool = true, sessionsMode: Bool = true, voiceAgent: Bool = true) {
+  /// `noTiles`: a device that shows no Live Activity tiles (an iPad); otherwise a phone.
+  init(consented: Bool = true, sessionsMode: Bool = true, voiceAgent: Bool = true, noTiles: Bool = false) {
+    settings = VoiceAgentSettings(preferences: .memory(), background: BackgroundRecording(noTiles: noTiles))
     backend.state = appState(
       [session("id-a", label: "Alpha"), session("id-b", label: "Birch")], sessionsMode: sessionsMode)
     backend.catalog = .sessions([catalogRow("id-a"), catalogRow("id-b")])
@@ -103,6 +105,7 @@ enum SessionsConversationEnd: String, CaseIterable, Sendable {
   case newConversation = "a read session's new conversation"
   case conversationAtSession = "a conversation at a session starts"
   case dictation = "dictation takes the microphone"
+  case sessionLimit = "the length limit"
 
   /// What the bar shows after this end (`nil`: no sentence, as after the end button at a session).
   var shown: VoiceAgentIndicator? {
@@ -116,6 +119,7 @@ enum SessionsConversationEnd: String, CaseIterable, Sendable {
     case .audioInterrupted: .ended(.audioInterrupted)
     case .sonioxFailed: .ended(.speechFailed)
     case .newConversation: .closed(.sessionCleared)
+    case .sessionLimit: .ended(.sessionLimit)
     }
   }
 }
@@ -232,27 +236,50 @@ struct VoiceAgentSessionsConversationTests {
     #expect(await rig.owner.start() == .started)
   }
 
-  // Catches a conversation across sessions that the background still ends with the locked-phone trial on: the trial
-  // would do nothing for this mode.
-  @Test("with the trial on the background keeps a ready conversation across sessions")
-  func backgroundKeepsWithTrial() async throws {
+  // Catches a conversation across sessions that the background ends while its tile stands (the tile would do nothing
+  // for this mode), or one the background keeps on a phone without its tile (the microphone would run on unseen).
+  @Test(
+    "on a phone the background keeps a ready conversation across sessions only while its tile stands",
+    arguments: [true, false])
+  func backgroundFollowsTheTile(tile: Bool) async throws {
     let rig = Rig()
-    rig.settings.lockedPhoneTrial.set(true)
+    rig.settings.background.tile(shown: tile)
     try await rig.ready()
     let session = try #require(rig.owner.session)
     rig.owner.scene(.background)
+    guard tile else {
+      #expect(!rig.owner.isActive && rig.owner.indicator == .closed(.background))
+      #expect(rig.device.socket.closed && rig.device.audio.stops > 0)
+      return
+    }
     #expect(rig.owner.isActive && session.isActive && rig.owner.indicator?.isActive == true)
     #expect(!rig.device.socket.closed && rig.device.audio.stops == 0)
     rig.owner.scene(.active)
     #expect(rig.owner.isActive && rig.owner.session === session)
   }
 
-  // Catches a trial that keeps what has no open microphone yet: a start, the opening list, or a conversation still
-  // connecting would go on in the background and open the microphone there.
-  @Test("with the trial on the background refuses a start and ends the opening list and a connecting conversation")
-  func backgroundEndsStartWithTrial() async throws {
+  // Catches a conversation that outlives its tile: removed from the Lock Screen while the app is in the background,
+  // the tile would leave the microphone running unseen until some other change reached the owner.
+  @Test("the tile removed while the app is in the background ends a ready conversation across sessions at once")
+  func tileRemovedInBackground() async throws {
     let rig = Rig()
-    rig.settings.lockedPhoneTrial.set(true)
+    rig.settings.background.tile(shown: true)
+    try await rig.ready()
+    rig.owner.scene(.background)
+    #expect(rig.owner.isActive)
+    // No call from outside: the owner follows the tile itself.
+    rig.settings.background.tile(shown: false)
+    #expect(await eventually { !rig.owner.isActive })
+    #expect(rig.owner.indicator == .closed(.background))
+    #expect(rig.device.socket.closed && rig.device.audio.stops > 0)
+  }
+
+  // Catches a tile that keeps what has no open microphone yet: a start, the opening list, or a conversation still
+  // connecting would go on in the background and open the microphone there.
+  @Test("with the tile up the background refuses a start and ends the opening list and a connecting conversation")
+  func backgroundEndsStartWithTile() async throws {
+    let rig = Rig()
+    rig.settings.background.tile(shown: true)
     rig.owner.scene(.background)
     #expect(await rig.owner.start() == .refused(.closed(.background)))
     #expect(rig.backend.reads.isEmpty && rig.device.audio.starts == 0)
@@ -267,6 +294,38 @@ struct VoiceAgentSessionsConversationTests {
     #expect(session.phase == .connecting, "OpenAI has not taken the session yet")
     rig.owner.scene(.background)
     #expect(!rig.owner.isActive && !session.isActive && rig.owner.indicator == .closed(.background))
+  }
+
+  // Catches a device without tiles that ends a ready conversation at an app switch, keeps it after the screen lock,
+  // or still remembers the lock after the app came back (the next app switch would end the conversation).
+  @Test("without tiles the background keeps a ready conversation until the lock; back in front the lock is forgotten")
+  func noTilesUntilTheLock() async throws {
+    let rig = Rig(noTiles: true)
+    try await rig.ready()
+    rig.owner.scene(.background)
+    #expect(rig.owner.isActive, "an app switch keeps it")
+    rig.settings.background.screenLocked()
+    #expect(await eventually { !rig.owner.isActive })
+    #expect(rig.owner.indicator == .closed(.background))
+    #expect(rig.device.socket.closed && rig.device.audio.stops > 0)
+    rig.settings.background.scene(.active)
+    rig.owner.scene(.active)
+    rig.owner.dismissNotice()
+    try await rig.ready()
+    rig.owner.scene(.background)
+    #expect(rig.owner.isActive, "the next app switch keeps it again")
+  }
+
+  // Catches a lock signal that comes before the app leaves the foreground and is lost: the conversation would go on
+  // in the locked device.
+  @Test("without tiles a lock that comes before the background ends a ready conversation at the background")
+  func noTilesLockFirst() async throws {
+    let rig = Rig(noTiles: true)
+    try await rig.ready()
+    rig.settings.background.screenLocked()
+    #expect(rig.owner.isActive, "in the foreground the lock changes nothing")
+    rig.owner.scene(.background)
+    #expect(!rig.owner.isActive && rig.owner.indicator == .closed(.background))
   }
 
   @Test("going from the list to a session and back keeps the same conversation")
@@ -352,6 +411,7 @@ struct VoiceAgentSessionsConversationTests {
       _ = await call(host, .readSessions, #"{"handles":["s1"]}"#)
     case .conversationAtSession: _ = rig.conversationAtSession()
     case .dictation: rig.center.claim(Dictation())
+    case .sessionLimit: rig.device.scheduler.advance(VoiceAgentSession.sessionLimit)
     }
     #expect(await eventually { !rig.owner.isActive })
     #expect(rig.owner.indicator == end.shown)
